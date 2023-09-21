@@ -20,7 +20,7 @@ import QueryPage from './QueryPage.component';
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockImplementation(() => ({
-    datasetFQN: 'testDatasetFQN',
+    fqn: 'testDatasetFQN',
     queryId: 'queryId',
   })),
 }));

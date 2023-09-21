@@ -39,7 +39,6 @@ class LifeCycleQueryByTable(BaseModel):
 
     table_name: str = Field(..., alias="TABLE_NAME")
     created_at: Optional[datetime] = Field(..., alias="CREATED_AT")
-    deleted_at: Optional[datetime] = Field(..., alias="DELETED_AT")
 
     class Config:
         allow_population_by_field_name = True

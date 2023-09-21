@@ -41,7 +41,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddServicePage = () => {
   const { t } = useTranslation();
-  const { serviceCategory } = useParams<{ [key: string]: string }>();
+  const { serviceCategory } = useParams<{ serviceCategory: string }>();
   const [newServiceData, setNewServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);

@@ -34,7 +34,8 @@ import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
-  const { testSuiteFQN, ingestionFQN } = useParams<Record<string, string>>();
+  const { fqn: testSuiteFQN, ingestionFQN } =
+    useParams<{ fqn: string; ingestionFQN: string }>();
   const { t } = useTranslation();
 
   const history = useHistory();

@@ -183,7 +183,7 @@ jest.mock('../../AppState', () => ({
 }));
 
 const mockParams = {
-  databaseSchemaFQN: 'sample_data.ecommerce_db.shopify',
+  fqn: 'sample_data.ecommerce_db.shopify',
   tab: 'table',
 };
 
@@ -204,7 +204,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'databaseSchema',
-      mockParams.databaseSchemaFQN
+      mockParams.fqn
     );
   });
 
@@ -241,7 +241,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.databaseSchemaFQN,
+      mockParams.fqn,
       API_FIELDS,
       'include=all'
     );
@@ -259,7 +259,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
-      databaseSchema: mockParams.databaseSchemaFQN,
+      databaseSchema: mockParams.fqn,
       fields: 'owner,tags,followers',
       include: 'non-deleted',
       limit: 0,
@@ -278,7 +278,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.databaseSchemaFQN,
+      mockParams.fqn,
       API_FIELDS,
       'include=all'
     );
@@ -300,7 +300,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.databaseSchemaFQN,
+      mockParams.fqn,
       API_FIELDS,
       'include=all'
     );

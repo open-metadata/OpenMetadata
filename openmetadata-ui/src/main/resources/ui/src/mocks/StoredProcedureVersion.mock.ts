@@ -84,6 +84,7 @@ const mockData = {
     previousVersion: 0.1,
   },
   deleted: false,
+  storedProcedureCode: '',
 };
 
 export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {

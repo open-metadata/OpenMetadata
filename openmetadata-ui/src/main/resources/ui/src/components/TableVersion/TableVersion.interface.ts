@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -20,7 +19,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface TableVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Table;
   isVersionLoading: boolean;
   owner: Table['owner'];
   domain: Table['domain'];

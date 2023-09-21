@@ -183,6 +183,7 @@ export const mockTagChangeVersion = {
 export const mockNoChartData = {
   id: '4ee70a0c-6ec9-4c93-a91c-4a57d65bebc8',
   description: 'test description',
+  name: 'test',
   version: 0.4,
   updatedAt: 1649354506617,
   updatedBy: 'anonymous',
@@ -230,4 +231,4 @@ export const mockNoChartData = {
     previousVersion: 0.3,
   },
   deleted: false,
-} as unknown as VersionData;
+} as Dashboard;

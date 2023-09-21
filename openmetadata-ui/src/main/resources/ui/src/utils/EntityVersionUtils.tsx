@@ -13,7 +13,10 @@
 
 import { Space, Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import { EntityDetails } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import {
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
+} from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
@@ -719,7 +722,7 @@ export function getColumnsDataWithVersionChanges<
 }
 
 export const getUpdatedExtensionDiffFields = (
-  entityDetails: EntityDetails,
+  entityDetails: ExtentionEntities[ExtentionEntitiesKeys],
   extensionDiff: EntityDiffProps
 ) => {
   const extensionObj = entityDetails.extension;

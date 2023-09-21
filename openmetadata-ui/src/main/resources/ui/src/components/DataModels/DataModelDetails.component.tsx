@@ -65,8 +65,8 @@ const DataModelDetails = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { dashboardDataModelFQN, tab: activeTab } =
-    useParams<{ dashboardDataModelFQN: string; tab: EntityTabs }>();
+  const { fqn: dashboardDataModelFQN, tab: activeTab } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');

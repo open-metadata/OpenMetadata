@@ -56,7 +56,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -83,8 +82,8 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ dashboardFQN: string; tab: EntityTabs }>();
+  const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
@@ -290,7 +289,10 @@ const DashboardDetails = ({
     await onDashboardUpdate(updatedData, 'displayName');
   };
   const onExtensionUpdate = async (updatedData: Dashboard) => {
-    await onDashboardUpdate(updatedData, 'extension');
+    await onDashboardUpdate(
+      { ...dashboardDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const handleRestoreDashboard = async () => {
@@ -707,9 +709,6 @@ const DashboardDetails = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              dashboardDetails as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.DASHBOARD}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
