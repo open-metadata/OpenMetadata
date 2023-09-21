@@ -51,7 +51,6 @@ import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
 import {
-  DE_ACTIVE_COLOR,
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
@@ -457,11 +456,10 @@ const NavBar = ({
             <Row gutter={6}>
               <Col className="flex-center">
                 <DomainIcon
-                  className="d-flex"
-                  color={DE_ACTIVE_COLOR}
-                  height={16}
+                  className="d-flex text-base-color"
+                  height={18}
                   name="folder"
-                  width={16}
+                  width={18}
                 />
               </Col>
               <Col>{activeDomain}</Col>
