@@ -92,6 +92,16 @@ To run the Athena ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[athena]"
 ```
 
+### OpenMetadata Manifest
+
+In any other connector, extracting metadata happens automatically. In this case, we will be able to extract high-level
+metadata from buckets, but in order to understand their internal structure we need users to provide an `openmetadata.json`
+file at the bucket root.
+
+You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
+
+{% partial file="/v1.2/connectors/storage/manifest.md" /%}
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.

@@ -14,16 +14,17 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
+import { getTeamOptionsFromType } from 'utils/TeamUtils';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
 import './TeamTypeSelect.style.less';
-import { getTeamTypeOptions } from './TeamTypeSelect.utils';
 
 function TeamTypeSelect({
   handleShowTypeSelector,
   showGroupOption,
   teamType,
   updateTeamType,
+  parentTeamType,
 }: TeamTypeSelectProps) {
   const [value, setValue] = useState<TeamType>(teamType);
 
@@ -39,7 +40,16 @@ function TeamTypeSelect({
     updateTeamType && updateTeamType(value);
   };
 
-  const options = useMemo(() => getTeamTypeOptions(showGroupOption), []);
+  const options = useMemo(() => {
+    const options = getTeamOptionsFromType(parentTeamType).map((type) => ({
+      label: type,
+      value: type,
+    }));
+
+    return showGroupOption
+      ? options
+      : options.filter((opt) => opt.value !== TeamType.Group);
+  }, [parentTeamType, showGroupOption]);
 
   return (
     <Space

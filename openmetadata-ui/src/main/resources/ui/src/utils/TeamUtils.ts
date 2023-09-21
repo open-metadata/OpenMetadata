@@ -85,3 +85,23 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
     users: getEntityValue(users),
   } as CreateTeam;
 };
+
+export const getTeamOptionsFromType = (parentType: TeamType) => {
+  switch (parentType) {
+    case TeamType.Organization:
+      return [
+        TeamType.BusinessUnit,
+        TeamType.Division,
+        TeamType.Department,
+        TeamType.Group,
+      ];
+    case TeamType.BusinessUnit:
+      return [TeamType.Division, TeamType.Department, TeamType.Group];
+    case TeamType.Division:
+      return [TeamType.Division, TeamType.Department, TeamType.Group];
+    case TeamType.Department:
+      return [TeamType.Department, TeamType.Group];
+    case TeamType.Group:
+      return [TeamType.Group];
+  }
+};

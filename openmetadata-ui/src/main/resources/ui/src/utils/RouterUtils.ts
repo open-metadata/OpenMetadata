@@ -23,24 +23,15 @@ import {
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
-  PLACEHOLDER_GLOSSARY_NAME,
-  PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_DATABASE_FQN,
-  PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
   PLACEHOLDER_ROUTE_QUERY_ID,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
-  PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
-  PLACEHOLDER_ROUTE_TABLE_FQN,
-  PLACEHOLDER_ROUTE_TEST_CASE_FQN,
   PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
-  PLACEHOLDER_TAG_NAME,
-  PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -86,7 +77,7 @@ export const getEditConnectionPath = (
   let path = ROUTES.EDIT_SERVICE_CONNECTION;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
 
   return path;
@@ -99,7 +90,7 @@ export const getPathByServiceFQN = (
   let path = ROUTES.SERVICE_WITH_TAB;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
 
   return path;
@@ -113,7 +104,7 @@ export const getAddIngestionPath = (
   let path = ROUTES.ADD_INGESTION;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
@@ -128,7 +119,7 @@ export const getEditIngestionPath = (
   let path = ROUTES.EDIT_INGESTION;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
@@ -173,21 +164,7 @@ export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(fqn));
-  }
-
-  return path;
-};
-
-export const getGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
   }
 
   return path;
@@ -334,7 +311,7 @@ export const getTagPath = (fqn?: string) => {
   let path = ROUTES.TAGS;
   if (fqn) {
     path = ROUTES.TAG_DETAILS;
-    path = path.replace(PLACEHOLDER_TAG_NAME, getEncodedFqn(fqn));
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
   }
 
   return path;
@@ -355,7 +332,7 @@ export const getAddDataQualityTableTestPath = (
 
 export const getTestSuitePath = (testSuiteName: string) => {
   let path = ROUTES.TEST_SUITES_WITH_FQN;
-  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, testSuiteName);
 
   return path;
 };
@@ -367,7 +344,7 @@ export const getTestSuiteIngestionPath = (
   let path = ingestionFQN
     ? ROUTES.TEST_SUITES_EDIT_INGESTION
     : ROUTES.TEST_SUITES_ADD_INGESTION;
-  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, testSuiteName);
 
   if (ingestionFQN) {
     path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
@@ -436,7 +413,7 @@ export const getGlossaryPathWithAction = (
   let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
 
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_ACTION, action);
 
   return path;
@@ -446,7 +423,7 @@ export const getQueryPath = (entityFqn: string, queryId: string) => {
   let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
 
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFqn)
     .replace(PLACEHOLDER_ROUTE_QUERY_ID, queryId);
 
   return path;
@@ -454,7 +431,7 @@ export const getQueryPath = (entityFqn: string, queryId: string) => {
 export const getAddQueryPath = (entityFqn: string) => {
   let path = ROUTES.ADD_QUERY;
 
-  path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, entityFqn);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, entityFqn);
 
   return path;
 };
@@ -486,7 +463,7 @@ export const getGlossaryVersionsPath = (
 ) => {
   let path = ROUTES.GLOSSARY_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_FQN, glossaryName)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -501,7 +478,7 @@ export const getGlossaryTermsVersionsPath = (
     ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
     : ROUTES.GLOSSARY_TERMS_VERSION;
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, encodeURIComponent(glossaryTermsFQN))
+    .replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(glossaryTermsFQN))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   if (tab) {
@@ -514,7 +491,7 @@ export const getGlossaryTermsVersionsPath = (
 export const getTestCaseDetailsPath = (testCaseFQN: string) => {
   let path = ROUTES.TEST_CASE_DETAILS;
 
-  path = path.replace(PLACEHOLDER_ROUTE_TEST_CASE_FQN, testCaseFQN);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, testCaseFQN);
 
   return path;
 };
@@ -538,7 +515,7 @@ export const getServiceVersionPath = (
 
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -551,7 +528,7 @@ export const getDatabaseVersionPath = (
   let path = ROUTES.DATABASE_VERSION;
 
   path = path
-    .replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, databaseFQN)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -564,7 +541,7 @@ export const getDatabaseSchemaVersionPath = (
   let path = ROUTES.SCHEMA_VERSION;
 
   path = path
-    .replace(PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN, schemaFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, schemaFQN)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -572,7 +549,7 @@ export const getDatabaseSchemaVersionPath = (
 
 export const getClassificationDetailsPath = (classificationFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
-  path = path.replace(PLACEHOLDER_TAG_NAME, classificationFQN);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classificationFQN);
 
   return path;
 };
@@ -583,7 +560,7 @@ export const getClassificationVersionsPath = (
 ) => {
   let path = ROUTES.TAG_VERSION;
   path = path
-    .replace(PLACEHOLDER_TAG_NAME, classificationFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, classificationFQN)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;

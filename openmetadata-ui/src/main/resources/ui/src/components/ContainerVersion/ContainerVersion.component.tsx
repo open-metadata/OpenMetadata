@@ -14,7 +14,6 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -24,11 +23,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import VersionTable from 'components/VersionTable/VersionTable.component';
 import { getVersionPathWithTab } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import {
-  ChangeDescription,
-  Column,
-  Container,
-} from 'generated/entity/data/container';
+import { ChangeDescription, Column } from 'generated/entity/data/container';
 import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -81,9 +76,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep(
-      (currentVersionData as Container).dataModel?.columns
-    );
+    const colList = cloneDeep(currentVersionData.dataModel?.columns);
 
     return getColumnsDataWithVersionChanges<Column>(
       changeDescription,
@@ -199,9 +192,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

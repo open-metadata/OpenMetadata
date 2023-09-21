@@ -1313,33 +1313,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
   }
 };
 
-export const getParamByEntityType = (entityType: EntityType): string => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      return 'datasetFQN';
-    case EntityType.TOPIC:
-      return 'topicFQN';
-    case EntityType.PIPELINE:
-      return 'pipelineFQN';
-    case EntityType.MLMODEL:
-      return 'mlModelFqn';
-    case EntityType.DASHBOARD:
-      return 'dashboardFQN';
-    case EntityType.SEARCH_INDEX:
-      return 'searchIndexFQN';
-    case EntityType.DATABASE:
-      return 'databaseFQN';
-    case EntityType.DATABASE_SCHEMA:
-      return 'databaseSchemaFQN';
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return 'dashboardDataModelFQN';
-    case EntityType.STORED_PROCEDURE:
-      return 'storedProcedureFQN';
-    default:
-      return 'entityFQN';
-  }
-};
-
 export const getEntityLineagePath = (
   entityType: EntityType,
   entityFQN: string
