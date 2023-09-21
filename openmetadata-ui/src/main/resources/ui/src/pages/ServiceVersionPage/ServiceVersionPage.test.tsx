@@ -22,7 +22,7 @@ import ServiceVersionPage from './ServiceVersionPage';
 const mockParams = {
   serviceCategory: 'databaseServices',
   version: '1.2',
-  serviceFQN: 'sample_data',
+  fqn: 'sample_data',
 };
 const mockPush = jest.fn();
 const mockOtherData = { data: [], paging: {} };
@@ -243,7 +243,7 @@ describe('ServiceVersionPage tests', () => {
   it('Component should render properly for pipelineServices', async () => {
     (useParams as jest.Mock).mockImplementation(() => ({
       version: '1.2',
-      serviceFQN: 'sample_data',
+      fqn: 'sample_data',
       serviceCategory: 'pipelineServices',
     }));
     await act(async () => {
@@ -262,7 +262,7 @@ describe('ServiceVersionPage tests', () => {
   it('Component should render properly for storageServices', async () => {
     (useParams as jest.Mock).mockImplementation(() => ({
       version: '1.2',
-      serviceFQN: 'sample_data',
+      fqn: 'sample_data',
       serviceCategory: 'storageServices',
     }));
     await act(async () => {
@@ -281,7 +281,7 @@ describe('ServiceVersionPage tests', () => {
   it('Component should render properly for mlmodelServices', async () => {
     (useParams as jest.Mock).mockImplementation(() => ({
       version: '1.2',
-      serviceFQN: 'sample_data',
+      fqn: 'sample_data',
       serviceCategory: 'mlmodelServices',
     }));
     await act(async () => {
@@ -300,7 +300,7 @@ describe('ServiceVersionPage tests', () => {
   it('Only basic information should be rendered for metadataServices', async () => {
     (useParams as jest.Mock).mockImplementation(() => ({
       version: '1.2',
-      serviceFQN: 'sample_data',
+      fqn: 'sample_data',
       serviceCategory: 'metadataServices',
     }));
     await act(async () => {

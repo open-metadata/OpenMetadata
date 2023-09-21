@@ -41,7 +41,7 @@ const UserProfileDetails = ({
   updateUserDetails,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
-  const { username } = useParams<{ [key: string]: string }>();
+  const { fqn: username } = useParams<{ fqn: string }>();
 
   const { isAdminUser } = useAuth();
   const { authConfig } = useAuthContext();

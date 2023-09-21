@@ -12,7 +12,7 @@
  */
 
 import {
-  PLACEHOLDER_ROUTE_SEARCH_INDEX_FQN,
+  PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_SUB_TAB,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
@@ -22,7 +22,7 @@ import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { uniqueId } from 'lodash';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.EXTENSION},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN}`;
 
 export const makeRow = (column: SearchIndexField) => {
   return {
@@ -48,7 +48,7 @@ export const makeData = (
 
 export const getSearchIndexDetailsPath = (searchIndexFQN: string) => {
   let path = ROUTES.SEARCH_INDEX_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_SEARCH_INDEX_FQN, searchIndexFQN);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, searchIndexFQN);
 
   return path;
 };
@@ -65,7 +65,7 @@ export const getSearchIndexTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCH_INDEX_FQN, searchIndexFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, searchIndexFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;

@@ -68,7 +68,7 @@ const TeamsPage = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { isAdminUser } = useAuth();
   const { isAuthDisabled } = useAuthContext();
-  const { fqn } = useParams<{ [key: string]: string }>();
+  const { fqn } = useParams<{ fqn: string }>();
   const [currentFqn, setCurrentFqn] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
@@ -672,12 +672,15 @@ const TeamsPage = () => {
         onShowDeletedTeamChange={toggleShowDeletedTeam}
         onTeamExpand={fetchAllTeamsAdvancedDetails}
       />
-      <AddTeamForm
-        isLoading={isLoading}
-        visible={isAddingTeam}
-        onCancel={() => setIsAddingTeam(false)}
-        onSave={(data) => createNewTeam(data as Team)}
-      />
+      {selectedTeam.teamType && (
+        <AddTeamForm
+          isLoading={isLoading}
+          parentTeamType={selectedTeam.teamType}
+          visible={isAddingTeam}
+          onCancel={() => setIsAddingTeam(false)}
+          onSave={(data) => createNewTeam(data)}
+        />
+      )}
     </>
   );
 };

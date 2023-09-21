@@ -142,7 +142,7 @@ jest.mock('react-router-dom', () => ({
     )),
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
-    databaseFQN: 'bigquery.shopify',
+    fqn: 'bigquery.shopify',
   }),
   useLocation: jest
     .fn()

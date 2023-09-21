@@ -17,7 +17,6 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
@@ -95,8 +94,8 @@ const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ datasetFQN: string; tab: string }>();
+  const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = getCurrentUserId();
@@ -419,7 +418,11 @@ const TableDetailsPageV1 = () => {
   };
 
   const onExtensionUpdate = async (updatedData: Table) => {
-    await onTableUpdate(updatedData, 'extension');
+    tableDetails &&
+      (await saveUpdatedTableData({
+        ...tableDetails,
+        extension: updatedData.extension,
+      }));
   };
 
   const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
@@ -700,7 +703,6 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

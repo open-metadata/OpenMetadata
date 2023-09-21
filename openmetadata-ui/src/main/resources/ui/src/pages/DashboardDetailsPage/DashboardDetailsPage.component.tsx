@@ -61,7 +61,7 @@ const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardFQN } = useParams<{ dashboardFQN: string }>();
+  const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
