@@ -111,6 +111,8 @@ export default (on, config) => {
     env.CYPRESS_S3_STORAGE_SECRET_ACCESS_KEY;
   config.env.s3StorageEndPointUrl = env.CYPRESS_S3_STORAGE_END_POINT_URL;
 
+  config.env.CYPRESS_BASE_URL = env.CYPRESS_BASE_URL;
+
   const pool = new Pool(dbConfig);
   const tasks = loadDBPlugin(pool);
   on('task', tasks);
