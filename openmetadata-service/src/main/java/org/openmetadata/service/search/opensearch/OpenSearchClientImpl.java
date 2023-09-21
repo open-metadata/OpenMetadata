@@ -1107,7 +1107,7 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
-  public void handleDocumentMissingException(EntityInterface entity, DocumentMissingException ex) {
+  public void handleDocumentMissingException(Object entity, DocumentMissingException ex) {
     LOG.error("Missing Document", ex);
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
@@ -1117,7 +1117,7 @@ public class OpenSearchClientImpl implements SearchClient {
             ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
   }
 
-  public void handleOpenSearchException(EntityInterface entity, OpenSearchException e) {
+  public void handleOpenSearchException(Object entity, OpenSearchException e) {
     if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
       LOG.error("Error in publishing to ElasticSearch");
       SearchEventPublisher.updateElasticSearchFailureStatus(
@@ -1138,7 +1138,7 @@ public class OpenSearchClientImpl implements SearchClient {
     }
   }
 
-  public void handleIOException(EntityInterface entity, IOException ie) {
+  public void handleIOException(Object entity, IOException ie) {
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
         EventPublisherJob.Status.ACTIVE_WITH_ERROR,
