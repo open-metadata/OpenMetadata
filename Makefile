@@ -48,6 +48,10 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
 	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
+.PHONY: py_format_fix_validate
+py_format_fix_validate:  ## Check if Python sources are correctly formatted
+	$(MAKE) py_format py_format_check
+
 ## Ingestion models generation
 .PHONY: generate
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
