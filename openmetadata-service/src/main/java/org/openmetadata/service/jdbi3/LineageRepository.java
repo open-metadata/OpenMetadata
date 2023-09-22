@@ -126,12 +126,7 @@ public class LineageRepository {
 
     // Finally, delete lineage relationship
     return dao.relationshipDAO()
-            .delete(
-                from.getId().toString(),
-                from.getType(),
-                to.getId().toString(),
-                to.getType(),
-                Relationship.UPSTREAM.ordinal())
+            .delete(from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal())
         > 0;
   }
 
@@ -158,9 +153,9 @@ public class LineageRepository {
     List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
     if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
-      records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findFromPipleine(id, Relationship.UPSTREAM.ordinal());
     } else {
-      records = dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findFrom(id, entityType, Relationship.UPSTREAM.ordinal());
     }
     final List<EntityReference> upstreamEntityReferences = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
@@ -189,9 +184,9 @@ public class LineageRepository {
     }
     List<EntityRelationshipRecord> records;
     if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
-      records = dao.relationshipDAO().findToPipeline(id.toString(), Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findToPipeline(id, Relationship.UPSTREAM.ordinal());
     } else {
-      records = dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findTo(id, entityType, Relationship.UPSTREAM.ordinal());
     }
     final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {

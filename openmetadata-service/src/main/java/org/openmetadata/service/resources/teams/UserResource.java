@@ -1056,7 +1056,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+        tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
@@ -1093,14 +1093,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
-      tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+      tokenRepository.deleteTokenByUserAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     } else {
       List<String> ids = request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
       tokenRepository.deleteAllToken(ids);
     }
     UserTokenCache.invalidateToken(user.getName());
     List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+        tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 

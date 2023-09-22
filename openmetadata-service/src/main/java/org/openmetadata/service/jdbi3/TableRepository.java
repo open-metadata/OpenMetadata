@@ -231,7 +231,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     daoCollection
         .entityExtensionDAO()
-        .insert(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
+        .insert(tableId, TABLE_SAMPLE_DATA_EXTENSION, "tableData", JsonUtils.pojoToJson(tableData));
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table.withSampleData(tableData);
   }
@@ -242,7 +242,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     TableData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_SAMPLE_DATA_EXTENSION),
+            daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_SAMPLE_DATA_EXTENSION),
             TableData.class);
     table.setSampleData(sampleData);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
@@ -261,20 +261,20 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
 
-    daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_SAMPLE_DATA_EXTENSION);
+    daoCollection.entityExtensionDAO().delete(tableId, TABLE_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
 
   public TableProfilerConfig getTableProfilerConfig(Table table) {
     return JsonUtils.readValue(
-        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), TABLE_PROFILER_CONFIG_EXTENSION),
+        daoCollection.entityExtensionDAO().getExtension(table.getId(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
   }
 
   public TestSuite getTestSuite(Table table) {
     List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
-        daoCollection.relationshipDAO().findTo(table.getId().toString(), TABLE, Relationship.CONTAINS.ordinal());
+        daoCollection.relationshipDAO().findTo(table.getId(), TABLE, Relationship.CONTAINS.ordinal());
     Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
         entityRelationshipRecords.stream()
             .filter(entityRelationshipRecord -> entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
@@ -310,10 +310,7 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection
         .entityExtensionDAO()
         .insert(
-            tableId.toString(),
-            TABLE_PROFILER_CONFIG_EXTENSION,
-            TABLE_PROFILER_CONFIG,
-            JsonUtils.pojoToJson(tableProfilerConfig));
+            tableId, TABLE_PROFILER_CONFIG_EXTENSION, TABLE_PROFILER_CONFIG, JsonUtils.pojoToJson(tableProfilerConfig));
     clearFields(table, Fields.EMPTY_FIELDS);
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
@@ -321,7 +318,7 @@ public class TableRepository extends EntityRepository<Table> {
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
-    daoCollection.entityExtensionDAO().delete(tableId.toString(), TABLE_PROFILER_CONFIG_EXTENSION);
+    daoCollection.entityExtensionDAO().delete(tableId, TABLE_PROFILER_CONFIG_EXTENSION);
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     return table;
   }
@@ -515,7 +512,7 @@ public class TableRepository extends EntityRepository<Table> {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     daoCollection
         .entityExtensionDAO()
-        .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
+        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
     setFieldsInternal(table, Fields.EMPTY_FIELDS);
     // return the newly created/updated custom metric only
     for (Column column : table.getColumns()) {
@@ -550,7 +547,7 @@ public class TableRepository extends EntityRepository<Table> {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     daoCollection
         .entityExtensionDAO()
-        .insert(table.getId().toString(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
+        .insert(table.getId(), extension, "customMetric", JsonUtils.pojoToJson(updatedMetrics));
     // return the newly created/updated custom metric test only
     for (Column column : table.getColumns()) {
       if (column.getName().equals(columnName)) {
@@ -986,7 +983,7 @@ public class TableRepository extends EntityRepository<Table> {
   private List<CustomMetric> getCustomMetrics(Table table, String columnName) {
     String extension = TABLE_COLUMN_EXTENSION + columnName + CUSTOM_METRICS_EXTENSION;
     return JsonUtils.readObjects(
-        daoCollection.entityExtensionDAO().getExtension(table.getId().toString(), extension), CustomMetric.class);
+        daoCollection.entityExtensionDAO().getExtension(table.getId(), extension), CustomMetric.class);
   }
 
   private void getCustomMetrics(boolean setMetrics, Table table) {
