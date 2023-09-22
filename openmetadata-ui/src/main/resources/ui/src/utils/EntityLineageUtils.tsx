@@ -1372,3 +1372,16 @@ export const getSearchIndexFromNodeType = (entityType: string) => {
 
   return SearchIndex[searchIndexKey] as ExploreSearchIndex;
 };
+
+export const updateEdgesWithLineageDetails = (
+  edgesArray: EntityLineageEdge[],
+  updatedEdgeDetails: AddLineage
+) => {
+  const { fromEntity, toEntity, lineageDetails } = updatedEdgeDetails.edge;
+
+  return edgesArray.map((item) =>
+    item.toEntity === toEntity.id && item.fromEntity === fromEntity.id
+      ? { ...item, lineageDetails: lineageDetails }
+      : item
+  );
+};
