@@ -27,7 +27,6 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getDataModelsByName } from 'rest/dataModelsAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
@@ -47,7 +46,6 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.less';
@@ -58,7 +56,6 @@ const EntityInfoDrawer = ({
   selectedNode,
   isMainNode = false,
 }: LineageDrawerProps) => {
-  const { t } = useTranslation();
   const [entityDetail, setEntityDetail] = useState<EntityDetailUnion>(
     {} as EntityDetailUnion
   );
@@ -134,12 +131,6 @@ const EntityInfoDrawer = ({
           break;
       }
       setEntityDetail(response);
-    } catch (error) {
-      showErrorToast(
-        t('server.error-selected-node-name-details', {
-          selectedNodeName: selectedNode.name,
-        })
-      );
     } finally {
       setIsLoading(false);
     }

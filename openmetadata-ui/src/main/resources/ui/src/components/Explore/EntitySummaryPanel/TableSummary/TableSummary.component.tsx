@@ -13,7 +13,6 @@
 
 import { Col, Divider, Row, Typography } from 'antd';
 import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -24,7 +23,6 @@ import {
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { mockTablePermission } from 'constants/mockTourData.constants';
-import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -55,7 +53,6 @@ import {
 import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import { TableTestsType } from '../../../TableProfiler/TableProfiler.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -90,11 +87,7 @@ function TableSummary({
 
       setTablePermissions(tablePermission);
     } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
+      // Error
     }
   }, [tableDetails.id, getEntityPermission, setTablePermissions]);
 
@@ -147,7 +140,7 @@ function TableSummary({
       });
       setTableTests(tableTests);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     }
   };
 
@@ -167,15 +160,7 @@ function TableSummary({
         }
       });
     } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
-        showErrorToast(
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.table-lowercase'),
-            entityName: entityDetails.name,
-          })
-        );
-      }
+      // Error
     }
   }, [entityDetails]);
 
