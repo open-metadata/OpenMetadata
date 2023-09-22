@@ -35,6 +35,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -54,6 +56,8 @@ public final class Entity {
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
+      ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
   @Getter @Setter private static FeedRepository feedRepository;
 
@@ -159,6 +163,12 @@ public final class Entity {
   public static final String WORKFLOW = "workflow";
 
   //
+  // Time series entities
+  public static final String ENTITY_REPORT_DATA = "EntityReportData";
+  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "WebAnalyticEntityViewReportData";
+  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "WebAnalyticUserActivityReportData";
+
+  //
   // Reserved names in OpenMetadata
   //
   public static final String ADMIN_USER_NAME = "admin";
@@ -214,6 +224,22 @@ public final class Entity {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
+    ENTITY_LIST.add(entity);
+    Collections.sort(ENTITY_LIST);
+
+    // Set up entity operations for permissions
+    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
+    LOG.info("Registering entity {} {}", clazz, entity);
+  }
+
+  public static <T extends EntityTimeSeriesInterface> void registerEntity(
+      Class<T> clazz,
+      String entity,
+      EntityTimeSeriesRepository<T> entityRepository,
+      List<MetadataOperation> entitySpecificOperations) {
+    ENTITY_TS_REPOSITORY_MAP.put(entity, entityRepository);
+    EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
@@ -321,6 +347,16 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     return entityRepository;
+  }
+
+  public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> getEntityTimeSeriesRepository(
+      @NonNull String entityType) {
+    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
+        ENTITY_TS_REPOSITORY_MAP.get(entityType);
+    if (entityTimeSeriesRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return entityTimeSeriesRepository;
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */

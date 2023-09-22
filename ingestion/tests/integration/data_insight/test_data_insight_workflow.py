@@ -26,7 +26,6 @@ import pytest
 import requests
 
 from metadata.data_insight.api.workflow import DataInsightWorkflow
-from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -290,7 +289,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithDescriptionByType.value,
-            data_report_index=DataInsightEsIndex.EntityReportData.value,
+            data_report_index="entity_report_data_index",
         )
 
         assert isinstance(resp, DataInsightChartResult)
@@ -301,7 +300,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithOwnerByType.value,
-            data_report_index=DataInsightEsIndex.EntityReportData.value,
+            data_report_index="entity_report_data_index",
         )
 
         assert resp.data
@@ -311,7 +310,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.DailyActiveUsers.value,
-            data_report_index=DataInsightEsIndex.WebAnalyticUserActivityReportData.value,
+            data_report_index="web_analytic_user_activity_report_data_index",
         )
 
         assert resp.data
@@ -321,7 +320,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PageViewsByEntities.value,
-            data_report_index=DataInsightEsIndex.WebAnalyticEntityViewReportData.value,
+            data_report_index="web_analytic_entity_view_report_data_index",
         )
 
         assert resp.data

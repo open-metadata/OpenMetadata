@@ -4,6 +4,9 @@
   "title": "reportData",
   "type": "object",
   "javaType": "org.openmetadata.schema.analytics.ReportData",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityTimeSeriesInterface"
+  ],
   "description": "Report Data",
   "properties": {
       "id": {
@@ -31,5 +34,6 @@
           {"$ref": "reportDataType/webAnalyticEntityViewReportData.json"}
         ]
       }
-  }
+  },
+  "required": ["timestamp"]
 }
