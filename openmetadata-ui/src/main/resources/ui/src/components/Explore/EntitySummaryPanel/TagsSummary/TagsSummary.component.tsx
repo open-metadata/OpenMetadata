@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
@@ -21,7 +20,6 @@ import { SearchIndex } from 'enums/search.enum';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
-import { showErrorToast } from 'utils/ToastUtils';
 import { TagsSummaryProps } from './TagsSummary.interface';
 
 function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
@@ -45,7 +43,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
       const sources = res.data.hits.hits.map((hit) => hit._source);
       setSelectedData(sources);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     }
   }, [entityDetails.fullyQualifiedName, setSelectedData]);
 

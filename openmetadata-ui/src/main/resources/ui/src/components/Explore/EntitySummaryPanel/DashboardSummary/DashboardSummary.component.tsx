@@ -12,7 +12,6 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -28,7 +27,6 @@ import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Dashboard } from '../../../../generated/entity/data/dashboard';
 import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -60,12 +58,7 @@ function DashboardSummary({
 
       setCharts(updatedCharts);
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.dashboard-detail-plural-lowercase'),
-        })
-      );
+      // Error
     }
   };
 
