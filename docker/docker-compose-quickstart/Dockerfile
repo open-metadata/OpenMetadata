@@ -11,7 +11,7 @@
 
 # Build stage
 FROM alpine:3.15 AS build
-ARG RI_VERSION="1.1.5"
+ARG RI_VERSION="1.1.6"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
 RUN mkdir -p /opt/openmetadata && \
