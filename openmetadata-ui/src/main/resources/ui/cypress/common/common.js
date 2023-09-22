@@ -217,6 +217,7 @@ export const testServiceCreationAndIngestion = ({
   serviceType,
   connectionInput,
   addIngestionInput,
+  viewIngestionInput,
   serviceName,
   type = 'database',
   testIngestionButton = true,
@@ -339,6 +340,14 @@ export const testServiceCreationAndIngestion = ({
 
     addIngestionInput && addIngestionInput();
 
+    cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+
+    // Go back and data should persist
+    cy.get('[data-testid="back-button"]').scrollIntoView().click();
+
+    viewIngestionInput && viewIngestionInput();
+
+    // Go Next
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
 
     scheduleIngestion();
