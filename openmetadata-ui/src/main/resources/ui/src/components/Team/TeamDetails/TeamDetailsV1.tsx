@@ -167,9 +167,6 @@ const TeamDetailsV1 = ({
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
   const [currentUser, setCurrentUser] = useState<User>();
-  const [heading, setHeading] = useState(
-    currentTeam ? currentTeam.displayName : ''
-  );
   const [deletingUser, setDeletingUser] = useState<{
     user: UserTeams | undefined;
     state: boolean;
@@ -301,17 +298,6 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const handleHeadingSave = async (): Promise<void> => {
-    if (heading && currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        displayName: heading,
-      };
-
-      await updateTeamHandler(updatedData);
-    }
-  };
-
   const joinTeam = () => {
     if (currentUser && currentTeam) {
       const newTeams = cloneDeep(currentUser.teams ?? []);
@@ -359,33 +345,6 @@ const TeamDetailsV1 = ({
       removeUserFromTeam(deletingUser.user?.id as string).then(() => {
         setDeletingUser(DELETE_USER_INITIAL_STATE);
       });
-    }
-  };
-
-  const updateOwner = useCallback(
-    (owner?: EntityReference) => {
-      if (currentTeam) {
-        const updatedData: Team = {
-          ...currentTeam,
-          owner,
-        };
-
-        return updateTeamHandler(updatedData);
-      }
-
-      return Promise.reject();
-    },
-    [currentTeam]
-  );
-
-  const updateTeamType = (type: TeamType) => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        teamType: type,
-      };
-
-      updateTeamHandler(updatedData);
     }
   };
 
@@ -495,17 +454,6 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const handleUpdateEmail = async (value: string): Promise<void> => {
-    if (currentTeam) {
-      const updatedData: Team = {
-        ...currentTeam,
-        email: isEmpty(value) ? undefined : value,
-      };
-
-      await updateTeamHandler(updatedData);
-    }
-  };
-
   useEffect(() => {
     if (currentTeam) {
       const parents =
@@ -525,7 +473,6 @@ const TeamDetailsV1 = ({
         },
       ];
       setSlashedTeamName(breadcrumb);
-      setHeading(currentTeam.displayName || currentTeam.name);
     }
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
@@ -792,15 +739,11 @@ const TeamDetailsV1 = ({
             currentUser={currentUser}
             deleteUserHandler={deleteUserHandler}
             entityPermissions={entityPermissions}
-            handleHeadingSave={handleHeadingSave}
-            handleUpdateEmail={handleUpdateEmail}
-            heading={heading}
             isGroupType={isGroupType}
             isOrganization={isOrganization}
             joinTeam={joinTeam}
-            updateOwner={updateOwner}
-            updateTeamType={updateTeamType}
-            onChangeHeading={(e) => setHeading(e.target.value)}
+            parentTeams={parentTeams}
+            updateTeamHandler={updateTeamHandler}
           />
         </Col>
 

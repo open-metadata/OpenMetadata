@@ -65,8 +65,8 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
 }: ServiceMainTabContentProps) {
   const { t } = useTranslation();
-  const { serviceFQN, serviceCategory } = useParams<{
-    serviceFQN: string;
+  const { fqn: serviceFQN, serviceCategory } = useParams<{
+    fqn: string;
     serviceCategory: ServiceTypes;
   }>();
   const [isEdit, setIsEdit] = useState(false);

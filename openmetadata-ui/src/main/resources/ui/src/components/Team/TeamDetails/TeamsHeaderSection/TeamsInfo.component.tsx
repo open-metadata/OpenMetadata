@@ -20,35 +20,35 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import EntitySummaryDetails from 'components/common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import { EMAIL_REG_EX } from 'constants/regex.constants';
 import { useAuth } from 'hooks/authHooks';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined, last } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { hasEditAccess } from 'utils/CommonUtils';
-import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+
+import classNames from 'classnames';
+import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
+import { Team, TeamType } from 'generated/entity/teams/team';
+import { EntityReference } from 'generated/entity/type';
 import { TeamsInfoProps } from '../team.interface';
 
 const TeamsInfo = ({
+  parentTeams,
   isOrganization,
   isGroupType,
   childTeamsCount,
-  heading,
   entityPermissions,
   currentTeam,
   currentUser,
   joinTeam,
-  updateOwner,
-  updateTeamType,
+  updateTeamHandler,
   deleteUserHandler,
-  onChangeHeading,
-  handleHeadingSave,
-  handleUpdateEmail,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
 
@@ -57,6 +57,10 @@ const TeamsInfo = ({
 
   const [isHeadingEditing, setIsHeadingEditing] = useState(false);
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
+  const [heading, setHeading] = useState(
+    currentTeam ? currentTeam.displayName : ''
+  );
 
   const { id, email, owner, isJoinable, teamType } = useMemo(
     () => currentTeam,
@@ -90,13 +94,56 @@ const TeamsInfo = ({
   );
 
   const onHeadingSave = async (): Promise<void> => {
-    await handleHeadingSave();
+    if (heading && currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        displayName: heading,
+      };
+
+      await updateTeamHandler(updatedData);
+    }
     setIsHeadingEditing(false);
   };
 
   const onEmailSave: FormProps['onFinish'] = async (data): Promise<void> => {
-    await handleUpdateEmail(data.email);
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        email: isEmpty(data.email) ? undefined : data.email,
+      };
+
+      await updateTeamHandler(updatedData);
+    }
     setIsEmailEdit(false);
+  };
+
+  const updateOwner = useCallback(
+    (owner?: EntityReference) => {
+      if (currentTeam) {
+        const updatedData: Team = {
+          ...currentTeam,
+          owner,
+        };
+
+        return updateTeamHandler(updatedData);
+      }
+
+      return Promise.reject();
+    },
+    [currentTeam]
+  );
+
+  const updateTeamType = async (type: TeamType): Promise<void> => {
+    if (currentTeam) {
+      const updatedData: Team = {
+        ...currentTeam,
+        teamType: type,
+      };
+
+      await updateTeamHandler(updatedData);
+
+      setShowTypeSelector(false);
+    }
   };
 
   const teamHeadingRender = useMemo(
@@ -111,7 +158,7 @@ const TeamsInfo = ({
             })}
             type="text"
             value={heading}
-            onChange={onChangeHeading}
+            onChange={(e) => setHeading(e.target.value)}
           />
           <Space data-testid="buttons">
             <Button
@@ -150,7 +197,7 @@ const TeamsInfo = ({
                   : t('message.no-permission-for-action')
               }>
               <Icon
-                component={IconEdit}
+                component={EditIcon}
                 data-testid="edit-team-name"
                 disabled={!hasEditDisplayNamePermission}
                 style={{ fontSize: '16px' }}
@@ -224,7 +271,7 @@ const TeamsInfo = ({
             }>
             <Icon
               className="toolbar-button"
-              component={IconEdit}
+              component={EditIcon}
               data-testid="edit-email"
               disabled={!hasEditPermission}
               style={{ fontSize: '16px' }}
@@ -234,32 +281,6 @@ const TeamsInfo = ({
         </Space>
       ),
     [email, isEmailEdit, hasEditPermission]
-  );
-
-  const summaryDetailsRender = useMemo(
-    () =>
-      !isOrganization && (
-        <EntitySummaryDetails
-          allowTeamOwner={false}
-          currentOwner={owner}
-          data={{
-            key: 'TeamType',
-            value: teamType ?? '',
-          }}
-          isGroupType={isGroupType}
-          showGroupOption={!childTeamsCount}
-          teamType={teamType}
-          updateTeamType={hasEditPermission ? updateTeamType : undefined}
-        />
-      ),
-    [
-      isOrganization,
-      owner,
-      teamType,
-      isGroupType,
-      childTeamsCount,
-      hasEditPermission,
-    ]
   );
 
   const teamActionButton = useMemo(
@@ -290,6 +311,65 @@ const TeamsInfo = ({
     [currentUser, isAlreadyJoinedTeam, isJoinable, hasAccess]
   );
 
+  const teamTypeElement = useMemo(() => {
+    if (teamType === TeamType.Organization) {
+      return null;
+    }
+
+    return (
+      <Space size={4}>
+        {t('label.type') + ' - '}
+        {teamType ? (
+          showTypeSelector ? (
+            <TeamTypeSelect
+              handleShowTypeSelector={setShowTypeSelector}
+              parentTeamType={
+                last(parentTeams)?.teamType ?? TeamType.Organization
+              }
+              showGroupOption={!childTeamsCount}
+              teamType={teamType ?? TeamType.Department}
+              updateTeamType={hasEditPermission ? updateTeamType : undefined}
+            />
+          ) : (
+            <>
+              {teamType}
+              {hasEditPermission && (
+                <Icon
+                  className={classNames('vertical-middle m-l-xs', {
+                    'opacity-50': isGroupType,
+                  })}
+                  data-testid="edit-team-type-icon"
+                  title={
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
+                  }
+                  onClick={
+                    isGroupType ? undefined : () => setShowTypeSelector(true)
+                  }>
+                  <EditIcon />
+                </Icon>
+              )}
+            </>
+          )
+        ) : (
+          <span>{teamType}</span>
+        )}
+      </Space>
+    );
+  }, [
+    teamType,
+    parentTeams,
+    isGroupType,
+    childTeamsCount,
+    showTypeSelector,
+    hasEditPermission,
+    updateTeamType,
+    setShowTypeSelector,
+  ]);
+
   return (
     <Space className="p-x-sm" direction="vertical">
       {teamHeadingRender}
@@ -300,7 +380,7 @@ const TeamsInfo = ({
         owner={owner}
         onUpdate={updateOwner}
       />
-      {summaryDetailsRender}
+      {teamTypeElement}
       {teamActionButton}
     </Space>
   );

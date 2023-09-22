@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import java.util.TreeMap;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -78,6 +80,10 @@ public interface SearchClient {
   }
 
   void updateSearchEntityCreated(EntityInterface entity);
+
+  void updateSearchEntityCreated(EntityTimeSeriesInterface entity);
+
+  void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params);
 
   void updateSearchEntityDeleted(EntityInterface entity, String script, String field);
 
