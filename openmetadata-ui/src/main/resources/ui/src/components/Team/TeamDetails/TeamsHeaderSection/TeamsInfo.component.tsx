@@ -20,7 +20,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
@@ -369,6 +369,12 @@ const TeamsInfo = ({
     updateTeamType,
     setShowTypeSelector,
   ]);
+
+  useEffect(() => {
+    if (currentTeam) {
+      setHeading(currentTeam.displayName ?? currentTeam.name);
+    }
+  }, [currentTeam]);
 
   return (
     <Space className="p-x-sm" direction="vertical">
