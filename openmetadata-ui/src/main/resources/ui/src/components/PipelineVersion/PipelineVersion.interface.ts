@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -20,7 +19,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface PipelineVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Pipeline;
   isVersionLoading: boolean;
   owner: Pipeline['owner'];
   domain: Pipeline['domain'];

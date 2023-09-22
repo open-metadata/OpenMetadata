@@ -51,7 +51,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const MlModelPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { mlModelFqn } = useParams<{ [key: string]: string }>();
+  const { fqn: mlModelFqn } = useParams<{ fqn: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = getCurrentUserId();

@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
@@ -28,6 +29,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -81,6 +83,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.index.query.RangeQueryBuilder;
+import org.elasticsearch.index.query.ScriptQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
@@ -117,6 +120,8 @@ import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -615,7 +620,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
-        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD));
+        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -653,11 +659,8 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder
-        .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD).size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"))
-        .aggregation(AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD).field(OWNER_DISPLAY_NAME_KEYWORD));
-    return searchSourceBuilder;
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
@@ -679,8 +682,11 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.field(highlightTagName);
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
-    return searchBuilder(queryBuilder, hb, from, size)
-        .aggregation(AggregationBuilders.terms("classification.name.keyword").field("classification.name.keyword"));
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("classification.name.keyword").field("classification.name.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
@@ -780,8 +786,9 @@ public class ElasticSearchClientImpl implements SearchClient {
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
-
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildDashboardDataModelsSearch(String query, int from, int size) {
@@ -802,7 +809,13 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
 
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms("dataModelType").field("dataModelType"))
+        .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
@@ -844,7 +857,10 @@ public class ElasticSearchClientImpl implements SearchClient {
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
 
-    return searchBuilder(queryBuilder, hb, from, size);
+    SearchSourceBuilder searchSourceBuilder =
+        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("fields.name.keyword").field("fields.name.keyword"));
+    return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
@@ -860,10 +876,14 @@ public class ElasticSearchClientImpl implements SearchClient {
             AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms("entityType.keyword").field("entityType.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
+        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
+            AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
+                .field(DOMAIN_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(AggregationBuilders.terms(ES_TAG_FQN_FIELD).field(ES_TAG_FQN_FIELD));
 
@@ -908,6 +928,62 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
+  public void updateSearchEntityCreated(EntityTimeSeriesInterface entity) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
+    String contextInfo = String.format("Entity Info : %s", entity);
+    String entityTimeSeriesType;
+    if (entity instanceof ReportData) {
+      // Report data type is an entity itself where each report data type has its own index
+      entityTimeSeriesType = ((ReportData) entity).getReportDataType().toString();
+    } else {
+      entityTimeSeriesType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    }
+    SearchIndexDefinition.ElasticSearchIndexType indexType =
+        IndexUtil.getIndexMappingByEntityType(entityTimeSeriesType);
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityTimeSeriesType, entity);
+    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
+    updateRequest.docAsUpsert(true);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+    try {
+      updateElasticSearch(updateRequest);
+    } catch (DocumentMissingException ex) {
+      handleDocumentMissingException(contextInfo, ex);
+    } catch (ElasticsearchException e) {
+      handleElasticsearchException(contextInfo, e);
+    } catch (IOException ie) {
+      handleIOException(contextInfo, ie);
+    }
+  }
+
+  @Override
+  public void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params) {
+    if (index == null) {
+      LOG.error("Index is null");
+      return;
+    }
+    String contextInfo = String.format("Index Info : %s", index);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(index);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
+    ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
+    DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
+    deleteByQueryRequest.setQuery(scriptQuery);
+    deleteByQueryRequest.setRefresh(true);
+    try {
+      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+    } catch (DocumentMissingException ex) {
+      handleDocumentMissingException(contextInfo, ex);
+    } catch (ElasticsearchException e) {
+      handleElasticsearchException(contextInfo, e);
+    } catch (IOException ie) {
+      handleIOException(contextInfo, ie);
+    }
+  }
+
+  @Override
   public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
@@ -944,7 +1020,7 @@ public class ElasticSearchClientImpl implements SearchClient {
       try {
         deleteEntityFromElasticSearch(deleteRequest);
         if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
-          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest("SearchAlias");
+          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
           updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
           updateByQueryRequest.setRefresh(true);
           Script script =
@@ -1192,7 +1268,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
   }
 
-  public void handleDocumentMissingException(EntityInterface entity, DocumentMissingException ex) {
+  public void handleDocumentMissingException(Object entity, DocumentMissingException ex) {
     LOG.error("Missing Document", ex);
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
@@ -1202,7 +1278,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
   }
 
-  public void handleElasticsearchException(EntityInterface entity, ElasticsearchException e) {
+  public void handleElasticsearchException(Object entity, ElasticsearchException e) {
     LOG.debug(e.getMessage());
     if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
       LOG.error("Error in publishing to ElasticSearch");
@@ -1224,7 +1300,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
-  public void handleIOException(EntityInterface entity, IOException ie) {
+  public void handleIOException(Object entity, IOException ie) {
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
         EventPublisherJob.Status.ACTIVE_WITH_ERROR,

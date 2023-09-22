@@ -18,7 +18,6 @@ import {
   ColumnProfilerConfig,
   PartitionProfilerConfig,
   ProfileSampleType,
-  Table,
   TableProfile,
   TableProfilerConfig,
 } from '../../generated/entity/data/table';
@@ -28,7 +27,6 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 export interface TableProfilerProps {
   isTableDeleted?: boolean;
   permissions: OperationPermission;
-  testSuite?: Table['testSuite'];
 }
 
 export type TableTestsType = {

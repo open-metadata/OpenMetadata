@@ -39,7 +39,7 @@ const TableProfilerChart = ({
   dateRangeObject,
   entityFqn = '',
 }: TableProfilerChartProps) => {
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const { t } = useTranslation();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(

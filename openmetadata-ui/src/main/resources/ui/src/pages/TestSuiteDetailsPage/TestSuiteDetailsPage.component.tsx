@@ -58,7 +58,7 @@ import './TestSuiteDetailsPage.styles.less';
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { testSuiteFQN } = useParams<Record<string, string>>();
+  const { fqn: testSuiteFQN } = useParams<{ fqn: string }>();
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const { isAuthDisabled } = useAuthContext();

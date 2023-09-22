@@ -48,8 +48,8 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -89,7 +89,7 @@ export const getRequestDescriptionPath = (
   let pathname = ROUTES.REQUEST_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -109,7 +109,7 @@ export const getRequestTagsPath = (
   let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -129,7 +129,7 @@ export const getUpdateDescriptionPath = (
   let pathname = ROUTES.UPDATE_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -149,7 +149,7 @@ export const getUpdateTagsPath = (
   let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {

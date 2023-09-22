@@ -40,8 +40,8 @@ import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const QueryPage = () => {
-  const { datasetFQN, queryId } =
-    useParams<{ datasetFQN: string; queryId: string }>();
+  const { fqn: datasetFQN, queryId } =
+    useParams<{ fqn: string; queryId: string }>();
   const { t } = useTranslation();
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<

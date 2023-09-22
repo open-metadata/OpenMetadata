@@ -54,7 +54,6 @@ import { getEntityVoteStatus } from 'utils/EntityUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
-  getGlossaryTermsPath,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
@@ -90,8 +89,8 @@ const GlossaryHeader = ({
   const history = useHistory();
   const USER_ID = getCurrentUserId();
 
-  const { glossaryName: glossaryFqn, version } = useParams<{
-    glossaryName: string;
+  const { fqn, version } = useParams<{
+    fqn: string;
     version: string;
   }>();
   const { showModal } = useEntityExportModalProvider();
@@ -110,8 +109,8 @@ const GlossaryHeader = ({
   const fetchCurrentGlossaryInfo = async () => {
     try {
       const res = isGlossary
-        ? await getGlossariesById(glossaryFqn)
-        : await getGlossaryTermsById(glossaryFqn);
+        ? await getGlossariesById(fqn)
+        : await getGlossaryTermsById(fqn);
 
       setLatestGlossaryData(res);
     } catch (error) {
@@ -130,7 +129,7 @@ const GlossaryHeader = ({
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
-  }, [glossaryFqn]);
+  }, [fqn]);
 
   const handleGlossaryImport = () =>
     history.push(
@@ -143,9 +142,7 @@ const GlossaryHeader = ({
   const handleVersionClick = async () => {
     let path: string;
     if (isVersionView) {
-      path = isGlossary
-        ? getGlossaryPath(latestGlossaryData?.fullyQualifiedName)
-        : getGlossaryTermsPath(latestGlossaryData?.fullyQualifiedName ?? '');
+      path = getGlossaryPath(latestGlossaryData?.fullyQualifiedName);
     } else {
       path = isGlossary
         ? getGlossaryVersionsPath(
@@ -402,61 +399,59 @@ const GlossaryHeader = ({
           />
         </Col>
         <Col flex="360px">
-          <div style={{ textAlign: 'right' }}>
-            <div className="d-flex items-end">
-              {createButtons}
+          <div className="d-flex gap-2 justify-end">
+            {createButtons}
 
-              <ButtonGroup className="p-l-xs" size="small">
-                {updateVote && (
-                  <Voting
-                    voteStatus={voteStatus}
-                    votes={selectedData.votes}
-                    onUpdateVote={handleUpdateVote}
-                  />
-                )}
+            <ButtonGroup className="p-l-xs" size="small">
+              {updateVote && (
+                <Voting
+                  voteStatus={voteStatus}
+                  votes={selectedData.votes}
+                  onUpdateVote={handleUpdateVote}
+                />
+              )}
 
-                {selectedData && selectedData.version && (
-                  <Button
+              {selectedData && selectedData.version && (
+                <Button
+                  className={classNames('', {
+                    'text-primary border-primary': version,
+                  })}
+                  data-testid="version-button"
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={handleVersionClick}>
+                  <Typography.Text
                     className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(selectedData.version)}
-                    </Typography.Text>
-                  </Button>
-                )}
+                      'text-primary': version,
+                    })}>
+                    {toString(selectedData.version)}
+                  </Typography.Text>
+                </Button>
+              )}
 
-                {!isVersionView && (
-                  <Dropdown
-                    align={{ targetOffset: [-12, 0] }}
-                    className="m-l-xs"
-                    menu={{
-                      items: manageButtonContent,
-                    }}
-                    open={showActions}
-                    overlayClassName="glossary-manage-dropdown-list-container"
-                    overlayStyle={{ width: '350px' }}
-                    placement="bottomRight"
-                    trigger={['click']}
-                    onOpenChange={setShowActions}>
-                    <Tooltip placement="right">
-                      <Button
-                        className="glossary-manage-dropdown-button tw-px-1.5"
-                        data-testid="manage-button"
-                        onClick={() => setShowActions(true)}>
-                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                      </Button>
-                    </Tooltip>
-                  </Dropdown>
-                )}
-              </ButtonGroup>
-            </div>
+              {!isVersionView && (
+                <Dropdown
+                  align={{ targetOffset: [-12, 0] }}
+                  className="m-l-xs"
+                  menu={{
+                    items: manageButtonContent,
+                  }}
+                  open={showActions}
+                  overlayClassName="glossary-manage-dropdown-list-container"
+                  overlayStyle={{ width: '350px' }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onOpenChange={setShowActions}>
+                  <Tooltip placement="right">
+                    <Button
+                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      onClick={() => setShowActions(true)}>
+                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                    </Button>
+                  </Tooltip>
+                </Dropdown>
+              )}
+            </ButtonGroup>
           </div>
         </Col>
       </Row>

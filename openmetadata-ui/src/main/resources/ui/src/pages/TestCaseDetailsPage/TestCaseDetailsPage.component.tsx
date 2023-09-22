@@ -31,7 +31,7 @@ import { showErrorToast } from 'utils/ToastUtils';
 import './TestCaseDetailsPage.style.less';
 
 function TestCaseDetailsPage() {
-  const { testCaseFQN } = useParams<{ testCaseFQN: string }>();
+  const { fqn: testCaseFQN } = useParams<{ fqn: string }>();
   const { t } = useTranslation();
   const [testCaseData, setTestCaseData] = useState<TestCase>();
 
