@@ -116,10 +116,7 @@ const TableDetailsPageV1 = () => {
     () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
     [tablePermissions]
   );
-  const viewTestSuitePermission = useMemo(
-    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
-    [tablePermissions]
-  );
+
   const tableFqn = useMemo(
     () =>
       encodeURIComponent(
@@ -139,9 +136,7 @@ const TableDetailsPageV1 = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      if (viewTestSuitePermission) {
-        fields += `,${TabSpecificField.TESTSUITE}`;
-      }
+
       const details = await getTableDetailsByFQN(tableFqn, fields);
 
       setTableDetails(details);
@@ -635,7 +630,6 @@ const TableDetailsPageV1 = () => {
             <TableProfilerV1
               isTableDeleted={tableDetails?.deleted}
               permissions={tablePermissions}
-              testSuite={tableDetails?.testSuite}
             />
           ),
       },
