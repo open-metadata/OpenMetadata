@@ -17,7 +17,6 @@ from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
-from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
@@ -48,14 +47,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
-    SingleProjectId,
 )
 from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.bigquery.models import (
     STORED_PROC_LANGUAGE_MAP,
     BigQueryStoredProcedure,
@@ -76,7 +74,6 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureMixin,
 )
 from metadata.utils import fqn
-from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
@@ -398,31 +395,13 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        # TODO support location property in JSON Schema
-        # TODO support OAuth 2.0 scopes
-        kwargs = {}
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
-        ):
-            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
-                __root__=database_name
-            )
-            if self.service_connection.credentials.gcpImpersonateServiceAccount:
-                kwargs[
-                    "impersonate_service_account"
-                ] = (
-                    self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-                )
+        inspector_details = get_inspector_details(
+            database_name=database_name, service_connection=self.service_connection
+        )
 
-                kwargs[
-                    "lifetime"
-                ] = (
-                    self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-                )
-
-        self.client = get_bigquery_client(project_id=database_name, **kwargs)
-        self.engine = get_connection(self.service_connection)
-        self.inspector = inspect(self.engine)
+        self.client = inspector_details.client
+        self.engine = inspector_details.engine
+        self.inspector = inspector_details.inspector
 
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:

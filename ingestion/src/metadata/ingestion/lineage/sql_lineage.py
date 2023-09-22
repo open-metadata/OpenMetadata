@@ -146,9 +146,13 @@ def get_table_entities_from_query(
     split_table = table_name.split(".")
     empty_list: List[Any] = [None]  # Otherwise, there's a typing error in the concat
 
-    database_query, schema_query, table = (
-        empty_list * (3 - len(split_table))
-    ) + split_table
+    if len(split_table) > 3:
+        table = split_table[-1]
+        database_query, schema_query = None, None
+    else:
+        database_query, schema_query, table = (
+            empty_list * (3 - len(split_table))
+        ) + split_table
 
     table_entities = search_table_entities(
         metadata=metadata,
