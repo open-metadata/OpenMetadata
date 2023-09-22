@@ -50,7 +50,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
@@ -253,7 +253,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchClient searchClient =
+    SearchRepository searchRepository =
         IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
     SearchIndexDefinition esIndexDefinition;
 
@@ -313,15 +313,15 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new SearchIndexDefinition(searchClient);
+        esIndexDefinition = new SearchIndexDefinition(searchRepository);
         esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new SearchIndexDefinition(searchClient);
+        esIndexDefinition = new SearchIndexDefinition(searchRepository);
         esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
-        esIndexDefinition = new SearchIndexDefinition(searchClient);
+        esIndexDefinition = new SearchIndexDefinition(searchRepository);
         esIndexDefinition.dropIndexes();
         break;
       default:

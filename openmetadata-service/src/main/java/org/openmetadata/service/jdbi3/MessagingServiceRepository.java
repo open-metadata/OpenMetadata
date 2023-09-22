@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -44,12 +44,12 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
   public void deleteFromSearch(MessagingService entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
+        searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, MessagingService.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
             "service.id");
       } else {
-        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, MessagingService.class), "", "service.id");
+        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, MessagingService.class), "", "service.id");
       }
     }
   }
@@ -57,7 +57,7 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
   @Override
   public void restoreFromSearch(MessagingService entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
+      searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, MessagingService.class), false, "service.fullyQualifiedName");
     }
   }

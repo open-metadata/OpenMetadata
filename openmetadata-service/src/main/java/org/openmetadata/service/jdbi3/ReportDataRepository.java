@@ -1,6 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +36,6 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
     HashMap<String, Object> params = new HashMap<>();
     params.put("date_", date);
     String scriptTxt = "doc['timestamp'].value.toLocalDate() == LocalDate.parse(params.date_);";
-    searchClient.deleteByScript(reportDataType.toString(), scriptTxt, params);
+    searchRepository.deleteByScript(reportDataType.toString(), scriptTxt, params);
   }
 }

@@ -14,7 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.util.Collections;
 import java.util.List;
@@ -124,12 +124,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (supportsSearchIndex) {
       if (original.getOwner() == null && updated.getOwner() != null) {
         String scriptTxt = "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
-        searchClient.updateSearchByQuery(
+        searchRepository.updateSearchByQuery(
             JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getOwner());
       }
       if (original.getDomain() == null && updated.getDomain() != null) {
         String scriptTxt = "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
-        searchClient.updateSearchByQuery(
+        searchRepository.updateSearchByQuery(
             JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getDomain());
       }
       if (original.getOwner() != null && updated.getOwner() == null) {
@@ -137,7 +137,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             String.format(
                 "if(ctx._source.owner.id == '%s'){ ctx._source.remove('owner')}",
                 original.getOwner().getId().toString());
-        searchClient.updateSearchByQuery(
+        searchRepository.updateSearchByQuery(
             JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getOwner());
       }
       if (original.getDomain() != null && updated.getDomain() == null) {
@@ -146,11 +146,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 "if(ctx._source.domain.id == '%s'){ ctx._source.remove('domain')}",
                 original.getDomain().getId().toString());
         ;
-        searchClient.updateSearchByQuery(
+        searchRepository.updateSearchByQuery(
             JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "databaseSchema.id", updated.getDomain());
       }
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "");
+      searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, DatabaseSchema.class), scriptTxt, "");
     }
   }
 
@@ -158,12 +158,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void deleteFromSearch(DatabaseSchema entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
+        searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, DatabaseSchema.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
             "databaseSchema.id");
       } else {
-        searchClient.updateSearchEntityDeleted(
+        searchRepository.updateSearchEntityDeleted(
             JsonUtils.deepCopy(entity, DatabaseSchema.class), "", "databaseSchema.id");
       }
     }
@@ -172,7 +172,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void restoreFromSearch(DatabaseSchema entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
+      searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, DatabaseSchema.class), false, "databaseSchema.fullyQualifiedName");
     }
   }

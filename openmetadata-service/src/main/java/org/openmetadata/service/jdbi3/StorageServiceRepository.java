@@ -1,6 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.StorageService;
@@ -26,12 +26,12 @@ public class StorageServiceRepository extends ServiceEntityRepository<StorageSer
   public void deleteFromSearch(StorageService entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
+        searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, StorageService.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
             "service.id");
       } else {
-        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, StorageService.class), "", "service.id");
+        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, StorageService.class), "", "service.id");
       }
     }
   }

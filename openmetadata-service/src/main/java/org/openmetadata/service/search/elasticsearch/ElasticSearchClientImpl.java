@@ -129,7 +129,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchEventPublisher;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.SearchIndexFactory;
@@ -155,7 +155,7 @@ import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class ElasticSearchClientImpl implements SearchClient {
+public class ElasticSearchClientImpl implements SearchRepository {
 
   @SuppressWarnings("deprecated")
   private final RestHighLevelClient client;
@@ -196,11 +196,7 @@ public class ElasticSearchClientImpl implements SearchClient {
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
         // creating alias for indexes
-        IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-        IndicesAliasesRequest.AliasActions aliasAction =
-            IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias(GLOBAL_SEARCH_ALIAS);
-        aliasesRequest.addAliasAction(aliasAction);
-        client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+        createAliases(indexName);
       }
       elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -212,6 +208,17 @@ public class ElasticSearchClientImpl implements SearchClient {
       return false;
     }
     return true;
+  }
+
+  private void createAliases(String indexName) {
+    List<String> searchAliases = getEntitySearchAliases(indexName);
+    for (String alias: searchAliases) {
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      IndicesAliasesRequest.AliasActions aliasAction =
+              IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias(GLOBAL_SEARCH_ALIAS);
+      aliasesRequest.addAliasAction(aliasAction);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+    }
   }
 
   public void updateIndex(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) {

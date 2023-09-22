@@ -15,7 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -102,14 +102,14 @@ public class TagRepository extends EntityRepository<Tag> {
     if (supportsSearchIndex) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      searchClient.deleteEntityAndRemoveRelationships(JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
+      searchRepository.deleteEntityAndRemoveRelationships(JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
     }
   }
 
   @Override
   public void restoreFromSearch(Tag entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
+      searchRepository.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
     }
   }
 

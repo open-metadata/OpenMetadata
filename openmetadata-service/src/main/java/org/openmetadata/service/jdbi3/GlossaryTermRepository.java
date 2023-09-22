@@ -24,7 +24,7 @@ import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidGlossaryTermMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
@@ -217,7 +217,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postCreate(GlossaryTerm entity) {
     if (supportsSearchIndex) {
-      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, GlossaryTerm.class));
+      searchRepository.updateSearchEntityCreated(JsonUtils.deepCopy(entity, GlossaryTerm.class));
     }
     if (entity.getStatus() == Status.DRAFT) {
       // Create an approval task for glossary term in draft mode
@@ -229,7 +229,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     if (supportsSearchIndex) {
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, GlossaryTerm.class), scriptTxt, "");
+      searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, GlossaryTerm.class), scriptTxt, "");
     }
     if (original.getStatus() == Status.DRAFT) {
       if (updated.getStatus() == Status.APPROVED) {
@@ -259,7 +259,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (supportsSearchIndex) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      searchClient.deleteEntityAndRemoveRelationships(
+      searchRepository.deleteEntityAndRemoveRelationships(
           JsonUtils.deepCopy(entity, GlossaryTerm.class), scriptTxt, "tags.tagFQN");
     }
   }
@@ -303,7 +303,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void restoreFromSearch(GlossaryTerm entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
+      searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, GlossaryTerm.class), false, "tags.tagFQN");
     }
   }

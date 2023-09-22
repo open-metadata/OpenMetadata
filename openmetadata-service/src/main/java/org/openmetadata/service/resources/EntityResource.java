@@ -31,7 +31,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -53,7 +53,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  public static SearchClient searchClient;
+  public static SearchRepository searchRepository;
   public static ElasticSearchConfiguration esConfig;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
@@ -71,7 +71,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
           InstantiationException, IllegalAccessException {
     esConfig = config.getElasticSearchConfiguration();
-    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
+    searchRepository = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation
   }
 
@@ -271,7 +271,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response = repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
-    repository.restoreFromSearch(response.getEntity());
+    if (repository.supportsSearch) {
+      repository.restoreFromSearch(response.getEntity());
+    }
     addHref(uriInfo, response.getEntity());
     LOG.info("Restored {}:{}", Entity.getEntityTypeFromObject(response.getEntity()), response.getEntity().getId());
     return response.toResponse();

@@ -58,7 +58,7 @@ public class IndexUtil {
     FAILED
   }
 
-  public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
+  public static SearchRepository getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     if (esConfig != null) {
       return esConfig.getSearchType().equals(SearchType.OPENSEARCH)
           ? new OpenSearchClientImpl(esConfig, dao)

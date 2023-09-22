@@ -57,7 +57,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchEventPublisher;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.SearchIndexFactory;
@@ -155,7 +155,7 @@ import org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
-public class OpenSearchClientImpl implements SearchClient {
+public class OpenSearchClientImpl implements SearchRepository {
   private final RestHighLevelClient client;
   private final CollectionDAO dao;
   private final EnumMap<SearchIndexDefinition.ElasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus>

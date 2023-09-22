@@ -42,8 +42,8 @@ import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.client.RequestOptions;
 
-public interface SearchClient {
-  String GLOBAL_SEARCH_ALIAS = "SearchAlias";
+public interface SearchRepository {
+  String GLOBAL_SEARCH_ALIAS = "AllEntities";
 
   boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
 

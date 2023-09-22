@@ -42,7 +42,7 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -715,7 +715,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     if (supportsSearchIndex) {
-      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+      searchRepository.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
     }
   }
 
@@ -723,7 +723,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postUpdate(T original, T updated) {
     if (supportsSearchIndex) {
       String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
+      searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
     }
   }
 
@@ -865,17 +865,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void deleteFromSearch(T entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
+        searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
       } else {
-        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
+        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
       }
     }
   }
 
   public void restoreFromSearch(T entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
+      searchRepository.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
     }
   }
 
@@ -897,6 +897,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       cleanup(updated);
       changeType = RestUtil.ENTITY_DELETED;
+    }
+    if (supportsSearchIndex) {
+
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);

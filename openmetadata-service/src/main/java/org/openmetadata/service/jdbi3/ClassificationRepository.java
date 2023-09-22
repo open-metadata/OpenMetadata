@@ -15,7 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -112,7 +112,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (updated.getDisabled() != null) {
       scriptTxt = "ctx._source.disabled=" + updated.getDisabled();
     }
-    searchClient.updateSearchEntityUpdated(
+    searchRepository.updateSearchEntityUpdated(
         JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.id");
   }
 
@@ -120,12 +120,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   public void deleteFromSearch(Classification entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
+        searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Classification.class),
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
             "classification.id");
       } else {
-        searchClient.updateSearchEntityDeleted(
+        searchRepository.updateSearchEntityDeleted(
             JsonUtils.deepCopy(entity, Classification.class), "", "classification.id");
       }
     }
@@ -134,7 +134,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @Override
   public void restoreFromSearch(Classification entity) {
     if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
+      searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, Classification.class), false, "classification.fullyQualifiedName");
     }
   }
