@@ -230,8 +230,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
-    OperationContext operationContext = new OperationContext(entityType, createOrUpdateOperation(resourceContext));
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    MetadataOperation operation = createOrUpdateOperation(resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    if (operation == CREATE) {
+      authorizer.authorize(securityContext, operationContext, resourceContext);
+      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      return new PutResponse<T>(Response.Status.CREATED, entity, RestUtil.ENTITY_CREATED).toResponse();
+    }
     PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();

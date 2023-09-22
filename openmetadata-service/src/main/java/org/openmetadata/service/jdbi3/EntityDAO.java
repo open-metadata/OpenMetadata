@@ -123,6 +123,7 @@ public interface EntityDAO<T extends EntityInterface> {
   void updateFqnInternal(@Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
+  // TODO BindUUID
   String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name <cond>")
