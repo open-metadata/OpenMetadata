@@ -27,9 +27,7 @@ jest.mock('rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('react-router-dom', () => ({
-  useParams: jest
-    .fn()
-    .mockReturnValue({ datasetFQN: MOCK_TABLE.fullyQualifiedName }),
+  useParams: jest.fn().mockReturnValue({ fqn: MOCK_TABLE.fullyQualifiedName }),
 }));
 jest.mock(
   'components/common/title-breadcrumb/title-breadcrumb.component',

@@ -52,7 +52,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   testSuite,
   onCancel,
 }) => {
-  const { ingestionFQN } = useParams<Record<string, string>>();
+  const { ingestionFQN } = useParams<{ ingestionFQN: string }>();
   const history = useHistory();
   const { t } = useTranslation();
   const [ingestionData, setIngestionData] = useState<
