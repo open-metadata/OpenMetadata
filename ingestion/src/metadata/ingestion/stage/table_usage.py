@@ -67,9 +67,9 @@ class TableUsageStage(Stage):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = TableStageConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def init_location(self) -> None:
         """

@@ -91,9 +91,9 @@ class MetadataUsageBulkSink(BulkSink):
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def __populate_table_usage_map(
         self, table_entity: Table, table_usage: TableUsageCount

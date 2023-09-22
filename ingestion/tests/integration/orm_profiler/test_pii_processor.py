@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
     DataType,
-    Table,
     TableData,
     TableProfile,
 )

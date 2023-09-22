@@ -39,9 +39,6 @@ from metadata.generated.schema.entity.data.table import (
     TablePartition,
     TableType,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -90,15 +87,14 @@ class CommonDbSourceService(
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
 
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
 
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
