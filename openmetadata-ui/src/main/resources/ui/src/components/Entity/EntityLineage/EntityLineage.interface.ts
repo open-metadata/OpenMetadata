@@ -32,7 +32,7 @@ export interface SelectedNode {
 export interface EntityLineageProp {
   entityType: EntityType;
   deleted?: boolean;
-  hasEditAccess?: boolean;
+  hasEditAccess: boolean;
   isFullScreen?: boolean;
   entity?: SourceType;
 }
