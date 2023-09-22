@@ -154,8 +154,8 @@ const AssetsTabs = forwardRef(
             glossaryResponse,
           ]) => {
             const counts = {
-              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.TABLE]: tableResponse.data.hits.total.value,
+              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
