@@ -313,20 +313,17 @@ export const DataAssetsHeader = ({
     onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
-  const editDomainPermission = useMemo(
-    () => permissions.EditAll && !dataAsset.deleted,
-    [permissions, dataAsset]
-  );
-
-  const editOwnerPermission = useMemo(
-    () => (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
-    [permissions, dataAsset]
-  );
-
-  const editTierPermission = useMemo(
-    () => (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
-    [permissions, dataAsset]
-  );
+  const { editDomainPermission, editOwnerPermission, editTierPermission } =
+    useMemo(
+      () => ({
+        editDomainPermission: permissions.EditAll && !dataAsset.deleted,
+        editOwnerPermission:
+          (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
+        editTierPermission:
+          (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
+      }),
+      [permissions, dataAsset]
+    );
 
   return (
     <>
