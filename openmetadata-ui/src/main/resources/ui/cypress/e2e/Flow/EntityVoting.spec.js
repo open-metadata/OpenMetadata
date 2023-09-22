@@ -16,7 +16,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { VOTING_ENTITIES } from '../../constants/version.constant';
+import { VOTING_ENTITIES } from '../../constants/voting.constant';
 
 describe('Check if voting work properly in entities', () => {
   beforeEach(() => {

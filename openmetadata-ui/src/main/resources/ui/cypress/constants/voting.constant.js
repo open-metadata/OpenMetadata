@@ -53,4 +53,25 @@ export const VOTING_ENTITIES = [
     fieldName: 'sales',
     permissionApi: '/api/v1/permissions/*/*',
   },
+  {
+    term: 'update_orders_table',
+    displayName: 'update_orders_table',
+    entity: 'storedProcedure',
+    serviceName: 'sample_data',
+    permissionApi: '/api/v1/permissions/*/*',
+  },
+  {
+    term: 'update_orders_table',
+    displayName: 'update_orders_table',
+    entity: 'storedProcedure',
+    serviceName: 'sample_data',
+    permissionApi: '/api/v1/permissions/*/*',
+  },
+  {
+    term: 'orders_view',
+    displayName: 'orders_view',
+    entity: 'dashboardDataModel',
+    serviceName: 'sample_looker',
+    permissionApi: '/api/v1/permissions/*/*',
+  },
 ];
