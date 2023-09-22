@@ -112,7 +112,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
     @Override
     public void entitySpecificUpdate() {
-      recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
+      // storedProcedureCode is a required field. Cannot be null.
+      if (updated.getStoredProcedureCode() != null) {
+        recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
+      }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
