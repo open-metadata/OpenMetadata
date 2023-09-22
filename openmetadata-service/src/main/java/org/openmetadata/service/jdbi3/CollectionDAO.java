@@ -127,6 +127,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -599,29 +600,29 @@ public interface CollectionDAO {
                 + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
-        @Bind("id") String id,
+        @BindUUID("id") UUID id,
         @Bind("extension") String extension,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
-    String getExtension(@Bind("id") String id, @Bind("extension") String extension);
+    String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
             + "LIKE CONCAT (:extensionPrefix, '.%') "
             + "ORDER BY extension")
-    List<ExtensionRecord> getExtensions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
+    List<ExtensionRecord> getExtensions(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
-    void delete(@Bind("id") String id, @Bind("extension") String extension);
+    void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE extension = :extension")
     void deleteExtension(@Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
-    void deleteAll(@Bind("id") String id);
+    void deleteAll(@BindUUID("id") UUID id);
   }
 
   class EntityVersionPair {
@@ -688,10 +689,6 @@ public interface CollectionDAO {
       insert(fromId, toId, fromEntity, toEntity, relation, null);
     }
 
-    default void insert(UUID fromId, UUID toId, String fromEntity, String toEntity, int relation, String json) {
-      insert(fromId.toString(), toId.toString(), fromEntity, toEntity, relation, json);
-    }
-
     default void bulkInsertToRelationship(
         UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
 
@@ -724,8 +721,8 @@ public interface CollectionDAO {
                 + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insert(
-        @Bind("fromId") String fromId,
-        @Bind("toId") String toId,
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
@@ -754,11 +751,11 @@ public interface CollectionDAO {
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId,
+        @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,
         @BindList("relation") List<Integer> relation);
 
-    default List<EntityRelationshipRecord> findTo(String fromId, String fromEntity, int relation) {
+    default List<EntityRelationshipRecord> findTo(UUID fromId, String fromEntity, int relation) {
       return findTo(fromId, fromEntity, List.of(relation));
     }
 
@@ -769,7 +766,7 @@ public interface CollectionDAO {
             + "ORDER BY toId")
     @RegisterRowMapper(ToRelationshipMapper.class)
     List<EntityRelationshipRecord> findTo(
-        @Bind("fromId") String fromId,
+        @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
@@ -787,7 +784,7 @@ public interface CollectionDAO {
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
-    List<EntityRelationshipRecord> findToPipeline(@Bind("fromId") String fromId, @Bind("relation") int relation);
+    List<EntityRelationshipRecord> findToPipeline(@BindUUID("fromId") UUID fromId, @Bind("relation") int relation);
 
     //
     // Find from operations
@@ -798,7 +795,7 @@ public interface CollectionDAO {
             + "ORDER BY fromId")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
-        @Bind("toId") String toId,
+        @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("fromEntity") String fromEntity);
@@ -809,7 +806,7 @@ public interface CollectionDAO {
             + "ORDER BY fromId")
     @RegisterRowMapper(FromRelationshipMapper.class)
     List<EntityRelationshipRecord> findFrom(
-        @Bind("toId") String toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
+        @BindUUID("toId") UUID toId, @Bind("toEntity") String toEntity, @Bind("relation") int relation);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -824,7 +821,7 @@ public interface CollectionDAO {
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFromPipleine(@Bind("toId") String toId, @Bind("relation") int relation);
+    List<EntityRelationshipRecord> findFromPipleine(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -841,9 +838,9 @@ public interface CollectionDAO {
             + "AND fromEntity = :fromEntity AND toId = :toId AND toEntity = :toEntity "
             + "AND relation = :relation")
     int delete(
-        @Bind("fromId") String fromId,
+        @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,
-        @Bind("toId") String toId,
+        @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
@@ -852,7 +849,7 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation = :relation AND toEntity = :toEntity")
     void deleteFrom(
-        @Bind("fromId") String fromId,
+        @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,
         @Bind("relation") int relation,
         @Bind("toEntity") String toEntity);
@@ -862,7 +859,7 @@ public interface CollectionDAO {
         "DELETE from entity_relationship WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation "
             + "AND fromEntity = :fromEntity")
     void deleteTo(
-        @Bind("toId") String toId,
+        @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation,
         @Bind("fromEntity") String fromEntity);
@@ -870,10 +867,10 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE from entity_relationship WHERE (toId = :id AND toEntity = :entity) OR "
             + "(fromId = :id AND fromEntity = :entity)")
-    void deleteAll(@Bind("id") String id, @Bind("entity") String entity);
+    void deleteAll(@BindUUID("id") UUID id, @Bind("entity") String entity);
 
     @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
-    void deleteAllWithId(@Bind("id") String id);
+    void deleteAllWithId(@BindUUID("id") UUID id);
 
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override
@@ -906,7 +903,7 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     @SqlQuery("SELECT json FROM thread_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
+    String findById(@BindUUID("id") UUID id);
 
     @SqlQuery("SELECT json FROM thread_entity ORDER BY createdAt DESC")
     List<String> list();
@@ -915,7 +912,7 @@ public interface CollectionDAO {
     int listCount(@Define("condition") String condition);
 
     @SqlUpdate("DELETE FROM thread_entity WHERE id = :id")
-    void delete(@Bind("id") String id);
+    void delete(@BindUUID("id") UUID id);
 
     @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)", connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(value = "UPDATE task_sequence SET id=(id+1) RETURNING id", connectionType = POSTGRES)
@@ -938,8 +935,8 @@ public interface CollectionDAO {
             + "OR (:endTs > announcementStart AND :endTs < announcementEnd) "
             + "OR (:startTs <= announcementStart AND :endTs >= announcementEnd))")
     List<String> listAnnouncementBetween(
-        @Bind("threadId") String threadId,
-        @Bind("entityId") String entityId,
+        @BindUUID("threadId") UUID threadId,
+        @BindUUID("entityId") UUID entityId,
         @Bind("startTs") long startTs,
         @Bind("endTs") long endTs);
 
@@ -1033,7 +1030,7 @@ public interface CollectionDAO {
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByOwner(
-        @Bind("userId") String userId,
+        @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
         @Define("condition") String condition);
@@ -1045,7 +1042,7 @@ public interface CollectionDAO {
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
             + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) ")
     int listCountThreadsByOwner(
-        @Bind("userId") String userId,
+        @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Define("condition") String condition);
 
@@ -1123,7 +1120,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value = "UPDATE thread_entity SET json = (:json :: jsonb) where id = :id",
         connectionType = POSTGRES)
-    void update(@Bind("id") String id, @Bind("json") String json);
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
 
     @SqlQuery(
         "SELECT entityLink, COUNT(id) count FROM field_relationship fr INNER JOIN thread_entity te ON fr.fromFQNHash=MD5(te.id) "
@@ -1151,7 +1148,7 @@ public interface CollectionDAO {
             + "GROUP BY entityLink")
     @RegisterRowMapper(CountFieldMapper.class)
     List<List<String>> listCountByOwner(
-        @Bind("userId") String userId,
+        @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Define("condition") String condition);
 
@@ -1164,7 +1161,7 @@ public interface CollectionDAO {
             + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByFollows(
-        @Bind("userId") String userId,
+        @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
@@ -1177,7 +1174,7 @@ public interface CollectionDAO {
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation)")
     int listCountThreadsByFollows(
-        @Bind("userId") String userId,
+        @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("relation") int relation,
         @Define("condition") String condition);
@@ -2410,7 +2407,7 @@ public interface CollectionDAO {
       return listAfter(getTableName(), getNameColumn(), mySqlCondition, postgresCondition, limit, after);
     }
 
-    default List<String> listTeamsUnderOrganization(String teamId) {
+    default List<String> listTeamsUnderOrganization(UUID teamId) {
       return listTeamsUnderOrganization(teamId, Relationship.PARENT_OF.ordinal());
     }
 
@@ -2420,7 +2417,7 @@ public interface CollectionDAO {
             + "WHERE te.id NOT IN (SELECT :teamId) UNION "
             + "(SELECT toId FROM entity_relationship "
             + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
-    List<String> listTeamsUnderOrganization(@Bind("teamId") String teamId, @Bind("relation") int relation);
+    List<String> listTeamsUnderOrganization(@BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {
@@ -2463,7 +2460,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insertOrReplaceCount(
         @Bind("date") String date,
-        @Bind("id") String id,
+        @BindUUID("id") UUID id,
         @Bind("entityType") String entityType,
         @Bind("count1") int count1);
 
@@ -2487,7 +2484,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insertOrUpdateCount(
         @Bind("date") String date,
-        @Bind("id") String id,
+        @BindUUID("id") UUID id,
         @Bind("entityType") String entityType,
         @Bind("count1") int count1);
 
@@ -2503,7 +2500,7 @@ public interface CollectionDAO {
                 + "percentile1, percentile7, percentile30 FROM entity_usage "
                 + "WHERE id = :id AND usageDate >= (:date :: date) - make_interval(days => :days) AND usageDate <= (:date :: date) ORDER BY usageDate DESC",
         connectionType = POSTGRES)
-    List<UsageDetails> getUsageById(@Bind("id") String id, @Bind("date") String date, @Bind("days") int days);
+    List<UsageDetails> getUsageById(@BindUUID("id") UUID id, @Bind("date") String date, @Bind("days") int days);
 
     /** Get latest usage record */
     @SqlQuery(
@@ -2513,7 +2510,7 @@ public interface CollectionDAO {
     UsageDetails getLatestUsage(@Bind("id") String id);
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
-    void delete(@Bind("id") String id);
+    void delete(@BindUUID("id") UUID id);
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here
@@ -3466,7 +3463,7 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT tokenType, json FROM user_tokens WHERE userId = :userId AND tokenType = :tokenType ")
     @RegisterRowMapper(TokenRowMapper.class)
-    List<TokenInterface> getAllUserTokenWithType(@Bind("userId") String userId, @Bind("tokenType") String tokenType)
+    List<TokenInterface> getAllUserTokenWithType(@BindUUID("userId") UUID userId, @Bind("tokenType") String tokenType)
         throws StatementException;
 
     @ConnectionAwareSqlUpdate(value = "INSERT INTO user_tokens (json) VALUES (:json)", connectionType = MYSQL)
@@ -3490,7 +3487,7 @@ public interface CollectionDAO {
     void deleteAll(@BindList("tokenIds") List<String> tokens);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE userid = :userid AND tokenType = :tokenType")
-    void deleteTokenByUserAndType(@Bind("userid") String userid, @Bind("tokenType") String tokenType);
+    void deleteTokenByUserAndType(@BindUUID("userid") UUID userid, @Bind("tokenType") String tokenType);
   }
 
   interface KpiDAO extends EntityDAO<Kpi> {

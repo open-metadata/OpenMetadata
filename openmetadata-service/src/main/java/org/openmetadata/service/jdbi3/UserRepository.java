@@ -262,13 +262,13 @@ public class UserRepository extends EntityRepository<User> {
   private List<EntityReference> getOwns(User user) {
     // Compile entities owned by the user
     List<EntityRelationshipRecord> ownedEntities =
-        daoCollection.relationshipDAO().findTo(user.getId().toString(), USER, Relationship.OWNS.ordinal());
+        daoCollection.relationshipDAO().findTo(user.getId(), USER, Relationship.OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
       ownedEntities.addAll(
-          daoCollection.relationshipDAO().findTo(team.getId().toString(), Entity.TEAM, Relationship.OWNS.ordinal()));
+          daoCollection.relationshipDAO().findTo(team.getId(), Entity.TEAM, Relationship.OWNS.ordinal()));
     }
     // Populate details in entity reference
     return EntityUtil.getEntityReferences(ownedEntities);
@@ -280,7 +280,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getTeamChildren(UUID teamId) {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
-      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
+      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
     return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
