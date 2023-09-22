@@ -60,7 +60,6 @@ class OMetaServerMixin:
         Validate Server & Client versions. They should match.
         Otherwise, raise VersionMismatchException
         """
-        logger.warning("VALIDATING VERSIONSm")
         logger.debug("Validating client and server versions")
 
         server_version = self.get_server_version()
