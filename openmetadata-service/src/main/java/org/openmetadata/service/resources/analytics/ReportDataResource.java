@@ -22,7 +22,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
@@ -32,6 +31,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
@@ -45,14 +45,11 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
-public class ReportDataResource {
+public class ReportDataResource extends EntityTimeSeriesResource<ReportData, ReportDataRepository> {
   public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
-  @Getter protected final ReportDataRepository repository;
-  protected final Authorizer authorizer;
 
   public ReportDataResource(CollectionDAO repository, Authorizer authorizer) {
-    this.authorizer = authorizer;
-    this.repository = new ReportDataRepository(repository);
+    super(ReportData.class, new ReportDataRepository(repository), authorizer);
   }
 
   public static class ReportDataResultList extends ResultList<ReportData> {
@@ -114,7 +111,7 @@ public class ReportDataResource {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.CREATE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.addReportData(reportData);
+    return create(reportData, ReportDataRepository.REPORT_DATA_EXTENSION, reportData.getReportDataType().toString());
   }
 
   @DELETE

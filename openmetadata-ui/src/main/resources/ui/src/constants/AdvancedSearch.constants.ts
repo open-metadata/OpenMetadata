@@ -34,6 +34,10 @@ export const SUFFIX_WILDCARD = '.*';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
   },
@@ -68,6 +72,10 @@ export const TABLE_DROPDOWN_ITEMS = [
     label: t('label.column'),
     key: 'columns.name.keyword',
   },
+  {
+    label: t('label.table-type'),
+    key: 'tableType',
+  },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
@@ -81,6 +89,21 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
   },
 ];
 
+export const DASHBOARD_DATA_MODEL_TYPE = [
+  {
+    label: t('label.data-model-type'),
+    key: 'dataModelType',
+  },
+  {
+    label: t('label.column'),
+    key: 'columns.name.keyword',
+  },
+  {
+    label: t('label.project'),
+    key: 'project.keyword',
+  },
+];
+
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: t('label.task'),
@@ -91,7 +114,7 @@ export const PIPELINE_DROPDOWN_ITEMS = [
 export const SEARCH_INDEX_DROPDOWN_ITEMS = [
   {
     label: t('label.field'),
-    key: 'fields.displayName.keyword',
+    key: 'fields.name.keyword',
   },
 ];
 
@@ -111,6 +134,10 @@ export const CONTAINER_DROPDOWN_ITEMS = [
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
   },
@@ -125,6 +152,10 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
 ];
 
 export const TAG_DROPDOWN_ITEMS = [
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
   {
     label: t('label.classification'),
     key: 'classification.name.keyword',

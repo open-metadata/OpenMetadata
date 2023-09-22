@@ -58,12 +58,17 @@ export default function EntitySummaryPanel({
   entityDetails,
 }: EntitySummaryPanelProps) {
   const { tab } = useParams<{ tab: string }>();
-
   const { getEntityPermission } = usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] =
     useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const id = useMemo(() => {
+    setIsPermissionLoading(true);
+
+    return entityDetails?.details?.id ?? '';
+  }, [entityDetails?.details?.id]);
 
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
@@ -80,10 +85,10 @@ export default function EntitySummaryPanel({
   };
 
   useEffect(() => {
-    if (entityDetails?.details?.id) {
-      fetchResourcePermission(entityDetails.details.id);
+    if (id) {
+      fetchResourcePermission(id);
     }
-  }, [entityDetails]);
+  }, [id]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,

@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import Icon, {
+  CheckOutlined,
+  CloseOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -28,7 +32,10 @@ import {
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import {
+  ReactComponent as EditIcon,
+  ReactComponent as IconEdit,
+} from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from 'assets/svg/ic-restore.svg';
@@ -37,6 +44,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
+import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
@@ -57,20 +65,13 @@ import {
   isEmpty,
   isNil,
   isUndefined,
+  last,
   lowerCase,
-  uniqueId,
 } from 'lodash';
-import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
 import Qs from 'qs';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
@@ -105,7 +106,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Description from '../../common/description/Description';
 import ManageButton from '../../common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
@@ -203,6 +203,7 @@ const TeamDetailsV1 = ({
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
   const { showModal } = useEntityExportModalProvider();
 
   const addPolicy = t('label.add-entity', {
@@ -310,17 +311,6 @@ const TeamDetailsV1 = ({
     ),
     []
   );
-
-  const extraInfo: ExtraInfo[] = [
-    ...(isOrganization
-      ? []
-      : [
-          {
-            key: 'TeamType',
-            value: currentTeam.teamType || '',
-          },
-        ]),
-  ];
 
   const searchTeams = async (text: string) => {
     try {
@@ -438,17 +428,16 @@ const TeamDetailsV1 = ({
     [currentTeam]
   );
 
-  const updateTeamType = (type: TeamType) => {
+  const updateTeamType = async (type: TeamType) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
         teamType: type,
       };
 
-      return updateTeamHandler(updatedData);
+      await updateTeamHandler(updatedData);
+      setShowTypeSelector(false);
     }
-
-    return;
   };
 
   const handleTeamSearch = (value: string) => {
@@ -812,6 +801,65 @@ const TeamDetailsV1 = ({
     );
   };
 
+  const teamTypeElement = useMemo(() => {
+    if (currentTeam.teamType === TeamType.Organization) {
+      return null;
+    }
+
+    return (
+      <>
+        {t('label.type') + ' - '}
+        {currentTeam.teamType ? (
+          showTypeSelector ? (
+            <TeamTypeSelect
+              handleShowTypeSelector={setShowTypeSelector}
+              parentTeamType={
+                last(parentTeams)?.teamType ?? TeamType.Organization
+              }
+              showGroupOption={!childTeams.length}
+              teamType={currentTeam.teamType ?? TeamType.Department}
+              updateTeamType={
+                entityPermissions.EditAll ? updateTeamType : undefined
+              }
+            />
+          ) : (
+            <>
+              {currentTeam.teamType}
+              {entityPermissions.EditAll && (
+                <Icon
+                  className={classNames('vertical-middle m-l-xs', {
+                    'opacity-50': isGroupType,
+                  })}
+                  data-testid="edit-team-type-icon"
+                  title={
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
+                  }
+                  onClick={
+                    isGroupType ? undefined : () => setShowTypeSelector(true)
+                  }>
+                  <EditIcon />
+                </Icon>
+              )}
+            </>
+          )
+        ) : (
+          <span>{currentTeam.teamType}</span>
+        )}
+      </>
+    );
+  }, [
+    currentTeam,
+    showTypeSelector,
+    setShowTypeSelector,
+    parentTeams,
+    isGroupType,
+    childTeams,
+  ]);
+
   const emailElement = useMemo(
     () => (
       <Space align="start" className="m-y-xs">
@@ -954,27 +1002,7 @@ const TeamDetailsV1 = ({
               onUpdate={updateOwner}
             />
             {!isOrganization && <Divider type="vertical" />}
-
-            {extraInfo.map((info) => (
-              <Fragment key={uniqueId()}>
-                <EntitySummaryDetails
-                  allowTeamOwner={false}
-                  currentOwner={currentTeam.owner}
-                  data={info}
-                  isGroupType={isGroupType}
-                  showGroupOption={!childTeams.length}
-                  teamType={currentTeam.teamType}
-                  updateOwner={
-                    entityPermissions.EditAll || entityPermissions.EditOwner
-                      ? updateOwner
-                      : undefined
-                  }
-                  updateTeamType={
-                    entityPermissions.EditAll ? updateTeamType : undefined
-                  }
-                />
-              </Fragment>
-            ))}
+            {teamTypeElement}
           </Space>
           <div className="m-b-sm m-t-xs" data-testid="description-container">
             <Description

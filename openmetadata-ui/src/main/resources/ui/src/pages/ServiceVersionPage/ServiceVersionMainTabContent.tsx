@@ -42,8 +42,8 @@ function ServiceVersionMainTabContent({
   entityType,
   changeDescription,
 }: ServiceVersionMainTabContentProps) {
-  const { serviceFQN, serviceCategory } = useParams<{
-    serviceFQN: string;
+  const { fqn: serviceFQN, serviceCategory } = useParams<{
+    fqn: string;
     serviceCategory: ServiceTypes;
   }>();
 

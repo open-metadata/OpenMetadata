@@ -51,7 +51,7 @@ const QueryCard: FC<QueryCardProp> = ({
   afterDeleteAction,
 }: QueryCardProp) => {
   const { t } = useTranslation();
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const location = useLocation();
   const history = useHistory();
   const { onCopyToClipBoard } = useClipboard(query.query);
