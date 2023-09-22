@@ -108,14 +108,14 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
         const userId =
-          entityType === EntityType.USER_NAME
+          entityType === EntityType.USER
             ? user
             : feedFilterType === FeedFilter.ALL
             ? undefined
             : currentUser?.id;
 
         const { data, paging } = await getAllFeeds(
-          entityType !== EntityType.USER_NAME && fqn
+          entityType !== EntityType.USER && fqn
             ? getEntityFeedLink(entityType, encodeURIComponent(fqn))
             : undefined,
           after,

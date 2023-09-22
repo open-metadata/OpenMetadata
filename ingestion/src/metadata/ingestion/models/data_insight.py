@@ -9,16 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Elasticsearch indexes for data insight data
+Custom pydantic models for data insight sample data
 """
 
-import enum
+from pydantic import BaseModel
+
+from metadata.generated.schema.analytics.reportData import ReportData
 
 
-class DataInsightEsIndex(enum.Enum):
-    """Data Insight ES Indexes"""
+class OMetaDataInsightSample(BaseModel):
+    """Sample data insight pydantic model"""
 
-    # pylint: disable=invalid-name
-    EntityReportData = "entity_report_data_index"
-    WebAnalyticUserActivityReportData = "web_analytic_user_activity_report_data_index"
-    WebAnalyticEntityViewReportData = "web_analytic_entity_view_report_data_index"
+    record: ReportData

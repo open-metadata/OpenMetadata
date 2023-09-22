@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -82,6 +83,7 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.index.query.RangeQueryBuilder;
+import org.elasticsearch.index.query.ScriptQueryBuilder;
 import org.elasticsearch.index.query.TermQueryBuilder;
 import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
@@ -118,6 +120,8 @@ import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -924,6 +928,62 @@ public class ElasticSearchClientImpl implements SearchClient {
   }
 
   @Override
+  public void updateSearchEntityCreated(EntityTimeSeriesInterface entity) {
+    if (entity == null) {
+      LOG.error("Entity is null");
+      return;
+    }
+    String contextInfo = String.format("Entity Info : %s", entity);
+    String entityTimeSeriesType;
+    if (entity instanceof ReportData) {
+      // Report data type is an entity itself where each report data type has its own index
+      entityTimeSeriesType = ((ReportData) entity).getReportDataType().toString();
+    } else {
+      entityTimeSeriesType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    }
+    SearchIndexDefinition.ElasticSearchIndexType indexType =
+        IndexUtil.getIndexMappingByEntityType(entityTimeSeriesType);
+    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityTimeSeriesType, entity);
+    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
+    updateRequest.docAsUpsert(true);
+    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+    try {
+      updateElasticSearch(updateRequest);
+    } catch (DocumentMissingException ex) {
+      handleDocumentMissingException(contextInfo, ex);
+    } catch (ElasticsearchException e) {
+      handleElasticsearchException(contextInfo, e);
+    } catch (IOException ie) {
+      handleIOException(contextInfo, ie);
+    }
+  }
+
+  @Override
+  public void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params) {
+    if (index == null) {
+      LOG.error("Index is null");
+      return;
+    }
+    String contextInfo = String.format("Index Info : %s", index);
+    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(index);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
+    ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
+    DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
+    deleteByQueryRequest.setQuery(scriptQuery);
+    deleteByQueryRequest.setRefresh(true);
+    try {
+      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+    } catch (DocumentMissingException ex) {
+      handleDocumentMissingException(contextInfo, ex);
+    } catch (ElasticsearchException e) {
+      handleElasticsearchException(contextInfo, e);
+    } catch (IOException ie) {
+      handleIOException(contextInfo, ie);
+    }
+  }
+
+  @Override
   public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
@@ -1208,7 +1268,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
   }
 
-  public void handleDocumentMissingException(EntityInterface entity, DocumentMissingException ex) {
+  public void handleDocumentMissingException(Object entity, DocumentMissingException ex) {
     LOG.error("Missing Document", ex);
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
@@ -1218,7 +1278,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             ex.getMessage(), ex.getCause(), ExceptionUtils.getStackTrace(ex)));
   }
 
-  public void handleElasticsearchException(EntityInterface entity, ElasticsearchException e) {
+  public void handleElasticsearchException(Object entity, ElasticsearchException e) {
     LOG.debug(e.getMessage());
     if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
       LOG.error("Error in publishing to ElasticSearch");
@@ -1240,7 +1300,7 @@ public class ElasticSearchClientImpl implements SearchClient {
     }
   }
 
-  public void handleIOException(EntityInterface entity, IOException ie) {
+  public void handleIOException(Object entity, IOException ie) {
     SearchEventPublisher.updateElasticSearchFailureStatus(
         entity,
         EventPublisherJob.Status.ACTIVE_WITH_ERROR,

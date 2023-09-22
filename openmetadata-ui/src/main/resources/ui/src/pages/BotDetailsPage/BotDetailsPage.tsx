@@ -41,7 +41,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const BotDetailsPage = () => {
   const { t } = useTranslation();
-  const { botsName } = useParams<{ [key: string]: string }>();
+  const { fqn: botsName } = useParams<{ fqn: string }>();
   const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);

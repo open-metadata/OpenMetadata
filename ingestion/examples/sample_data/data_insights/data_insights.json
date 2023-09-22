@@ -1,0 +1,20 @@
+{
+    "reports": {
+        "EntityReportData": [
+            {"id": "9cf881f1-6871-4a89-9b38-0671ad915a3d", "data": {"team": null, "hasOwner": 0, "entityTier": null, "entityType": "Chart", "entityCount": 17, "serviceName": "Tableau%connector", "missingOwner": 17, "organization": null, "missingDescriptions": 15, "completedDescriptions": 2}, "reportDataType": "EntityReportData"},
+            {"id": "b731eeba-026d-4aec-9b47-f49507d7ed22", "data": {"team": null, "hasOwner": 0, "entityTier": null, "entityType": "Chart", "entityCount": 17, "serviceName": "Tableau%connector", "missingOwner": 17, "organization": null, "missingDescriptions": 15, "completedDescriptions": 2}, "reportDataType": "EntityReportData"},
+            {"id": "7c27811a-a1a1-495d-a005-d4079ccb475a", "data": {"team": null, "hasOwner": 0, "entityTier": null, "entityType": "Chart", "entityCount": 17, "serviceName": "Tableau%connector", "missingOwner": 17, "organization": null, "missingDescriptions": 15, "completedDescriptions": 2}, "reportDataType": "EntityReportData"},
+            {"id": "fa5fc3ca-9b4b-441c-94dd-5078bca04f24", "data": {"team": null, "hasOwner": 0, "entityTier": null, "entityType": "Chart", "entityCount": 17, "serviceName": "Tableau%connector", "missingOwner": 17, "organization": null, "missingDescriptions": 15, "completedDescriptions": 2}, "reportDataType": "EntityReportData"}
+        ],
+        "WebAnalyticEntityViewReportData":[
+            {"id": "665e4ae7-6586-4a26-aec8-93c2b278db20", "data": {"owner": null, "views": 2, "ownerId": null, "tagsFQN": ["Business Glossary.Clothing", "Certification.Bronze", "dbtTags.model_tag_two", "PII.None"], "entityFqn": "test_snow.SNOWFLAKE.ORGANIZATION_USAGE.ACCOUNTS", "entityHref": "http://localhost:8585/table/test_snow.SNOWFLAKE.ORGANIZATION_USAGE.ACCOUNTS", "entityTier": null, "entityType": "Table"}, "reportDataType": "WebAnalyticEntityViewReportData"},
+            {"id": "e4bd1b14-43a4-47e4-9853-1406e0c4c6ab", "data": {"owner": "Rob", "views": 13, "ownerId": "15336cef-1690-4843-ac4f-71c386e87e43", "tagsFQN": null, "entityFqn": "sample_data.ecommerce_db.shopify.dim_address", "entityHref": "http://localhost:8585/table/sample_data.ecommerce_db.shopify.dim_address", "entityTier": null, "entityType": "Table"}, "reportDataType": "WebAnalyticEntityViewReportData"}
+        ],
+        "WebAnalyticUserActivityReportData": [
+            {"id": "171cc257-339a-4780-bf52-a3eb54869dbd", "data": {"team": "Organization", "userId": "15336cef-1690-4843-ac4f-71c386e87e43", "userName": "Bob", "lastSession": 1690024291033, "totalPageView": 4, "totalSessions": 1, "totalSessionDuration": 743}, "reportDataType": "WebAnalyticUserActivityReportData"},
+            {"id": "c8a530a4-e232-4756-9f1b-f8638c6ef2d3", "data": {"team": "Organization", "userId": "b020c337-3534-43c6-afc8-e29a90026774", "userName": "Joe", "lastSession": 1692806224018, "totalPageView": 24, "totalSessions": 4, "totalSessionDuration": 1169}, "reportDataType": "WebAnalyticUserActivityReportData"},
+            {"id": "703a5f50-6990-4e10-8cfc-fed9faefa99d", "data": {"team": "Organization", "userId": "54d2fbb7-2942-4549-b046-8c09a32d4616", "userName": "Jane", "lastSession": 1692902339074, "totalPageView": 39, "totalSessions": 3, "totalSessionDuration": 2731}, "reportDataType": "WebAnalyticUserActivityReportData"},
+            {"id": "992bc53e-915a-4c7a-8630-c671e3b3960d", "data": {"team": "Organization", "userId": "b020c337-3534-43c6-afc8-e29a90026774", "userName": "John", "lastSession": 1692982368713, "totalPageView": 16, "totalSessions": 3, "totalSessionDuration": 2329}, "reportDataType": "WebAnalyticUserActivityReportData"}
+        ]
+    }
+}

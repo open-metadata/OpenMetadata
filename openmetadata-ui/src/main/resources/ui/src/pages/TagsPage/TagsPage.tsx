@@ -74,7 +74,7 @@ import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
-  const { tagCategoryName } = useParams<Record<string, string>>();
+  const { fqn: tagCategoryName } = useParams<{ fqn: string }>();
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );

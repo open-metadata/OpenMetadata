@@ -18,6 +18,7 @@ import ActivityFeedProvider, {
 } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
@@ -67,12 +68,12 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
-import { getDatabaseVersionPath } from 'utils/RouterUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getDatabaseDetailsPath,
   getExplorePath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
@@ -102,8 +103,8 @@ const DatabaseDetails: FunctionComponent = () => {
     return searchData.schema as string | undefined;
   }, [location.search]);
 
-  const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ databaseFQN: string; tab: EntityTabs }>();
+  const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
   const [database, setDatabase] = useState<Database>({} as Database);
@@ -565,7 +566,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getDatabaseVersionPath(databaseFQN, toString(currentVersion))
+        getVersionPathWithTab(
+          EntityType.DATABASE,
+          databaseFQN,
+          toString(currentVersion),
+          EntityTabs.SCHEMA
+        )
       );
   }, [currentVersion, databaseFQN]);
 
@@ -719,6 +725,27 @@ const DatabaseDetails: FunctionComponent = () => {
               onUpdateEntityDetails={getDetailsByFQN}
             />
           </ActivityFeedProvider>
+        ),
+      },
+
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityType={EntityType.DATABASE}
+            handleExtensionUpdate={settingsUpdateHandler}
+            hasEditAccess={databasePermission.ViewAll}
+            hasPermission={
+              databasePermission.EditAll || databasePermission.EditCustomFields
+            }
+            isVersionView={false}
+          />
         ),
       },
     ],

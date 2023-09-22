@@ -13,14 +13,17 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { VotingDataProps } from 'components/Voting/voting.interface';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { myDataSearchIndex } from 'constants/Mydata.constants';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
@@ -66,10 +69,10 @@ const GlossaryTermsV1 = ({
   isVersionView,
 }: Props) => {
   const {
-    glossaryName: glossaryFqn,
+    fqn: glossaryFqn,
     tab,
     version,
-  } = useParams<{ glossaryName: string; tab: string; version: string }>();
+  } = useParams<{ fqn: string; tab: string; version: string }>();
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
@@ -84,6 +87,13 @@ const GlossaryTermsV1 = ({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
         : getGlossaryTermDetailsPath(glossaryFqn, tab),
+    });
+  };
+
+  const onExtensionUpdate = async (updatedTable: GlossaryTerm) => {
+    await handleGlossaryTermUpdate({
+      ...glossaryTerm,
+      extension: updatedTable.extension,
     });
   };
 
@@ -154,6 +164,28 @@ const GlossaryTermsV1 = ({
             },
           ]
         : []),
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityDetails={isVersionView ? glossaryTerm : undefined}
+            entityType={EntityType.GLOSSARY_TERM}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              !isVersionView &&
+              (permissions.EditAll || permissions.EditCustomFields)
+            }
+            hasPermission={permissions.ViewAll}
+            isVersionView={isVersionView}
+          />
+        ),
+      },
     ];
 
     return items;

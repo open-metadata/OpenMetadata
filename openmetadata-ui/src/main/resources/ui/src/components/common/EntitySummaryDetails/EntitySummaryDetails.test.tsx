@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, findByTestId, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import EntitySummaryDetails from './EntitySummaryDetails';
 
@@ -68,35 +67,5 @@ describe('EntitySummaryDetails Component', () => {
 
       expect(EntitySummary).toBeInTheDocument();
     });
-  });
-
-  it('Edit team type should render the appropriate component', async () => {
-    render(
-      <EntitySummaryDetails data={{ key: 'TeamType', value: 'Department' }} />
-    );
-
-    const editTeamTypeBtn = screen.getByTestId('edit-TeamType-icon');
-
-    await act(async () => {
-      userEvent.click(editTeamTypeBtn);
-    });
-
-    // should show the team type select box and action buttons
-    expect(screen.getByTestId('team-type-select')).toBeInTheDocument();
-
-    const cancelBtn = screen.getByTestId('cancel-btn');
-    const saveBtn = screen.getByTestId('save-btn');
-
-    expect(cancelBtn).toBeInTheDocument();
-    expect(saveBtn).toBeInTheDocument();
-
-    // should hide the team type select box and action buttons after save
-    await act(async () => {
-      userEvent.click(saveBtn);
-    });
-
-    expect(screen.queryByTestId('team-type-select')).toBeNull();
-    expect(screen.queryByTestId('cancel-btn')).toBeNull();
-    expect(screen.queryByTestId('save-btn')).toBeNull();
   });
 });
