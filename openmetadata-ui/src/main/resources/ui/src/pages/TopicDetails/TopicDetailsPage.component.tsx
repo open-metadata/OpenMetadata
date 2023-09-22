@@ -25,7 +25,12 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, {
+  FunctionComponent,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -56,7 +61,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { topicFQN } = useParams<{ topicFQN: string }>();
+  const { fqn: topicFQN } = useParams<{ fqn: string }>();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
@@ -123,7 +128,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.OWNER,
         TabSpecificField.FOLLOWERS,
         TabSpecificField.TAGS,
-        TabSpecificField.EXTENSION,
         TabSpecificField.DOMAIN,
         TabSpecificField.DATA_PRODUCTS,
         TabSpecificField.VOTES,
@@ -232,7 +236,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         TabSpecificField.OWNER,
         TabSpecificField.FOLLOWERS,
         TabSpecificField.TAGS,
-        TabSpecificField.EXTENSION,
         TabSpecificField.VOTES,
       ]);
       setTopicDetails(details);
@@ -240,6 +243,15 @@ const TopicDetailsPage: FunctionComponent = () => {
       showErrorToast(error as AxiosError);
     }
   };
+
+  const updateTopicDetailsState = useCallback((data) => {
+    const updatedData = data as Topic;
+
+    setTopicDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     fetchResourcePermission(topicFQN);
@@ -274,6 +286,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       topicDetails={topicDetails}
       topicPermissions={topicPermissions}
       unFollowTopicHandler={unFollowTopic}
+      updateTopicDetailsState={updateTopicDetailsState}
       versionHandler={versionHandler}
       onTopicUpdate={onTopicUpdate}
       onUpdateVote={updateVote}

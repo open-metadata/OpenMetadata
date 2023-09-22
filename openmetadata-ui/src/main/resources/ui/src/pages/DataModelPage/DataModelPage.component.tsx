@@ -58,8 +58,7 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN } =
-    useParams<{ dashboardDataModelFQN: string }>();
+  const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -317,6 +316,15 @@ const DataModelsPage = () => {
     }
   };
 
+  const updateDataModelDetailsState = useCallback((data) => {
+    const updatedData = data as DashboardDataModel;
+
+    setDataModelData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -357,6 +365,7 @@ const DataModelsPage = () => {
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
+      updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}
       onUpdateVote={updateVote}
     />

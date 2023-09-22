@@ -47,6 +47,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "serviceType": {
         "type": "keyword"
       },

@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import java.util.TreeMap;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -41,6 +43,8 @@ import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
+  String GLOBAL_SEARCH_ALIAS = "SearchAlias";
+
   boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
 
   void updateIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
@@ -50,6 +54,8 @@ public interface SearchClient {
   Response search(SearchRequest request) throws IOException;
 
   Response searchBySourceUrl(String sourceUrl) throws IOException;
+
+  Response searchByField(String fieldName, String fieldValue, String index) throws IOException;
 
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
@@ -74,6 +80,10 @@ public interface SearchClient {
   }
 
   void updateSearchEntityCreated(EntityInterface entity);
+
+  void updateSearchEntityCreated(EntityTimeSeriesInterface entity);
+
+  void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params);
 
   void updateSearchEntityDeleted(EntityInterface entity, String script, String field);
 

@@ -21,9 +21,9 @@ from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.utils.logger import utils_logger
 
 QUERY_TYPES_DICT = {
-    "Created": ["CREATE"],
-    "Updated": ["DELETE", "TRUNCATE_TABLE", "UPDATE", "ALTER", "INSERT", "MERGE"],
-    "Accessed": ["SHOW", "DESCRIBE", "SELECT"],
+    "created": ["CREATE"],
+    "updated": ["DELETE", "TRUNCATE_TABLE", "UPDATE", "ALTER", "INSERT", "MERGE"],
+    "accessed": ["SHOW", "DESCRIBE", "SELECT"],
 }
 
 
@@ -59,11 +59,11 @@ def _get_query_type_from_regex(create_query) -> Optional[Any]:
     Method to get the query type from regex
     """
     if re.match(create_pattern, create_query.query.__root__):
-        return "Created"
+        return "created"
     if re.match(update_pattern, create_query.query.__root__):
-        return "Updated"
+        return "updated"
     if re.match(select_pattern, create_query.query.__root__):
-        return "Accessed"
+        return "accessed"
     return None
 
 
@@ -72,9 +72,12 @@ def get_query_type(create_query) -> Optional[str]:
     Method to the type of query
     """
     try:
+        query_type = None
         if create_query.query_type:
-            return _get_query_type_from_name(create_query=create_query)
-        return _get_query_type_from_regex(create_query=create_query)
+            query_type = _get_query_type_from_name(create_query=create_query)
+        else:
+            query_type = _get_query_type_from_regex(create_query=create_query)
+        return query_type.lower()
 
     except Exception as exc:
         logger.debug(traceback.format_exc())

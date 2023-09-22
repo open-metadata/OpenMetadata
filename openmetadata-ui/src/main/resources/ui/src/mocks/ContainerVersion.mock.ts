@@ -20,6 +20,7 @@ import {
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
@@ -85,6 +86,7 @@ export const containerVersionMockProps: ContainerVersionProp = {
   currentVersionData: mockContainerData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   breadCrumbList: [],
   containerFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',

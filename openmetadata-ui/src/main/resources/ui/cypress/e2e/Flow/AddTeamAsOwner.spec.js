@@ -35,7 +35,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     cy.login();
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=15&index=team_search_index`,
+      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=25&index=team_search_index`,
       'waitForTeams'
     );
     interceptURL('PATCH', `/api/v1/tables/*`, 'updateTable');
