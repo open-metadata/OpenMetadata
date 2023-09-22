@@ -46,6 +46,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedDataModelName,
   versionList,
@@ -59,10 +60,17 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {
     const colList = cloneDeep(
@@ -167,6 +175,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={EntityType.DASHBOARD_DATA_MODEL}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}

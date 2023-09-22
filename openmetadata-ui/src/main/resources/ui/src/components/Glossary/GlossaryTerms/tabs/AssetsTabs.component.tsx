@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Menu, Space } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
@@ -38,19 +37,19 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-
-interface Props {
-  onAddAsset: () => void;
-  permissions: OperationPermission;
-  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-}
+import './assets-tabs.less';
+import {
+  AssetsOfEntity,
+  AssetsTabsProps,
+  AssetsViewType,
+} from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -59,38 +58,92 @@ export interface AssetsTabRef {
 
 const AssetsTabs = forwardRef(
   (
-    { permissions, onAssetClick, isSummaryPanelOpen, onAddAsset }: Props,
+    {
+      permissions,
+      onAssetClick,
+      isSummaryPanelOpen,
+      onAddAsset,
+      type = AssetsOfEntity.GLOSSARY,
+      viewType = AssetsViewType.PILLS,
+    }: AssetsTabsProps,
     ref
   ) => {
-    const [itemCount, setItemCount] = useState<Record<AssetsUnion, number>>({
+    const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
       table: 0,
       pipeline: 0,
       mlmodel: 0,
       container: 0,
       topic: 0,
       dashboard: 0,
-    });
+      glossaryTerm: 0,
+    } as Record<EntityType, number>);
     const [activeFilter, setActiveFilter] = useState<SearchIndex>(
       SearchIndex.TABLE
     );
-    const { glossaryName } = useParams<{ glossaryName: string }>();
+    const { glossaryName, fqn } =
+      useParams<{ glossaryName: string; fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [total, setTotal] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
 
+    const tabs = useMemo(() => {
+      return AssetsFilterOptions.map((option) => {
+        return {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                {option.label}
+              </Space>
+
+              <span>
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </div>
+          ),
+          key: option.value,
+          value: option.value,
+        };
+      });
+    }, [itemCount]);
+
+    const queryParam = useMemo(() => {
+      if (type === AssetsOfEntity.DOMAIN) {
+        return `(domain.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+      } else {
+        return `(tags.tagFQN:"${glossaryName}")`;
+      }
+    }, [type, glossaryName, fqn]);
+
+    const searchIndexes = useMemo(() => {
+      const indexesToFetch = [
+        SearchIndex.TABLE,
+        SearchIndex.TOPIC,
+        SearchIndex.DASHBOARD,
+        SearchIndex.PIPELINE,
+        SearchIndex.MLMODEL,
+        SearchIndex.CONTAINER,
+        SearchIndex.STORED_PROCEDURE,
+        SearchIndex.DASHBOARD_DATA_MODEL,
+      ];
+      if (type !== AssetsOfEntity.GLOSSARY) {
+        indexesToFetch.push(SearchIndex.GLOSSARY);
+      }
+
+      return indexesToFetch;
+    }, [type]);
+
     const fetchCountsByEntity = () => {
       Promise.all(
-        [
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-        ].map((index) =>
-          searchData('', 0, 0, `(tags.tagFQN:"${glossaryName}")`, '', '', index)
+        searchIndexes.map((index) =>
+          searchData('', 0, 0, queryParam, '', '', index)
         )
       )
         .then(
@@ -101,6 +154,9 @@ const AssetsTabs = forwardRef(
             pipelineResponse,
             mlmodelResponse,
             containerResponse,
+            storedProcedureResponse,
+            dashboardDataModelResponse,
+            glossaryResponse,
           ]) => {
             const counts = {
               [EntityType.TOPIC]: topicResponse.data.hits.total.value,
@@ -109,13 +165,20 @@ const AssetsTabs = forwardRef(
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
+              [EntityType.STORED_PROCEDURE]:
+                storedProcedureResponse.data.hits.total.value,
+              [EntityType.DASHBOARD_DATA_MODEL]:
+                dashboardDataModelResponse.data.hits.total.value,
+              [EntityType.GLOSSARY_TERM]:
+                type !== AssetsOfEntity.GLOSSARY
+                  ? glossaryResponse.data.hits.total.value
+                  : 0,
             };
-            setItemCount(counts);
+
+            setItemCount(counts as Record<EntityType, number>);
 
             find(counts, (count, key) => {
               if (count > 0) {
-                key;
-
                 const option = AssetsFilterOptions.find((el) => el.key === key);
                 if (option) {
                   setActiveFilter(option.value);
@@ -155,7 +218,7 @@ const AssetsTabs = forwardRef(
             '',
             page,
             PAGE_SIZE,
-            `(tags.tagFQN:"${glossaryName}")`,
+            queryParam,
             '',
             '',
             index
@@ -188,6 +251,114 @@ const AssetsTabs = forwardRef(
       [activeFilter, currentPage]
     );
 
+    const assetListing = useMemo(
+      () =>
+        data.length ? (
+          <div className="assets-data-container">
+            {data.map(({ _source, _id = '' }, index) => (
+              <ExploreSearchCard
+                className={classNames(
+                  'm-b-sm cursor-pointer',
+                  selectedCard?.id === _source.id ? 'highlight-card' : ''
+                )}
+                handleSummaryPanelDisplay={setSelectedCard}
+                id={_id}
+                key={index}
+                showTags={false}
+                source={_source}
+              />
+            ))}
+            {total > PAGE_SIZE && data.length > 0 && (
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={{ total }}
+                pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                  setCurrentPage(currentPage)
+                }
+              />
+            )}
+          </div>
+        ) : (
+          <div className="m-t-xlg">
+            <ErrorPlaceHolder
+              doc={GLOSSARIES_DOCS}
+              heading={t('label.asset')}
+              permission={permissions.Create}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={onAddAsset}
+            />
+          </div>
+        ),
+      [data, total, currentPage, selectedCard, setSelectedCard]
+    );
+
+    const assetsHeader = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return AssetsFilterOptions.map((option) => {
+          const buttonStyle =
+            activeFilter === option.value
+              ? {
+                  ghost: true,
+                  type: 'primary' as ButtonType,
+                  style: { background: 'white' },
+                }
+              : {};
+
+          return itemCount[option.key] > 0 ? (
+            <Button
+              {...buttonStyle}
+              className="m-r-sm m-b-sm"
+              key={option.value}
+              onClick={() => {
+                setCurrentPage(1);
+                setActiveFilter(option.value);
+              }}>
+              {startCase(option.label)}{' '}
+              <span className="p-l-xs">
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </Button>
+          ) : null;
+        });
+      } else {
+        return (
+          <Menu
+            className="p-t-sm"
+            items={tabs}
+            selectedKeys={[activeFilter]}
+            onClick={(value) => {
+              setCurrentPage(1);
+              setActiveFilter(value.key as SearchIndex);
+              setSelectedCard(undefined);
+            }}
+          />
+        );
+      }
+    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+
+    const layout = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return (
+          <>
+            {assetsHeader}
+            {assetListing}
+          </>
+        );
+      } else {
+        return (
+          <PageLayoutV1 leftPanel={assetsHeader} pageTitle="">
+            {assetListing}
+          </PageLayoutV1>
+        );
+      }
+    }, [viewType, assetsHeader, assetListing, selectedCard]);
+
     useEffect(() => {
       fetchAssets({ index: activeFilter, page: currentPage });
     }, [activeFilter, currentPage]);
@@ -219,75 +390,13 @@ const AssetsTabs = forwardRef(
     }
 
     return (
-      <div className="p-md assets-tab-container" data-testid="table-container">
-        {AssetsFilterOptions.map((option) => {
-          const buttonStyle =
-            activeFilter === option.value
-              ? {
-                  ghost: true,
-                  type: 'primary' as ButtonType,
-                  style: { background: 'white' },
-                }
-              : {};
-
-          return itemCount[option.key] > 0 ? (
-            <Button
-              {...buttonStyle}
-              className="m-r-sm m-b-sm"
-              key={option.value}
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveFilter(option.value);
-              }}>
-              {startCase(option.label)}{' '}
-              <span className="p-l-xs">
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter === option.value
-                )}
-              </span>
-            </Button>
-          ) : null;
-        })}
-        {data.length ? (
-          <>
-            {data.map(({ _source, _id = '' }, index) => (
-              <ExploreSearchCard
-                className={classNames(
-                  'm-b-sm cursor-pointer',
-                  selectedCard?.id === _source.id ? 'highlight-card' : ''
-                )}
-                handleSummaryPanelDisplay={setSelectedCard}
-                id={_id}
-                key={index}
-                showTags={false}
-                source={_source}
-              />
-            ))}
-            {total > PAGE_SIZE && data.length > 0 && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={{ total }}
-                pagingHandler={(page: string | number) =>
-                  setCurrentPage(Number(page))
-                }
-              />
-            )}
-          </>
-        ) : (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={onAddAsset}
-            />
-          </div>
+      <div
+        className={classNames(
+          'assets-tab-container',
+          viewType === AssetsViewType.PILLS ? 'p-md' : ''
         )}
+        data-testid="table-container">
+        {layout}
       </div>
     );
   }

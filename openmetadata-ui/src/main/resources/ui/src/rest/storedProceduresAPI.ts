@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -19,8 +20,16 @@ import { Include } from 'generated/type/include';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from 'utils/APIUtils';
-import { ListDataModelParams } from './dashboardAPI';
 import APIClient from './index';
+
+export interface ListStoredProcedureParams {
+  databaseSchema?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+}
 
 const URL = '/storedProcedures';
 
@@ -32,7 +41,9 @@ const configOptions = {
   headers: { 'Content-type': 'application/json' },
 };
 
-export const getStoredProceduresList = async (params?: ListDataModelParams) => {
+export const getStoredProceduresList = async (
+  params?: ListStoredProcedureParams
+) => {
   const response = await APIClient.get<PagingResponse<ServicePageData[]>>(URL, {
     params,
   });
@@ -148,6 +159,18 @@ export const restoreStoredProcedures = async (id: string) => {
     RestoreRequestType,
     AxiosResponse<StoredProcedure>
   >(`${URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateStoredProcedureVotes = async (
+  id: string,
+  data: QueryVote
+) => {
+  const response = await APIClient.put<
+    QueryVote,
+    AxiosResponse<StoredProcedure>
+  >(`${URL}/${id}/vote`, data);
 
   return response.data;
 };

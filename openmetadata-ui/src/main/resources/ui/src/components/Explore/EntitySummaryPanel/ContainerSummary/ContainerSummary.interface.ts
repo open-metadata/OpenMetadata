@@ -12,10 +12,11 @@
  */
 import { Container } from 'generated/entity/data/container';
 import { TagLabel } from 'generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 
 export interface ContainerSummaryProps {
   entityDetails: Container;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
 }

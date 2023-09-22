@@ -21,6 +21,8 @@ from typing import Optional, Union
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = (
@@ -177,6 +179,20 @@ def get_log_name(record: Entity) -> str:
 
 
 @get_log_name.register
+def _(record: OMetaTagAndClassification) -> str:
+    """
+    Given a LineageRequest, parse its contents to return
+    a string that we can log
+    """
+    name = (
+        record.fqn.__root__
+        if record.fqn
+        else record.classification_request.name.__root__
+    )
+    return f"{type(record).__name__} [{name}]"
+
+
+@get_log_name.register
 def _(record: AddLineageRequest) -> str:
     """
     Given a LineageRequest, parse its contents to return
@@ -201,3 +217,11 @@ def _(record: DeleteEntity) -> str:
     Capture information about the deleted Entity
     """
     return f"{type(record.entity).__name__} [{record.entity.name.__root__}]"
+
+
+@get_log_name.register
+def _(record: OMetaLifeCycleData) -> str:
+    """
+    Capture the lifecycle changes of an Entity
+    """
+    return f"{type(record.entity).__name__} Lifecycle [{record.entity.name.__root__}]"

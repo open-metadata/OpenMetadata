@@ -136,6 +136,10 @@ public final class CatalogExceptionMessage {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
 
+  public static String notReviewer(String name) {
+    return String.format("User '%s' is not a reviewer", name);
+  }
+
   public static String permissionDenied(
       String user, MetadataOperation operation, String roleName, String policyName, String ruleName) {
     if (roleName != null) {
@@ -186,6 +190,11 @@ public final class CatalogExceptionMessage {
 
   public static String invalidTeamOwner(TeamType teamType) {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
+  }
+
+  public static String invalidOwnerType(String entityType) {
+    return String.format(
+        "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.", entityType);
   }
 
   public static String failedToParse(String message) {

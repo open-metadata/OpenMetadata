@@ -12,6 +12,7 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { Operation } from 'fast-json-patch';
 import { CSVImportResult } from 'generated/type/csvImportResult';
 import { EntityHistory } from 'generated/type/entityHistory';
@@ -157,11 +158,10 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
 
-  const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
-    `/glossaryTerms/${id}`,
-    patch,
-    configOptions
-  );
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${id}`, patch, configOptions);
 
   return response.data;
 };
@@ -230,6 +230,30 @@ export const getGlossaryTermsVersion = async (id: string, version: string) => {
   const url = `/glossaryTerms/${id}/versions/${version}`;
 
   const response = await APIClient.get<GlossaryTerm>(url);
+
+  return response.data;
+};
+
+export const updateGlossaryVotes = async (
+  id: string,
+  data: VotingDataProps
+) => {
+  const response = await APIClient.put<
+    VotingDataProps,
+    AxiosResponse<Glossary>
+  >(`/glossaries/${id}/vote`, data);
+
+  return response.data;
+};
+
+export const updateGlossaryTermVotes = async (
+  id: string,
+  data: VotingDataProps
+) => {
+  const response = await APIClient.put<
+    VotingDataProps,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${id}/vote`, data);
 
   return response.data;
 };

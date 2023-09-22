@@ -33,12 +33,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.FIELD_DELETED;
-import static org.openmetadata.service.Entity.FIELD_EXTENSION;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -50,24 +45,9 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getEntityReference;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
-import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.assertResponseContains;
-import static org.openmetadata.service.util.TestUtils.checkUserFollowing;
-import static org.openmetadata.service.util.TestUtils.validateEntityReference;
-import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -85,6 +65,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -92,6 +73,7 @@ import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.commons.text.RandomStringGenerator.Builder;
@@ -130,6 +112,7 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -157,8 +140,10 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.AccessDetails;
 import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -168,6 +153,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -224,6 +210,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final String allFields;
   private final String systemEntityName; // System entity provided by the system that can't be deleted
   protected final boolean supportsFollowers;
+  protected final boolean supportsVotes;
   protected final boolean supportsOwner;
   protected final boolean supportsTags;
   protected boolean supportsPatch = true;
@@ -235,6 +222,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected String supportedNameCharacters = "_'-.&()" + RANDOM_STRING_GENERATOR.generate(1);
 
   protected final boolean supportsCustomExtension;
+
+  protected final boolean supportsLifeCycle;
 
   public static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
   public static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
@@ -393,10 +382,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Set<String> allowedFields = Entity.getEntityFields(entityClass);
     this.supportsEmptyDescription = !EntityUtil.isDescriptionRequired(entityClass);
     this.supportsFollowers = allowedFields.contains(FIELD_FOLLOWERS);
+    this.supportsVotes = allowedFields.contains(FIELD_VOTES);
     this.supportsOwner = allowedFields.contains(FIELD_OWNER);
     this.supportsTags = allowedFields.contains(FIELD_TAGS);
     this.supportsSoftDelete = allowedFields.contains(FIELD_DELETED);
     this.supportsCustomExtension = allowedFields.contains(FIELD_EXTENSION);
+    this.supportsLifeCycle = allowedFields.contains(FIELD_LIFE_CYCLE);
     this.systemEntityName = systemEntityName;
   }
 
@@ -1159,6 +1150,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldDeleted(change, FIELD_OWNER, USER1_REF);
     patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), false);
+
+    // set random type as entity. Check if the ownership validate.
+    T newEntity = entity;
+    String newJson = JsonUtils.pojoToJson(newEntity);
+    newEntity.setOwner(TEST_DEFINITION1.getEntityReference());
+    fieldUpdated(change, FIELD_OWNER, TEST_DEFINITION1, USER1_REF);
+    assertResponse(
+        () -> patchEntity(newEntity.getId(), newJson, newEntity, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidOwnerType(TEST_DEFINITION));
   }
 
   @Test
@@ -1820,6 +1821,48 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  @Test
+  void postPutPatch_entityLifeCycle(TestInfo test) throws IOException {
+    if (!supportsLifeCycle) {
+      return;
+    }
+    LifeCycle lifeCycle =
+        new LifeCycle().withAccessed(new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER1_REF));
+    T entity =
+        createEntity(
+            createRequest(getEntityName(test), "description", null, null).withLifeCycle(lifeCycle), ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity.getLifeCycle());
+    T entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    String json = JsonUtils.pojoToJson(entity);
+    lifeCycle.setCreated(new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2_REF));
+    entity.setLifeCycle(lifeCycle);
+    T patchEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(entity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    json = JsonUtils.pojoToJson(entity1);
+    lifeCycle.setUpdated(new AccessDetails().withTimestamp(1695059910L).withAccessedByAProcess("test"));
+    entity1.setLifeCycle(lifeCycle);
+    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+
+    // set createdAt to older time , this shouldn't be overriding
+    LifeCycle lifeCycle1 =
+        new LifeCycle().withCreated(new AccessDetails().withTimestamp(1695059400L).withAccessedByAProcess("test12"));
+    json = JsonUtils.pojoToJson(entity1);
+    entity1.setLifeCycle(lifeCycle1);
+    patchEntity = patchEntity(entity1.getId(), json, entity1, ADMIN_AUTH_HEADERS);
+    // check against the older lifecycle, the contents should be unmodified
+    assertLifeCycle(lifeCycle, patchEntity.getLifeCycle());
+    entity1 = getEntity(patchEntity.getId(), "lifeCycle", ADMIN_AUTH_HEADERS);
+    assertLifeCycle(lifeCycle, entity1.getLifeCycle());
+  }
+
   private static List<NamedXContentRegistry.Entry> getDefaultNamedXContents() {
     Map<String, ContextParser<Object, ? extends Aggregation>> map = new HashMap<>();
     map.put(TopHitsAggregationBuilder.NAME, (p, c) -> ParsedTopHits.fromXContent(p, (String) c));
@@ -2305,7 +2348,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected change event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(300 * 100L)) // 300 iterations for 30 seconds
+        .atMost(Duration.ofMillis(600 * 100L)) // 300 iterations for 30 seconds
         .until(
             () ->
                 eventHolder.hasExpectedEvent(
@@ -2350,7 +2393,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     Awaitility.await("Wait for expected deleted event at timestamp " + timestamp)
         .pollInterval(Duration.ofMillis(100L))
-        .atMost(Duration.ofMillis(100 * 100L)) // 100 iterations
+        .atMost(Duration.ofMillis(600 * 100L)) // 100 iterations
         .until(
             () ->
                 eventHolder.hasDeletedEvent(getChangeEvents(null, null, null, entityType, timestamp, authHeaders), id));
@@ -2422,6 +2465,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       actualTags.forEach(tagLabel -> assertNotNull(tagLabel.getDescription()));
     } else if (fieldName.startsWith("extension")) { // Custom properties related extension field changes
       assertEquals(expected.toString(), actual.toString());
+    } else if (fieldName.equals("domainType")) { // Custom properties related extension field changes
+      assertEquals(expected, DomainType.fromValue(actual.toString()));
+    } else if (fieldName.equals("style")) {
+      assertStyle((Style) expected, JsonUtils.readValue(actual.toString(), Style.class));
     } else {
       // All the other fields
       assertEquals(expected, actual, "Field name " + fieldName);
@@ -2691,15 +2738,17 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
+  @SneakyThrows
   protected void importCsvAndValidate(
-      String entityName, List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords)
-      throws HttpResponseException {
+      String entityName, List<CsvHeader> csvHeaders, List<String> createRecords, List<String> updateRecords) {
     createRecords = listOrEmpty(createRecords);
     updateRecords = listOrEmpty(updateRecords);
 
     // Import CSV to create new records and update existing records with dryRun=true first
     String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     CsvImportResult dryRunResult = importCsv(entityName, csv, true);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
 
     // Validate the imported result summary - it should include both created and updated records
     int totalRows = 1 + createRecords.size() + updateRecords.size();
@@ -2709,6 +2758,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Import CSV to create new records and update existing records with dryRun=false to really import the data
     CsvImportResult result = importCsv(entityName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertEquals(dryRunResult.withDryRun(false), result);
 
     // Finally, export CSV and ensure the exported CSV is same as imported CSV
@@ -2788,5 +2838,39 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
+  }
+
+  public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {
+    if (expected == null) {
+      assertNull(actual);
+    } else {
+      if (expected.getAccessed() != null) {
+        assertEquals(expected.getAccessed().getTimestamp(), actual.getAccessed().getTimestamp());
+        if (expected.getAccessed().getAccessedBy() != null) {
+          assertReference(
+              expected.getAccessed().getAccessedBy(),
+              JsonUtils.convertValue(actual.getAccessed().getAccessedBy(), EntityReference.class));
+        }
+        assertEquals(expected.getAccessed().getAccessedByAProcess(), actual.getAccessed().getAccessedByAProcess());
+      }
+      if (expected.getCreated() != null) {
+        assertEquals(expected.getCreated().getTimestamp(), actual.getCreated().getTimestamp());
+        if (expected.getCreated().getAccessedBy() != null) {
+          assertReference(
+              expected.getCreated().getAccessedBy(),
+              JsonUtils.convertValue(actual.getCreated().getAccessedBy(), EntityReference.class));
+        }
+        assertEquals(expected.getCreated().getAccessedByAProcess(), actual.getCreated().getAccessedByAProcess());
+      }
+      if (expected.getUpdated() != null) {
+        assertEquals(expected.getUpdated().getTimestamp(), actual.getUpdated().getTimestamp());
+        if (expected.getUpdated().getAccessedBy() != null) {
+          assertReference(
+              expected.getUpdated().getAccessedBy(),
+              JsonUtils.convertValue(actual.getUpdated().getAccessedBy(), EntityReference.class));
+          assertEquals(expected.getUpdated().getAccessedByAProcess(), actual.getUpdated().getAccessedByAProcess());
+        }
+      }
+    }
   }
 }

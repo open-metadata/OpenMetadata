@@ -21,6 +21,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
@@ -44,6 +45,7 @@ import {
   getDataModelsByName,
   patchDataModelDetails,
   removeDataModelFollower,
+  updateDataModelVotes,
 } from 'rest/dataModelsAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityMissingError } from 'utils/CommonUtils';
@@ -56,8 +58,7 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN } =
-    useParams<{ dashboardDataModelFQN: string }>();
+  const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -125,7 +126,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers',
+        'owner,tags,followers,votes',
         Include.All
       );
       setDataModelData(response);
@@ -301,6 +302,29 @@ const DataModelsPage = () => {
     });
   };
 
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDataModelVotes(id, data);
+      const details = await getDataModelsByName(
+        dashboardDataModelFQN,
+        'owner,tags,followers,votes',
+        Include.All
+      );
+      setDataModelData(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateDataModelDetailsState = useCallback((data) => {
+    const updatedData = data as DashboardDataModel;
+
+    setDataModelData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -341,7 +365,9 @@ const DataModelsPage = () => {
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
+      updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}
+      onUpdateVote={updateVote}
     />
   );
 };

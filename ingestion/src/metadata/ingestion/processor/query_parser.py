@@ -20,6 +20,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.models import Either, StackTraceError
@@ -27,6 +28,7 @@ from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -41,11 +43,12 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
     :return: QueryParserData
     """
 
-    start_date = record.analysisDate
-    if isinstance(record.analysisDate, str):
-        start_date = datetime.datetime.strptime(
-            str(record.analysisDate), "%Y-%m-%d %H:%M:%S"
-        ).date()
+    start_time = record.analysisDate
+    if isinstance(start_time, DateTime):
+        start_date = start_time.__root__.date()
+        start_time = datetime.datetime.strptime(str(start_date.isoformat()), "%Y-%m-%d")
+
+    start_time = convert_timestamp_to_milliseconds(int(start_time.timestamp()))
 
     lineage_parser = LineageParser(record.query, dialect=dialect)
 
@@ -61,7 +64,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         query_type=record.query_type,
         exclude_usage=record.exclude_usage,
         userName=record.userName,
-        date=int(start_date.__root__.timestamp()),
+        date=start_time,
         serviceName=record.serviceName,
         duration=record.duration,
     )

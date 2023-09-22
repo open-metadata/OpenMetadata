@@ -30,6 +30,8 @@ import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.compon
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import Voting from 'components/Voting/Voting.component';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityAction, EntityType } from 'enums/entity.enum';
@@ -47,11 +49,11 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from 'rest/glossaryAPI';
-import { getEntityDeleteMessage } from 'utils/CommonUtils';
+import { getCurrentUserId, getEntityDeleteMessage } from 'utils/CommonUtils';
+import { getEntityVoteStatus } from 'utils/EntityUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
-  getGlossaryTermsPath,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
@@ -68,6 +70,7 @@ export interface GlossaryHeaderProps {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
 }
 
@@ -79,12 +82,15 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
+  updateVote,
   isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { glossaryName: glossaryFqn, version } = useParams<{
-    glossaryName: string;
+  const USER_ID = getCurrentUserId();
+
+  const { fqn, version } = useParams<{
+    fqn: string;
     version: string;
   }>();
   const { showModal } = useEntityExportModalProvider();
@@ -103,8 +109,8 @@ const GlossaryHeader = ({
   const fetchCurrentGlossaryInfo = async () => {
     try {
       const res = isGlossary
-        ? await getGlossariesById(glossaryFqn)
-        : await getGlossaryTermsById(glossaryFqn);
+        ? await getGlossariesById(fqn)
+        : await getGlossaryTermsById(fqn);
 
       setLatestGlossaryData(res);
     } catch (error) {
@@ -116,9 +122,14 @@ const GlossaryHeader = ({
     return permissions.EditAll || permissions.EditDisplayName;
   }, [permissions]);
 
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(USER_ID, selectedData.votes),
+    [selectedData.votes, USER_ID]
+  );
+
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
-  }, [glossaryFqn]);
+  }, [fqn]);
 
   const handleGlossaryImport = () =>
     history.push(
@@ -131,9 +142,7 @@ const GlossaryHeader = ({
   const handleVersionClick = async () => {
     let path: string;
     if (isVersionView) {
-      path = isGlossary
-        ? getGlossaryPath(latestGlossaryData?.fullyQualifiedName)
-        : getGlossaryTermsPath(latestGlossaryData?.fullyQualifiedName ?? '');
+      path = getGlossaryPath(latestGlossaryData?.fullyQualifiedName);
     } else {
       path = isGlossary
         ? getGlossaryVersionsPath(
@@ -168,6 +177,8 @@ const GlossaryHeader = ({
     onUpdate(updatedDetails);
     setIsNameEditing(false);
   };
+
+  const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
 
   const addButtonContent = [
     {
@@ -387,54 +398,60 @@ const GlossaryHeader = ({
             serviceName=""
           />
         </Col>
-        <Col flex="280px">
-          <div style={{ textAlign: 'right' }}>
-            <div>
-              {createButtons}
+        <Col flex="360px">
+          <div className="d-flex gap-2 justify-end">
+            {createButtons}
 
-              <ButtonGroup className="p-l-xs" size="small">
-                {selectedData && selectedData.version && (
-                  <Button
+            <ButtonGroup className="p-l-xs" size="small">
+              {updateVote && (
+                <Voting
+                  voteStatus={voteStatus}
+                  votes={selectedData.votes}
+                  onUpdateVote={handleUpdateVote}
+                />
+              )}
+
+              {selectedData && selectedData.version && (
+                <Button
+                  className={classNames('', {
+                    'text-primary border-primary': version,
+                  })}
+                  data-testid="version-button"
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={handleVersionClick}>
+                  <Typography.Text
                     className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(selectedData.version)}
-                    </Typography.Text>
-                  </Button>
-                )}
+                      'text-primary': version,
+                    })}>
+                    {toString(selectedData.version)}
+                  </Typography.Text>
+                </Button>
+              )}
 
-                {!isVersionView && (
-                  <Dropdown
-                    align={{ targetOffset: [-12, 0] }}
-                    className="m-l-xs"
-                    menu={{
-                      items: manageButtonContent,
-                    }}
-                    open={showActions}
-                    overlayClassName="glossary-manage-dropdown-list-container"
-                    overlayStyle={{ width: '350px' }}
-                    placement="bottomRight"
-                    trigger={['click']}
-                    onOpenChange={setShowActions}>
-                    <Tooltip placement="right">
-                      <Button
-                        className="glossary-manage-dropdown-button tw-px-1.5"
-                        data-testid="manage-button"
-                        onClick={() => setShowActions(true)}>
-                        <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                      </Button>
-                    </Tooltip>
-                  </Dropdown>
-                )}
-              </ButtonGroup>
-            </div>
+              {!isVersionView && (
+                <Dropdown
+                  align={{ targetOffset: [-12, 0] }}
+                  className="m-l-xs"
+                  menu={{
+                    items: manageButtonContent,
+                  }}
+                  open={showActions}
+                  overlayClassName="glossary-manage-dropdown-list-container"
+                  overlayStyle={{ width: '350px' }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onOpenChange={setShowActions}>
+                  <Tooltip placement="right">
+                    <Button
+                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      onClick={() => setShowActions(true)}>
+                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                    </Button>
+                  </Tooltip>
+                </Dropdown>
+              )}
+            </ButtonGroup>
           </div>
         </Col>
       </Row>

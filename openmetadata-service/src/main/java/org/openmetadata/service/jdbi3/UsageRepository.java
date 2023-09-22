@@ -28,7 +28,6 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -58,47 +57,40 @@ public class UsageRepository {
     this.dao = dao;
   }
 
-  @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) {
     EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
-  @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> create(String entityType, String id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return addUsage(POST, entityType, id, usage);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> createByName(String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(POST, entityType, ref.getId().toString(), usage);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> createOrUpdate(String entityType, UUID id, DailyCount usage) {
     // Validate data entity for which usage is being collected
     Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
     return addUsage(PUT, entityType, id.toString(), usage);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> createOrUpdateByName(String entityType, String fullyQualifiedName, DailyCount usage) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName, Include.NON_DELETED);
     return addUsage(PUT, entityType, ref.getId().toString(), usage);
   }
 
-  @Transaction
   public void computePercentile(String entityType, String date) {
     dao.usageDAO().computePercentile(entityType, date);
   }

@@ -12,7 +12,6 @@
 """
 OpenMetadata high-level API Table Life Cycle test
 """
-import datetime
 import uuid
 from unittest import TestCase
 
@@ -45,13 +44,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.lifeCycle import (
-    Accessed,
-    Created,
-    Deleted,
-    LifeCycleProperties,
-    Updated,
-)
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -145,28 +138,16 @@ class OMetaLifeCycleTest(TestCase):
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
-        cls.life_cycle = LifeCycleProperties(
-            created=Created(
-                created_at=datetime.datetime(
-                    2023, 9, 1, 12, 0, tzinfo=datetime.timezone.utc
-                ),
-                created_by=cls.created_user_ref,
+        cls.life_cycle = LifeCycle(
+            created=AccessDetails(
+                timestamp=1693569600000, accessedBy=cls.created_user_ref
             ),
-            updated=Updated(
-                updated_at=datetime.datetime(
-                    2023, 9, 2, 14, 30, 0, tzinfo=datetime.timezone.utc
-                ),
-                updated_by=cls.updated_user_ref,
+            updated=AccessDetails(
+                timestamp=1693665000000,
+                accessedBy=cls.updated_user_ref,
             ),
-            accessed=Accessed(
-                accessed_at=datetime.datetime(
-                    2023, 9, 3, 15, 45, 0, tzinfo=datetime.timezone.utc
-                )
-            ),
-            deleted=Deleted(
-                deleted_at=datetime.datetime(
-                    2023, 9, 4, 16, 30, 0, tzinfo=datetime.timezone.utc
-                )
+            accessed=AccessDetails(
+                timestamp=1693755900000, accessedByAProcess="OpenMetadata"
             ),
         )
 
@@ -208,10 +189,8 @@ class OMetaLifeCycleTest(TestCase):
         table_entity = self.metadata.get_by_name(
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
-        res = self.metadata.ingest_life_cycle_data(
-            entity=table_entity, life_cycle_data=self.life_cycle
-        )
-        self.assertEqual(res, self.life_cycle)
+
+        self.metadata.patch_life_cycle(entity=table_entity, life_cycle=self.life_cycle)
 
     def test_life_cycle_get_methods(self):
         """
@@ -239,31 +218,24 @@ class OMetaLifeCycleTest(TestCase):
         table_entity = self.metadata.get_by_name(
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
-        new_accessed = Accessed(
-            accessed_at=datetime.datetime(
-                2023, 9, 6, 15, 45, 0, tzinfo=datetime.timezone.utc
-            ),
-            accessed_by=self.updated_user_ref,
+        new_accessed = AccessDetails(
+            timestamp=1694015100000,
+            accessedBy=self.updated_user_ref,
         )
 
-        new_updated = Updated(
-            updated_at=datetime.datetime(
-                2023, 9, 1, 14, 30, 0, tzinfo=datetime.timezone.utc
-            ),
-            updated_by=self.updated_user_ref,
+        new_updated = AccessDetails(
+            timestamp=1693578600000,
+            accessedBy=self.updated_user_ref,
         )
 
-        self.metadata.ingest_life_cycle_data(
+        self.metadata.patch_life_cycle(
             entity=table_entity,
-            life_cycle_data=LifeCycleProperties(
-                accessed=new_accessed, updated=new_updated
-            ),
+            life_cycle=LifeCycle(accessed=new_accessed, updated=new_updated),
         )
 
         res = self.metadata.get_by_name(
             entity=Table, fqn=self.entity.fullyQualifiedName, fields=["lifeCycle"]
         )
         self.assertEqual(self.life_cycle.created, res.lifeCycle.created)
-        self.assertEqual(self.life_cycle.deleted, res.lifeCycle.deleted)
         self.assertEqual(new_accessed, res.lifeCycle.accessed)
         self.assertNotEqual(new_updated, res.lifeCycle.updated)

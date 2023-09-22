@@ -15,7 +15,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <springfox-version>2.7.0</springfox-version>
-        <feign-version>12.4</feign-version>
+        <feign-version>12.5</feign-version>
         <jackson-databind-nullable-version>0.2.6</jackson-databind-nullable-version>
         <scribejava-apis-version>8.3.3</scribejava-apis-version>
         <swagger-parser-version>2.1.16</swagger-parser-version>
@@ -83,7 +83,7 @@
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.13.8</version>
+            <version>1.13.10</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

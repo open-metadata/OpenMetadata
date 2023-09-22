@@ -16,7 +16,6 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
@@ -32,6 +31,7 @@ import {
 import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -60,8 +60,10 @@ import {
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
+  updateStoredProcedureVotes,
 } from 'rest/storedProceduresAPI';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
@@ -76,8 +78,8 @@ const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const USER_ID = getCurrentUserId();
   const history = useHistory();
-  const { storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
-    useParams<{ storedProcedureFQN: string; tab: string }>();
+  const { fqn: storedProcedureFQN, tab: activeTab = EntityTabs.CODE } =
+    useParams<{ fqn: string; tab: string }>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
@@ -162,6 +164,15 @@ const StoredProcedurePage = () => {
       );
 
       setStoredProcedure(response);
+
+      addToRecentViewed({
+        displayName: getEntityName(response),
+        entityType: EntityType.STORED_PROCEDURE,
+        fqn: response.fullyQualifiedName ?? '',
+        serviceType: response.serviceType,
+        timestamp: 0,
+        id: response.id ?? '',
+      });
     } catch (error) {
       // Error here
     } finally {
@@ -189,7 +200,7 @@ const StoredProcedurePage = () => {
 
       return patchStoredProceduresDetails(storedProcedureId ?? '', jsonPatch);
     },
-    [storedProcedure]
+    [storedProcedure, storedProcedureId]
   );
 
   const handleStoreProcedureUpdate = async (
@@ -323,7 +334,7 @@ const StoredProcedurePage = () => {
       await restoreStoredProcedures(storedProcedureId);
       showSuccessToast(
         t('message.restore-entities-success', {
-          entity: t('label.stored-procedure'),
+          entity: t('label.stored-procedure-plural'),
         }),
         2000
       );
@@ -332,7 +343,7 @@ const StoredProcedurePage = () => {
       showErrorToast(
         error as AxiosError,
         t('message.restore-entities-error', {
-          entity: t('label.stored-procedure'),
+          entity: t('label.stored-procedure-plural'),
         })
       );
     }
@@ -367,6 +378,15 @@ const StoredProcedurePage = () => {
       isSoftDelete ? handleToggleDelete() : history.push('/'),
     []
   );
+
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as StoredProcedure;
+
+    setStoredProcedure((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
@@ -439,9 +459,16 @@ const StoredProcedurePage = () => {
     setThreadLink('');
   };
 
-  const onExtensionUpdate = async (updatedData: StoredProcedure) => {
-    await handleStoreProcedureUpdate(updatedData, 'extension');
-  };
+  const onExtensionUpdate = useCallback(
+    async (updatedData: StoredProcedure) => {
+      storedProcedure &&
+        (await saveUpdatedStoredProceduresData({
+          ...storedProcedure,
+          extension: updatedData.extension,
+        }));
+    },
+    [saveUpdatedStoredProceduresData, storedProcedure]
+  );
 
   const tabs = useMemo(
     () => [
@@ -478,7 +505,7 @@ const StoredProcedurePage = () => {
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <Card className="m-b-md">
+                <Card className="m-b-md" data-testid="code-component">
                   <SchemaEditor
                     editorClass="custom-code-mirror-theme full-screen-editor-height"
                     mode={{ name: CSMode.SQL }}
@@ -574,9 +601,6 @@ const StoredProcedurePage = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              storedProcedure as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.STORED_PROCEDURE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
@@ -603,6 +627,19 @@ const StoredProcedurePage = () => {
       storedProcedurePermissions,
     ]
   );
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateStoredProcedureVotes(id, data);
+      const details = await getStoredProceduresDetailsByFQN(
+        storedProcedureFQN,
+        STORED_PROCEDURE_DEFAULT_FIELDS
+      );
+      setStoredProcedure(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   useEffect(() => {
     if (storedProcedureFQN) {
@@ -637,11 +674,14 @@ const StoredProcedurePage = () => {
   }
 
   return (
-    <PageLayoutV1 className="bg-white" pageTitle={t('label.stored-procedure')}>
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle={t('label.stored-procedure-plural')}>
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={storedProcedure}
             entityType={EntityType.STORED_PROCEDURE}
             permissions={storedProcedurePermissions}
@@ -650,6 +690,7 @@ const StoredProcedurePage = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreStoredProcedures}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

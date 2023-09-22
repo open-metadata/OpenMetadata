@@ -18,6 +18,10 @@ import {
   PipelineType,
 } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
+  SearchConnection,
+  SearchService,
+} from 'generated/entity/services/searchService';
+import {
   StorageConnection,
   StorageService,
 } from 'generated/entity/services/storageService';
@@ -83,6 +87,14 @@ export interface EditObj {
   id?: string;
 }
 
+export type DomainSupportedServiceTypes =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService;
+
 export type ServicesType =
   | DatabaseService
   | MessagingService
@@ -90,7 +102,8 @@ export type ServicesType =
   | PipelineService
   | MlmodelService
   | MetadataService
-  | StorageService;
+  | StorageService
+  | SearchService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
@@ -104,7 +117,8 @@ export type ConfigData =
   | PipelineConnection
   | MlModelConnection
   | MetadataConnection
-  | StorageConnection;
+  | StorageConnection
+  | SearchConnection;
 
 export type IngestionWorkflowData = Pipeline & {
   name: string;

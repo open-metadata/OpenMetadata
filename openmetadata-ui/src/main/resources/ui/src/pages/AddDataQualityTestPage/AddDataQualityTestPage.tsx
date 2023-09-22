@@ -21,7 +21,7 @@ import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
-  const { entityTypeFQN } = useParams<Record<string, string>>();
+  const { entityTypeFQN } = useParams<{ entityTypeFQN: string }>();
   const [table, setTable] = useState({} as Table);
   const [isLoading, setIsLoading] = useState(true);
 

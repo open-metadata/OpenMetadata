@@ -78,3 +78,57 @@ CREATE TABLE IF NOT EXISTS table_entity_extension (
     json JSONB NOT NULL,
     PRIMARY KEY (id, extension)
 );
+
+-- Add index on fromId and fromEntity columns
+CREATE INDEX from_entity_type_index ON entity_relationship (fromId, fromEntity);
+
+-- Add index on toId and toEntity columns
+CREATE INDEX to_entity_type_index ON entity_relationship (toId, toEntity);
+
+ALTER TABLE tag DROP CONSTRAINT IF EXISTS tag_fqnhash_key;
+
+ALTER TABLE tag ADD CONSTRAINT unique_fqnHash UNIQUE (fqnHash);
+
+ALTER TABLE tag ADD CONSTRAINT tag_pk PRIMARY KEY (id);
+
+
+-- rename viewParsingTimeoutLimit for queryParsingTimeoutLimit
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(
+  json::jsonb #- '{sourceConfig,config,viewParsingTimeoutLimit}',
+  '{sourceConfig,config,queryParsingTimeoutLimit}',
+  (json #> '{sourceConfig,config,viewParsingTimeoutLimit}')::jsonb,
+  true
+)
+WHERE json #>> '{pipelineType}' = 'metadata';
+
+-- Rename sandboxDomain for instanceDomain
+UPDATE dbservice_entity
+SET json = jsonb_set(
+  json::jsonb #- '{connection,config,sandboxDomain}',
+  '{connection,config,instanceDomain}',
+  (json #> '{connection,config,sandboxDomain}')::jsonb,
+  true
+)
+WHERE serviceType = 'DomoDatabase';
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json::jsonb #- '{connection,config,sandboxDomain}',
+  '{connection,config,instanceDomain}',
+  (json #> '{connection,config,sandboxDomain}')::jsonb,
+  true
+)
+WHERE serviceType = 'DomoDashboard';
+
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+  json::jsonb #- '{connection,config,sandboxDomain}',
+  '{connection,config,instanceDomain}',
+  (json #> '{connection,config,sandboxDomain}')::jsonb,
+  true
+)
+WHERE serviceType = 'DomoPipeline';
+
+-- Query Entity supports service, which requires FQN for name
+ALTER TABLE query_entity RENAME COLUMN nameHash TO fqnHash;

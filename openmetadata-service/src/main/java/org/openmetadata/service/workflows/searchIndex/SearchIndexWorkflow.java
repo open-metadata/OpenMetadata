@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
@@ -48,12 +49,12 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexDefinition;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchDataInsightProcessor;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchEntitiesProcessor;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchIndexSink;
-import org.openmetadata.service.search.openSearch.OpenSearchDataInsightProcessor;
-import org.openmetadata.service.search.openSearch.OpenSearchEntitiesProcessor;
-import org.openmetadata.service.search.openSearch.OpenSearchIndexSink;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchDataInsightProcessor;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
+import org.openmetadata.service.search.opensearch.OpenSearchDataInsightProcessor;
+import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
+import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ReIndexingHandler;
@@ -74,8 +75,8 @@ public class SearchIndexWorkflow implements Runnable {
   private final CollectionDAO dao;
   private volatile boolean stopped = false;
 
-  public SearchIndexWorkflow(CollectionDAO dao, SearchClient client, EventPublisherJob request) {
-    this.dao = dao;
+  public SearchIndexWorkflow(SearchClient client, EventPublisherJob request) {
+    this.dao = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
     this.jobData = request;
     request
         .getEntities()

@@ -14,7 +14,6 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -41,6 +40,7 @@ const StoredProcedureVersion = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedTableName,
   storedProcedureFQN,
@@ -57,10 +57,17 @@ const StoredProcedureVersion = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const { tags, description, displayName } = useMemo(
     () => ({
@@ -145,9 +152,7 @@ const StoredProcedureVersion = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.STORED_PROCEDURE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -171,6 +176,7 @@ const StoredProcedureVersion = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.STORED_PROCEDURE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

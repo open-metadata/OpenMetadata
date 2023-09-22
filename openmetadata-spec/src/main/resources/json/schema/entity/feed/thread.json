@@ -15,6 +15,7 @@
         "UpdateDescription",
         "RequestTag",
         "UpdateTag",
+        "RequestApproval",
         "Generic"
       ],
       "javaEnums": [
@@ -29,6 +30,9 @@
         },
         {
           "name": "UpdateTag"
+        },
+        {
+          "name": "RequestApproval"
         },
         {
           "name": "Generic"

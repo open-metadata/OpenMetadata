@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -49,6 +50,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -372,6 +374,18 @@ class MetadataRestSink(Sink):
         return Either(right=record.test_case_results)
 
     @_run_dispatch.register
+    def write_data_insight_sample(
+        self, record: OMetaDataInsightSample
+    ) -> Either[ReportData]:
+        """
+        Use the /dataQuality/testCases endpoint to ingest sample test suite
+        """
+        self.metadata.add_data_insight_report_data(
+            record.record,
+        )
+        return Either(left=None, right=record.record)
+
+    @_run_dispatch.register
     def write_topic_sample_data(
         self, record: OMetaTopicSampleData
     ) -> Either[Union[TopicSampleData, Topic]]:
@@ -410,8 +424,8 @@ class MetadataRestSink(Sink):
         """
         Ingest the life cycle data
         """
-        self.metadata.ingest_life_cycle_data(
-            entity=record.entity, life_cycle_data=record.life_cycle_properties
+        self.metadata.patch_life_cycle(
+            entity=record.entity, life_cycle=record.life_cycle
         )
         return Either(right=record)
 
