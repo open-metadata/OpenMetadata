@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -23,7 +24,7 @@ public class TokenRepository {
     return result;
   }
 
-  public List<TokenInterface> findByUserIdAndType(String userId, String type) {
+  public List<TokenInterface> findByUserIdAndType(UUID userId, String type) {
     return dao.getTokenDAO().getAllUserTokenWithType(userId, type);
   }
 
@@ -47,7 +48,7 @@ public class TokenRepository {
     }
   }
 
-  public void deleteTokenByUserAndType(String userId, String type) {
+  public void deleteTokenByUserAndType(UUID userId, String type) {
     try {
       dao.getTokenDAO().deleteTokenByUserAndType(userId, type);
     } catch (Exception ex) {
