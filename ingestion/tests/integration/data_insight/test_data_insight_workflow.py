@@ -89,12 +89,6 @@ data_insight_config = {
 WEB_EVENT_DATA = [
     WebAnalyticEventData(
         eventId=None,
-        timestamp=int(
-            (
-                datetime.utcnow() - timedelta(days=1, milliseconds=randint(100, 999))
-            ).timestamp()
-            * 1000
-        ),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
             fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
@@ -110,12 +104,6 @@ WEB_EVENT_DATA = [
     ),
     WebAnalyticEventData(
         eventId=None,
-        timestamp=int(
-            (
-                datetime.utcnow() - timedelta(days=1, milliseconds=randint(100, 999))
-            ).timestamp()
-            * 1000
-        ),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
             fullUrl="http://localhost:8585/table/mysql.default.airflow_db.dag_run/profiler",
@@ -184,6 +172,12 @@ class DataInsightWorkflowTests(unittest.TestCase):
         )
 
         for event in WEB_EVENT_DATA:
+            event.timestamp = int(
+                (
+                    datetime.utcnow() - timedelta(days=1, milliseconds=randint(0, 999))
+                ).timestamp()
+                * 1000
+            )
             self.metadata.add_web_analytic_events(event)
 
         # we'll add the user ID
@@ -191,9 +185,12 @@ class DataInsightWorkflowTests(unittest.TestCase):
             WebAnalyticEventData(
                 eventId=None,
                 timestamp=int(
-                    (datetime.utcnow() - timedelta(days=1)).timestamp() * 1000
-                )
-                - random.randint(1, 999),
+                    (
+                        datetime.utcnow()
+                        - timedelta(days=1, milliseconds=randint(0, 999))
+                    ).timestamp()
+                    * 1000
+                ),
                 eventType=WebAnalyticEventType.PageView,
                 eventData=PageViewData(
                     fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
