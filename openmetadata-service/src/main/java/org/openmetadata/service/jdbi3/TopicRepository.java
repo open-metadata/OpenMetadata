@@ -383,7 +383,10 @@ public class TopicRepository extends EntityRepository<Topic> {
     public void entitySpecificUpdate() {
       recordChange("maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
       recordChange("minimumInSyncReplicas", original.getMinimumInSyncReplicas(), updated.getMinimumInSyncReplicas());
-      recordChange("partitions", original.getPartitions(), updated.getPartitions());
+      // Partitions is a required field. Cannot be null.
+      if (updated.getPartitions() != null) {
+        recordChange("partitions", original.getPartitions(), updated.getPartitions());
+      }
       recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
       recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());
