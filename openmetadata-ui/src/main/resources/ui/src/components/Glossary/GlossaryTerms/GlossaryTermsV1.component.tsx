@@ -12,6 +12,7 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
@@ -27,12 +28,14 @@ import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
+import { noop } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
-import { getCountBadge } from 'utils/CommonUtils';
+import { getCountBadge, getFeedCounts } from 'utils/CommonUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
+import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
@@ -76,6 +79,7 @@ const GlossaryTermsV1 = ({
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
   const [assetCount, setAssetCount] = useState<number>(0);
 
   const activeTab = useMemo(() => {
@@ -88,6 +92,14 @@ const GlossaryTermsV1 = ({
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
         : getGlossaryTermDetailsPath(glossaryFqn, tab),
     });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.GLOSSARY_TERM,
+      glossaryTerm.fullyQualifiedName ?? '',
+      setFeedCount
+    );
   };
 
   const onExtensionUpdate = async (updatedTable: GlossaryTerm) => {
@@ -162,6 +174,25 @@ const GlossaryTermsV1 = ({
                 />
               ),
             },
+            {
+              label: (
+                <TabsLabel
+                  count={feedCount}
+                  id={GlossaryTabs.ACTIVITY_FEED}
+                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
+                  name={t('label.activity-feed-and-task-plural')}
+                />
+              ),
+              key: GlossaryTabs.ACTIVITY_FEED,
+              children: (
+                <ActivityFeedTab
+                  entityType={EntityType.GLOSSARY_TERM}
+                  fqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  onFeedUpdate={getEntityFeedCount}
+                  onUpdateEntityDetails={noop}
+                />
+              ),
+            },
           ]
         : []),
       {
@@ -195,6 +226,7 @@ const GlossaryTermsV1 = ({
     termsLoading,
     activeTab,
     assetCount,
+    feedCount,
     isSummaryPanelOpen,
     isVersionView,
   ]);
@@ -221,6 +253,7 @@ const GlossaryTermsV1 = ({
 
   useEffect(() => {
     fetchGlossaryTermAssets();
+    getEntityFeedCount();
   }, [glossaryFqn]);
 
   const handleAssetSave = () => {

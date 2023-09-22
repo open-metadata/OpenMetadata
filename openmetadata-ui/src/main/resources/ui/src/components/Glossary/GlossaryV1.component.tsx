@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
@@ -376,4 +377,4 @@ const GlossaryV1 = ({
   );
 };
 
-export default GlossaryV1;
+export default withActivityFeed(GlossaryV1);
