@@ -145,12 +145,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     userRepository.createOrUpdate(uriInfo, registeredUser);
 
     // deleting the entry for the token from the Database
-    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
   }
 
   @Override
   public void resendRegistrationToken(UriInfo uriInfo, User registeredUser) throws IOException {
-    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
     sendEmailVerification(uriInfo, registeredUser);
   }
 
@@ -193,7 +193,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
     }
     // don't persist tokens delete existing
-    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
+    tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
     tokenRepository.insertToken(resetToken);
   }
 
@@ -225,7 +225,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     userRepository.createOrUpdate(uriInfo, storedUser);
 
     // delete the user's all password reset token as well , since already updated
-    tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
+    tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
 
     // Update user about Password Change
     try {

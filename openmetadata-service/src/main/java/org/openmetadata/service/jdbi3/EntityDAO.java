@@ -36,6 +36,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
@@ -247,7 +248,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("fqnHash") String fqnHash);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
-  int delete(@Define("table") String table, @Bind("id") String id);
+  int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
   /** Default methods that interfaces with implementation. Don't override */
   default void insert(EntityInterface entity, String fqn) {
@@ -375,7 +376,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
   }
 
-  default int delete(String id) {
+  default int delete(UUID id) {
     int rowsDeleted = delete(getTableName(), id);
     if (rowsDeleted <= 0) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
