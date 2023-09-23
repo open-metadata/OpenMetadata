@@ -92,8 +92,8 @@ class MlflowSource(MlModelServiceSource):
                 self.status.failed(
                     StackTraceError(
                         name=model.name,
-                        error="Invalid Version",
-                        stack_trace=f"Cannot find latest version from version list {model.latest_versions}",
+                        error="Version is missing",
+                        stack_trace=f"Unable to ingest model {model.name} due to missing version from version list{model.latest_versions}",  # pylint: disable=line-too-long
                     )
                 )
                 continue
