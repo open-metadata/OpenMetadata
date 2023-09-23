@@ -21,6 +21,7 @@ import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from 'components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
@@ -32,6 +33,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getDashboardDetailsPath, PRIMERY_COLOR } from 'constants/constants';
 import { compare } from 'fast-json-patch';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { TagSource } from 'generated/type/schema';
 import { groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions, TagOption } from 'Models';
@@ -39,7 +41,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreDashboard } from 'rest/dashboardAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
@@ -54,7 +56,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
@@ -65,6 +66,7 @@ import {
 } from './DashboardDetails.interface';
 
 const DashboardDetails = ({
+  updateDashboardDetailsState,
   charts,
   dashboardDetails,
   fetchDashboard,
@@ -80,8 +82,8 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
-    useParams<{ dashboardFQN: string; tab: EntityTabs }>();
+  const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
@@ -266,6 +268,19 @@ const DashboardDetails = ({
     await onDashboardUpdate(updatedDashboard, 'tags');
   };
 
+  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
+    const dataProductsEntity = updatedData?.map((item) => {
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
+    });
+
+    const updatedDashboard = {
+      ...dashboardDetails,
+      dataProducts: dataProductsEntity,
+    };
+
+    await onDashboardUpdate(updatedDashboard, 'dataProducts');
+  };
+
   const onUpdateDisplayName = async (data: EntityName) => {
     const updatedData = {
       ...dashboardDetails,
@@ -274,7 +289,10 @@ const DashboardDetails = ({
     await onDashboardUpdate(updatedData, 'displayName');
   };
   const onExtensionUpdate = async (updatedData: Dashboard) => {
-    await onDashboardUpdate(updatedData, 'extension');
+    await onDashboardUpdate(
+      { ...dashboardDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const handleRestoreDashboard = async () => {
@@ -606,6 +624,15 @@ const DashboardDetails = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={dashboardDetails?.domain}
+                  dataProducts={dashboardDetails?.dataProducts ?? []}
+                  hasPermission={
+                    dashboardPermissions.EditAll && !dashboardDetails.deleted
+                  }
+                  onSave={onDataProductsUpdate}
+                />
+
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={dashboardFQN}
@@ -682,9 +709,6 @@ const DashboardDetails = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              dashboardDetails as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.DASHBOARD}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
@@ -724,6 +748,7 @@ const DashboardDetails = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateDashboardDetailsState}
             dataAsset={dashboardDetails}
             entityType={EntityType.DASHBOARD}
             permissions={dashboardPermissions}

@@ -134,13 +134,14 @@ public final class EntityUtil {
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException {
+  public static <T> T validate(Object id, String json, Class<T> clz) throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), identity));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id.toString()));
     }
     return entity;
   }
@@ -543,6 +544,10 @@ public final class EntityUtil {
 
   public static boolean isTagTask(TaskType taskType) {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
+  }
+
+  public static boolean isApprovalTask(TaskType taskType) {
+    return taskType == TaskType.RequestApproval;
   }
 
   public static Column findColumn(List<Column> columns, String columnName) {

@@ -17,7 +17,6 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
@@ -45,7 +44,7 @@ import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { isUndefined, omitBy, toString } from 'lodash';
+import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -79,8 +78,8 @@ const ContainerPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { entityFQN: containerName, tab = EntityTabs.SCHEMA } =
-    useParams<{ entityFQN: string; tab: EntityTabs }>();
+  const { fqn: containerName, tab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -130,10 +129,10 @@ const ContainerPage = () => {
     }
   };
 
-  const fetchContainerChildren = async (containerFQN: string) => {
+  const fetchContainerChildren = async () => {
     setIsChildrenLoading(true);
     try {
-      const { children } = await getContainerByName(containerFQN, 'children');
+      const { children } = await getContainerByName(containerName, 'children');
       setContainerChildrenData(children);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -216,6 +215,11 @@ const ContainerPage = () => {
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
+
+  const isDataModelEmpty = useMemo(
+    () => isEmpty(containerData?.dataModel),
+    [containerData]
   );
 
   const getEntityFeedCount = () => {
@@ -382,6 +386,15 @@ const ContainerPage = () => {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Container;
+
+    setContainerData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   const handleRestoreContainer = async () => {
     try {
       await restoreContainer(containerData?.id ?? '');
@@ -484,8 +497,13 @@ const ContainerPage = () => {
   const tabs = useMemo(
     () => [
       {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
-        key: EntityTabs.SCHEMA,
+        label: (
+          <TabsLabel
+            id={isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA}
+            name={t(isDataModelEmpty ? 'label.children' : 'label.schema')}
+          />
+        ),
+        key: isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
@@ -505,15 +523,23 @@ const ContainerPage = () => {
                   onThreadLinkSelect={onThreadLinkSelect}
                 />
 
-                <ContainerDataModel
-                  dataModel={containerData?.dataModel}
-                  entityFqn={containerName}
-                  hasDescriptionEditAccess={hasEditDescriptionPermission}
-                  hasTagEditAccess={hasEditTagsPermission}
-                  isReadOnly={Boolean(deleted)}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                  onUpdate={handleUpdateDataModel}
-                />
+                {isDataModelEmpty ? (
+                  <ContainerChildren
+                    childrenList={containerChildrenData}
+                    fetchChildren={fetchContainerChildren}
+                    isLoading={isChildrenLoading}
+                  />
+                ) : (
+                  <ContainerDataModel
+                    dataModel={containerData?.dataModel}
+                    entityFqn={containerName}
+                    hasDescriptionEditAccess={hasEditDescriptionPermission}
+                    hasTagEditAccess={hasEditTagsPermission}
+                    isReadOnly={Boolean(deleted)}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                    onUpdate={handleUpdateDataModel}
+                  />
+                )}
               </div>
             </Col>
             <Col
@@ -550,6 +576,31 @@ const ContainerPage = () => {
           </Row>
         ),
       },
+      ...(isDataModelEmpty
+        ? []
+        : [
+            {
+              label: (
+                <TabsLabel
+                  id={EntityTabs.CHILDREN}
+                  name={t('label.children')}
+                />
+              ),
+              key: EntityTabs.CHILDREN,
+              children: (
+                <Row className="p-md" gutter={[0, 16]}>
+                  <Col span={24}>
+                    <ContainerChildren
+                      childrenList={containerChildrenData}
+                      fetchChildren={fetchContainerChildren}
+                      isLoading={isChildrenLoading}
+                    />
+                  </Col>
+                </Row>
+              ),
+            },
+          ]),
+
       {
         label: (
           <TabsLabel
@@ -569,23 +620,6 @@ const ContainerPage = () => {
           />
         ),
       },
-      {
-        label: (
-          <TabsLabel id={EntityTabs.CHILDREN} name={t('label.children')} />
-        ),
-        key: EntityTabs.CHILDREN,
-        children: (
-          <Row className="p-md" gutter={[0, 16]}>
-            <Col span={24}>
-              <ContainerChildren
-                childrenList={containerChildrenData}
-                isLoading={isChildrenLoading}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-
       {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
@@ -607,9 +641,6 @@ const ContainerPage = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              containerData as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={hasEditCustomFieldsPermission}
@@ -619,6 +650,7 @@ const ContainerPage = () => {
       },
     ],
     [
+      isDataModelEmpty,
       containerData,
       description,
       containerName,
@@ -668,12 +700,6 @@ const ContainerPage = () => {
   }, [containerName]);
 
   useEffect(() => {
-    if (tab === EntityTabs.CHILDREN && hasViewPermission) {
-      fetchContainerChildren(containerName);
-    }
-  }, [tab, containerName, hasViewPermission]);
-
-  useEffect(() => {
     if (hasViewPermission) {
       getEntityFeedCount();
     }
@@ -709,6 +735,7 @@ const ContainerPage = () => {
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={containerData}
             entityType={EntityType.CONTAINER}
             permissions={containerPermissions}
@@ -723,7 +750,10 @@ const ContainerPage = () => {
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={tab ?? EntityTabs.DETAILS}
+            activeKey={
+              tab ??
+              (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
+            }
             className="entity-details-page-tabs"
             data-testid="tabs"
             items={tabs}

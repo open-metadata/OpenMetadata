@@ -51,7 +51,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   table,
 }) => {
   const history = useHistory();
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } =
+    useParams<{ entityTypeFQN: string; dashboardType: string }>();
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();

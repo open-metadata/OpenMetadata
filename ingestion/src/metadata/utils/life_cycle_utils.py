@@ -17,20 +17,13 @@ import re
 import traceback
 from typing import Any, Optional
 
-from metadata.generated.schema.type.lifeCycle import (
-    Accessed,
-    Created,
-    Deleted,
-    LifeCycleProperties,
-    Updated,
-)
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.utils.logger import utils_logger
 
 QUERY_TYPES_DICT = {
-    Created: ["CREATE"],
-    Updated: ["DELETE", "TRUNCATE_TABLE", "UPDATE", "ALTER", "INSERT", "MERGE"],
-    Accessed: ["SHOW", "DESCRIBE", "SELECT"],
-    Deleted: ["DROP"],
+    "created": ["CREATE"],
+    "updated": ["DELETE", "TRUNCATE_TABLE", "UPDATE", "ALTER", "INSERT", "MERGE"],
+    "accessed": ["SHOW", "DESCRIBE", "SELECT"],
 }
 
 
@@ -44,11 +37,11 @@ drop_pattern = re.compile(r"^\s*DROP", re.IGNORECASE)
 logger = utils_logger()
 
 
-def init_empty_life_cycle_properties() -> LifeCycleProperties:
+def init_empty_life_cycle_properties() -> LifeCycle:
     """
     Method which returns empty LifeCycleProperties object
     """
-    return LifeCycleProperties(created=None, updated=None, deleted=None, accessed=None)
+    return LifeCycle(created=None, updated=None, accessed=None)
 
 
 def _get_query_type_from_name(create_query) -> Optional[Any]:
@@ -66,13 +59,11 @@ def _get_query_type_from_regex(create_query) -> Optional[Any]:
     Method to get the query type from regex
     """
     if re.match(create_pattern, create_query.query.__root__):
-        return Created
+        return "created"
     if re.match(update_pattern, create_query.query.__root__):
-        return Updated
-    if re.match(drop_pattern, create_query.query.__root__):
-        return Deleted
+        return "updated"
     if re.match(select_pattern, create_query.query.__root__):
-        return Accessed
+        return "accessed"
     return None
 
 
@@ -81,9 +72,12 @@ def get_query_type(create_query) -> Optional[str]:
     Method to the type of query
     """
     try:
+        query_type = None
         if create_query.query_type:
-            return _get_query_type_from_name(create_query=create_query)
-        return _get_query_type_from_regex(create_query=create_query)
+            query_type = _get_query_type_from_name(create_query=create_query)
+        else:
+            query_type = _get_query_type_from_regex(create_query=create_query)
+        return query_type.lower()
 
     except Exception as exc:
         logger.debug(traceback.format_exc())

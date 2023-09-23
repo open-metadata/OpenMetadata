@@ -14,7 +14,6 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -35,7 +34,6 @@ import {
   ChangeDescription,
   Column,
   ColumnJoins,
-  Table,
 } from '../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
@@ -52,6 +50,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedTableName,
   datasetFQN,
@@ -68,13 +67,20 @@ const TableVersion: React.FC<TableVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep((currentVersionData as Table).columns);
+    const colList = cloneDeep(currentVersionData.columns);
 
     return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
   }, [currentVersionData, changeDescription]);
@@ -161,10 +167,8 @@ const TableVersion: React.FC<TableVersionProp> = ({
                     columns={columns}
                     deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
                     deletedTableConstraintDiffs={deletedTableConstraintDiffs}
-                    joins={(currentVersionData as Table).joins as ColumnJoins[]}
-                    tableConstraints={
-                      (currentVersionData as Table).tableConstraints
-                    }
+                    joins={currentVersionData.joins as ColumnJoins[]}
+                    tableConstraints={currentVersionData.tableConstraints}
                   />
                 </Col>
               </Row>
@@ -200,9 +204,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.TABLE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -236,6 +238,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.TABLE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

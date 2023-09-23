@@ -22,6 +22,16 @@ export const mockOwner = {
   deleted: false,
 };
 
+export const mockDomain = {
+  id: '9602ed54-451d-4539-9b08-af611533f38b',
+  type: 'domain',
+  name: 'new_domain',
+  fullyQualifiedName: 'new_domain',
+  description: 'Testing new domain',
+  displayName: 'New Domain',
+  href: 'http://localhost:8585/api/v1/domains/9602ed54-451d-4539-9b08-af611533f38b',
+};
+
 export const mockTier = {
   tagFQN: 'Tier.Tier3',
   description: 'description',

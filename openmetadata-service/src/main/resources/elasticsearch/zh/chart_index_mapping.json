@@ -57,6 +57,9 @@
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
         },
+        "fqnParts": {
+          "type": "keyword"
+        },
         "description": {
           "type": "text",
           "analyzer": "ik_max_word",
@@ -275,6 +278,9 @@
               "type": "text"
             }
           }
+        },
+        "lifeCycle": {
+          "type": "object"
         },
         "dataProducts" : {
           "properties": {

@@ -17,12 +17,12 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from 'components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -55,6 +55,7 @@ import {
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
@@ -81,7 +82,7 @@ import {
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
@@ -93,8 +94,8 @@ const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ datasetFQN: string; tab: string }>();
+  const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = getCurrentUserId();
@@ -115,10 +116,7 @@ const TableDetailsPageV1 = () => {
     () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
     [tablePermissions]
   );
-  const viewTestSuitePermission = useMemo(
-    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
-    [tablePermissions]
-  );
+
   const tableFqn = useMemo(
     () =>
       encodeURIComponent(
@@ -138,9 +136,7 @@ const TableDetailsPageV1 = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      if (viewTestSuitePermission) {
-        fields += `,${TabSpecificField.TESTSUITE}`;
-      }
+
       const details = await getTableDetailsByFQN(tableFqn, fields);
 
       setTableDetails(details);
@@ -417,7 +413,24 @@ const TableDetailsPageV1 = () => {
   };
 
   const onExtensionUpdate = async (updatedData: Table) => {
-    await onTableUpdate(updatedData, 'extension');
+    tableDetails &&
+      (await saveUpdatedTableData({
+        ...tableDetails,
+        extension: updatedData.extension,
+      }));
+  };
+
+  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
+    const dataProductsEntity = updatedData?.map((item) => {
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
+    });
+
+    const updatedTableDetails = {
+      ...tableDetails,
+      dataProducts: dataProductsEntity,
+    };
+
+    await onTableUpdate(updatedTableDetails as Table, 'dataProducts');
   };
 
   const schemaTab = useMemo(
@@ -478,6 +491,13 @@ const TableDetailsPageV1 = () => {
           ) : null}
 
           <Space className="w-full" direction="vertical" size="large">
+            <DataProductsContainer
+              activeDomain={tableDetails?.domain}
+              dataProducts={tableDetails?.dataProducts ?? []}
+              hasPermission={tablePermissions.EditAll && !tableDetails?.deleted}
+              onSave={onDataProductsUpdate}
+            />
+
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
               entityFqn={tableFqn}
@@ -610,7 +630,6 @@ const TableDetailsPageV1 = () => {
             <TableProfilerV1
               isTableDeleted={tableDetails?.deleted}
               permissions={tablePermissions}
-              testSuite={tableDetails?.testSuite}
             />
           ),
       },
@@ -678,7 +697,6 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
@@ -829,6 +847,15 @@ const TableDetailsPageV1 = () => {
     []
   );
 
+  const updateTableDetailsState = useCallback((data) => {
+    const updatedData = data as Table;
+
+    setTableDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -899,6 +926,7 @@ const TableDetailsPageV1 = () => {
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}

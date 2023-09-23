@@ -283,16 +283,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
-  const glossaryTermPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-
-    [permissions]
-  );
-
   const domainPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(ResourceEntity.DOMAIN, permissions),
@@ -656,20 +646,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
       />
       <AdminProtectedRoute
         exact

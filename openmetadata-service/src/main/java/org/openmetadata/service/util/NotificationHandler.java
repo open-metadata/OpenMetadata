@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.socket.WebSocketManager;
 
@@ -63,8 +62,6 @@ public class NotificationHandler {
             handleNotifications(responseContext, collectionDAO);
           } catch (Exception ex) {
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
-          } finally {
-            JdbiUnitOfWorkProvider.getInstance().getHandleManager().clear();
           }
         });
   }
@@ -102,9 +99,7 @@ public class NotificationHandler {
             } else if (Entity.TEAM.equals(e.getType())) {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
-                  collectionDAO
-                      .relationshipDAO()
-                      .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                  collectionDAO.relationshipDAO().findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
               records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
@@ -151,7 +146,7 @@ public class NotificationHandler {
             Team team = collectionDAO.teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
-                collectionDAO.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
+                collectionDAO.relationshipDAO().findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
             WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }

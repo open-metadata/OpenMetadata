@@ -78,7 +78,7 @@ describe('Services page should work properly', () => {
     verifyResponseStatusCode('@pipelineServiceClient', 200);
     interceptURL(
       'GET',
-      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=15&index=team_search_index',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=*&index=team_search_index',
       'editOwner'
     );
     cy.get('[data-testid="edit-owner"]')
@@ -127,7 +127,7 @@ describe('Services page should work properly', () => {
       'getService'
     );
 
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'waitForUsers');
+    interceptURL('GET', '/api/v1/users?*', 'waitForUsers');
 
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')

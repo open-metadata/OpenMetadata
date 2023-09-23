@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.type.EntityReference;
@@ -32,6 +33,11 @@ public class DatabaseIndex implements ElasticSearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(database.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(database.getFullyQualifiedName()).weight(5).build());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            database.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE);
     return doc;

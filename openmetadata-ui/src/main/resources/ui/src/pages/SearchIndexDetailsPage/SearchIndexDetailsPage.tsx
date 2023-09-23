@@ -19,12 +19,12 @@ import ActivityFeedProvider, {
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
@@ -33,6 +33,7 @@ import {
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -72,8 +73,8 @@ import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 function SearchIndexDetailsPage() {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { searchIndexFQN, tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ searchIndexFQN: string; tab: string }>();
+  const { fqn: searchIndexFQN, tab: activeTab = EntityTabs.FIELDS } =
+    useParams<{ fqn: string; tab: string }>();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = getCurrentUserId();
@@ -310,9 +311,16 @@ function SearchIndexDetailsPage() {
     await handleTagsUpdate(updatedTags);
   };
 
-  const onExtensionUpdate = async (updatedData: SearchIndex) => {
-    await onSearchIndexUpdate(updatedData, 'extension');
-  };
+  const onExtensionUpdate = useCallback(
+    async (updatedData: SearchIndex) => {
+      searchIndexDetails &&
+        (await saveUpdatedSearchIndexData({
+          ...searchIndexDetails,
+          extension: updatedData.extension,
+        }));
+    },
+    [saveUpdatedSearchIndexData, searchIndexDetails]
+  );
 
   const fieldsTab = useMemo(
     () => (
@@ -454,6 +462,21 @@ function SearchIndexDetailsPage() {
         ),
       },
       {
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
+        children: (
+          <EntityLineageComponent
+            deleted={searchIndexDetails?.deleted}
+            entity={searchIndexDetails as SourceType}
+            entityType={EntityType.SEARCH_INDEX}
+            hasEditAccess={
+              searchIndexPermissions.EditAll ||
+              searchIndexPermissions.EditLineage
+            }
+          />
+        ),
+      },
+      {
         label: (
           <TabsLabel
             id={EntityTabs.SEARCH_INDEX_SETTINGS}
@@ -478,9 +501,6 @@ function SearchIndexDetailsPage() {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              searchIndexDetails as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.SEARCH_INDEX}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
@@ -632,6 +652,15 @@ function SearchIndexDetailsPage() {
     []
   );
 
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as SearchIndex;
+
+    setSearchIndexDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (entityFQN) {
       fetchResourcePermission(entityFQN);
@@ -688,6 +717,7 @@ function SearchIndexDetailsPage() {
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={searchIndexDetails}
             entityType={EntityType.SEARCH_INDEX}
             permissions={searchIndexPermissions}

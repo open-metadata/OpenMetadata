@@ -5,12 +5,14 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
@@ -33,11 +35,22 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
       owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
       glossaryTerm.setOwner(owner);
     }
+    if (glossaryTerm.getDomain() != null) {
+      EntityReference domain = glossaryTerm.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      glossaryTerm.setDomain(domain);
+    }
     Map<String, Object> doc = JsonUtils.getMap(glossaryTerm);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(glossaryTerm.getName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(glossaryTerm.getDisplayName()).weight(10).build());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            glossaryTerm.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY_TERM);
     return doc;
@@ -56,6 +69,7 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
     fields.put("glossary.name", 5.0f);
     fields.put("glossary.displayName", 5.0f);
     fields.put("glossary.displayName.ngram", 1.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     return fields;
   }
 }

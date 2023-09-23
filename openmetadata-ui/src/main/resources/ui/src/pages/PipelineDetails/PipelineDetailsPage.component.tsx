@@ -54,7 +54,7 @@ const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
 
-  const { pipelineFQN } = useParams<{ pipelineFQN: string }>();
+  const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );
@@ -266,6 +266,15 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const updatePipelineDetailsState = useCallback((data) => {
+    const updatedData = data as Pipeline;
+
+    setPipelineDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
       fetchPipelineDetail(pipelineFQN);
@@ -304,6 +313,7 @@ const PipelineDetailsPage = () => {
       settingsUpdateHandler={settingsUpdateHandler}
       taskUpdateHandler={onTaskUpdate}
       unFollowPipelineHandler={unFollowPipeline}
+      updatePipelineDetailsState={updatePipelineDetailsState}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
       onUpdateVote={updateVote}

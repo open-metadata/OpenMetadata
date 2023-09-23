@@ -46,7 +46,6 @@ export enum EntityType {
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   SUBSCRIPTION = 'subscription',
-  USER_NAME = 'username',
   CHART = 'chart',
   DOMAIN = 'domain',
   DATA_PRODUCT = 'dataProduct',
@@ -111,6 +110,7 @@ export enum TabSpecificField {
   FIELDS = 'fields',
   VOTES = 'votes',
   DOMAIN = 'domain',
+  DATA_PRODUCTS = 'dataProducts',
 }
 
 export enum FqnPart {

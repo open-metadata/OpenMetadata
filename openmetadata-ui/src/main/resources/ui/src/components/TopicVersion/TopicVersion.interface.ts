@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -20,9 +19,10 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface TopicVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Topic;
   isVersionLoading: boolean;
   owner: Topic['owner'];
+  domain: Topic['domain'];
   tier: TagLabel;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   topicFQN: string;

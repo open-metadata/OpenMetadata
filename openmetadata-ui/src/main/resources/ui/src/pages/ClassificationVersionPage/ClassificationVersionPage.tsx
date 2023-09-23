@@ -48,7 +48,8 @@ import {
 function ClassificationVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
-  const { tagCategoryName = '', version } = useParams<Record<string, string>>();
+  const { fqn: tagCategoryName, version } =
+    useParams<{ fqn: string; version: string }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [currentVersionData, setCurrentVersionData] = useState<Classification>(
     {} as Classification
