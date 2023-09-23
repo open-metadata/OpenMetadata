@@ -49,6 +49,7 @@ class SqlLineageTest(TestCase):
     """
     SQL Lineage Utility Tests
     """
+
     def test_populate_column_lineage_map(self):
         for i, query in enumerate(QUERY):
             lineage_parser = LineageParser(query)
@@ -178,7 +179,9 @@ class SqlLineageTest(TestCase):
         values_format = "\t('value1{a}','value2{b}','value{c}','value{d}','value{e}')"
         values = [values_format.format(a=0, b=0, c=0, d=0, e=0)]
         for num in range(1, 2000):
-            values.insert(0, values_format.format(a=num, b=num, c=num, d=num, e=num) + ",")
+            values.insert(
+                0, values_format.format(a=num, b=num, c=num, d=num, e=num) + ","
+            )
         # When
         with self.assertLogs(Loggers.INGESTION.value, level="DEBUG") as logger:
             LineageParser(
