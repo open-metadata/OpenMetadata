@@ -6,7 +6,7 @@ import org.quartz.JobExecutionContext;
 public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void doExecute(JobExecutionContext jobExecutionContext) {
-    // Do Something
+    // Actual Logic for the Application
 
   }
 }
