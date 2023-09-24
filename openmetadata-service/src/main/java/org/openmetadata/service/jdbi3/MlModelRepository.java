@@ -335,9 +335,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     private void updateAlgorithm(MlModel origModel, MlModel updatedModel) {
       // Updating an algorithm should be flagged for an ML Model
-      if (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm())) {
-        // Mark the EntityUpdater version change to major
-        majorVersionChange = true;
+      // Algorithm is a required field. Cannot be null.
+      if (updated.getAlgorithm() != null) {
+        if (recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm())) {
+          // Mark the EntityUpdater version change to major
+          majorVersionChange = true;
+        }
       }
     }
 
