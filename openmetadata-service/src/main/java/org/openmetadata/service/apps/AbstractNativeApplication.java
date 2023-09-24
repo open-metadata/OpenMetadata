@@ -39,7 +39,6 @@ public class AbstractNativeApplication implements NativeApplication {
     // Schedule New Application Run
     AppScheduler.getInstance().addApplicationSchedule(app, schedule);
   }
-  
 
   protected void validateServerOnDemandExecutableApp(RuntimeContext context) {
     // Server apps are native
