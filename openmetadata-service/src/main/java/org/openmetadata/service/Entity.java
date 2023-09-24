@@ -183,9 +183,7 @@ public final class Entity {
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
-  public static final String KNOWLEDGE_PANEL = "knowledgePanel";
-  public static final String PAGE = "page";
-
+  public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
 

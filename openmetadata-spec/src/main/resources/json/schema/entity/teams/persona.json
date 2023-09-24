@@ -6,8 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Persona",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-  },
   "properties": {
     "id": {
       "$ref": "../../type/basic.json#/definitions/uuid"

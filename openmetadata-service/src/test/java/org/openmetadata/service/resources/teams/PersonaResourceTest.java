@@ -138,7 +138,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     String originalJson = JsonUtils.pojoToJson(persona);
     persona.setUsers(userRefs);
 
-    // Ensure user without UpdateTeam permission cannot add users to a team.
+    // Ensure user without UpdatePersona permission cannot add users to a Persona.
     String randomUserName = userRefs.get(0).getName();
     assertResponse(
         () ->
@@ -170,7 +170,7 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
 
     Persona persona = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Remove a user from the team using patch request
+    // Remove a user from the Persona using patch request
     String json = JsonUtils.pojoToJson(persona);
     int removeUserIndex = new Random().nextInt(totalUsers);
     EntityReference deletedUser = persona.getUsers().get(removeUserIndex);

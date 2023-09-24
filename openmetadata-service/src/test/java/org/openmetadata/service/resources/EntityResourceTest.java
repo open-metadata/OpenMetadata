@@ -119,6 +119,7 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
+import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -142,7 +143,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
-import org.openmetadata.schema.system.ui.KnowledgePanel;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AccessDetails;
@@ -166,6 +166,7 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.docstore.DocStoreResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
@@ -258,8 +259,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Persona DATA_SCIENTIST;
   public static Persona DATA_ENGINEER;
 
-  public static KnowledgePanel ACTIVITY_FEED;
-  public static KnowledgePanel MY_DATA;
+  public static Document ACTIVITY_FEED_KNOWLEDGE_PANEL;
+  public static Document MY_DATA_KNOWLEDGE_PANEL;
   public static User USER_WITH_DATA_STEWARD_ROLE;
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;
@@ -425,6 +426,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
+    new DocStoreResourceTest().setupDocuments(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {

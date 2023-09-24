@@ -61,6 +61,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -103,8 +104,6 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.system.ui.KnowledgePanel;
-import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
@@ -311,10 +310,7 @@ public interface CollectionDAO {
   DataModelDAO dashboardDataModelDAO();
 
   @CreateSqlObject
-  KnowledgePanelDAO knowledgePanelDAO();
-
-  @CreateSqlObject
-  PageDAO pageDAO();
+  DocStoreDAO docStoreDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -3681,20 +3677,20 @@ public interface CollectionDAO {
     }
   }
 
-  interface KnowledgePanelDAO extends EntityDAO<KnowledgePanel> {
+  interface DocStoreDAO extends EntityDAO<Document> {
     @Override
     default String getTableName() {
-      return "knowledge_panel_entity";
+      return "doc_store";
     }
 
     @Override
-    default Class<KnowledgePanel> getEntityClass() {
-      return KnowledgePanel.class;
+    default Class<Document> getEntityClass() {
+      return Document.class;
     }
 
     @Override
     default String getNameHashColumn() {
-      return "nameHash";
+      return "fqnHash";
     }
 
     @Override
@@ -3703,25 +3699,4 @@ public interface CollectionDAO {
     }
   }
 
-  interface PageDAO extends EntityDAO<Page> {
-    @Override
-    default String getTableName() {
-      return "page_entity";
-    }
-
-    @Override
-    default Class<Page> getEntityClass() {
-      return Page.class;
-    }
-
-    @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
-
-    @Override
-    default boolean supportsSoftDelete() {
-      return false;
-    }
-  }
 }

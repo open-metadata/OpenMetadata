@@ -60,7 +60,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "personas", order = 2)
 public class PersonaResource extends EntityResource<Persona, PersonaRepository> {
-  public static final String COLLECTION_PATH = "/v1/personas/";
+  public static final String COLLECTION_PATH = "/v1/personas";
   static final String FIELDS = "users";
 
   @Override
@@ -77,7 +77,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation(FIELDS, MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_POLICY, MetadataOperation.EDIT_USERS);
+    return listOf(MetadataOperation.EDIT_ALL);
   }
 
   public static class PersonaList extends ResultList<Persona> {

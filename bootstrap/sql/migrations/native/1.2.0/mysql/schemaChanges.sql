@@ -127,28 +127,17 @@ CREATE TABLE IF NOT EXISTS persona_entity (
     INDEX persona_name_index(name)
 );
 
-CREATE TABLE IF NOT EXISTS knowledge_panel_entity (
+CREATE TABLE IF NOT EXISTS doc_store (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
     updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE (nameHash),
-    INDEX knowledge_panel_name_index(name)
-);
-
-CREATE TABLE IF NOT EXISTS page_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    PRIMARY KEY (id),
-    UNIQUE (nameHash),
-    INDEX page_name_index(name)
+    UNIQUE (fqnHash),
+    INDEX doc_store_name_index(name)
 );
 
 

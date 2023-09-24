@@ -1,23 +1,16 @@
 {
-  "$id": "https://open-metadata.org/schema/system/ui/knowledgePanel.json",
+  "$id": "https://open-metadata.org/schema/entity/docStore/document.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "KnowledgePanel",
-  "description": "This schema defines KnowledgePanel. A Page in OpenMetadata represents a customizable page with the collection of Knowledge Panels.",
+  "title": "Document",
+  "description": "This schema defines Document. A Generic entity to capture any kind of Json Payload.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.system.ui.KnowledgePanel",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaType": "org.openmetadata.schema.entities.docStore.Document",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.DocStoreEntityInterface"],
   "definitions": {
-    "supportedSizes": {
-      "javaType": "org.openmetadata.schema.system.ui.KnowledgePanelSupportedSizes",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "enum": ["SMALL", "MEDIUM", "LARGE"]
-      }
-    },
-    "configuration": {
-      "description": "Knowledge Panel Configuration.",
-      "type": "object"
+    "data": {
+      "javaType": "org.openmetadata.schema.entities.docStore.Data",
+      "type": "object",
+      "additionalProperties": true
     }
   },
   "properties": {
@@ -25,7 +18,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name of the glossary",
+      "description": "Name of the DocStore",
       "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
@@ -36,14 +29,15 @@
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "description": {
-      "description": "Description of the Knowledge Panel.",
+      "description": "Description of the DocStore Entity.",
       "type": "string"
     },
-    "supportedSizes": {
-      "$ref": "#/definitions/supportedSizes"
+    "entityType": {
+      "description": "Type of the Entity stored in DocStore.",
+      "type": "string"
     },
-    "configuration": {
-      "$ref": "#/definitions/configuration"
+    "data": {
+      "$ref": "#/definitions/data"
     },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
@@ -66,6 +60,6 @@
       "$ref": "../../type/basic.json#/definitions/href"
     }
   },
-  "required": ["name", "supportedSizes"],
+  "required": ["name", "data"],
   "additionalProperties": false
 }

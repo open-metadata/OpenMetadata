@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.system.ui;
+package org.openmetadata.service.resources.docstore;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -23,6 +23,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -44,51 +46,60 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.system.ui.CreateKnowledgePanel;
-import org.openmetadata.schema.entity.teams.Persona;
-import org.openmetadata.schema.system.ui.KnowledgePanel;
+import org.openmetadata.schema.entities.docStore.CreateDocument;
+import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.KnowledgePanelRepository;
+import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
+
 @Slf4j
-@Path("/v1/system/ui/knowledgePanels")
+@Path("/v1/docStore")
 @Tag(
-    name = "KnowledgePanels",
-    description = "A `Knowledge Panel` is an information box used for UX customization in OpenMetadata.")
+    name = "Document Store",
+    description = "A `Document` is an generic entity in OpenMetadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "knowledgePanel", order = 2)
-public class KnowledgePanelResource extends EntityResource<KnowledgePanel, KnowledgePanelRepository> {
-  public static final String COLLECTION_PATH = "/v1/system/ui/knowledgePanels";
+public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
+  public static final String COLLECTION_PATH = "/v1/docStore";
 
   @Override
-  public KnowledgePanel addHref(UriInfo uriInfo, KnowledgePanel knowledgePanel) {
-    super.addHref(uriInfo, knowledgePanel);
-    return knowledgePanel;
+  public Document addHref(UriInfo uriInfo, Document doc) {
+    super.addHref(uriInfo, doc);
+    return doc;
   }
 
-  public KnowledgePanelResource(CollectionDAO dao, Authorizer authorizer) {
-    super(KnowledgePanel.class, new KnowledgePanelRepository(dao), authorizer);
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("data", MetadataOperation.VIEW_BASIC);
+    return listOf(MetadataOperation.EDIT_ALL);
   }
 
-  public static class KnowledgePanelList extends ResultList<KnowledgePanel> {
+  public DocStoreResource(CollectionDAO dao, Authorizer authorizer) {
+    super(Document.class, new DocumentRepository(dao), authorizer);
+  }
+
+  public static class DocumentList extends ResultList<Document> {
     /* Required for serde */
   }
 
   @GET
   @Valid
   @Operation(
-      operationId = "listKnowledgePanels",
-      summary = "List KnowledgePanels",
+      operationId = "listDocuments",
+      summary = "List Documents",
       description =
-          "Get a list of Knowledge Panels. Use `fields` "
+          "Get a list of Documents. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -96,9 +107,9 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
             responseCode = "200",
             description = "List of personas",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgePanelList.class)))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentList.class)))
       })
-  public ResultList<KnowledgePanel> list(
+  public ResultList<Document> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Limit the number of personas returned. (1 to 1000000, default = 10)")
@@ -119,9 +130,9 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   @GET
   @Path("/{id}/versions")
   @Operation(
-      operationId = "listAllPersonaVersion",
-      summary = "List Persona versions",
-      description = "Get a list of all the versions of a persona identified by `id`",
+      operationId = "listAllDocumentVersion",
+      summary = "List Document versions",
+      description = "Get a list of all the versions of a Dcouemtn identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -131,7 +142,7 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -139,20 +150,20 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   @Valid
   @Path("/{id}")
   @Operation(
-      summary = "Get a KnowledgePanel by id",
-      description = "Get a KnowledgePanel by `id`.",
+      summary = "Get a Document by id",
+      description = "Get a Document by `id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The KnowledgePanel",
+            description = "The Document",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgePanel.class))),
-        @ApiResponse(responseCode = "404", description = "Knowledge Panel for instance {id} is not found")
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
+        @ApiResponse(responseCode = "404", description = "Document for instance {id} is not found")
       })
-  public KnowledgePanel get(
+  public Document get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Persona", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -166,21 +177,21 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   @Valid
   @Path("/name/{name}")
   @Operation(
-      operationId = "getKnowledgePanelByFQN",
-      summary = "Get a KnowledgePanel by name",
-      description = "Get a KnowledgePanel by `name`.",
+      operationId = "getDocumentByFQN",
+      summary = "Get a Document by name",
+      description = "Get a Document by `name`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The KnowledgePanel",
+            description = "The Document",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgePanel.class))),
-        @ApiResponse(responseCode = "404", description = "KnowledgePanel for instance {name} is not found")
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
+        @ApiResponse(responseCode = "404", description = "Document for instance {name} is not found")
       })
-  public KnowledgePanel getByName(
+  public Document getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Persona", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the Document", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -193,25 +204,25 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificKnowledgePanelVersion",
-      summary = "Get a version of the KnowledgePanel",
-      description = "Get a version of the KnowledgePanel by given `id`",
+      operationId = "getSpecificDocumentVersion",
+      summary = "Get a version of the Document",
+      description = "Get a version of the Document by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "KnowledgePanel",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgePanel.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "KnowledgePanel for instance {id} and version {version} is " + "not found")
+            description = "Document for instance {id} and version {version} is " + "not found")
       })
-  public KnowledgePanel getVersion(
+  public Document getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KnowledgePanel", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "KnowledgePanel version number in the form `major`.`minor`",
+              description = "Document version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -220,53 +231,53 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
 
   @POST
   @Operation(
-      operationId = "createKnowledgePanel",
-      summary = "Create a Knowledge Panel",
-      description = "Create a new Knowledge Panel.",
+      operationId = "createDocument",
+      summary = "Create a Document",
+      description = "Create a new Document.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The Knowledge Panel.",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Persona.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKnowledgePanel ckp) {
-    KnowledgePanel knowledgePanel = getKnowledgePanel(ckp, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, knowledgePanel);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDocument cd) {
+    Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, doc);
   }
 
   @PUT
   @Operation(
-      operationId = "createOrUpdatePersona",
-      summary = "Update Persona",
-      description = "Create or Update a Persona.",
+      operationId = "createOrUpdateDocument",
+      summary = "Update Document",
+      description = "Create or Update a Document.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The Persona.",
+            description = "The Document.",
             content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = KnowledgePanel.class))),
+                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKnowledgePanel ckp) {
-    KnowledgePanel kp = getKnowledgePanel(ckp, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, kp);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDocument cd) {
+    Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, doc);
   }
 
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(
-      operationId = "patchKnowledgePanel",
-      summary = "Update a KnowledgePanel",
-      description = "Update an existing persona with JsonPatch.",
+      operationId = "patchDocument",
+      summary = "Update a Document.",
+      description = "Update an existing Document with JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KnowledgePanel", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -282,26 +293,26 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteKnowledgePanel",
-      summary = "Delete a KnowledgePanel by id",
-      description = "Delete a KnowledgePanel by given `id`.",
+      operationId = "deleteDocument",
+      summary = "Delete a Document by id",
+      description = "Delete a Document by given `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "KnowledgePanel for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Document for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KnowledgePanel", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+      @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE
   @Path("/name/{name}")
   @Operation(
-      operationId = "deleteKnowledgePanelByName",
-      summary = "Delete a KnowledgePanel by name",
-      description = "Delete a Knowledge Panel by given `name`.",
+      operationId = "deleteDocumentByName",
+      summary = "Delete a Document by name",
+      description = "Delete a Document by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Knowledge Panel for instance {name} is not found")
@@ -309,14 +320,14 @@ public class KnowledgePanelResource extends EntityResource<KnowledgePanel, Knowl
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Knowledge Panel", schema = @Schema(type = "string")) @PathParam("name")
+      @Parameter(description = "Name of the Document", schema = @Schema(type = "string")) @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
-  private KnowledgePanel getKnowledgePanel(CreateKnowledgePanel ckp, String user) {
-    return copy(new KnowledgePanel(), ckp, user)
-        .withSupportedSizes(ckp.getSupportedSizes())
-        .withConfiguration(ckp.getConfiguration());
+  private Document getDocument(CreateDocument cd, String user) {
+    return copy(new Document(), cd, user)
+            .withData(cd.getData())
+            .withEntityType(cd.getEntityType());
   }
 }
