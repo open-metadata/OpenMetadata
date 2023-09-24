@@ -1,0 +1,55 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/createApplication.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateApplication",
+  "javaType": "org.openmetadata.schema.entity.app.CreateApplication",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "description": "This schema defines the create applications request for Open-Metadata.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the Application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name for the application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Application.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "owner": {
+      "description": "Owner of this workflow.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "appType": {
+      "description": "This schema defines the type of application.",
+      "$ref": "./application.json#/definitions/appType"
+    },
+    "developer": {
+      "description": "Developer For the Application.",
+      "type": "string"
+    },
+    "developerUrl": {
+      "description": "Url for the developer",
+      "type": "string"
+    },
+    "bot": {
+      "description": "Bot User Associated with this application.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "executionContext": {
+      "description": "Execution Configuration.",
+      "$ref": "./application.json#/definitions/executionContext"
+    },
+    "configuration": {
+      "description": "Configuration object.",
+      "$ref": "./appConfig.json"
+    }
+  },
+  "required": ["name", "appType", "scheduleConfig"],
+  "additionalProperties": false
+}

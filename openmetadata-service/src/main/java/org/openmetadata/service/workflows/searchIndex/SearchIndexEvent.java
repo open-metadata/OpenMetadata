@@ -26,8 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.apps.bundles.searchIndex.ReIndexingHandler;
 import org.openmetadata.service.resources.Reindex;
-import org.openmetadata.service.util.ReIndexingHandler;
 
 @Reindex
 @Slf4j

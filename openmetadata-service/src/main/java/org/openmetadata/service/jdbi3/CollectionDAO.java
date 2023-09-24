@@ -63,6 +63,7 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -146,6 +147,9 @@ public interface CollectionDAO {
   EntityExtensionDAO entityExtensionDAO();
 
   @CreateSqlObject
+  AppExtensionTimeSeries appExtensionTimeSeriesDao();
+
+  @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
@@ -189,6 +193,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   ChartDAO chartDAO();
+
+  @CreateSqlObject
+  ApplicationDAO applicationDAO();
 
   @CreateSqlObject
   PipelineDAO pipelineDAO();
@@ -614,6 +621,10 @@ public interface CollectionDAO {
             + "LIKE CONCAT (:extensionPrefix, '.%') "
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension " + "ORDER BY extension")
+    List<String> getExtensionJsons(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
@@ -1489,6 +1500,18 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+  }
+
+  interface ApplicationDAO extends EntityDAO<Application> {
+    @Override
+    default String getTableName() {
+      return "application_entity";
+    }
+
+    @Override
+    default Class<Application> getEntityClass() {
+      return Application.class;
     }
   }
 
@@ -3244,6 +3267,45 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "entity_extension_time_series";
     }
+  }
+
+  interface AppExtensionTimeSeries {
+
+    @SqlQuery(
+        "SELECT status FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension AND runType = :runType ORDER BY timestamp DESC LIMIT 1")
+    String getLatestExtension(
+        @Bind("appId") String appId, @Bind("extension") String extension, @Bind("runType") String runType);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_extension_time_series(extension, jsonSchema, json) "
+                + "VALUES (:extension, :jsonSchema, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO apps_extension_time_series(extension, jsonSchema, json) "
+                + "VALUES (:extension, :jsonSchema, (:json :: jsonb))",
+        connectionType = POSTGRES)
+    void insert(@Bind("extension") String extension, @Bind("jsonSchema") String jsonSchema, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series set json = :json where appId=:appId and extension=:extension and timestamp=:timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and extension=:extension and timestamp=:timestamp",
+        connectionType = POSTGRES)
+    void update(
+        @Bind("appId") String appId,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Bind("timestamp") Long timestamp);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series WHERE appId = :appId and extension = :extension "
+            + "ORDER BY timestamp DESC")
+    List<String> getAppScheduleInfo(@Bind("appId") String appId, @Bind("extension") String extension);
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {

@@ -71,6 +71,7 @@ import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguratio
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -509,6 +510,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       ReportsHandler.shutDown();
+      AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

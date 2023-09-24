@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.util;
+package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
@@ -45,6 +45,7 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 

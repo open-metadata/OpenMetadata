@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -23,6 +24,11 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
 
   @Override
   public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
+    return null;
+  }
+
+  @Override
+  public PipelineServiceClientResponse runApplicationFlow(Application application) {
     return null;
   }
 

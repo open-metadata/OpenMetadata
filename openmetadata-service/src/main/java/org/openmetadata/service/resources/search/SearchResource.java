@@ -50,6 +50,7 @@ import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.searchIndex.ReIndexingHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
@@ -57,7 +58,6 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ReIndexingHandler;
 
 @Slf4j
 @Path("/v1/search")

@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.workflows.searchIndex;
 
+import static org.openmetadata.service.apps.bundles.searchIndex.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
-import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -42,6 +42,7 @@ import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.apps.bundles.searchIndex.ReIndexingHandler;
 import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
@@ -57,7 +58,6 @@ import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;

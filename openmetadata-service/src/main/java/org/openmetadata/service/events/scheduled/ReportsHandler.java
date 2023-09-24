@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp;
 import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -113,7 +114,7 @@ public class ReportsHandler {
       dataMap.put(SEARCH_CLIENT, searchClient);
       dataMap.put(EVENT_SUBSCRIPTION, subscription);
       JobBuilder jobBuilder =
-          JobBuilder.newJob(DataInsightsReportJob.class)
+          JobBuilder.newJob(SearchIndexApp.class)
               .withIdentity(DATA_INSIGHT_EMAIL_JOB, EMAIL_REPORT)
               .usingJobData(dataMap);
       return jobBuilder.build();

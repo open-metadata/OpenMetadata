@@ -1,0 +1,30 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/appSchedule.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppSchedule",
+  "description": "App Schedule.",
+  "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
+  "type": "object",
+  "definitions": {
+    "scheduleType": {
+      "type": "string",
+      "enum": ["Daily", "Weekly", "Monthly", "Custom"],
+      "default": "Weekly"
+    }
+  },
+  "properties": {
+    "scheduleId": {
+      "description": "Unique identifier of this Schedule.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "scheduleType": {
+      "$ref": "#/definitions/scheduleType"
+    },
+    "cronExpression": {
+      "description": "Cron Expression in case of Custom scheduled Trigger",
+      "type": "string"
+    }
+  },
+  "required": ["scheduleId", "scheduleType"],
+  "additionalProperties": false
+}

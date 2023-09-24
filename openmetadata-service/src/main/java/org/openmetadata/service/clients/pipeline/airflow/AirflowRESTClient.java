@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -311,6 +312,29 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String.format(
             "%s Failed to trigger workflow due to airflow API returned %s and response %s",
             workflow.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
+  }
+
+  @Override
+  public PipelineServiceClientResponse runApplicationFlow(Application application) {
+    HttpResponse<String> response;
+    try {
+      String automationsEndpoint = "%s/%s/run_application";
+      String automationsUrl = String.format(automationsEndpoint, serviceURL, API_ENDPOINT);
+      String workflowPayload = JsonUtils.pojoToJson(application);
+      response = post(automationsUrl, workflowPayload);
+      if (response.statusCode() == 200) {
+        return new PipelineServiceClientResponse()
+            .withCode(200)
+            .withReason(response.body())
+            .withPlatform(this.getPlatform());
+      }
+    } catch (Exception e) {
+      throw IngestionPipelineDeploymentException.byMessage(application.getName(), e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format(
+            "%s Failed to trigger workflow due to airflow API returned %s and response %s",
+            application.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
   }
 
   @Override
