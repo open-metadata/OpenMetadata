@@ -21,7 +21,6 @@ from sqlalchemy.exc import ProgrammingError
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     OVERFLOW_ERROR_CODES,
     SQAProfilerInterface,
-    handle_query_exception,
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
@@ -45,24 +44,10 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
         *args,
         **kwargs,
     ):
-        """Given a list of metrics, compute the given results
-        and returns the values
-
-        Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
-        Returns:
-            dictionnary of results
-        """
         try:
-            row = runner.select_first_from_sample(
-                *[
-                    metric(column).fn()
-                    for metric in metrics
-                    if not metric.is_window_metric()
-                ],
+            return super()._compute_static_metrics(
+                metrics, runner, column, session, *args, **kwargs
             )
-            return dict(row)
         except ProgrammingError as exc:
             if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
                 session.bind.dialect.name
@@ -73,10 +58,6 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
                 return self._compute_static_metrics_wo_sum(
                     metrics, runner, session, column
                 )
-
-        except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
-            handle_query_exception(msg, exc, session)
         return None
 
     def _compute_window_metrics(
@@ -88,21 +69,9 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
         *args,
         **kwargs,
     ):
-        """Given a list of metrics, compute the given results
-        and returns the values
-
-        Args:
-            column: the column to compute the metrics against
-            metrics: list of metrics to compute
-        Returns:
-            dictionnary of results
-        """
-
-        if not metrics:
-            return None
         try:
-            row = runner.select_first_from_sample(
-                *[metric(column).fn() for metric in metrics],
+            return super()._compute_window_metrics(
+                metrics, runner, column, session, *args, **kwargs
             )
         except ProgrammingError as exc:
             if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
@@ -111,11 +80,4 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
                 logger.info(
                     f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
                 )
-                return None
-
-        except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
-            handle_query_exception(msg, exc, session)
-        if row:
-            return dict(row)
         return None

@@ -61,7 +61,7 @@ class TrinoProfilerInterface(SQAProfilerInterface):
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
                 query_filter_={
-                    "filters": [(func.isfinite(column), "eq", "True")],
+                    "filters": [(func.is_nan(column), "eq", "False")],
                 },
             )
         except ProgrammingError:
