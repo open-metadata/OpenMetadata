@@ -28,7 +28,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand(Object requestObj) {
     // Validate Native Application
-    validateServerOnDemandExecutableApp(app.getExecutionContext().getOnDemand());
+    validateServerExecutableApp(app.getExecutionContext().getOnDemand());
 
     // Trigger the application
     AppScheduler.getInstance().triggerOnDemandApplication(app);
@@ -36,11 +36,13 @@ public class AbstractNativeApplication implements NativeApplication {
 
   @Override
   public void schedule(AppSchedule schedule) {
+    // Validate Native Application
+    validateServerExecutableApp(app.getExecutionContext().getOnDemand());
     // Schedule New Application Run
     AppScheduler.getInstance().addApplicationSchedule(app, schedule);
   }
 
-  protected void validateServerOnDemandExecutableApp(RuntimeContext context) {
+  protected void validateServerExecutableApp(RuntimeContext context) {
     // Server apps are native
     if (!app.getAppType().equals(AppType.Native)) {
       throw new IllegalArgumentException("Application Type is not Native.");
@@ -70,6 +72,5 @@ public class AbstractNativeApplication implements NativeApplication {
 
     // Trigger
     this.doExecute(jobExecutionContext);
-    triggerOnDemand(jobApp.getConfiguration());
   }
 }

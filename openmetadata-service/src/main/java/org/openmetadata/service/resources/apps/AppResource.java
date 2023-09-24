@@ -58,6 +58,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
+import org.quartz.SchedulerException;
 
 @Path("/v1/apps")
 @Tag(name = "Apps", description = "Apps are internal/external apps used to something on top of Open-metadata.")
@@ -385,6 +386,27 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             .withScheduleType(create.getScheduleType())
             .withCronExpression(create.getCronExpression());
     return repository.addApplicationSchedule(uriInfo, id, appSchedule).toResponse();
+  }
+
+  @DELETE
+  @Path("/schedule/{appId}")
+  @Operation(
+      operationId = "deleteApplicationSchedule",
+      summary = "Delete an Application Schedule",
+      description = "Schedule a application to be run on demand.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Application",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
+        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+      })
+  public Response deleteApplicationSchedule(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the Application", schema = @Schema(type = "UUID")) @PathParam("appId") UUID appId,
+      @Context SecurityContext securityContext)
+      throws SchedulerException {
+    return repository.deleteApplicationSchedule(uriInfo, appId).toResponse();
   }
 
   @POST

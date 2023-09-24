@@ -15,6 +15,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
@@ -22,6 +23,7 @@ import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.quartz.SchedulerException;
 
 public class AppRepository extends EntityRepository<Application> {
   public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
@@ -77,6 +79,10 @@ public class AppRepository extends EntityRepository<Application> {
   public RestUtil.PutResponse<?> addApplicationSchedule(UriInfo uriInfo, UUID appId, AppSchedule appScheduleInfo) {
     // Get Application
     Application application = get(uriInfo, appId, getFields("schedules"));
+    if (application.getSchedules() != null && !application.getSchedules().isEmpty()) {
+      throw new IllegalArgumentException("Job has already been Scheduled please remove any existing schedules.");
+    }
+
     daoCollection
         .entityExtensionDAO()
         .insert(
@@ -100,10 +106,40 @@ public class AppRepository extends EntityRepository<Application> {
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
+  public RestUtil.PutResponse<?> deleteApplicationSchedule(UriInfo uriInfo, UUID appId) throws SchedulerException {
+    // Get Application
+    Application application = get(uriInfo, appId, getFields("schedules"));
+    if (application.getSchedules() != null && !application.getSchedules().isEmpty()) {
+      // There is only one schedule per app
+      AppSchedule appSchedule = application.getSchedules().get(0);
+      daoCollection
+          .entityExtensionDAO()
+          .delete(appId, String.format("%s.%s", APP_SCHEDULE_EXTENSION, appSchedule.getScheduleId().toString()));
+
+      ChangeDescription change = removeScheduleChangeDescription(application.getVersion(), appSchedule);
+      ChangeEvent changeEvent =
+          getChangeEvent(withHref(uriInfo, application), change, entityType, application.getVersion());
+
+      // Delete the Application Schedule
+      AppScheduler.getInstance().deleteScheduledApplication(application);
+
+      // Response
+      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+    }
+    throw new IllegalArgumentException("No available schedule for the Job to remove.");
+  }
+
   private ChangeDescription addScheduleChangeDescription(Double version, Object newValue) {
     FieldChange fieldChange = new FieldChange().withName("schedules").withNewValue(newValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
     change.getFieldsAdded().add(fieldChange);
+    return change;
+  }
+
+  private ChangeDescription removeScheduleChangeDescription(Double version, Object oldValue) {
+    FieldChange fieldChange = new FieldChange().withName("schedules").withOldValue(oldValue);
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
+    change.getFieldsDeleted().add(fieldChange);
     return change;
   }
 
