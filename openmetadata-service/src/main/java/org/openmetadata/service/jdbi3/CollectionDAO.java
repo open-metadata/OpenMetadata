@@ -103,6 +103,8 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.ui.KnowledgePanel;
+import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
@@ -307,6 +309,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataModelDAO dashboardDataModelDAO();
+
+  @CreateSqlObject
+  KnowledgePanelDAO knowledgePanelDAO();
+
+  @CreateSqlObject
+  PageDAO pageDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -3670,6 +3678,50 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+  }
+
+  interface KnowledgePanelDAO extends EntityDAO<KnowledgePanel> {
+    @Override
+    default String getTableName() {
+      return "knowledge_panel_entity";
+    }
+
+    @Override
+    default Class<KnowledgePanel> getEntityClass() {
+      return KnowledgePanel.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+  }
+
+  interface PageDAO extends EntityDAO<Page> {
+    @Override
+    default String getTableName() {
+      return "page_entity";
+    }
+
+    @Override
+    default Class<Page> getEntityClass() {
+      return Page.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
     }
   }
 }

@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/api/system/ui/createPage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreatePageRequest",
+  "description": "Create a Page.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.system.ui.CreatePage",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this column name.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the team.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "panels": {
+      "description": "IDs of Knowledge Panels that are configured for this page.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "persona": {
+      "description": "Optional IDs of Personas, for which this page is loaded",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "domains": {
+      "description": "Optional IDs of Domains, for which this page is loaded",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    },
+    "layout": {
+      "description": "Layout of the page to describe where each panel is configured and with what size.",
+      "type": "object"
+    }
+  },
+  "required": ["name", "panels"],
+  "additionalProperties": false
+}

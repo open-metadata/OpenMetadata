@@ -142,6 +142,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.system.ui.KnowledgePanel;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AccessDetails;
@@ -256,6 +257,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static Persona DATA_SCIENTIST;
   public static Persona DATA_ENGINEER;
+
+  public static KnowledgePanel ACTIVITY_FEED;
+  public static KnowledgePanel MY_DATA;
   public static User USER_WITH_DATA_STEWARD_ROLE;
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;

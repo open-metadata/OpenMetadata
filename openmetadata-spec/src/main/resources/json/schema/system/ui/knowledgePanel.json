@@ -1,0 +1,71 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/knowledgePanel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KnowledgePanel",
+  "description": "This schema defines KnowledgePanel. A Page in OpenMetadata represents a customizable page with the collection of Knowledge Panels.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.KnowledgePanel",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "supportedSizes": {
+      "javaType": "org.openmetadata.schema.system.ui.KnowledgePanelSupportedSizes",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["SMALL", "MEDIUM", "LARGE"]
+      }
+    },
+    "configuration": {
+      "description": "Knowledge Panel Configuration.",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the glossary",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this column name.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the Knowledge Panel.",
+      "type": "string"
+    },
+    "supportedSizes": {
+      "$ref": "#/definitions/supportedSizes"
+    },
+    "configuration": {
+      "$ref": "#/definitions/configuration"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": ["name", "supportedSizes"],
+  "additionalProperties": false
+}

@@ -135,13 +135,37 @@ WHERE serviceType = 'DomoPipeline';
 ALTER TABLE query_entity RENAME COLUMN nameHash TO fqnHash;
 
 CREATE TABLE IF NOT EXISTS persona_entity (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
-    json JSON NOT NULL,
-    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-    PRIMARY KEY (id),
-    UNIQUE (nameHash),
-    INDEX name_index(name)
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (nameHash)
 );
+CREATE INDEX persona_name_index ON persona_entity USING btree (name);
+
+CREATE TABLE IF NOT EXISTS knowledge_panel_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (nameHash)
+);
+CREATE INDEX knowledge_panel_name_index ON knowledge_panel_entity USING btree (name);
+
+CREATE TABLE IF NOT EXISTS page_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (nameHash)
+);
+CREATE INDEX page_name_index ON page_entity USING btree (name);

@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/system/ui/page.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page",
+  "description": "This schema defines Page. A Page in OpenMetadata represents a customizable page with the collection of Knowledge Panels.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.ui.Page",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Unique Name of the Page.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this column name.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Page.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "personas": {
+      "description": "List of personas that this page belongs to.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "domains": {
+      "description": "List of domains that this page belongs to.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "panels": {
+      "description": "List of knowledge panels this page is composed of.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "layout": {
+      "description": "Layout of the page to describe where each panel is configured and with what size.",
+      "type": "object"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": ["name", "panels"],
+  "additionalProperties": false
+}
