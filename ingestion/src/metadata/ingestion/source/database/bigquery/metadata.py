@@ -47,6 +47,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -200,6 +201,12 @@ class BigquerySource(CommonDbSourceService):
     def set_project_id() -> List[str]:
         _, project_ids = auth.default()
         return project_ids if isinstance(project_ids, list) else [project_ids]
+
+    def test_connection(self) -> None:
+        for project_id in self.set_project_id():
+            self.set_inspector(project_id)
+            test_connection_fn = get_test_connection_fn(self.service_connection)
+            test_connection_fn(self.metadata, self.engine, self.service_connection)
 
     def query_table_names_and_types(
         self, schema_name: str
