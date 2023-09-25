@@ -66,3 +66,14 @@ export const AssetsFilterOptions: Array<{
     value: SearchIndex.DASHBOARD_DATA_MODEL,
   },
 ];
+
+export const ASSETS_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.TOPIC,
+  SearchIndex.DASHBOARD,
+  SearchIndex.PIPELINE,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+];
