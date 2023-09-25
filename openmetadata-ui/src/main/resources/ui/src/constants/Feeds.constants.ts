@@ -22,10 +22,12 @@ export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
-export const entityUrlMap = {
+export const ENTITY_URL_MAP = {
   team: 'settings/members/teams',
   user: 'users',
 };
+
+export type EntityUrlMapType = keyof typeof ENTITY_URL_MAP;
 
 export const confirmStateInitialValue = {
   state: false,
