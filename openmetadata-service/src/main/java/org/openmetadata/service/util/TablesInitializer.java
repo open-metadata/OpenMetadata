@@ -24,7 +24,6 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -187,13 +186,14 @@ public final class TablesInitializer {
     }
 
     // Check for db auth providers.
-    DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl()).ifPresent(databaseAuthenticationProvider -> {
-      String token = databaseAuthenticationProvider.authenticate(
-              dataSourceFactory.getUrl(),
-              dataSourceFactory.getUser(),
-              dataSourceFactory.getPassword());
-      dataSourceFactory.setPassword(token);
-    });
+    DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl())
+        .ifPresent(
+            databaseAuthenticationProvider -> {
+              String token =
+                  databaseAuthenticationProvider.authenticate(
+                      dataSourceFactory.getUrl(), dataSourceFactory.getUser(), dataSourceFactory.getPassword());
+              dataSourceFactory.setPassword(token);
+            });
 
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();

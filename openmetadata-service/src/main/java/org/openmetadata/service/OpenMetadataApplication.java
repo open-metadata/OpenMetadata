@@ -275,14 +275,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
     // Check for db auth providers.
-    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl()).ifPresent(databaseAuthenticationProvider -> {
-      String token = databaseAuthenticationProvider.authenticate(
-              dbFactory.getUrl(),
-              dbFactory.getUser(),
-              dbFactory.getPassword());
-      dbFactory.setPassword(token);
-    });
-
+    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
+        .ifPresent(
+            databaseAuthenticationProvider -> {
+              String token =
+                  databaseAuthenticationProvider.authenticate(
+                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
+              dbFactory.setPassword(token);
+            });
 
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
     SqlLogger sqlLogger =
