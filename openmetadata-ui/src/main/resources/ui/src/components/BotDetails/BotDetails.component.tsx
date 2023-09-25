@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Input, Row, Space, Typography } from 'antd';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,19 +37,18 @@ import {
   AuthType,
 } from '../../generated/entity/teams/user';
 import { getSettingPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Description from '../common/description/Description';
 import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
-import PageLayout from '../containers/PageLayout';
 import ConfirmationModal from '../Modals/ConfirmationModal/ConfirmationModal';
 import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
 import { BotsDetailProps } from './BotDetails.interfaces';
 import './BotDetails.style.less';
-import DisplayNameComponent from './DisplayNameComponent/DisplayNameComponent.component';
+
+import { ReactComponent as IconBotProfile } from '../../assets/svg/bot-profile.svg';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -54,7 +56,6 @@ const BotDetails: FC<BotsDetailProps> = ({
   updateBotsDetails,
   revokeTokenHandler,
   botPermission,
-  onEmailChange,
   updateUserDetails,
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
@@ -191,29 +192,71 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Row gutter={[16, 16]}>
+      <Row className="p-xs" gutter={[16, 16]}>
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
               <div className="d-flex flex-col">
-                <SVGIcons
-                  alt="bot-profile"
-                  icon={Icons.BOT_PROFILE}
-                  width="280px"
-                />
+                <IconBotProfile widths="280px" />
 
                 <Space className="p-b-md" direction="vertical" size={8}>
-                  <DisplayNameComponent
-                    displayName={displayName}
-                    displayNamePermission={displayNamePermission}
-                    editAllPermission={editAllPermission}
-                    handleDisplayNameChange={handleDisplayNameChange}
-                    isDisplayNameEdit={isDisplayNameEdit}
-                    setIsDisplayNameEdit={(value: boolean) =>
-                      setIsDisplayNameEdit(value)
-                    }
-                    onDisplayNameChange={onDisplayNameChange}
-                  />
+                  <div className="mt-4 w-full d-flex">
+                    {isDisplayNameEdit ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className="w-full"
+                          data-testid="displayName"
+                          id="displayName"
+                          name="displayName"
+                          placeholder={t('label.display-name')}
+                          value={displayName}
+                          onChange={onDisplayNameChange}
+                        />
+                        <div className="flex justify-end" data-testid="buttons">
+                          <Button
+                            className="text-sm mr-1"
+                            data-testid="cancel-displayName"
+                            icon={<CloseOutlined />}
+                            size="small"
+                            type="primary"
+                            onMouseDown={() => setIsDisplayNameEdit(false)}
+                          />
+
+                          <Button
+                            className="text-sm mr-1"
+                            data-testid="save-displayName"
+                            icon={<CheckOutlined />}
+                            size="small"
+                            type="primary"
+                            onClick={handleDisplayNameChange}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <Space>
+                        {displayName ? (
+                          <Typography.Title className="display-name" level={5}>
+                            {displayName}
+                          </Typography.Title>
+                        ) : (
+                          <Typography.Text className="text-grey-muted">
+                            {t('label.add-entity', {
+                              entity: t('label.display-name'),
+                            })}
+                          </Typography.Text>
+                        )}
+                        {(displayNamePermission || editAllPermission) && (
+                          <Button
+                            className="p-0"
+                            data-testid="edit-displayName"
+                            icon={<EditIcon width={16} />}
+                            type="text"
+                            onClick={() => setIsDisplayNameEdit(true)}
+                          />
+                        )}
+                      </Space>
+                    )}
+                  </div>
                   <Description
                     description={botData.description || ''}
                     entityName={getEntityName(botData)}
@@ -258,11 +301,25 @@ const BotDetails: FC<BotsDetailProps> = ({
   }, [botUserData]);
 
   return (
-    <PageLayout
-      classes="tw-h-full tw-px-4"
-      header={
+    <PageLayoutV1
+      leftPanel={fetchLeftPanel()}
+      pageTitle={t('label.bot-detail')}
+      rightPanel={
+        <div
+          className="p-md bg-white w-full h-full mt-2 border-left"
+          data-testid="right-panel">
+          <div className="d-flex flex-col">
+            <Typography.Text className="mb-2 text-lg">
+              {t('label.token-security')}
+            </Typography.Text>
+            <Typography.Text className="mb-2">
+              {t('message.token-security-description')}
+            </Typography.Text>
+          </div>
+        </div>
+      }>
+      <div className="p-sm p-x-md">
         <TitleBreadcrumb
-          className="tw-px-6"
           titleLinks={[
             {
               name: 'Bots',
@@ -274,60 +331,37 @@ const BotDetails: FC<BotsDetailProps> = ({
             { name: botData.name || '', url: '', activeTitle: true },
           ]}
         />
-      }
-      leftPanel={fetchLeftPanel()}
-      pageTitle={t('label.bot-detail')}
-      rightPanel={
-        <Card className="page-layout-v1-left-panel mt-2">
-          <div data-testid="right-panel">
-            <div className="d-flex flex-col">
-              <Typography.Text className="mb-2 text-lg">
-                {t('label.token-security')}
-              </Typography.Text>
-              <Typography.Text className="mb-2">
-                {t('message.token-security-description')}
-              </Typography.Text>
-            </div>
-          </div>
+        <Card
+          className="page-layout-v1-left-panel mt-2 m-t-md"
+          data-testid="center-panel">
+          {authenticationMechanism ? (
+            <>
+              {isAuthMechanismEdit ? (
+                <AuthMechanismForm
+                  authenticationMechanism={authenticationMechanism}
+                  isUpdating={isUpdating}
+                  onCancel={() => setIsAuthMechanismEdit(false)}
+                  onSave={handleAuthMechanismUpdate}
+                />
+              ) : (
+                <AuthMechanism
+                  authenticationMechanism={authenticationMechanism}
+                  hasPermission={editAllPermission}
+                  onEdit={handleAuthMechanismEdit}
+                  onTokenRevoke={() => setIsRevokingToken(true)}
+                />
+              )}
+            </>
+          ) : (
+            <AuthMechanismForm
+              authenticationMechanism={{} as AuthenticationMechanism}
+              isUpdating={isUpdating}
+              onCancel={() => setIsAuthMechanismEdit(false)}
+              onSave={handleAuthMechanismUpdate}
+            />
+          )}
         </Card>
-      }>
-      <Card
-        className="page-layout-v1-left-panel mt-2"
-        data-testid="center-panel">
-        {authenticationMechanism ? (
-          <>
-            {isAuthMechanismEdit ? (
-              <AuthMechanismForm
-                authenticationMechanism={authenticationMechanism}
-                botData={botData}
-                botUser={botUserData}
-                isUpdating={isUpdating}
-                onCancel={() => setIsAuthMechanismEdit(false)}
-                onEmailChange={onEmailChange}
-                onSave={handleAuthMechanismUpdate}
-              />
-            ) : (
-              <AuthMechanism
-                authenticationMechanism={authenticationMechanism}
-                botUser={botUserData}
-                hasPermission={editAllPermission}
-                onEdit={handleAuthMechanismEdit}
-                onTokenRevoke={() => setIsRevokingToken(true)}
-              />
-            )}
-          </>
-        ) : (
-          <AuthMechanismForm
-            authenticationMechanism={{} as AuthenticationMechanism}
-            botData={botData}
-            botUser={botUserData}
-            isUpdating={isUpdating}
-            onCancel={() => setIsAuthMechanismEdit(false)}
-            onEmailChange={onEmailChange}
-            onSave={handleAuthMechanismUpdate}
-          />
-        )}
-      </Card>
+      </div>
       <ConfirmationModal
         bodyText={t('message.are-you-sure-to-revoke-access')}
         cancelText={t('label.cancel')}
@@ -341,7 +375,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           handleAuthMechanismEdit();
         }}
       />
-    </PageLayout>
+    </PageLayoutV1>
   );
 };
 

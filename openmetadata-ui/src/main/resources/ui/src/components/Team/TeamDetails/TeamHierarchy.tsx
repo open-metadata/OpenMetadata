@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Modal, Table, Typography } from 'antd';
+import { Modal, Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from 'components/common/Table/Table';
 import { TeamType } from 'generated/api/teams/createTeam';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -43,6 +44,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   currentTeam,
   data,
   onTeamExpand,
+  isFetchingAllTeamAdvancedDetails,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -54,11 +56,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.team-plural'),
         dataIndex: 'teams',
+        className: 'whitespace-nowrap',
         key: 'teams',
         render: (_, record) => (
           <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
+            className="link-hover"
+            to={getTeamsWithFqnPath(
+              encodeURIComponent(record.fullyQualifiedName || record.name)
+            )}>
             {getEntityName(record)}
           </Link>
         ),
@@ -66,32 +71,60 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.type'),
         dataIndex: 'teamType',
+        width: 120,
         key: 'teamType',
       },
       {
         title: t('label.sub-team-plural'),
         dataIndex: 'childrenCount',
+        width: 100,
         key: 'subTeams',
-        render: (childrenCount: number) => childrenCount ?? '--',
+        render: (childrenCount: number) =>
+          isFetchingAllTeamAdvancedDetails ? (
+            <Skeleton
+              active={isFetchingAllTeamAdvancedDetails}
+              paragraph={{ rows: 0 }}
+            />
+          ) : (
+            childrenCount ?? 0
+          ),
       },
       {
         title: t('label.user-plural'),
         dataIndex: 'userCount',
+        width: 60,
         key: 'users',
-        render: (userCount: number) => userCount ?? '--',
+        render: (userCount: number) =>
+          isFetchingAllTeamAdvancedDetails ? (
+            <Skeleton
+              active={isFetchingAllTeamAdvancedDetails}
+              paragraph={{ rows: 0 }}
+            />
+          ) : (
+            userCount ?? 0
+          ),
       },
       {
         title: t('label.entity-count', {
           entity: t('label.asset'),
         }),
         dataIndex: 'owns',
+        width: 120,
         key: 'owns',
-        render: (owns) => owns?.length || 0,
+        render: (owns: Team['owns']) =>
+          isFetchingAllTeamAdvancedDetails ? (
+            <Skeleton
+              active={isFetchingAllTeamAdvancedDetails}
+              paragraph={{ rows: 0 }}
+            />
+          ) : (
+            owns?.length ?? 0
+          ),
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
-        width: 450,
+        width: 300,
         key: 'description',
         render: (description: string) => (
           <Typography.Paragraph

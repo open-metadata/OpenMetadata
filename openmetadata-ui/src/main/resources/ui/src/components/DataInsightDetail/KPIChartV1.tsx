@@ -23,35 +23,35 @@ import {
   Line,
   LineChart,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
-import { CustomTooltip, getKpiGraphData } from '../../utils/DataInsightUtils';
+import { getKpiGraphData } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
   kpiList: Array<Kpi>;
   selectedDays: number;
+  isKPIListLoading: boolean;
 }
 
 const EmptyPlaceholder = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="d-flex items-center flex-col p-sm">
-      <KPIIcon width={100} />
+    <div className="d-flex items-center flex-col p-t-sm">
+      <KPIIcon width={80} />
       <div className="m-t-xs text-center">
         <Typography.Paragraph style={{ marginBottom: '0' }}>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
@@ -79,7 +79,7 @@ const EmptyPlaceholder = () => {
   );
 };
 
-const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
+const KPIChartV1: FC<Props> = ({ isKPIListLoading, kpiList, selectedDays }) => {
   const { t } = useTranslation();
 
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
@@ -92,8 +92,8 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
     try {
       const promises = kpiList.map((kpi) =>
         getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: getPastDaysDateTimeMillis(selectedDays),
-          endTs: getCurrentDateTimeMillis(),
+          startTs: getEpochMillisForPastDays(selectedDays),
+          endTs: getCurrentMillis(),
         })
       );
       const responses = await Promise.allSettled(promises);
@@ -156,12 +156,8 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
     }
   };
 
-  const { kpis, graphData, kpiTooltipRecord } = useMemo(() => {
-    const kpiTooltipRecord = kpiList.reduce((previous, curr) => {
-      return { ...previous, [curr.name]: curr.metricType };
-    }, {});
-
-    return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
+  const { kpis, graphData } = useMemo(() => {
+    return { ...getKpiGraphData(kpiResults, kpiList) };
   }, [kpiResults, kpiList]);
 
   useEffect(() => {
@@ -185,15 +181,15 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
       className="kpi-widget-card h-full"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}
-      title={
-        <div className="p-y-sm">
+      loading={isKPIListLoading || isLoading}>
+      <Row>
+        <Col span={24}>
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>
-        </div>
-      }>
-      {kpiList.length ? (
+        </Col>
+      </Row>
+      {kpiList.length > 0 ? (
         <Row>
           {graphData.length ? (
             <>
@@ -213,11 +209,6 @@ const KPIChartV1: FC<Props> = ({ kpiList, selectedDays }) => {
                     />
                     <XAxis dataKey="timestamp" />
                     <YAxis />
-                    <Tooltip
-                      content={
-                        <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
-                      }
-                    />
                     {kpis.map((kpi, i) => (
                       <Line
                         dataKey={kpi}

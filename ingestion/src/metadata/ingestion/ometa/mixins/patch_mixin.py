@@ -31,7 +31,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.api.models import Entity
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
@@ -138,7 +140,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{source.id}]: {exc}"
+                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
             )
 
         return None
@@ -162,9 +164,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         Returns
             Updated Entity
         """
-        instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id
-        )
+        if isinstance(source, TestCase):
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity,
+                entity_id=source.id,
+                fields=["testDefinition", "testSuite"],
+            )
+        else:
+            instance: Optional[T] = self._fetch_entity_if_exists(
+                entity=entity, entity_id=source.id
+            )
+
         if not instance:
             return None
 
@@ -434,4 +444,21 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
+            )
+
+    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> None:
+        """
+        Patch life cycle data for a entity
+
+        :param entity: Entity to update the life cycle for
+        :param life_cycle_data: Life Cycle data to add
+        """
+        try:
+            destination = entity.copy(deep=True)
+            destination.lifeCycle = life_cycle
+            self.patch(entity=type(entity), source=entity, destination=destination)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.__root__}: {exc}"
             )

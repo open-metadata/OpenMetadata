@@ -19,14 +19,13 @@ import {
   PublicClientApplication,
 } from '@azure/msal-browser';
 import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
+import { AuthProvider } from 'generated/settings/settings';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
-import { validEmailRegEx } from '../constants/regex.constants';
-import { AuthTypes } from '../enums/signin.enum';
+import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { SamlSSOClientConfig } from '../generated/security/client/samlSSOClientConfig';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
@@ -63,15 +62,6 @@ export const getUserManagerConfig = (
   };
 };
 
-export type AuthClient = {
-  authority: string;
-  clientId: string;
-  callbackUrl: string;
-  provider: string;
-  providerName: string;
-  samlConfiguration?: SamlSSOClientConfig;
-};
-
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
 ): Record<string, string | boolean> => {
@@ -87,7 +77,7 @@ export const getAuthConfig = (
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
-    case AuthTypes.OKTA:
+    case AuthProvider.Okta:
       {
         config = {
           clientId,
@@ -100,7 +90,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.CUSTOM_OIDC:
+    case AuthProvider.CustomOidc:
       {
         config = {
           authority,
@@ -114,7 +104,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.GOOGLE:
+    case AuthProvider.Google:
       {
         config = {
           authority,
@@ -127,7 +117,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.SAML:
+    case AuthProvider.Saml:
       {
         config = {
           samlConfiguration,
@@ -136,7 +126,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.AWS_COGNITO:
+    case AuthProvider.AwsCognito:
       {
         config = {
           authority,
@@ -149,7 +139,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.AUTH0: {
+    case AuthProvider.Auth0: {
       config = {
         authority,
         clientId,
@@ -159,8 +149,8 @@ export const getAuthConfig = (
 
       break;
     }
-    case AuthTypes.LDAP:
-    case AuthTypes.BASIC: {
+    case AuthProvider.LDAP:
+    case AuthProvider.Basic: {
       config = {
         auth: {
           authority,
@@ -177,7 +167,7 @@ export const getAuthConfig = (
 
       break;
     }
-    case AuthTypes.AZURE:
+    case AuthProvider.Azure:
       {
         config = {
           auth: {
@@ -207,13 +197,9 @@ export const setMsalInstance = (configs: Configuration) => {
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 };
-// Add here the endpoints for MS Graph API services you would like to use.
-export const msalGraphConfig = {
-  graphMeEndpoint: 'https://graph.microsoft.com',
-};
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(validEmailRegEx)) {
+  if (email?.match(EMAIL_REG_EX)) {
     return email.split('@')[0];
   } else {
     // if the string does not conform to email format return the string

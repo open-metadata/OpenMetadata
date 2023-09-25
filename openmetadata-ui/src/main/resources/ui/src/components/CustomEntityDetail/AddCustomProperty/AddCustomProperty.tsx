@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
+import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
+import { CUSTOM_PROPERTY_NAME_REGEX } from 'constants/regex.constants';
+import {
+  CUSTOM_PROPERTY_CATEGORY,
+  OPEN_METADATA,
+} from 'constants/service-guide.constant';
+import { EntityType } from 'enums/entity.enum';
+import { ServiceCategory } from 'enums/service.enum';
 import { t } from 'i18next';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isUndefined, map, startCase } from 'lodash';
@@ -30,23 +41,11 @@ import {
   getTypeListByCategory,
 } from 'rest/metadataTypeAPI';
 import { generateFormFields } from 'utils/formUtils';
+import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
+import { getSettingPath } from 'utils/RouterUtils';
 import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
 import { Category, CustomProperty, Type } from '../../../generated/entity/type';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
-import { CUSTOM_PROPERTY_NAME_REGEX } from 'constants/regex.constants';
-import {
-  CUSTOM_PROPERTY_CATEGORY,
-  OPEN_METADATA,
-} from 'constants/service-guide.constant';
-import { EntityType } from 'enums/entity.enum';
-import { ServiceCategory } from 'enums/service.enum';
-import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
-import { getSettingPath } from 'utils/RouterUtils';
 
 const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();
@@ -204,34 +203,33 @@ const AddCustomProperty = () => {
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
-        <Form
-          data-testid="custom-property-form"
-          layout="vertical"
-          onFinish={handleSubmit}
-          onFocus={handleFieldFocus}>
-          {generateFormFields(formFields)}
-          <Row justify="end">
-            <Col>
-              <Button
-                data-testid="back-button"
-                type="link"
-                onClick={handleCancel}>
-                {t('label.back')}
-              </Button>
-            </Col>
-            <Col>
-              <Button
-                data-testid="create-button"
-                htmlType="submit"
-                loading={isCreating}
-                type="primary">
-                {t('label.create')}
-              </Button>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
+      <Form
+        className="m-t-md"
+        data-testid="custom-property-form"
+        layout="vertical"
+        onFinish={handleSubmit}
+        onFocus={handleFieldFocus}>
+        {generateFormFields(formFields)}
+        <Row justify="end">
+          <Col>
+            <Button
+              data-testid="back-button"
+              type="link"
+              onClick={handleCancel}>
+              {t('label.back')}
+            </Button>
+          </Col>
+          <Col>
+            <Button
+              data-testid="create-button"
+              htmlType="submit"
+              loading={isCreating}
+              type="primary">
+              {t('label.create')}
+            </Button>
+          </Col>
+        </Row>
+      </Form>
     </div>
   );
 

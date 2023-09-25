@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
+import Table from 'components/common/Table/Table';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
@@ -24,7 +26,7 @@ import { updateUser } from 'rest/userAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../constants/constants';
+import { PAGE_SIZE_BASE, ROUTES } from '../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { CreateUser } from '../../generated/api/teams/createUser';
@@ -37,7 +39,6 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import Searchbar from '../common/searchbar/Searchbar';
 import PageHeader from '../header/PageHeader.component';
-import Loader from '../Loader/Loader';
 import { commonUserDetailColumns } from '../Users/Users.util';
 import './usersList.less';
 
@@ -48,7 +49,7 @@ interface UserListV1Props {
   currentPage: number;
   isDataLoading: boolean;
   showDeletedUser: boolean;
-  onPagingChange: (cursorValue: string | number, activePage?: number) => void;
+  onPagingChange: NextPreviousProps['pagingHandler'];
   onShowDeletedUserChange: (value: boolean) => void;
   onSearch: (text: string) => void;
   afterDeleteAction: () => void;
@@ -130,20 +131,13 @@ const UserListV1: FC<UserListV1Props> = ({
         render: (_, record) => (
           <Space
             align="center"
-            className="tw-w-full tw-justify-center action-icons"
+            className="w-full justify-center action-icons"
             size={8}>
             {showRestore && (
               <Tooltip placement="bottom" title={t('label.restore')}>
                 <Button
-                  icon={
-                    <IconRestore
-                      data-testid={`restore-user-btn-${
-                        record.displayName || record.name
-                      }`}
-                      name={t('label.restore')}
-                      width="16px"
-                    />
-                  }
+                  data-testid={`restore-user-btn-${record.name}`}
+                  icon={<IconRestore name={t('label.restore')} width="16px" />}
                   type="text"
                   onClick={() => {
                     setSelectedUser(record);
@@ -181,18 +175,14 @@ const UserListV1: FC<UserListV1Props> = ({
   const errorPlaceHolder = useMemo(
     () => (
       <Row>
-        <Col className="w-full d-flex tw-justify-end">
+        <Col className="w-full d-flex justify-end">
           <span>
             <Switch
               checked={showDeletedUser}
-              size="small"
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">
-              {t('label.deleted-entity', {
-                entity: t('label.user-plural'),
-              })}
-            </span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
         </Col>
         <Col className="mt-24" span={24}>
@@ -214,7 +204,7 @@ const UserListV1: FC<UserListV1Props> = ({
 
   return (
     <Row
-      className="user-listing"
+      className="user-listing p-b-md"
       data-testid="user-list-v1-component"
       gutter={[16, 16]}>
       <Col span={12}>
@@ -223,29 +213,24 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <span>
             <Switch
               checked={showDeletedUser}
+              data-testid="show-deleted"
               onClick={onShowDeletedUserChange}
             />
-            <span className="tw-ml-2">
-              {t('label.deleted-entity', {
-                entity: t('label.user-plural'),
-              })}
-            </span>
+            <span className="m-l-xs">{t('label.deleted')}</span>
           </span>
-          <Tooltip
-            placement="topLeft"
-            title={!isAdminUser && t('message.admin-only-action')}>
+
+          {isAdminUser && (
             <Button
               data-testid="add-user"
-              disabled={!isAdminUser}
               type="primary"
               onClick={handleAddNewUser}>
               {t('label.add-entity', { entity: t('label.user') })}
             </Button>
-          </Tooltip>
+          )}
         </Space>
       </Col>
       <Col span={8}>
@@ -267,10 +252,7 @@ const UserListV1: FC<UserListV1Props> = ({
           columns={columns}
           data-testid="user-list-table"
           dataSource={data}
-          loading={{
-            spinning: isDataLoading,
-            indicator: <Loader size="small" />,
-          }}
+          loading={isDataLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
@@ -280,14 +262,13 @@ const UserListV1: FC<UserListV1Props> = ({
         />
       </Col>
       <Col span={24}>
-        {paging.total > PAGE_SIZE_MEDIUM && (
+        {paging.total > PAGE_SIZE_BASE && (
           <NextPrevious
             currentPage={currentPage}
             isNumberBased={Boolean(searchTerm)}
-            pageSize={PAGE_SIZE_MEDIUM}
+            pageSize={PAGE_SIZE_BASE}
             paging={paging}
             pagingHandler={onPagingChange}
-            totalCount={paging.total}
           />
         )}
       </Col>

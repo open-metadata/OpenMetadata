@@ -16,15 +16,22 @@ import { ReactNode } from 'react';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  ContainerSearchSource,
+  DashboardDataModelSearchSource,
   DashboardSearchSource,
   ExploreSearchSource,
   GlossarySearchSource,
   MlmodelSearchSource,
+  PipelineSearchSource,
   QuerySearchSource,
   SearchHitBody,
+  SearchIndexSearchSource,
+  StoredProcedureSearchSource,
   TableSearchSource,
   TagClassSearchSource,
   TeamSearchSource,
+  TestCaseSearchSource,
+  TopicSearchSource,
   UserSearchSource,
 } from '../../interface/search.interface';
 import { ExploreSearchIndex } from '../Explore/explore.interface';
@@ -43,7 +50,13 @@ export type SourceType = (
       TableSearchSource,
       Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'
     >
+  | Pick<TopicSearchSource, Fields>
+  | Pick<ContainerSearchSource, Fields>
+  | Pick<PipelineSearchSource, Fields>
+  | Pick<DashboardDataModelSearchSource, Fields>
+  | Pick<StoredProcedureSearchSource, Fields | 'storedProcedureCode'>
   | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
+  | Pick<SearchIndexSearchSource, Fields>
   | Pick<
       Exclude<
         ExploreSearchSource,
@@ -55,6 +68,10 @@ export type SourceType = (
         | QuerySearchSource
         | UserSearchSource
         | TeamSearchSource
+        | TestCaseSearchSource
+        | SearchIndexSearchSource
+        | StoredProcedureSearchSource
+        | DashboardDataModelSearchSource
       >,
       Fields
     >
@@ -63,6 +80,7 @@ export type SourceType = (
   tier?: string | Pick<TagLabel, 'tagFQN'>;
   tags?: string[] | TagLabel[];
   entityType?: string;
+  service?: EntityReference;
   owner?: Partial<
     Pick<
       EntityReference,

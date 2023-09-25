@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormProps } from '@rjsf/core';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Divider,
@@ -22,6 +21,8 @@ import {
   Switch,
 } from 'antd';
 import classNames from 'classnames';
+import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
+import { AsyncSelectListProps } from 'components/AsyncSelectList/AsyncSelectList.interface';
 import FilterPattern from 'components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from 'components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
@@ -32,7 +33,6 @@ import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList
 import { UserSelectDropdownProps } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import SliderWithInput from 'components/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from 'components/SliderWithInput/SliderWithInput.interface';
-import { VALID_OBJECT_KEY_REGEX } from 'constants/regex.constants';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { compact, startCase } from 'lodash';
 import TagSuggestion, {
@@ -62,7 +62,10 @@ export const getField = (field: FieldProp) => {
   if (required) {
     fieldRules = [
       ...fieldRules,
-      { required, message: i18n.t('label.field-required', { field: name }) },
+      {
+        required,
+        message: i18n.t('label.field-required', { field: startCase(name) }),
+      },
     ];
   }
 
@@ -133,6 +136,13 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.TAG_SUGGESTION:
       fieldElement = (
         <TagSuggestion {...(props as unknown as TagSuggestionProps)} />
+      );
+
+      break;
+
+    case FieldTypes.ASYNC_SELECT_LIST:
+      fieldElement = (
+        <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
       );
 
       break;
@@ -220,32 +230,4 @@ export const transformErrors: ErrorTransformer = (errors) => {
   });
 
   return compact(errorRet);
-};
-
-export const customValidate: FormProps['customValidate'] = (
-  formData,
-  errors
-) => {
-  const { connectionArguments = {}, connectionOptions = {} } = formData;
-
-  const connectionArgumentsKeys = Object.keys(connectionArguments);
-  const connectionOptionsKeys = Object.keys(connectionOptions);
-
-  const connectionArgumentsHasError = connectionArgumentsKeys.some(
-    (key) => !VALID_OBJECT_KEY_REGEX.test(key)
-  );
-
-  const connectionOptionsHasError = connectionOptionsKeys.some(
-    (key) => !VALID_OBJECT_KEY_REGEX.test(key)
-  );
-
-  if (connectionArgumentsHasError && errors?.connectionArguments) {
-    errors.connectionArguments?.addError(i18n.t('message.invalid-object-key'));
-  }
-
-  if (connectionOptionsHasError && errors?.connectionOptions) {
-    errors.connectionOptions?.addError(i18n.t('message.invalid-object-key'));
-  }
-
-  return errors;
 };

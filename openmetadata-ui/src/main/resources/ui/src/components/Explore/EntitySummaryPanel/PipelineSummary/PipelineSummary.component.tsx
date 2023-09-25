@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
-import classNames from 'classnames';
+import { Col, Divider, Row, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from 'enums/Explore.enum';
@@ -23,16 +22,16 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Pipeline } from '../../../../generated/entity/data/pipeline';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface PipelineSummaryProps {
   entityDetails: Pipeline;
-  componentType?: string;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
   tags?: TagLabel[];
   isLoading?: boolean;
 }
@@ -55,92 +54,29 @@ function PipelineSummary({
     [entityDetails]
   );
 
-  const isExplore = useMemo(
-    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
-    [componentType]
-  );
-
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
-            <Row gutter={[0, 4]}>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col
-                          data-testid={
-                            info.dataTestId
-                              ? info.dataTestId
-                              : `${info.name}-label`
-                          }
-                          span={8}>
-                          <Typography.Text className="text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Space align="start">
-                            <Typography.Link
-                              className="d-flex items-center"
-                              data-testid="pipeline-link-name"
-                              href={info.url}
-                              target={info.isExternal ? '_blank' : '_self'}>
-                              {info.value}
-                              {info.isExternal ? (
-                                <SVGIcons
-                                  alt="external-link"
-                                  className="m-l-xss"
-                                  height="14px"
-                                  icon="external-link"
-                                  width="14px"
-                                />
-                              ) : null}
-                            </Typography.Link>
-                          </Space>
-                        ) : (
-                          <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
-            />
-            <Divider className="m-y-xs" />
-          </>
-        ) : null}
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ?? []}
+        />
+        <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="tasks-header">
               {t('label.task-plural')}
             </Typography.Text>

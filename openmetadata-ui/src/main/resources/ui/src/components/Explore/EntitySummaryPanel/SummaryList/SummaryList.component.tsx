@@ -25,6 +25,7 @@ const { Text } = Typography;
 export default function SummaryList({
   formattedEntityData,
   entityType,
+  emptyPlaceholderText,
 }: SummaryListProps) {
   const { t } = useTranslation();
 
@@ -33,7 +34,7 @@ export default function SummaryList({
       {isEmpty(formattedEntityData) ? (
         <div>
           <Text className="text-grey-body">
-            {t('message.no-data-available')}
+            {emptyPlaceholderText ?? t('message.no-data-available')}
           </Text>
         </div>
       ) : (

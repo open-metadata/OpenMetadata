@@ -16,7 +16,8 @@ source:
           authUri: https://accounts.google.com/o/oauth2/auth
           tokenUri: https://oauth2.googleapis.com/token
           authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
-          clientX509CertUrl: clientX509CertUrl
+          clientX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
+
   sourceConfig:
     config:
       type: DatabaseMetadata

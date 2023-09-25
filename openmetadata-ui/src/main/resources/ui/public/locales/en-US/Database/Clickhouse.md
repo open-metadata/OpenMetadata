@@ -56,7 +56,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-This parameter specifies the host and port of the ClickHouse instance. This should be specified as a string in the format `http://hostname:port` or `https://hostname:port`. For example, you might set the hostPort parameter to `https://localhost:3000`.
+This parameter specifies the host and port of the ClickHouse instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:3000`.
+
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:3000` as the value.
 $$
 
 $$section
@@ -84,11 +86,17 @@ Connections are kept open for as long as needed to complete a query, but they ca
 $$
 
 $$section
+### Use HTTPS Protocol $(id="https")
+
+Enable this flag when the when the Clickhouse instance is hosted via HTTPS protocol. This flag is useful when you are using `clickhouse+http` connection scheme.
+$$
+
+$$section
 ### Secure $(id="secure")
 
 Establish secure connection with ClickHouse.
 
-ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse
+ClickHouse supports secure communication over SSL/TLS to protect data in transit, by checking this option, it establishes secure connection with ClickHouse. This flag is useful when you are using `clickhouse+native` connection scheme.
 $$
 
 $$section

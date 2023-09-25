@@ -13,9 +13,7 @@
 // / <reference types="Cypress" />
 
 import {
-  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -34,11 +32,9 @@ const description = `This is ${tableName} description`;
 
 const connectionInput = () => {
   cy.get('#root\\/hostPort').type(Cypress.env('airflowHostPort'));
-  checkServiceFieldSectionHighlighting('hostPort');
   cy.get('#root\\/connection__oneof_select')
     .scrollIntoView()
     .select('BackendConnection');
-  checkServiceFieldSectionHighlighting('connection');
 };
 
 describe('Airflow Ingestion', () => {
@@ -66,14 +62,6 @@ describe('Airflow Ingestion', () => {
       description,
       SERVICE_TYPE.Pipeline,
       MYDATA_SUMMARY_OPTIONS.pipelines
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Pipeline,
-      serviceName,
-      API_SERVICE.pipelineServices
     );
   });
 

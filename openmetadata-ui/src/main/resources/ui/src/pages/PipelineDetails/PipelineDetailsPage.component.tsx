@@ -17,6 +17,7 @@ import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import PipelineDetails from 'components/PipelineDetails/PipelineDetails.component';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -29,17 +30,16 @@ import {
   getPipelineByFqn,
   patchPipelineDetails,
   removeFollower,
+  updatePipelinesVotes,
 } from 'rest/pipelineAPI';
 import { getVersionPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -54,13 +54,12 @@ const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
 
-  const { pipelineFQN } = useParams<{ pipelineFQN: string }>();
+  const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
-  const [followers, setFollowers] = useState<Array<EntityReference>>([]);
 
   const [isError, setIsError] = useState(false);
 
@@ -71,6 +70,8 @@ const PipelineDetailsPage = () => {
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const { followers = [] } = pipelineDetails;
 
   const fetchResourcePermission = async (entityFqn: string) => {
     setLoading(true);
@@ -144,39 +145,53 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const followPipeline = async (fetchCount: () => void) => {
-    try {
-      const res = await addFollower(pipelineId, USERId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setFollowers([...followers, ...newValue]);
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
+  const followPipeline = useCallback(
+    async (fetchCount: () => void) => {
+      try {
+        const res = await addFollower(pipelineId, USERId);
+        const { newValue } = res.changeDescription.fieldsAdded[0];
+        const newFollowers = [...(followers ?? []), ...newValue];
+        setPipelineDetails((prev) => {
+          return { ...prev, followers: newFollowers };
+        });
 
-  const unFollowPipeline = async (fetchCount: () => void) => {
-    try {
-      const res = await removeFollower(pipelineId, USERId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setFollowers(
-        followers.filter((follower) => follower.id !== oldValue[0].id)
-      );
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
+        fetchCount();
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-follow-error', {
+            entity: getEntityName(pipelineDetails),
+          })
+        );
+      }
+    },
+    [followers, USERId]
+  );
+
+  const unFollowPipeline = useCallback(
+    async (fetchCount: () => void) => {
+      try {
+        const res = await removeFollower(pipelineId, USERId);
+        const { oldValue } = res.changeDescription.fieldsDeleted[0];
+        setPipelineDetails((prev) => ({
+          ...prev,
+          followers: followers.filter(
+            (follower) => follower.id !== oldValue[0].id
+          ),
+        }));
+
+        fetchCount();
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-unfollow-error', {
+            entity: getEntityName(pipelineDetails),
+          })
+        );
+      }
+    },
+    [followers, USERId]
+  );
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
@@ -196,27 +211,6 @@ const PipelineDetailsPage = () => {
         error as AxiosError,
         t('server.entity-updating-error', {
           entity: getEntityName(pipelineDetails),
-        })
-      );
-    }
-  };
-
-  const onTagUpdate = async (
-    updatedPipeline: Pipeline,
-    fetchCount: () => void
-  ) => {
-    try {
-      const res = await saveUpdatedPipelineData(updatedPipeline);
-      setPipelineDetails({
-        ...res,
-        tags: sortTagsCaseInsensitive(res.tags || []),
-      });
-      fetchCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
         })
       );
     }
@@ -252,6 +246,35 @@ const PipelineDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setPipelineDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updatePipelinesVotes(id, data);
+      const details = await getPipelineByFqn(pipelineFQN, defaultFields);
+      setPipelineDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updatePipelineDetailsState = useCallback((data) => {
+    const updatedData = data as Pipeline;
+
+    setPipelineDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
       fetchPipelineDetail(pipelineFQN);
@@ -281,17 +304,19 @@ const PipelineDetailsPage = () => {
   return (
     <PipelineDetails
       descriptionUpdateHandler={descriptionUpdateHandler}
+      fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
       followPipelineHandler={followPipeline}
-      followers={followers}
+      handleToggleDelete={handleToggleDelete}
       paging={paging}
       pipelineDetails={pipelineDetails}
       pipelineFQN={pipelineFQN}
       settingsUpdateHandler={settingsUpdateHandler}
-      tagUpdateHandler={onTagUpdate}
       taskUpdateHandler={onTaskUpdate}
-      unfollowPipelineHandler={unFollowPipeline}
+      unFollowPipelineHandler={unFollowPipeline}
+      updatePipelineDetailsState={updatePipelineDetailsState}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "StorageServiceMetadataPipeline",
   "description": "StorageService Metadata Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "storageMetadataConfigType": {
       "description": "Object Store Source Config Metadata Pipeline type",

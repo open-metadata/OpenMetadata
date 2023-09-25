@@ -28,6 +28,12 @@ class SQAStruct(types.String):
     """
 
 
+class SQADateTimeRange(types.String):
+    """
+    Custom DateTimeRange type definition
+    """
+
+
 class SQAUnion(types.String):
     """
     Custom Struct type definition
@@ -38,6 +44,14 @@ class SQASet(types.ARRAY):
     """
     Custom Set type definition
     """
+
+    def __init__(
+        self, item_type=None, as_tuple=False, dimensions=None, zero_indexes=False
+    ):
+        self.item_type = item_type
+        if not self.item_type:
+            self.item_type = "string"
+        super().__init__(self.item_type, as_tuple, dimensions, zero_indexes)
 
 
 class SQASGeography(types.String):

@@ -245,8 +245,9 @@ def test_connection_steps(
 
     if not test_connection_definition:
         raise SourceConnectionException(
-            f"Test connection definition for {test_connection_def_fqn} not found please review the Server Configuration"
-            f" of the Workflow configuration. Check that the Security Configuration has been set up correctly."
+            f"Test connection definition for {test_connection_def_fqn} not found! Make sure the"
+            " ingestion-bot JWT token is valid and that the Workflow is deployed with the latest one."
+            " If this error persists, recreate the JWT token and redeploy the Workflow."
         )
 
     steps = [

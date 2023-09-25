@@ -19,15 +19,16 @@ import { ROUTES } from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
 
 interface AdminProtectedRouteProps extends RouteProps {
-  hasPermission: boolean;
+  hasPermission?: boolean;
 }
 
 const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
+  const hasPermission = Boolean(routeProps.hasPermission);
 
-  if (isAdminUser || routeProps.hasPermission) {
+  if (isAdminUser || hasPermission) {
     return <Route {...routeProps} />;
-  } else if (!routeProps.hasPermission) {
+  } else if (!hasPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;

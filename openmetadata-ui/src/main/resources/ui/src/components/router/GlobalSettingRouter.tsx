@@ -175,17 +175,13 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesListPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.ROLE,
-          permissions
-        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
         )}
       />
 
-      <Route
+      <AdminProtectedRoute
         exact
         component={RolesDetailPage}
         path={getSettingPath(
@@ -201,16 +197,12 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesListPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.POLICY,
-          permissions
-        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES
         )}
       />
-      <Route
+      <AdminProtectedRoute
         exact
         component={PoliciesDetailPage}
         path={getSettingPath(
@@ -232,10 +224,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.BOT,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.INTEGRATIONS,
           GlobalSettingOptions.BOTS
@@ -370,10 +359,7 @@ const GlobalSettingRouter = () => {
       <AdminProtectedRoute
         exact
         component={CustomPropertiesPageV1}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TYPE,
-          permissions
-        )}
+        hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}

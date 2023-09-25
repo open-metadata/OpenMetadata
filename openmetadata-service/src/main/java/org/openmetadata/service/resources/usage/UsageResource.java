@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
@@ -45,7 +44,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -91,7 +89,7 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
+          UUID id,
       @Parameter(
               description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
           @QueryParam("days")
@@ -100,11 +98,9 @@ public class UsageResource {
               description =
                   "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
           @QueryParam("date")
-          String date)
-      throws IOException {
+          String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).build();
+    ResourceContext resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -148,11 +144,9 @@ public class UsageResource {
               description =
                   "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
           @QueryParam("date")
-          String date)
-      throws IOException {
+          String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).name(fqn).build();
+    ResourceContext resourceContext = new ResourceContext(entity, null, fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
@@ -184,12 +178,10 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+          UUID id,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).build();
+    ResourceContext resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.create(entity, id, usage).toResponse();
   }
@@ -220,11 +212,9 @@ public class UsageResource {
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
           UUID id,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).id(id).build();
+    ResourceContext resourceContext = new ResourceContext(entity, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdate(entity, id, usage).toResponse();
   }
@@ -259,11 +249,9 @@ public class UsageResource {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fullyQualifiedName,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).name(fullyQualifiedName).build();
+    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -298,11 +286,9 @@ public class UsageResource {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fullyQualifiedName,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).name(fullyQualifiedName).build();
+    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
@@ -330,11 +316,9 @@ public class UsageResource {
               description = "ISO 8601 format date to compute percentile on",
               schema = @Schema(type = "string", example = "2021-01-28"))
           @PathParam("date")
-          String date)
-      throws IOException {
+          String date) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
-    ResourceContext resourceContext =
-        EntityResource.getResourceContext(entity, Entity.getEntityRepository(entity)).build();
+    ResourceContext resourceContext = new ResourceContext(entity);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();

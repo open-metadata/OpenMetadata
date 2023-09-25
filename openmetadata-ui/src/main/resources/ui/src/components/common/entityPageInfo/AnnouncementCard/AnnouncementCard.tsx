@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
-import { t } from 'i18next';
-import React, { FC } from 'react';
+import { Card, Space, Typography } from 'antd';
+import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
+import React, { FC, useMemo } from 'react';
 import { Thread } from '../../../../generated/entity/feed/thread';
-import SVGIcons, { Icons } from '../../../../utils/SvgUtils';
 import './AnnouncementCard.less';
 
 interface Props {
@@ -24,37 +23,40 @@ interface Props {
 }
 
 const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
-  const viewCap = 64;
-  const title = announcement.message;
-  const hasMore = title.length > viewCap;
+  const { title, message } = useMemo(
+    () => ({
+      title: announcement.message,
+      message: announcement?.announcement?.description,
+    }),
+    [announcement]
+  );
 
   return (
     <Card
       className="announcement-card"
       data-testid="announcement-card"
       onClick={onClick}>
-      <Space align="start" size={12}>
-        <SVGIcons
-          alt="announcement"
-          icon={Icons.ANNOUNCEMENT_YELLOW}
-          width="24px"
+      <Space align="start" className="m-0" size={4}>
+        <AnnouncementIcon
+          className="announcement-icon"
+          height={20}
+          width={20}
         />
-        <div>
-          <Typography.Text>
-            {title.slice(0, viewCap)}
-            {hasMore ? '...' : ''}
-          </Typography.Text>
-          <Button
-            data-testid="read-more"
-            size="small"
-            type="link"
-            onClick={onClick}>
-            {t('label.read-type', {
-              type: t('label.more-lowercase'),
-            })}
-          </Button>
-        </div>
+        <Typography.Paragraph
+          ellipsis
+          className="announcement-title"
+          data-testid="announcement-title">
+          {title}
+        </Typography.Paragraph>
       </Space>
+      {message && (
+        <Typography.Paragraph
+          ellipsis
+          className="text-grey-muted m-0 text-xs"
+          data-testid="announcement-message">
+          {message}
+        </Typography.Paragraph>
+      )}
     </Card>
   );
 };

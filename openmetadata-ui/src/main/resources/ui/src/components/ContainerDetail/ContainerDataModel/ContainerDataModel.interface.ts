@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ThreadType } from 'generated/api/feed/createThread';
 import { Container } from 'generated/entity/data/container';
 import { ReactNode } from 'react';
 
@@ -24,5 +25,7 @@ export interface ContainerDataModelProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   isReadOnly: boolean;
+  entityFqn: string;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Container['dataModel']) => Promise<void>;
 }

@@ -18,7 +18,6 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
@@ -45,7 +44,7 @@ public class GChatPublisher extends SubscriptionPublisher {
   private final CollectionDAO daoCollection;
 
   public GChatPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == G_CHAT_WEBHOOK) {
       this.daoCollection = dao;
       this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
@@ -78,7 +77,7 @@ public class GChatPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  protected void sendAlert(EventResource.EventList list) throws JsonProcessingException {
+  protected void sendAlert(EventResource.EventList list) {
     for (ChangeEvent event : list.getData()) {
       try {
         GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);

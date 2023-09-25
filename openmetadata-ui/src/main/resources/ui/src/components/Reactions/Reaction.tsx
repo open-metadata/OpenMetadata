@@ -51,10 +51,21 @@ const Reaction: FC<ReactionProps> = ({
     onHide();
   };
 
+  const element = React.createElement(
+    'g-emoji',
+    {
+      alias: reaction?.alias,
+      className: 'd-flex',
+      'data-testid': 'emoji',
+      'fallback-src': image,
+    },
+    reaction?.emoji
+  );
+
   return (
     <Button
       aria-label={reaction.reaction}
-      className={classNames('tw-mr-1 ant-btn-popover-reaction', {
+      className={classNames('m-r-sm ant-btn-popover-reaction', {
         'ant-btn-popover-isReacted': isReacted,
       })}
       data-testid="reaction-button"
@@ -63,17 +74,7 @@ const Reaction: FC<ReactionProps> = ({
       title={reaction.reaction}
       type="text"
       onClick={handleOnClick}>
-      <div
-        dangerouslySetInnerHTML={{
-          __html: `<g-emoji
-        alias={${reaction.alias}}
-        className="d-flex"
-        data-testid="emoji"
-        fallback-src={${image}}>
-        ${reaction.emoji}
-      </g-emoji>`,
-        }}
-      />
+      {element}
     </Button>
   );
 };

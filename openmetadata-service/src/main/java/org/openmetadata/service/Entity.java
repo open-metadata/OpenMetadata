@@ -13,23 +13,29 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
+import lombok.Getter;
 import lombok.NonNull;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -38,6 +44,8 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -48,6 +56,10 @@ public final class Entity {
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
+      ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
+
+  @Getter @Setter private static FeedRepository feedRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -64,6 +76,17 @@ public final class Entity {
   public static final String FIELD_DISPLAY_NAME = "displayName";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
+  public static final String FIELD_CHILDREN = "children";
+  public static final String FIELD_PARENT = "parent";
+  public static final String FIELD_REVIEWERS = "reviewers";
+  public static final String FIELD_EXPERTS = "experts";
+  public static final String FIELD_DOMAIN = "domain";
+  public static final String FIELD_DATA_PRODUCTS = "dataProducts";
+  public static final String FIELD_ASSETS = "assets";
+
+  public static final String FIELD_STYLE = "style";
+
+  public static final String FIELD_LIFE_CYCLE = "lifeCycle";
 
   //
   // Service entities
@@ -75,23 +98,24 @@ public final class Entity {
   public static final String STORAGE_SERVICE = "storageService";
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
+  public static final String SEARCH_SERVICE = "searchService";
   //
   // Data asset entities
   //
   public static final String TABLE = "table";
+  public static final String STORED_PROCEDURE = "storedProcedure";
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
+  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
+  public static final String SEARCH_INDEX = "searchIndex";
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
-  public static final String BOT = "bot";
-  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
-  public static final String THREAD = "THREAD";
   public static final String QUERY = "query";
 
   public static final String GLOSSARY = "glossary";
@@ -101,14 +125,11 @@ public final class Entity {
   public static final String TYPE = "type";
   public static final String TEST_DEFINITION = "testDefinition";
   public static final String TEST_CONNECTION_DEFINITION = "testConnectionDefinition";
-  public static final String WORKFLOW = "workflow";
   public static final String TEST_SUITE = "testSuite";
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
-
-  public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
 
   //
   // Policy entity
@@ -122,11 +143,30 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String BOT = "bot";
 
   //
   // Operation related entities
   //
   public static final String INGESTION_PIPELINE = "ingestionPipeline";
+
+  //
+  // Domain related entities
+  //
+  public static final String DOMAIN = "domain";
+  public static final String DATA_PRODUCT = "dataProduct";
+
+  //
+  // Other entities
+  public static final String EVENT_SUBSCRIPTION = "eventsubscription";
+  public static final String THREAD = "THREAD";
+  public static final String WORKFLOW = "workflow";
+
+  //
+  // Time series entities
+  public static final String ENTITY_REPORT_DATA = "EntityReportData";
+  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "WebAnalyticEntityViewReportData";
+  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "WebAnalyticUserActivityReportData";
 
   //
   // Reserved names in OpenMetadata
@@ -143,18 +183,18 @@ public final class Entity {
   public static final String ALL_RESOURCES = "All";
 
   // ServiceType - Service Entity name map
-  public static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP =
-      new HashMap<>() {
-        {
-          put(ServiceType.DATABASE, DATABASE_SERVICE);
-          put(ServiceType.MESSAGING, MESSAGING_SERVICE);
-          put(ServiceType.DASHBOARD, DASHBOARD_SERVICE);
-          put(ServiceType.PIPELINE, PIPELINE_SERVICE);
-          put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
-          put(ServiceType.METADATA, METADATA_SERVICE);
-          put(ServiceType.STORAGE, STORAGE_SERVICE);
-        }
-      };
+  static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+
+  static {
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DATABASE, DATABASE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.MESSAGING, MESSAGING_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DASHBOARD, DASHBOARD_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.PIPELINE, PIPELINE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.ML_MODEL, MLMODEL_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+  }
 
   //
   // List of entities whose changes should not be published to the Activity Feed
@@ -171,7 +211,8 @@ public final class Entity {
           PIPELINE_SERVICE,
           DASHBOARD_SERVICE,
           MESSAGING_SERVICE,
-          WORKFLOW);
+          WORKFLOW,
+          TEST_SUITE);
 
   private Entity() {}
 
@@ -191,11 +232,27 @@ public final class Entity {
     LOG.info("Registering entity {} {}", clazz, entity);
   }
 
+  public static <T extends EntityTimeSeriesInterface> void registerEntity(
+      Class<T> clazz,
+      String entity,
+      EntityTimeSeriesRepository<T> entityRepository,
+      List<MetadataOperation> entitySpecificOperations) {
+    ENTITY_TS_REPOSITORY_MAP.put(entity, entityRepository);
+    EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
+    ENTITY_LIST.add(entity);
+    Collections.sort(ENTITY_LIST);
+
+    // Set up entity operations for permissions
+    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
+    LOG.info("Registering entity {} {}", clazz, entity);
+  }
+
   public static List<String> getEntityList() {
     return Collections.unmodifiableList(ENTITY_LIST);
   }
 
-  public static EntityReference getEntityReference(EntityReference ref, Include include) throws IOException {
+  public static EntityReference getEntityReference(EntityReference ref, Include include) {
     if (ref == null) {
       return null;
     }
@@ -204,29 +261,21 @@ public final class Entity {
         : getEntityReferenceByName(ref.getType(), ref.getFullyQualifiedName(), include);
   }
 
-  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include)
-      throws IOException {
-    EntityRepository<?> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
+  public static EntityReference getEntityReferenceById(@NonNull String entityType, @NonNull UUID id, Include include) {
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? Include.ALL : include;
-    return repository.getDao().findEntityReferenceById(id, include);
+    return repository.getReference(id, include);
   }
 
-  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include)
-      throws IOException {
+  public static EntityReference getEntityReferenceByName(@NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
-    if (repository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
-    }
-    return repository.getDao().findEntityReferenceByName(fqn, include);
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    return repository.getReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) throws IOException {
+  public static EntityReference getOwner(@NonNull EntityReference reference) {
     EntityRepository<?> repository = getEntityRepository(reference.getType());
     return repository.getOwner(reference);
   }
@@ -250,49 +299,45 @@ public final class Entity {
     return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
   }
 
-  public static Fields getFields(String entityType, String fields) {
-    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    return entityRepository.getFields(fields);
-  }
-
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));
   }
 
-  public static <T> T getEntity(EntityReference ref, String fields, Include include) throws IOException {
+  public static <T> T getEntity(EntityReference ref, String fields, Include include) {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
   }
 
-  public static <T> T getEntity(EntityLink link, String fields, Include include) throws IOException {
+  public static <T> T getEntity(EntityLink link, String fields, Include include) {
     return getEntityByName(link.getEntityType(), link.getEntityFQN(), fields, include);
   }
 
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) throws IOException {
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.get(null, id, fieldList, include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
-    }
+    T entity = (T) entityRepository.get(null, id, entityRepository.getFields(fields), include, fromCache);
     return entity;
   }
 
+  public static <T> T getEntity(String entityType, UUID id, String fields, Include include) {
+    return getEntity(entityType, id, fields, include, true);
+  }
+
+  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
-  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include)
-      throws IOException {
+  public static <T> T getEntityByName(
+      String entityType, String fqn, String fields, Include include, boolean fromCache) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    Fields fieldList = entityRepository.getFields(fields);
     @SuppressWarnings("unchecked")
-    T entity = (T) entityRepository.getByName(null, fqn, fieldList, include);
-    if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
-    }
+    T entity = (T) entityRepository.getByName(null, fqn, entityRepository.getFields(fields), include, fromCache);
     return entity;
+  }
+
+  public static <T> T getEntityByName(String entityType, String fqn, String fields, Include include) {
+    return getEntityByName(entityType, fqn, fields, include, true);
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
@@ -302,6 +347,16 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
     }
     return entityRepository;
+  }
+
+  public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> getEntityTimeSeriesRepository(
+      @NonNull String entityType) {
+    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
+        ENTITY_TS_REPOSITORY_MAP.get(entityType);
+    if (entityTimeSeriesRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return entityTimeSeriesRepository;
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
@@ -321,12 +376,12 @@ public final class Entity {
   }
 
   public static void deleteEntity(
-      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) throws IOException {
+      String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.delete(updatedBy, entityId, recursive, hardDelete);
   }
 
-  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) throws IOException {
+  public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
     EntityRepository<?> dao = getEntityRepository(entityType);
     dao.restoreEntity(updatedBy, entityType, entityId);
   }
@@ -346,9 +401,32 @@ public final class Entity {
   /**
    * Get list of all the entity field names from JsonPropertyOrder annotation from generated java class from entity.json
    */
-  public static <T> List<String> getEntityFields(Class<T> clz) {
+  public static <T> Set<String> getEntityFields(Class<T> clz) {
     JsonPropertyOrder propertyOrder = clz.getAnnotation(JsonPropertyOrder.class);
-    return new ArrayList<>(Arrays.asList(propertyOrder.value()));
+    return new HashSet<>(Arrays.asList(propertyOrder.value()));
+  }
+
+  /** Returns true if the entity supports activity feeds, announcement, and tasks */
+  public static boolean supportsFeed(String entityType) {
+    return listOf(
+            TABLE,
+            DATABASE,
+            DATABASE_SCHEMA,
+            METRICS,
+            DASHBOARD,
+            DASHBOARD_DATA_MODEL,
+            PIPELINE,
+            CHART,
+            REPORT,
+            TOPIC,
+            MLMODEL,
+            CONTAINER,
+            QUERY,
+            GLOSSARY,
+            GLOSSARY_TERM,
+            TAG,
+            CLASSIFICATION)
+        .contains(entityType);
   }
 
   /** Class for getting validated entity list from a queryParam with list of entities. */

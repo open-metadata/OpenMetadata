@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import AddIngestion from 'components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -55,8 +54,15 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionType, serviceFQN, serviceCategory } =
-    useParams<{ [key: string]: string }>();
+  const {
+    ingestionType,
+    fqn: serviceFQN,
+    serviceCategory,
+  } = useParams<{
+    fqn: string;
+    serviceCategory: string;
+    ingestionType: string;
+  }>();
   const { t } = useTranslation();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
@@ -227,16 +233,10 @@ const AddIngestionPage = () => {
     setSlashedBreadcrumb(breadCrumbsArray);
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
-  useEffect(() => {
-    if (ingestionType === PipelineType.Dbt) {
-      setActiveIngestionStep(2);
-    }
-  }, [ingestionType]);
-
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
+      <div className="m-t-md">
         <AddIngestion
           activeIngestionStep={activeIngestionStep}
           handleCancelClick={handleCancelClick}
@@ -259,7 +259,7 @@ const AddIngestionPage = () => {
           onFocus={handleFieldFocus}
           onIngestionDeploy={onIngestionDeploy}
         />
-      </Card>
+      </div>
     </div>
   );
 

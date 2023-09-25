@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getContainerDetailPath } from 'constants/constants';
 import { Column, DataType } from 'generated/entity/data/container';
 import {
-  getContainerDetailPath,
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from './ContainerDetailUtils';

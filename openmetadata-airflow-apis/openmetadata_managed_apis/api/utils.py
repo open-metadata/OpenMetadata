@@ -18,8 +18,8 @@ from multiprocessing import Process
 from typing import Optional
 
 from airflow import settings
-from airflow.jobs.scheduler_job import SchedulerJob
 from airflow.models import DagBag
+from airflow.version import version as airflow_version
 from flask import request
 from openmetadata_managed_apis.utils.logger import api_logger
 
@@ -110,14 +110,49 @@ def get_dagbag():
 
 class ScanDagsTask(Process):
     def run(self):
-        scheduler_job = SchedulerJob(num_times_parse_dags=1)
-        scheduler_job.heartrate = 0
-        scheduler_job.run()
+
+        if airflow_version >= "2.6":
+            scheduler_job = self._run_new_scheduler_job()
+        else:
+            scheduler_job = self._run_old_scheduler_job()
         try:
             scheduler_job.kill()
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.info(f"Rescan Complete: Killed Job: {exc}")
+
+    @staticmethod
+    def _run_new_scheduler_job() -> "Job":
+        """
+        Run the new scheduler job from Airflow 2.6
+        """
+        from airflow.jobs.job import Job, run_job
+        from airflow.jobs.scheduler_job_runner import SchedulerJobRunner
+
+        scheduler_job = Job()
+        job_runner = SchedulerJobRunner(
+            job=scheduler_job,
+            num_runs=1,
+        )
+        scheduler_job.heartrate = 0
+
+        # pylint: disable=protected-access
+        run_job(scheduler_job, execute_callable=job_runner._execute)
+
+        return scheduler_job
+
+    @staticmethod
+    def _run_old_scheduler_job() -> "SchedulerJob":
+        """
+        Run the old scheduler job before 2.6
+        """
+        from airflow.jobs.scheduler_job import SchedulerJob
+
+        scheduler_job = SchedulerJob(num_times_parse_dags=1)
+        scheduler_job.heartrate = 0
+        scheduler_job.run()
+
+        return scheduler_job
 
 
 def scan_dags_job_background():

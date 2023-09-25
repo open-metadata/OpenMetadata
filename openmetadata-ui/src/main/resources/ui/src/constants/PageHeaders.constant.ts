@@ -55,7 +55,7 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-databases'),
   },
   MESSAGING_SERVICES: {
-    header: i18n.t('label.messaging-plural'),
+    header: i18n.t('label.messaging'),
     subHeader: i18n.t('message.page-sub-header-for-messagings'),
   },
   DASHBOARD_SERVICES: {
@@ -77,6 +77,10 @@ export const PAGE_HEADERS = {
   STORAGE_SERVICES: {
     header: i18n.t('label.storage-plural'),
     subHeader: i18n.t('message.page-sub-header-for-storages'),
+  },
+  SEARCH_SERVICES: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search'),
   },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
@@ -116,6 +120,36 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.container-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
       entity: i18n.t('label.container-plural'),
+    }),
+  },
+  STORED_PROCEDURE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.stored-procedure-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.stored-procedure-plural'),
+    }),
+  },
+  SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.search-index-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.search-index-plural'),
+    }),
+  },
+  GLOSSARY_TERM_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.glossary-term'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.glossary-term'),
+    }),
+  },
+  DATABASE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database'),
+    }),
+  },
+  DATABASE_SCHEMA_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database-schema'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database-schema'),
     }),
   },
   BOTS: {

@@ -14,7 +14,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -53,12 +52,9 @@ describe('Kafka Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="topic-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-topic"]')
-        .should('be.visible')
+      cy.get('#root\\/topicFilterPattern\\/includes')
+        .scrollIntoView()
+
         .type(`${topicName}{enter}`);
     };
 
@@ -79,14 +75,6 @@ describe('Kafka Ingestion', () => {
       description,
       SERVICE_TYPE.Messaging,
       'topics'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Messaging,
-      serviceName,
-      API_SERVICE.messagingServices
     );
   });
 

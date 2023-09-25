@@ -165,12 +165,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DashboardService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(stored.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -262,7 +262,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedmetabaseConnection.getPassword(), actualMetabaseConnection.getPassword());
         } else {
-          assertEquals(actualMetabaseConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+          assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualMetabaseConnection.getPassword());
         }
       }
     }
@@ -279,7 +279,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                     .withHostPort(new URI("http://localhost:8080"))
                     .withPassword("test")
                     .withUsername("admin"));
-    createDashboardService.withConnection(dashboardConnection);
+    createDashboardService.withConnection(dashboardConnection).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
     METABASE_REFERENCE = dashboardService.getEntityReference();

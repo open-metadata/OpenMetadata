@@ -17,7 +17,7 @@
           "type": "string"
         },
         "value": {
-          "description": "value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.",
+          "description": "value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.",
           "type": "string"
         }
       }
@@ -55,6 +55,12 @@
     },
     "testSuite": {
       "$ref": "../type/entityReference.json"
+    },
+    "testSuites": {
+      "type": "array",
+      "items": {
+        "$ref": "./testSuite.json"
+      }
     },
     "parameterValues": {
       "type": "array",

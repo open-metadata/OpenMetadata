@@ -14,7 +14,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -57,14 +56,9 @@ describe('Metabase Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
+      cy.get('#root\\/dashboardFilterPattern\\/includes')
         .scrollIntoView()
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-dashboard"]')
-        .scrollIntoView()
-        .should('be.visible')
+
         .type(`${tableName}{enter}`);
     };
 
@@ -85,14 +79,6 @@ describe('Metabase Ingestion', () => {
       description,
       SERVICE_TYPE.Dashboard,
       'dashboards'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Dashboard,
-      serviceName,
-      API_SERVICE.dashboardServices
     );
   });
 

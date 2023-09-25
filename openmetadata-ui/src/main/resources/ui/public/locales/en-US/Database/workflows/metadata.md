@@ -78,7 +78,7 @@ Set the `Include Tags` toggle to control whether to include tags as part of meta
 $$
 
 $$section
-### Enable Debug Logs $(id="loggerLevel")
+### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
@@ -119,4 +119,17 @@ Here are some examples of scenarios where tables will get soft deleted if this f
 - If `TableA` was already ingested in OpenMetadata, then later you apply a `Table Filter Pattern` to exclude `TableA` then `TableA` will get soft deleted from OpenMetadata.
 - If you already have `SchemaA` & `SchemaB` ingested in OpenMetadata ,then later you apply a `Schema Filter Pattern` to exclude `SchemaB`, ALL tables from `SchemaB` will be deleted due to this ingestion pipeline. This might be useful if you want to remove a full schema from OpenMetadata that you missed to filter out the first time.
 
+$$
+
+
+$$section
+### View Definition Parsing Timeout Limit $(id="viewParsingTimeoutLimit")
+
+Specify the timeout limit for parsing the view definition sql queries to perform the lineage analysis.
+$$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
 $$

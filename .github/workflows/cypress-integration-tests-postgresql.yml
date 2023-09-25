@@ -15,6 +15,7 @@
 name: PostgreSQL Cypress Integration Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main 
@@ -22,12 +23,10 @@ on:
       - '1.[0-9]+[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths-ignore:
       - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
 
 permissions:
   contents: read
@@ -40,11 +39,21 @@ jobs:
   cypress-ci-postgresql:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         job: [0, 1, 2]
     environment: test
     steps:
-
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: false
+            swap-storage: true
+            docker-images: false
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -100,6 +109,7 @@ jobs:
 
       - name: Generating Data Models
         run: |
+          pip install --upgrade pip
           sudo make install_antlr_cli
           make install_dev generate
 
@@ -120,6 +130,7 @@ jobs:
           group: Tests with database postgresql
           browser: chrome
         env:
+          CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}

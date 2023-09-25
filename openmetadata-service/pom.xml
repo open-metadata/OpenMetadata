@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -15,9 +15,8 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.18.0</org.testcontainers.version>
-    <awssdk.version>2.20.56</awssdk.version>
+    <org.testcontainers.version>1.19.0</org.testcontainers.version>
+    <awssdk.version>2.20.143</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <quartz.version>2.3.2</quartz.version>
@@ -76,6 +75,11 @@
     <dependency>
       <groupId>io.swagger.core.v3</groupId>
       <artifactId>swagger-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ru.vyarus.guicey</groupId>
+      <artifactId>guicey-jdbi3</artifactId>
+      <version>5.9.1</version>
     </dependency>
     <dependency>
       <groupId>com.smoketurner</groupId>
@@ -172,6 +176,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.opensearch.client</groupId>
+      <artifactId>opensearch-rest-high-level-client</artifactId>
+      <version>${opensearch.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpasyncclient</artifactId>
     </dependency>
@@ -223,7 +232,10 @@
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-mysql</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-retry</artifactId>
+    </dependency>
     <!-- Dependencies for secret store manager providers -->
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -305,6 +317,18 @@
       <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>elasticsearch</artifactId>
+      <version>${org.testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.opensearch</groupId>
+      <artifactId>opensearch-testcontainers</artifactId>
+      <version>2.0.0</version>
+      <scope>test</scope>
+    </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
       <groupId>javax.json</groupId>
@@ -325,7 +349,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20230227</version>
+      <version>20230618</version>
     </dependency>
 
     <dependency>
@@ -390,7 +414,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.51.v20230217</version>
+      <version>9.4.52.v20230823</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -459,6 +483,18 @@
       <artifactId>woodstox-core</artifactId>
       <version>${woodstox.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>32.0.1-jre</version>
+      <scope>compile</scope>
+    </dependency>
+      <dependency>
+          <groupId>org.junit.platform</groupId>
+          <artifactId>junit-platform-commons</artifactId>
+          <version>1.9.3</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 
   <profiles>
@@ -518,6 +554,117 @@
         </plugins>
       </build>
     </profile>
+      <profile>
+        <id>postgres-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx512m</argLine>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>default-test</id>
+                  <configuration>
+                    <skip>true</skip>
+                    <systemPropertyVariables>
+                      <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:7.16.3</elasticSearchContainerClassName>
+                      <openSearchContainerClassName>opensearchproject/opensearch:1.3.0</openSearchContainerClassName>
+                      <runESTestCases>false</runESTestCases>
+                    </systemPropertyVariables>
+                  </configuration>
+                </execution>
+                <execution>
+                  <goals>
+                    <goal>test</goal>
+                  </goals>
+                  <id>postgres-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                      <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                      <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
+                    </systemPropertyVariables>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <id>mysql-tests</id>
+        <activation>
+          <activeByDefault>true</activeByDefault>
+        </activation>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx512m</argLine>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>default-test</id>
+                  <configuration>
+                    <skip>true</skip>
+                    <systemPropertyVariables>
+                      <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:7.16.3</elasticSearchContainerClassName>
+                      <openSearchContainerClassName>opensearchproject/opensearch:1.3.0</openSearchContainerClassName>
+                      <runESTestCases>false</runESTestCases>
+                    </systemPropertyVariables>
+                  </configuration>
+                </execution>
+                <execution>
+                  <goals>
+                    <goal>test</goal>
+                  </goals>
+                  <id>unit-tests</id>
+                  <configuration>
+                    <includes>**/*Test.java</includes>
+                    <excludes>**/*ResourceTest.java</excludes>
+                    <systemPropertyVariables>
+                      <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                      <jdbcContainerImage>mysql:8</jdbcContainerImage>
+                    </systemPropertyVariables>
+                  </configuration>
+                </execution>
+                <execution>
+                  <goals>
+                    <goal>test</goal>
+                  </goals>
+                  <id>mysql-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*ResourceTest.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                      <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
+                      <jdbcContainerImage>mysql:8</jdbcContainerImage>
+                    </systemPropertyVariables>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
   </profiles>
 
   <build>
@@ -590,7 +737,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.1.0-snapshot/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.2.x-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>
@@ -605,72 +752,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>${maven-surefire.version}</version>
-        <configuration>
-          <reuseForks>false</reuseForks>
-          <parallel>classes</parallel>
-          <threadCount>1</threadCount>
-          <forkCount>2C</forkCount>
-          <argLine>-Xmx1024m</argLine>
-        </configuration>
-        <executions>
-          <execution>
-            <id>default-test</id>
-            <configuration>
-              <skip>true</skip>
-            </configuration>
-          </execution>
-          <execution>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <id>unit-tests</id>
-            <configuration>
-              <includes>**/*Test.java</includes>
-              <excludes>**/*ResourceTest.java</excludes>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>mysql:8</jdbcContainerImage>
-              </systemPropertyVariables>
-            </configuration>
-          </execution>
-          <execution>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <id>postgres-integration-tests</id>
-            <phase>test</phase>
-            <configuration>
-              <includes>
-                <include>**/*ResourceTest.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>postgres:12.10</jdbcContainerImage>
-              </systemPropertyVariables>
-            </configuration>
-          </execution>
-          <execution>
-            <goals>
-              <goal>test</goal>
-            </goals>
-            <id>mysql-integration-tests</id>
-            <phase>test</phase>
-            <configuration>
-              <includes>
-                <include>**/*ResourceTest.java</include>
-              </includes>
-              <systemPropertyVariables>
-                <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
-                <jdbcContainerImage>mysql:8</jdbcContainerImage>
-              </systemPropertyVariables>
-            </configuration>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

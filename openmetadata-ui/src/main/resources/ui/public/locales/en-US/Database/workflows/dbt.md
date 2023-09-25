@@ -321,7 +321,7 @@ By default, the classification name will be set to `dbtTags`.
 $$
 
 $$section
-### Enable Debug Logs $(id="loggerLevel")
+### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
@@ -342,4 +342,17 @@ $$section
 Option to include fetching the tags metadata from dbt. 
 
 When enabled, OpenMetadata will fetch tags associated with tables and columns from dbt `manifest.json` and attach them to the corresponding tables in OpenMetadata.
+$$
+
+
+$$section
+### Query Parsing Timeout Limit $(id="parsingTimeoutLimit")
+
+Specify the timeout limit for parsing the sql queries to perform the lineage analysis.
+$$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
 $$

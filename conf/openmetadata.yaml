@@ -128,7 +128,8 @@ database:
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "./bootstrap/sql"
+  flywayPath: "./bootstrap/sql/migrations/flyway"
+  nativePath: "./bootstrap/sql/migrations/native"
 
 # Authorizer Configuration
 authorizerConfiguration:
@@ -209,6 +210,7 @@ jwtTokenConfiguration:
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
+  searchType: ${SEARCH_TYPE:- "elasticsearch"}
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
@@ -246,6 +248,7 @@ pipelineServiceClientConfiguration:
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
   ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
   # This SSL information is about the OpenMetadata server.
   # It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
@@ -313,15 +316,33 @@ applicationConfig:
 
 
 web:
-  uriPath: /api
+  uriPath: ${WEB_CONF_URI_PATH:-"/api"}
   hsts:
-    enabled: true
+    enabled: ${WEB_CONF_HSTS_ENABLED:-false}
+    maxAge: ${WEB_CONF_HSTS_MAX_AGE:-"365 days"}
+    includeSubDomains: ${WEB_CONF_HSTS_INCLUDE_SUBDOMAINS:-"true"}
+    preload: ${WEB_CONF_HSTS_PRELOAD:-"true"}
   frame-options:
-    enabled: true
+    enabled: ${WEB_CONF_FRAME_OPTION_ENABLED:-false}
+    option: ${WEB_CONF_FRAME_OPTION:-"SAMEORIGIN"}
+    origin: ${WEB_CONF_FRAME_ORIGIN:-""}
   content-type-options:
-    enabled: true
+    enabled: ${WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED:-false}
   xss-protection:
-    enabled: true
+    enabled: ${WEB_CONF_XSS_PROTECTION_ENABLED:-false}
+    on: ${WEB_CONF_XSS_PROTECTION_ON:-true}
+    block: ${WEB_CONF_XSS_PROTECTION_BLOCK:-true}
+  csp:
+    enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
+    policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
+    reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
+  referrer-policy:
+    enabled: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
+  permission-policy:
+    enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+    
 
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585

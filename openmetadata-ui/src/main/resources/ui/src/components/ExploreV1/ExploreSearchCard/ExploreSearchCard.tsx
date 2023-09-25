@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Checkbox, Col, Row } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { EntityType } from 'enums/entity.enum';
 import { OwnerType } from 'enums/user.enum';
@@ -22,13 +23,15 @@ import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { getEntityPlaceHolder, getOwnerValue } from 'utils/CommonUtils';
 import {
   getEntityBreadcrumbs,
   getEntityId,
+  getEntityLinkFromType,
   getEntityName,
 } from 'utils/EntityUtils';
+import { stringToHTML } from 'utils/StringsUtils';
 import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
@@ -44,15 +47,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       source,
       matches,
       handleSummaryPanelDisplay,
-      showCheckboxes,
-      checked,
+      showTags = true,
       openEntityInNewPage,
+      hideBreadcrumbs = false,
     },
     ref
   ) => {
     const { t } = useTranslation();
     const { tab } = useParams<{ tab: string }>();
-
+    const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
         ? source.tier
@@ -95,14 +98,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         });
       }
 
-      if ('tableType' in source) {
-        _otherDetails.push({
-          key: 'Type',
-          value: source.tableType,
-          showLabel: true,
-        });
-      }
-
       return _otherDetails;
     }, [source]);
 
@@ -111,9 +106,59 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     }, [source]);
 
     const breadcrumbs = useMemo(
-      () => getEntityBreadcrumbs(source, source.entityType as EntityType),
+      () => getEntityBreadcrumbs(source, source.entityType as EntityType, true),
       [source]
     );
+
+    const header = useMemo(() => {
+      return (
+        <Row gutter={[8, 8]}>
+          {!hideBreadcrumbs && (
+            <Col span={24}>
+              <div className="d-flex gap-2 items-center">
+                {serviceIcon}
+                <div className="entity-breadcrumb" data-testid="category-name">
+                  <TitleBreadcrumb
+                    titleLinks={breadcrumbs}
+                    widthDeductions={780}
+                  />
+                </div>
+              </div>
+            </Col>
+          )}
+          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
+            {isTourOpen ? (
+              <Button data-testid={source.fullyQualifiedName} type="link">
+                <Typography.Text
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
+                  {stringToHTML(getEntityName(source))}
+                </Typography.Text>
+              </Button>
+            ) : (
+              <Link
+                className="no-underline"
+                data-testid="entity-link"
+                target={openEntityInNewPage ? '_blank' : '_self'}
+                to={
+                  source.fullyQualifiedName && source.entityType
+                    ? getEntityLinkFromType(
+                        source.fullyQualifiedName,
+                        source.entityType as EntityType
+                      )
+                    : ''
+                }>
+                <Typography.Text
+                  className="text-lg font-medium text-link-color"
+                  data-testid="entity-header-display-name">
+                  {stringToHTML(getEntityName(source))}
+                </Typography.Text>
+              </Link>
+            )}
+          </Col>
+        </Row>
+      );
+    }, [breadcrumbs, source, hideBreadcrumbs]);
 
     return (
       <div
@@ -124,35 +169,19 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         onClick={() => {
           handleSummaryPanelDisplay?.(source, tab);
         }}>
-        <Row wrap={false}>
-          <Col flex="auto">
-            <EntityHeader
-              titleIsLink
-              breadcrumb={breadcrumbs}
-              entityData={source}
-              entityType={source.entityType as EntityType}
-              gutter="large"
-              icon={serviceIcon}
-              openEntityInNewPage={openEntityInNewPage}
-              serviceName={source?.service?.name ?? ''}
-            />
-          </Col>
-          {showCheckboxes && (
-            <Col flex="20px">
-              <Checkbox checked={checked} className="m-l-auto" />
-            </Col>
-          )}
-        </Row>
+        {header}
 
-        <div className="p-t-md">
+        <div className="p-t-sm">
           <TableDataCardBody
             description={source.description ?? ''}
             extraInfo={otherDetails}
-            tags={source.tags}
+            tags={showTags ? source.tags : []}
           />
         </div>
         {matches && matches.length > 0 ? (
-          <div className="p-t-sm text-grey-muted" data-testid="matches-stats">
+          <div
+            className="p-t-sm text-grey-muted text-xs"
+            data-testid="matches-stats">
             <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
               <span className="m-l-xs" key={uniqueId()}>

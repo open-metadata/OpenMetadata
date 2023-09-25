@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { Container } from 'generated/entity/data/container';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface ContainerVersionProp {
-  version: number;
-  currentVersionData: VersionData;
+  version: string;
+  currentVersionData: Container;
   isVersionLoading: boolean;
   owner: Container['owner'];
+  domain: Container['domain'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];
   containerFQN: string;
@@ -28,4 +29,5 @@ export interface ContainerVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

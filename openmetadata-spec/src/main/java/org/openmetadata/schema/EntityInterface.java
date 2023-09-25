@@ -20,14 +20,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.ProviderType;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
+@SuppressWarnings("unused")
 public interface EntityInterface {
   // Lower case entity name to canonical entity name map
   Map<String, String> CANONICAL_ENTITY_NAME_MAP = new HashMap<>();
@@ -81,6 +79,34 @@ public interface EntityInterface {
     return null;
   }
 
+  default List<EntityReference> getChildren() {
+    return null;
+  }
+
+  default List<EntityReference> getReviewers() {
+    return null;
+  }
+
+  default List<EntityReference> getExperts() {
+    return null;
+  }
+
+  default EntityReference getDomain() {
+    return null;
+  }
+
+  default List<EntityReference> getDataProducts() {
+    return null;
+  }
+
+  default Style getStyle() {
+    return null;
+  }
+
+  default LifeCycle getLifeCycle() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -112,6 +138,42 @@ public interface EntityInterface {
   }
 
   default void setExtension(Object extension) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setChildren(List<EntityReference> entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setReviewers(List<EntityReference> entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setExperts(List<EntityReference> entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setDomain(EntityReference entityReference) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setDataProducts(List<EntityReference> dataProducts) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setFollowers(List<EntityReference> followers) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setVotes(Votes vote) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setStyle(Style style) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setLifeCycle(LifeCycle lifeCycle) {
     /* no-op implementation to be overridden */
   }
 

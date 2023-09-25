@@ -13,11 +13,11 @@
 
 package org.openmetadata.service.secrets;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +37,7 @@ import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.CollectionRegistry.CollectionDetails;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Update service using the configured secret manager.
@@ -128,7 +129,7 @@ public class SecretsManagerUpdateService {
                   service.getName(),
                   repository.getServiceType()));
       repository.getDao().update(service);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -155,7 +156,7 @@ public class SecretsManagerUpdateService {
               service ->
                   !Objects.isNull(service.getConnection()) && !Objects.isNull(service.getConnection().getConfig()))
           .collect(Collectors.toList());
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -198,14 +199,14 @@ public class SecretsManagerUpdateService {
       return userRepository
           .listAfter(
               null,
-              new EntityUtil.Fields(List.of("authenticationMechanism")),
+              new Fields(Set.of("authenticationMechanism")),
               new ListFilter(),
               userRepository.getDao().listCount(new ListFilter()),
               null)
           .getData().stream()
           .filter(user -> Boolean.TRUE.equals(user.getIsBot()))
           .collect(Collectors.toList());
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -216,7 +217,7 @@ public class SecretsManagerUpdateService {
       oldSecretManager.decryptAuthenticationMechanism(botUser.getName(), user.getAuthenticationMechanism());
       secretManager.encryptAuthenticationMechanism(botUser.getName(), user.getAuthenticationMechanism());
       userRepository.getDao().update(user);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -231,7 +232,7 @@ public class SecretsManagerUpdateService {
               ingestionPipelineRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -246,7 +247,7 @@ public class SecretsManagerUpdateService {
               workflowRepository.getDao().listCount(new ListFilter()),
               null)
           .getData();
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -258,7 +259,7 @@ public class SecretsManagerUpdateService {
       oldSecretManager.decryptIngestionPipeline(ingestionPipeline);
       secretManager.encryptIngestionPipeline(ingestionPipeline);
       ingestionPipelineRepository.getDao().update(ingestion);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }
@@ -270,7 +271,7 @@ public class SecretsManagerUpdateService {
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);
       ingestionPipelineRepository.getDao().update(workflowObject);
-    } catch (IOException e) {
+    } catch (Exception e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
     }
   }

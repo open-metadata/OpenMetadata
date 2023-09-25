@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getExpiryDateTimeFromDate } from '../../../src/utils/TimeUtils.ts';
+import {
+  customFormatDateTime,
+  getEpochMillisForFutureDays,
+} from '../../../src/utils/date-time/DateTimeUtils';
 import {
   descriptionBox,
   interceptURL,
@@ -35,7 +38,7 @@ const expirationTime = {
   threemonths: '90',
 };
 const getCreatedBot = () => {
-  interceptURL('GET', `/api/v1/bots/name/${botName}`, 'getCreatedBot');
+  interceptURL('GET', `/api/v1/bots/name/${botName}*`, 'getCreatedBot');
   // Click on created Bot name
   cy.get(`[data-testid="bot-link-${botName}"]`)
     .should('exist')
@@ -73,13 +76,13 @@ const revokeToken = () => {
 describe('Bots Page should work properly', () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .should('be.visible')
       .click();
     interceptURL(
       'GET',
-      'api/v1/bots?limit=100&include=non-deleted',
+      'api/v1/bots?limit=*&include=non-deleted',
       'getBotsList'
     );
     cy.get('[data-testid="settings-left-panel"]')
@@ -108,9 +111,6 @@ describe('Bots Page should work properly', () => {
     cy.get('[data-testid="email"]').should('exist').type(botEmail);
     // Enter display name
     cy.get('[data-testid="displayName"]').should('exist').type(botName);
-    // Select token type
-    cy.get('[data-testid="auth-mechanism"]').should('be.visible').click();
-    cy.contains(JWTToken).should('exist').should('be.visible').click();
     // Select expiry time
     cy.get('[data-testid="token-expiry"]').should('be.visible').click();
     cy.contains('1 hr').should('exist').should('be.visible').click();
@@ -153,9 +153,8 @@ describe('Bots Page should work properly', () => {
         .should('be.visible')
         .click();
       // Save the updated date
-      const expiryDate = getExpiryDateTimeFromDate(
-        expiry,
-        'days',
+      const expiryDate = customFormatDateTime(
+        getEpochMillisForFutureDays(expiry),
         `ccc d'th' MMMM, yyyy`
       );
       cy.get('[data-testid="save-edit"]').should('be.visible').click();

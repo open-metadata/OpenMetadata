@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import TagsViewer from 'components/Tag/TagsViewer/tags-viewer';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
@@ -38,13 +38,13 @@ function SummaryListItem({
             data-testid="title-container"
             span={24}>
             {isColumnsData &&
-              prepareConstraintIcon(
-                entityDetails.name,
-                entityDetails.columnConstraint,
-                entityDetails.tableConstraints,
-                'm-r-xss',
-                '14px'
-              )}
+              prepareConstraintIcon({
+                columnName: entityDetails.name,
+                columnConstraint: entityDetails.columnConstraint,
+                tableConstraints: entityDetails.tableConstraints,
+                iconClassName: 'm-r-xss',
+                iconWidth: '14px',
+              })}
             {entityDetails.title}
 
             {entityDetails.type && (
@@ -86,7 +86,6 @@ function SummaryListItem({
               <TagsViewer
                 sizeCap={2}
                 tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
-                type="border"
               />
             </Col>
           )}

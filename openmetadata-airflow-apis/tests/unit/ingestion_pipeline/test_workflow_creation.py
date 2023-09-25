@@ -69,10 +69,10 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 
 
 def mock_set_ingestion_pipeline_status(self, state):
@@ -174,7 +174,9 @@ class OMetaServiceTest(TestCase):
         )
 
     @patch.object(
-        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+        MetadataWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
     )
     def test_ingestion_workflow(self):
         """
@@ -205,7 +207,9 @@ class OMetaServiceTest(TestCase):
         parse_workflow_config_gracefully(config)
 
     @patch.object(
-        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+        MetadataWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
     )
     def test_usage_workflow(self):
         """
@@ -238,7 +242,9 @@ class OMetaServiceTest(TestCase):
         parse_workflow_config_gracefully(config)
 
     @patch.object(
-        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+        MetadataWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
     )
     def test_lineage_workflow(self):
         """
@@ -322,7 +328,7 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type="TestSuite",
-                    entityFullyQualifiedName="service.database.schema.table",
+                    entityFullyQualifiedName=self.service.name.__root__,
                 )
             ),
             openMetadataServerConnection=self.server_config,
@@ -330,9 +336,9 @@ class OMetaServiceTest(TestCase):
                 startDate="2022-06-10T15:06:47+00:00",
             ),
             service=EntityReference(
-                id=self.service.id,
-                type="databaseService",
-                name=self.service.name.__root__,
+                id=uuid.uuid4(),
+                type="testSuite",
+                name="test_test_suite_workflow",
             ),
         )
 

@@ -344,6 +344,7 @@ export const MOCK_TEST_CASE = [
   {
     id: '5f83c798-91ac-4289-aeb0-99ef372e7e96',
     name: 'column_values_to_match_regex',
+    displayName: 'column values to match regex',
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.last_name.column_values_to_match_regex',
     description: 'test value of a column match regex',
@@ -379,7 +380,7 @@ export const MOCK_TEST_CASE = [
     ],
     testCaseResult: {
       timestamp: 1677046336,
-      testCaseStatus: 'Success',
+      testCaseStatus: 'Failed',
       result:
         'Found 99 value(s) matching regex pattern vs 99 value(s) in the column.',
       testResultValue: [
@@ -672,6 +673,41 @@ export const MOCK_SQL_TEST_CASE = {
   href: '',
   deleted: false,
 } as TestCase;
+
+export const MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX = {
+  id: '4c69c0d7-c173-4f17-b939-737ce0510f66',
+  name: 'columnValuesToMatchRegex',
+  displayName: 'Column Values To Match Regex Pattern',
+  fullyQualifiedName: 'columnValuesToMatchRegex',
+  description:
+    'This schema defines the test ColumnValuesToMatchRegex. Test the values in a column to match a given regular expression. ',
+  entityType: 'COLUMN',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [
+    'BYTES',
+    'STRING',
+    'MEDIUMTEXT',
+    'TEXT',
+    'CHAR',
+    'VARCHAR',
+  ],
+  parameterDefinition: [
+    {
+      name: 'regex',
+      displayName: 'RegEx Pattern',
+      dataType: 'STRING',
+      description:
+        'The regular expression the column entries should match. For database without regex support (i.e. MSSQL, AzureSQL) this test will use `LIKE`.',
+      required: true,
+      optionValues: [],
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1682571176093,
+  updatedBy: 'admin',
+  href: 'href',
+  deleted: false,
+};
 
 export const MOCK_CHART_COLLECTION_DATA = {
   data: [

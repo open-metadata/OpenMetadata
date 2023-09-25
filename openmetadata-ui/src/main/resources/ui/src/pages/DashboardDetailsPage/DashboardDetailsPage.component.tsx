@@ -17,10 +17,11 @@ import DashboardDetails from 'components/DashboardDetails/DashboardDetails.compo
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
@@ -29,31 +30,25 @@ import {
   getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
+  updateDashboardVotes,
 } from 'rest/dashboardAPI';
-import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
-import AppState from '../../AppState';
+import { postThread } from 'rest/feedsAPI';
 import { getVersionPath } from '../../constants/constants';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
 } from '../../utils/CommonUtils';
 import {
   defaultFields,
   fetchCharts,
   sortTagsForCharts,
 } from '../../utils/DashboardDetailsUtils';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../utils/FeedUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -66,26 +61,13 @@ const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardFQN, tab } =
-    useParams<{ dashboardFQN: string; tab: EntityTabs }>();
+  const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
   const [isLoading, setLoading] = useState<boolean>(false);
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [isError, setIsError] = useState(false);
-
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isEntityThreadLoading, setIsEntityThreadLoading] =
-    useState<boolean>(false);
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
 
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -112,46 +94,6 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.DASHBOARD,
-      dashboardFQN,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
-
-  const getFeedData = async (
-    after?: string,
-    feedFilter?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    setIsEntityThreadLoading(true);
-
-    try {
-      const { data, paging: pagingObj } = await getAllFeeds(
-        getEntityFeedLink(EntityType.DASHBOARD, dashboardFQN),
-        after,
-        threadType,
-        feedFilter,
-        undefined,
-        USERId
-      );
-      setPaging(pagingObj);
-      setEntityThread((prevData) => [...(after ? prevData : []), ...data]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.entity-feed-plural'),
-        })
-      );
-    } finally {
-      setIsEntityThreadLoading(false);
-    }
-  };
-
   const saveUpdatedDashboardData = (updatedData: Dashboard) => {
     const jsonPatch = compare(
       omitBy(dashboardDetails, isUndefined),
@@ -161,11 +103,20 @@ const DashboardDetailsPage = () => {
     return patchDashboardDetails(dashboardId, jsonPatch);
   };
 
+  const viewUsagePermission = useMemo(
+    () => dashboardPermissions.ViewAll || dashboardPermissions.ViewUsage,
+    [dashboardPermissions]
+  );
+
   const fetchDashboardDetail = async (dashboardFQN: string) => {
     setLoading(true);
 
     try {
-      const res = await getDashboardByFqn(dashboardFQN, defaultFields);
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const res = await getDashboardByFqn(dashboardFQN, fields);
 
       const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
       setDashboardDetails(res);
@@ -223,8 +174,6 @@ const DashboardDetailsPage = () => {
           [key]: response[key],
         };
       });
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -238,7 +187,6 @@ const DashboardDetailsPage = () => {
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -261,8 +209,6 @@ const DashboardDetailsPage = () => {
             (follower) => follower.id !== oldValue[0].id
           ) ?? [],
       }));
-
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -307,7 +253,6 @@ const DashboardDetailsPage = () => {
         // which leads to wrong PATCH payload sent after further tags removal
         return sortTagsForCharts(charts);
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -325,42 +270,9 @@ const DashboardDetailsPage = () => {
       );
   };
 
-  const postFeedHandler = async (value: string, id: string) => {
-    const currentUser = AppState.userDetails?.name ?? AppState.users[0]?.name;
-
-    const data = {
-      message: value,
-      from: currentUser,
-    } as Post;
-
-    try {
-      const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-      getEntityFeedCount();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.add-entity-error', {
-          entity: t('label.feed-plural'),
-        })
-      );
-    }
-  };
-
   const createThread = async (data: CreateThread) => {
     try {
-      const res = await postThread(data);
-      setEntityThread((pre) => [...pre, res]);
-      getEntityFeedCount();
+      await postThread(data);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -371,33 +283,38 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
+  const handleToggleDelete = () => {
+    setDashboardDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
   };
 
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  useEffect(() => {
-    if (tab === EntityTabs.ACTIVITY_FEED) {
-      getFeedData();
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDashboardVotes(id, data);
+      const details = await getDashboardByFqn(dashboardFQN, defaultFields);
+      setDashboardDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
-  }, [tab, feedCount]);
+  };
+
+  const updateDashboardDetailsState = useCallback((data) => {
+    const updatedData = data as Dashboard;
+
+    setDashboardDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
-      getEntityFeedCount();
     }
   }, [dashboardFQN, dashboardPermissions]);
 
@@ -426,20 +343,14 @@ const DashboardDetailsPage = () => {
       charts={charts}
       createThread={createThread}
       dashboardDetails={dashboardDetails}
-      deletePostHandler={deletePostHandler}
-      entityFieldTaskCount={entityFieldTaskCount}
-      entityFieldThreadCount={entityFieldThreadCount}
-      entityThread={entityThread}
-      feedCount={feedCount}
-      fetchFeedHandler={getFeedData}
+      fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
-      isEntityThreadLoading={isEntityThreadLoading}
-      paging={paging}
-      postFeedHandler={postFeedHandler}
-      unfollowDashboardHandler={unFollowDashboard}
-      updateThreadHandler={updateThreadHandler}
+      handleToggleDelete={handleToggleDelete}
+      unFollowDashboardHandler={unFollowDashboard}
+      updateDashboardDetailsState={updateDashboardDetailsState}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

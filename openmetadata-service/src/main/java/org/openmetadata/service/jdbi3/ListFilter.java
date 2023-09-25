@@ -5,9 +5,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -49,11 +51,13 @@ public class ListFilter {
     condition = addCondition(condition, getServiceCondition(tableName));
     condition = addCondition(condition, getPipelineTypeCondition(tableName));
     condition = addCondition(condition, getParentCondition(tableName));
+    condition = addCondition(condition, getDisabledCondition(tableName));
     condition = addCondition(condition, getCategoryCondition(tableName));
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
-    condition = addCondition(condition, getTestSuiteCondition());
+    condition = addCondition(condition, getTestSuiteTypeCondition());
+    condition = addCondition(condition, getTestSuiteFQNCondition());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -80,12 +84,43 @@ public class ListFilter {
 
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
-    return service == null ? "" : getFqnPrefixCondition(tableName, service);
+    return service == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
+  }
+
+  public String getTestSuiteFQNCondition() {
+    String testSuiteName = queryParams.get("testSuite");
+    return testSuiteName == null
+        ? ""
+        : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
   }
 
   public String getParentCondition(String tableName) {
     String parentFqn = queryParams.get("parent");
     return parentFqn == null ? "" : getFqnPrefixCondition(tableName, parentFqn);
+  }
+
+  public String getDisabledCondition(String tableName) {
+    String disabled = queryParams.get("disabled");
+    return disabled == null ? "" : getDisabledCondition(tableName, disabled);
+  }
+
+  public String getDisabledCondition(String tableName, String disabledStr) {
+    boolean disabled = Boolean.parseBoolean(disabledStr);
+    String disabledCondition = "";
+    if (DatasourceConfig.getInstance().isMySQL()) {
+      if (disabled) {
+        disabledCondition = "JSON_EXTRACT(json, '$.disabled') = TRUE";
+      } else {
+        disabledCondition = "(JSON_EXTRACT(json, '$.disabled') IS NULL OR JSON_EXTRACT(json, '$.disabled') = FALSE)";
+      }
+    } else {
+      if (disabled) {
+        disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
+      } else {
+        disabledCondition = "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+      }
+    }
+    return disabledCondition;
   }
 
   public String getCategoryCondition(String tableName) {
@@ -132,7 +167,7 @@ public class ListFilter {
     return addCondition(condition1, condition2);
   }
 
-  private String getTestSuiteCondition() {
+  private String getTestSuiteTypeCondition() {
     String testSuiteType = getQueryParam("testSuiteType");
 
     if (testSuiteType == null) {
@@ -142,14 +177,14 @@ public class ListFilter {
     switch (testSuiteType) {
       case ("executable"):
         if (DatasourceConfig.getInstance().isMySQL()) {
-          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'true'";
+          return "(JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'true')";
         }
-        return "json->>'executable' = 'true'";
+        return "(json->>'executable' = 'true')";
       case ("logical"):
         if (DatasourceConfig.getInstance().isMySQL()) {
-          return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false'";
+          return "(JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(json, '$.executable')) IS NULL)";
         }
-        return "json->>'executable' = 'false'";
+        return "(json->>'executable' = 'false' or json -> 'executable' is null)";
       default:
         return "";
     }
@@ -171,17 +206,22 @@ public class ListFilter {
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
     pipelineType = escape(pipelineType);
+    String inCondition = getInConditionFromString(pipelineType);
     if (DatasourceConfig.getInstance().isMySQL()) {
       return tableName == null
           ? String.format(
-              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s'", pipelineType)
+              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)", inCondition)
           : String.format(
-              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s%%'",
-              tableName, pipelineType);
+              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
+              tableName, inCondition);
     }
     return tableName == null
-        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' = '%s'", pipelineType)
-        : String.format("%s.json->>'pipelineType' = '%s%%'", tableName, pipelineType);
+        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' IN (%s)", inCondition)
+        : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
+  }
+
+  private String getInConditionFromString(String condition) {
+    return Arrays.stream(condition.split(",")).map(s -> String.format("'%s'", s)).collect(Collectors.joining(","));
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {

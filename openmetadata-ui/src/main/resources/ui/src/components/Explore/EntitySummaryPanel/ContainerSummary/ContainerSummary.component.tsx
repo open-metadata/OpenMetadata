@@ -12,20 +12,20 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import classNames from 'classnames';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
 import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { Container } from 'generated/entity/data/container';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { getTagValue } from 'utils/CommonUtils';
 import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { ContainerSummaryProps } from './ContainerSummary.interface';
@@ -54,55 +54,12 @@ function ContainerSummary({
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
-            <Row gutter={[0, 4]}>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col data-testid={`${info.name}-label`} span={8}>
-                          <Typography.Text className="text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Link
-                            target={info.isExternal ? '_blank' : '_self'}
-                            to={{ pathname: info.url }}>
-                            {info.value}
-                            {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
-                            ) : null}
-                          </Link>
-                        ) : (
-                          <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
         <Divider className="m-y-xs" />
@@ -110,7 +67,31 @@ function ContainerSummary({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-grey-muted"
+              className="summary-panel-section-title"
+              data-testid="profiler-header">
+              {t('label.tag-plural')}
+            </Typography.Text>
+          </Col>
+
+          <Col className="flex-grow" span={24}>
+            {entityDetails.tags && entityDetails.tags.length > 0 ? (
+              <TagsViewer
+                sizeCap={2}
+                tags={(entityDetails.tags || []).map((tag) => getTagValue(tag))}
+              />
+            ) : (
+              <Typography.Text className="text-grey-body">
+                {t('label.no-tags-added')}
+              </Typography.Text>
+            )}
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>

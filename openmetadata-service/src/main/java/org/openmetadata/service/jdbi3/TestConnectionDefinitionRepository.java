@@ -2,11 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_CONNECTION_DEFINITION;
 
-import java.io.IOException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.connections.TestConnectionDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -40,13 +37,17 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields)
-      throws IOException {
-    return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
+  public TestConnectionDefinition setFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+    return entity; // Nothing to set
   }
 
   @Override
-  public void prepare(TestConnectionDefinition entity) {
+  public TestConnectionDefinition clearFields(TestConnectionDefinition entity, EntityUtil.Fields fields) {
+    return entity; // Nothing to set
+  }
+
+  @Override
+  public void prepare(TestConnectionDefinition entity, boolean update) {
     // validate steps
     if (CommonUtil.nullOrEmpty(entity.getSteps())) {
       throw new IllegalArgumentException("Steps must not be empty");
@@ -54,19 +55,13 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public void storeEntity(TestConnectionDefinition entity, boolean update) throws IOException {
-    EntityReference owner = entity.getOwner();
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    entity.withOwner(null).withHref(null);
+  public void storeEntity(TestConnectionDefinition entity, boolean update) {
     store(entity, update);
-
-    // Restore the relationships
-    entity.withOwner(owner);
   }
 
   @Override
   public void storeRelationships(TestConnectionDefinition entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override
@@ -82,7 +77,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("steps", original.getSteps(), updated.getSteps(), true);
     }
   }

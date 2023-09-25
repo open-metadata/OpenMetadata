@@ -12,6 +12,7 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ThreadType } from 'generated/api/feed/createThread';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 
 export interface MlModelFeaturesListProp {
@@ -19,4 +20,6 @@ export interface MlModelFeaturesListProp {
   permissions: OperationPermission;
   handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => Promise<void>;
   isDeleted?: boolean;
+  entityFqn: string;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }

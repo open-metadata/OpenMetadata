@@ -1,7 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -24,16 +24,12 @@ public class TokenRepository {
     return result;
   }
 
-  public List<TokenInterface> findByUserIdAndType(String userId, String type) {
+  public List<TokenInterface> findByUserIdAndType(UUID userId, String type) {
     return dao.getTokenDAO().getAllUserTokenWithType(userId, type);
   }
 
-  public void insertToken(TokenInterface tokenInterface) throws JsonProcessingException {
+  public void insertToken(TokenInterface tokenInterface) {
     dao.getTokenDAO().insert(JsonUtils.pojoToJson(tokenInterface));
-  }
-
-  public void updateToken(TokenInterface tokenInterface) throws JsonProcessingException {
-    dao.getTokenDAO().update(tokenInterface.getToken().toString(), JsonUtils.pojoToJson(tokenInterface));
   }
 
   public void deleteToken(String token) {
@@ -52,7 +48,7 @@ public class TokenRepository {
     }
   }
 
-  public void deleteTokenByUserAndType(String userId, String type) {
+  public void deleteTokenByUserAndType(UUID userId, String type) {
     try {
       dao.getTokenDAO().deleteTokenByUserAndType(userId, type);
     } catch (Exception ex) {

@@ -58,12 +58,17 @@ jest.mock('../../utils/CommonUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
 }));
 
+jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
+
 jest.mock('../../utils/DataInsightUtils', () => ({
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getKPIFormattedDates: jest.fn().mockReturnValue({
-    startDate: `2022-12-08 00:00`,
-    endDate: `2022-12-28 23:59`,
-  }),
   getDisabledDates: jest.fn().mockReturnValue(true),
 }));
 

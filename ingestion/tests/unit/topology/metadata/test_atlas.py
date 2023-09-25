@@ -280,6 +280,7 @@ EXPTECTED_TABLE = Table(
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
+            name="atlas_table",
             description="test tag",
             source="Classification",
             labelType="Automated",
@@ -336,6 +337,7 @@ class AtlasUnitTest(TestCase):
                         username=None,
                         password=None,
                         hostPort="http://nohost:6000",
+                        databaseName="Reporting",
                     )
                 ),
             )
@@ -469,7 +471,7 @@ class AtlasUnitTest(TestCase):
         Testing description updated for database, databaseSchema, table
         """
         self.mock_create_tag()
-        _ = list(self.atlas_source.next_record())
+        _ = list(self.atlas_source._iter())
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
         )

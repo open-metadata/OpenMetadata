@@ -23,10 +23,20 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.source.database.database_service import DataModelLink
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.source.database.dbt.dbt_utils import (
+    generate_entity_link,
+    get_corrected_name,
+    get_data_model_path,
+    get_dbt_compiled_query,
+    get_dbt_raw_query,
+)
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
-from metadata.utils.dbt_config import DbtFiles, DbtObjects
+from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
+from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.tag_utils import get_tag_labels
+
+logger = ingestion_logger()
 
 mock_dbt_config = {
     "source": {
@@ -271,6 +281,7 @@ class DbtUnitTest(TestCase):
             mock_dbt_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
+        set_loggers_level("DEBUG")
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.get_dbt_owner")
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
@@ -332,12 +343,10 @@ class DbtUnitTest(TestCase):
         )
 
     def test_dbt_get_corrected_name(self):
-        self.assertEqual(
-            "dbt_jaffle", self.dbt_source_obj.get_corrected_name(name="dbt_jaffle")
-        )
-        self.assertIsNone(self.dbt_source_obj.get_corrected_name(name="None"))
-        self.assertIsNone(self.dbt_source_obj.get_corrected_name(name="null"))
-        self.assertIsNotNone(self.dbt_source_obj.get_corrected_name(name="dev"))
+        self.assertEqual("dbt_jaffle", get_corrected_name(name="dbt_jaffle"))
+        self.assertIsNone(get_corrected_name(name="None"))
+        self.assertIsNone(get_corrected_name(name="null"))
+        self.assertIsNotNone(get_corrected_name(name="dev"))
 
     @patch("metadata.utils.tag_utils.get_tag_label")
     def test_dbt_get_dbt_tag_labels(self, get_tag_label):
@@ -378,7 +387,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_data_model_path(manifest_node=manifest_node)
+        result = get_data_model_path(manifest_node=manifest_node)
         self.assertEqual("sample/customers/root/path/models/customers.sql", result)
 
     def test_dbt_generate_entity_link(self):
@@ -393,7 +402,7 @@ class DbtUnitTest(TestCase):
             "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
             "results": "",
         }
-        result = self.dbt_source_obj.generate_entity_link(dbt_test=dbt_test)
+        result = generate_entity_link(dbt_test=dbt_test)
         self.assertListEqual(
             [
                 "<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"
@@ -411,7 +420,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_compiled_query(mnode=manifest_node)
+        result = get_dbt_compiled_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
         # Test the compiled queries with v4 v5 v6 manifest
@@ -421,7 +430,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_compiled_query(mnode=manifest_node)
+        result = get_dbt_compiled_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
     def test_dbt_raw_query(self):
@@ -434,7 +443,7 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_raw_query(mnode=manifest_node)
+        result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
         # Test the raw queries with v4 v5 v6 manifest
@@ -444,11 +453,14 @@ class DbtUnitTest(TestCase):
         manifest_node = dbt_objects.dbt_manifest.nodes.get(
             "model.jaffle_shop.customers"
         )
-        result = self.dbt_source_obj.get_dbt_raw_query(mnode=manifest_node)
+        result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
     def test_dbt_owner(self, es_search_from_fqn):
+        """
+        This test requires having the sample data properly indexed
+        """
         es_search_from_fqn.return_value = MOCK_USER
         _, dbt_objects = self.get_dbt_object_files(
             mock_manifest=MOCK_SAMPLE_MANIFEST_V8
@@ -485,7 +497,7 @@ class DbtUnitTest(TestCase):
         return dbt_files, dbt_objects
 
     def check_dbt_validate(self, dbt_files, expected_records):
-        with self.assertLogs(level="DEBUG") as captured:
+        with self.assertLogs(level="DEBUG", logger=logger) as captured:
             self.dbt_source_obj.validate_dbt_files(dbt_files=dbt_files)
         self.assertEqual(len(captured.records), expected_records)
         for record in captured.records:
@@ -498,14 +510,14 @@ class DbtUnitTest(TestCase):
             dbt_objects=dbt_objects
         )
         for data_model_link in yield_data_models:
-            if isinstance(data_model_link, DataModelLink):
+            if isinstance(data_model_link, Either) and data_model_link.right:
                 self.assertIn(
-                    data_model_link.table_entity.fullyQualifiedName.__root__,
+                    data_model_link.right.table_entity.fullyQualifiedName.__root__,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
-                data_model_list.append(data_model_link.datamodel)
+                data_model_list.append(data_model_link.right.datamodel)
 
-        for _, (exptected, original) in enumerate(
+        for _, (expected, original) in enumerate(
             zip(expected_data_models, data_model_list)
         ):
-            self.assertEqual(exptected, original)
+            self.assertEqual(expected, original)

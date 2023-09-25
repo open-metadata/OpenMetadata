@@ -4,6 +4,8 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
+import static org.openmetadata.service.util.EntityUtil.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -26,26 +28,25 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   private EntityReference TABLE_REF;
+  private EntityReference TABLE_REF_2;
   private String QUERY;
   private String QUERY_CHECKSUM;
 
   public QueryResourceTest() {
     super(Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
-    supportsSoftDelete = false;
+    supportsSearchIndex = true;
   }
 
   @BeforeAll
@@ -75,7 +76,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(QUERY)
         .withDuration(0.0)
-        .withQueryDate(1673857635064L);
+        .withQueryDate(1673857635064L)
+        .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
   }
 
   @Override
@@ -109,15 +111,19 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
   @Test
-  public void post_valid_query_test_created(TestInfo test) throws IOException {
+  void post_valid_query_test_created(TestInfo test) throws IOException {
     CreateQuery create = createRequest(getEntityName(test));
     createEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
   }
 
   @Test
-  public void post_without_query_400() {
-    CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L);
+  void post_without_query_400() {
+    CreateQuery create =
+        new CreateQuery()
+            .withDuration(0.0)
+            .withQueryDate(1673857635064L)
+            .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
   }
@@ -154,6 +160,25 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   }
 
   @Test
+  void patch_queryAttributes_200_ok(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(query.getVersion());
+    fieldAdded(change, "queryUsedIn", List.of(TEST_TABLE2.getEntityReference()));
+    fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
+    patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
+    updatedQuery.setQuery("select * from table1");
+    updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
+    change = getChangeDescription(query.getVersion());
+    fieldUpdated(change, "queryUsedIn", List.of(TABLE_REF), List.of(TABLE_REF, TEST_TABLE2));
+    fieldUpdated(change, "query", query.getQuery(), updatedQuery.getQuery());
+  }
+
+  @Test
   @SneakyThrows
   @Override
   protected void post_entityCreateWithInvalidName_400() {
@@ -172,5 +197,40 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     final CreateQuery request2 = createRequest(LONG_ENTITY_NAME, "description", "displayName", null);
     assertResponse(
         () -> createEntity(request2, ADMIN_AUTH_HEADERS), BAD_REQUEST, TestUtils.getEntityNameLengthError(entityClass));
+  }
+
+  @Test
+  void test_sensitivePIIQuery() throws IOException {
+    CreateQuery create = createRequest("sensitiveQuery");
+    create.withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+    createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Owner (USER1_REF) can see the results
+    ResultList<Query> queries = getQueries(100, "*", false, authHeaders(USER1_REF.getName()));
+    queries.getData().forEach(query -> assertEquals(query.getQuery(), QUERY));
+
+    // Another user won't see the PII query body
+    ResultList<Query> maskedQueries = getQueries(100, "*", false, authHeaders(USER2_REF.getName()));
+    maskedQueries
+        .getData()
+        .forEach(
+            query -> {
+              if (query.getTags().stream().map(TagLabel::getTagFQN).anyMatch("PII.Sensitive"::equals)) {
+                assertEquals("********", query.getQuery());
+              } else {
+                assertEquals(query.getQuery(), QUERY);
+              }
+            });
+  }
+
+  public ResultList<Query> getQueries(Integer limit, String fields, Boolean includeAll, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection();
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = target.queryParam("fields", fields);
+    if (includeAll) {
+      target = target.queryParam("include", "all");
+    }
+    return TestUtils.get(target, QueryResource.QueryList.class, authHeaders);
   }
 }

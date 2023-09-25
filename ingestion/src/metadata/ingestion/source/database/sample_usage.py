@@ -30,7 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 
@@ -77,7 +77,7 @@ class SampleUsageSource(UsageSource):
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
-                f"Expected SampleDataConnection, but got {connection}"
+                f"Expected CustomDatabaseConnection, but got {connection}"
             )
         return cls(config, metadata_config)
 

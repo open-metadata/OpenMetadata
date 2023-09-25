@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
@@ -25,6 +25,7 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -171,7 +172,12 @@ const AddService = ({
   // View new service
   const handleViewServiceClick = () => {
     if (!isUndefined(newServiceData)) {
-      history.push(getServiceDetailsPath(newServiceData.name, serviceCategory));
+      history.push(
+        getServiceDetailsPath(
+          getEncodedFqn(newServiceData.name),
+          serviceCategory
+        )
+      );
     }
   };
 
@@ -206,7 +212,7 @@ const AddService = ({
         activeStep={activeServiceStep}
         steps={STEPS_FOR_ADD_SERVICE}
       />
-      <div className="tw-pt-5">
+      <div className="m-t-lg">
         {activeServiceStep === 1 && (
           <SelectServiceType
             handleServiceTypeClick={handleServiceTypeClick}
@@ -262,7 +268,7 @@ const AddService = ({
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
+      <div className="m-t-md">
         {addIngestion ? (
           <AddIngestion
             activeIngestionStep={activeIngestionStep}
@@ -288,7 +294,7 @@ const AddService = ({
         ) : (
           addNewServiceElement
         )}
-      </Card>
+      </div>
     </div>
   );
 

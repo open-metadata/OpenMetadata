@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
-import { RuleObject } from 'antd/lib/form';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getExplorePath } from 'constants/constants';
-import { delimiterRegex } from 'constants/regex.constants';
+import { getExplorePath, PAGE_SIZE } from 'constants/constants';
+import { ExplorePageTabs } from 'enums/Explore.enum';
+import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
-import { isEmpty, isUndefined, toLower } from 'lodash';
-import { Bucket, EntityTags, TagOption } from 'Models';
+import { EntityTags, TagOption } from 'Models';
+import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
+import { searchQuery } from 'rest/searchAPI';
 import {
   getAllClassifications,
   getClassificationByName,
@@ -34,8 +36,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
-import { LabelType, State, TagSource } from '../generated/type/tagLabel';
-import { isUrlFriendlyName } from './CommonUtils';
+import { formatSearchTagsResponse } from './APIUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
 export const getClassifications = async (
@@ -152,37 +153,6 @@ export const getTableTags = (
   return uniqueTags;
 };
 
-export const getTagOptionsFromFQN = (
-  tagFQNs: Array<string>
-): Array<TagOption> => {
-  return tagFQNs.map((tag) => {
-    return { fqn: tag, source: 'Classification' };
-  });
-};
-
-export const getTagOptions = (tags: Array<string>): Array<EntityTags> => {
-  return tags.map((tag) => {
-    return {
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-      tagFQN: tag,
-      source: TagSource.Classification,
-    };
-  });
-};
-
-// Will add a label of value in the data object without it's FQN
-export const getTagsWithLabel = (tags: Array<Bucket>) => {
-  return tags.map((tag) => {
-    const containQuotes = tag.key.split('"')[1];
-
-    return {
-      ...tag,
-      label: isEmpty(containQuotes) ? tag.key.split('.').pop() : containQuotes,
-    };
-  });
-};
-
 //  Will return tag with ellipses if it exceeds the limit
 export const getTagDisplay = (tag: string) => {
   const tagLevelsArray = tag.split(FQN_SEPARATOR_CHAR);
@@ -227,44 +197,6 @@ export const fetchTagsAndGlossaryTerms = async () => {
   return tagsAndTerms;
 };
 
-/**
- *
- * @param isExtending For extending/adding more validation to field
- * @param data For validating if value already exist in the list
- * @returns If validation failed throws an error else resolve
- */
-
-export const tagsNameValidator =
-  (isExtending: boolean, data?: Classification[]) =>
-  async (_: RuleObject, value: string) => {
-    if (delimiterRegex.test(value)) {
-      return Promise.reject(
-        i18next.t('message.entity-delimiters-not-allowed', {
-          entity: i18next.t('label.name'),
-        })
-      );
-    }
-    if (isExtending) {
-      if (!isUrlFriendlyName(value)) {
-        return Promise.reject(
-          i18next.t('message.special-character-not-allowed')
-        );
-      } else if (
-        !isUndefined(
-          data?.find((item) => toLower(item.name) === toLower(value))
-        )
-      ) {
-        return Promise.reject(
-          i18next.t('message.entity-already-exists', {
-            entity: i18next.t('label.name'),
-          })
-        );
-      }
-    }
-
-    return Promise.resolve();
-  };
-
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
     <div className="m-b-xs">
@@ -298,10 +230,95 @@ export const getUsageCountLink = (tagFQN: string) => {
   const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
 
   return getExplorePath({
+    tab: ExplorePageTabs.TABLES,
     extraParameters: {
-      facetFilter: {
-        [`${type}.tagFQN`]: [tagFQN],
-      },
+      page: '1',
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                bool: {
+                  should: [{ term: { [`${type}.tagFQN`]: tagFQN } }],
+                },
+              },
+            ],
+          },
+        },
+      }),
     },
+    isPersistFilters: false,
   });
+};
+
+export const getTagPlaceholder = (isGlossaryType: boolean): string =>
+  isGlossaryType
+    ? i18next.t('label.search-entity', {
+        entity: i18next.t('label.glossary-term-plural'),
+      })
+    : i18next.t('label.search-entity', {
+        entity: i18next.t('label.tag-plural'),
+      });
+
+export const tagRender = (customTagProps: CustomTagProps) => {
+  const { label, onClose } = customTagProps;
+  const tagLabel = getTagDisplay(label as string);
+
+  const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  return (
+    <AntdTag
+      closable
+      className="text-sm flex-center m-r-xss p-r-xss m-y-2 border-light-gray"
+      closeIcon={
+        <CloseOutlined data-testid="remove-tags" height={8} width={8} />
+      }
+      data-testid={`selected-tag-${tagLabel}`}
+      onClose={onClose}
+      onMouseDown={onPreventMouseDown}>
+      <Tooltip
+        className="cursor-pointer"
+        mouseEnterDelay={1.5}
+        placement="topLeft"
+        title={getTagTooltip(label as string)}
+        trigger="hover">
+        <Typography.Paragraph className="m-0 d-inline-block break-all whitespace-normal">
+          {tagLabel}
+        </Typography.Paragraph>
+      </Tooltip>
+    </AntdTag>
+  );
+};
+
+export const fetchTagsElasticSearch = async (
+  searchText: string,
+  page: number
+): Promise<{
+  data: {
+    label: string;
+    value: string;
+  }[];
+  paging: Paging;
+}> => {
+  const res = await searchQuery({
+    query: searchText,
+    filters: 'disabled:false',
+    pageNumber: page,
+    pageSize: PAGE_SIZE,
+    queryFilter: {},
+    searchIndex: SearchIndex.TAG,
+  });
+
+  return {
+    data: formatSearchTagsResponse(res.hits.hits ?? []).map((item) => ({
+      label: item.fullyQualifiedName ?? '',
+      value: item.fullyQualifiedName ?? '',
+    })),
+    paging: {
+      total: res.hits.total.value,
+    },
+  };
 };

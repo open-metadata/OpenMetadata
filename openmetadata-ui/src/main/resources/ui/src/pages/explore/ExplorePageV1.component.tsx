@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { findActiveSearchIndex } from 'components/Explore/Explore.utils';
 
@@ -23,8 +22,10 @@ import {
 } from 'components/Explore/explore.interface';
 import ExploreV1 from 'components/ExploreV1/ExploreV1.component';
 import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
+import { useTourProvider } from 'components/TourProvider/TourProvider';
+import { mockSearchData } from 'constants/mockTourData.constants';
 import { SORT_ORDER } from 'enums/common.enum';
-import { get, isEmpty, isNil, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -35,11 +36,7 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import useDeepCompareEffect from 'use-deep-compare-effect';
-import {
-  getCombinedQueryFilterObject,
-  getUpdatedAggregateFieldValue,
-} from 'utils/ExplorePage/ExplorePageUtils';
+import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import AppState from '../../AppState';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
@@ -49,10 +46,6 @@ import {
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
-import {
-  filterObjectToElasticsearchQuery,
-  isFilterObject,
-} from '../../utils/FilterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -63,17 +56,12 @@ import {
 const ExplorePageV1: FunctionComponent = () => {
   const location = useLocation();
   const history = useHistory();
+  const { isTourOpen } = useTourProvider();
 
   const { tab } = useParams<UrlParams>();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
-
-  const [withoutFilterAggregations, setWithoutFilterAggregations] =
-    useState<Aggregations>();
-
-  const [withFilterAggregations, setWithFilterAggregations] =
-    useState<Aggregations>();
 
   const [updatedAggregations, setUpdatedAggregations] =
     useState<Aggregations>();
@@ -104,19 +92,6 @@ const ExplorePageV1: FunctionComponent = () => {
   const searchQueryParam = useMemo(
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
-  );
-
-  const facetFilters = useMemo(
-    () =>
-      isFilterObject(parsedSearch.facetFilter)
-        ? parsedSearch.facetFilter
-        : undefined,
-    [parsedSearch.facetFilter]
-  );
-
-  const elasticsearchQueryFilter = useMemo(
-    () => filterObjectToElasticsearchQuery(facetFilters),
-    [facetFilters]
   );
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
@@ -194,14 +169,6 @@ const ExplorePageV1: FunctionComponent = () => {
     [history, parsedSearch]
   );
 
-  const handleFacetFilterChange: ExploreProps['onChangeFacetFilters'] = (
-    facetFilter
-  ) => {
-    history.push({
-      search: Qs.stringify({ ...parsedSearch, facetFilter, page: 1 }),
-    });
-  };
-
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
@@ -246,34 +213,16 @@ const ExplorePageV1: FunctionComponent = () => {
   }, [parsedSearch.size]);
 
   useEffect(() => {
-    handlePageChange(page, size);
-  }, [page, size]);
+    if (!isEmpty(parsedSearch)) {
+      handlePageChange(page, size);
+    }
+  }, [page, size, parsedSearch]);
 
   const showDeleted = useMemo(() => {
     const showDeletedParam = parsedSearch.showDeleted;
 
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
-
-  // Function to fetch aggregations without any filters
-  const fetchFilterAggregationsWithoutFilters = async () => {
-    try {
-      const res = await searchQuery({
-        searchIndex,
-        pageNumber: 0,
-        pageSize: 0,
-        includeDeleted: showDeleted,
-      });
-      setUpdatedAggregations(res.aggregations);
-      setWithoutFilterAggregations(res.aggregations);
-
-      return res.aggregations;
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-
-      return undefined;
-    }
-  };
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
@@ -295,17 +244,18 @@ const ExplorePageV1: FunctionComponent = () => {
   }, [parsedSearch]);
 
   useEffect(() => {
-    fetchFilterAggregationsWithoutFilters();
-  }, [searchIndex]);
-
-  useDeepCompareEffect(() => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
     const combinedQueryFilter = getCombinedQueryFilterObject(
-      elasticsearchQueryFilter as unknown as QueryFilterInterface,
       updatedQuickFilters as QueryFilterInterface,
       queryFilter as unknown as QueryFilterInterface
     );
+
+    let newSortValue = sortValue;
+    if (searchQueryParam !== '') {
+      newSortValue = '_score';
+      setSortValue(newSortValue);
+    }
 
     setIsLoading(true);
     Promise.all([
@@ -313,7 +263,7 @@ const ExplorePageV1: FunctionComponent = () => {
         query: searchQueryParam,
         searchIndex,
         queryFilter: combinedQueryFilter,
-        sortField: sortValue,
+        sortField: newSortValue,
         sortOrder,
         pageNumber: page,
         pageSize: size,
@@ -322,7 +272,7 @@ const ExplorePageV1: FunctionComponent = () => {
         .then((res) => res)
         .then((res) => {
           setSearchResults(res);
-          setWithFilterAggregations(res.aggregations);
+          setUpdatedAggregations(res.aggregations);
         }),
       Promise.all(
         [
@@ -332,8 +282,11 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.PIPELINE,
           SearchIndex.MLMODEL,
           SearchIndex.CONTAINER,
+          SearchIndex.STORED_PROCEDURE,
+          SearchIndex.DASHBOARD_DATA_MODEL,
           SearchIndex.GLOSSARY,
           SearchIndex.TAG,
+          SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
             query: searchQueryParam,
@@ -344,6 +297,7 @@ const ExplorePageV1: FunctionComponent = () => {
             includeDeleted: showDeleted,
             trackTotalHits: true,
             fetchSource: false,
+            filters: index === SearchIndex.TAG ? 'disabled:false' : '',
           })
         )
       ).then(
@@ -354,8 +308,11 @@ const ExplorePageV1: FunctionComponent = () => {
           pipelineResponse,
           mlmodelResponse,
           containerResponse,
+          storeProcedureResponse,
+          dataModelResponse,
           glossaryResponse,
           tagsResponse,
+          searchIndexResponse,
         ]) => {
           setSearchHitCounts({
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
@@ -364,8 +321,13 @@ const ExplorePageV1: FunctionComponent = () => {
             [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
             [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
             [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
+            [SearchIndex.STORED_PROCEDURE]:
+              storeProcedureResponse.hits.total.value,
+            [SearchIndex.DASHBOARD_DATA_MODEL]:
+              dataModelResponse.hits.total.value,
             [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
             [SearchIndex.TAG]: tagsResponse.hits.total.value,
+            [SearchIndex.SEARCH_INDEX]: searchIndexResponse.hits.total.value,
           });
         }
       ),
@@ -381,7 +343,6 @@ const ExplorePageV1: FunctionComponent = () => {
     sortValue,
     sortOrder,
     showDeleted,
-    elasticsearchQueryFilter,
     searchIndex,
     page,
     size,
@@ -400,48 +361,22 @@ const ExplorePageV1: FunctionComponent = () => {
     AppState.updateExplorePageTab(tab);
   }, [tab]);
 
-  useEffect(() => {
-    try {
-      const newAggregates: Aggregations = {};
-
-      if (
-        !isEmpty(withFilterAggregations) &&
-        !isEmpty(withoutFilterAggregations) &&
-        !isUndefined(withoutFilterAggregations) &&
-        !isUndefined(withFilterAggregations)
-      ) {
-        Object.keys(withoutFilterAggregations).forEach((filterKey) => {
-          const aggregateFieldValue = getUpdatedAggregateFieldValue(
-            withFilterAggregations,
-            withoutFilterAggregations,
-            filterKey
-          );
-
-          if (aggregateFieldValue) {
-            newAggregates[filterKey] = aggregateFieldValue;
-          }
-        });
-        setUpdatedAggregations(newAggregates);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [withoutFilterAggregations, withFilterAggregations]);
-
   return (
     <ExploreV1
       aggregations={updatedAggregations}
-      facetFilters={facetFilters}
-      loading={isLoading}
+      loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={searchResults}
+      searchResults={
+        isTourOpen
+          ? (mockSearchData as unknown as SearchResponse<ExploreSearchIndex>)
+          : searchResults
+      }
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
       tabCounts={searchHitCounts}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
-      onChangeFacetFilters={handleFacetFilterChange}
       onChangePage={handlePageChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}

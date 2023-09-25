@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import { GREEN_COLOR, GREEN_COLOR_OPACITY_30 } from 'constants/constants';
+import {
+  GREEN_3,
+  GREEN_3_OPACITY,
+  RED_3,
+  YELLOW_2,
+} from 'constants/Color.constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -32,6 +38,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getListTestCaseResults } from 'rest/testAPI';
+import { formatDateTime } from 'utils/date-time/DateTimeUtils';
 import { getTestCaseDetailsPath } from 'utils/RouterUtils';
 import {
   COLORS,
@@ -46,7 +53,6 @@ import {
 } from '../../../generated/tests/testCase';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../../Loader/Loader';
@@ -92,13 +98,13 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       const values = result.testResultValue?.reduce((acc, curr) => {
         return {
           ...acc,
-          [curr.name || 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
+          [curr.name ?? 'value']: round(parseFloat(curr.value ?? ''), 2) || 0,
         };
       }, {});
 
       chartData.push({
-        name: getFormattedDateFromSeconds(result.timestamp as number),
-        status: result.testCaseStatus || '',
+        name: formatDateTime(result.timestamp),
+        status: result.testCaseStatus ?? '',
         ...values,
       });
     });
@@ -106,9 +112,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     setChartData({
       information:
         currentData[0]?.testResultValue?.map((info, i) => ({
-          label: info.name || '',
+          label: info.name ?? '',
           color: COLORS[i],
-        })) || [],
+        })) ?? [],
       data: chartData,
     });
   };
@@ -118,11 +124,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     props: any
   ): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
-    let fill =
-      payload.status === TestCaseStatus.Success ? '#28A745' : undefined;
+    let fill = payload.status === TestCaseStatus.Success ? GREEN_3 : undefined;
 
     if (isUndefined(fill)) {
-      fill = payload.status === TestCaseStatus.Failed ? '#CB2431' : '#EFAE2F';
+      fill = payload.status === TestCaseStatus.Failed ? RED_3 : YELLOW_2;
     }
 
     return (
@@ -165,9 +170,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     return (
       <ReferenceArea
-        fill={GREEN_COLOR_OPACITY_30}
+        fill={GREEN_3_OPACITY}
         ifOverflow="extendDomain"
-        stroke={GREEN_COLOR}
+        stroke={GREEN_3}
         strokeDasharray="4"
         {...yValues}
       />
@@ -181,7 +186,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     return results.length ? (
       <ResponsiveContainer
-        className="tw-bg-white"
+        className="bg-white"
         id={`${data.name}_graph`}
         minHeight={400}>
         <LineChart
@@ -213,7 +218,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       </ResponsiveContainer>
     ) : (
       <ErrorPlaceHolder
-        className="tw-mt-0"
+        className="m-t-0"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.FILTER}
       />
@@ -247,13 +252,16 @@ const TestSummary: React.FC<TestSummaryProps> = ({
 
     if (isSqlQuery) {
       return (
-        <Row className="sql-expression-container" gutter={8} key={param.name}>
-          <Col span={showExpandIcon ? 2 : 3}>
+        <Row
+          className="sql-expression-container"
+          gutter={[8, 8]}
+          key={param.name}>
+          <Col span={24}>
             <Typography.Text className="text-grey-muted">
               {`${param.name}:`}
             </Typography.Text>
           </Col>
-          <Col span={showExpandIcon ? 22 : 21}>
+          <Col span={24}>
             <SchemaEditor
               editorClass="table-query-editor"
               mode={{ name: CSMode.SQL }}
@@ -303,7 +311,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   );
 
   return (
-    <Row data-testid="test-summary-container" gutter={[16, 16]}>
+    <Row data-testid="test-summary-container" gutter={[0, 16]}>
       <Col span={24}>
         {isLoading ? (
           <Loader />
@@ -340,30 +348,37 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         )}
       </Col>
       <Col span={24}>
-        {showParameters && (
-          <Row align="top" data-testid="params-container" gutter={16}>
+        <Row align="top" data-testid="params-container" gutter={[16, 16]}>
+          {showParameters && (
             <Col>
               <Typography.Text className="text-grey-muted">
                 {`${t('label.parameter')}:`}
               </Typography.Text>
-            </Col>
-            <Col>
               {!isEmpty(parameterValuesWithoutSqlExpression) ? (
                 <Row className="parameter-value-container" gutter={[4, 4]}>
                   {parameterValuesWithoutSqlExpression?.map(showParamsData)}
                 </Row>
               ) : (
-                <Typography.Text type="secondary">
+                <Typography.Text className="m-l-xs" type="secondary">
                   {t('label.no-parameter-available')}
                 </Typography.Text>
               )}
             </Col>
-          </Row>
-        )}
-
-        {!isUndefined(parameterValuesWithSqlExpression)
-          ? parameterValuesWithSqlExpression.map(showParamsData)
-          : null}
+          )}
+          {!isUndefined(parameterValuesWithSqlExpression) ? (
+            <Col>{parameterValuesWithSqlExpression.map(showParamsData)}</Col>
+          ) : null}
+          {data.description && (
+            <Col>
+              <Space direction="vertical" size={4}>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.description')}:`}
+                </Typography.Text>
+                <RichTextEditorPreviewer markdown={data.description} />
+              </Space>
+            </Col>
+          )}
+        </Row>
       </Col>
     </Row>
   );

@@ -54,7 +54,16 @@ class NotRegexCount(StaticMetric):
             )
         return SumFn(
             case(
-                [(not_(column(self.col.name).regexp_match(self.expression)), 0)],
+                [
+                    (
+                        not_(
+                            column(self.col.name, self.col.type).regexp_match(
+                                self.expression
+                            )
+                        ),
+                        0,
+                    )
+                ],
                 else_=1,
             )
         )

@@ -14,14 +14,37 @@ import {
   AssetsUnion,
   MapPatchAPIResponse,
 } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { Operation } from 'fast-json-patch';
 import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from 'rest/databaseAPI';
+import { getDataModelsByName, patchDataModelDetails } from 'rest/dataModelsAPI';
+import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
 import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
 import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
+import {
+  getSearchIndexDetailsByFQN,
+  patchSearchIndexDetails,
+} from 'rest/SearchIndexAPI';
+import {
+  getDomainSupportedServiceByFQN,
+  patchDomainSupportedService,
+} from 'rest/serviceAPI';
 import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
+import {
+  getStoredProceduresByName,
+  patchStoredProceduresDetails,
+} from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
+import { getServiceCategoryFromEntityType } from 'utils/ServiceUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion
@@ -42,6 +65,29 @@ export const getAPIfromSource = (
       return patchTopicDetails;
     case EntityType.CONTAINER:
       return patchContainerDetails;
+    case EntityType.SEARCH_INDEX:
+      return patchSearchIndexDetails;
+    case EntityType.STORED_PROCEDURE:
+      return patchStoredProceduresDetails;
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return patchDataModelDetails;
+    case EntityType.GLOSSARY_TERM:
+      return patchGlossaryTerm;
+    case EntityType.DATABASE_SCHEMA:
+      return patchDatabaseSchemaDetails;
+    case EntityType.DATABASE:
+      return patchDatabaseDetails;
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.DATABASE_SERVICE:
+      return (id, queryFields) => {
+        const serviceCat = getServiceCategoryFromEntityType(source);
+
+        return patchDomainSupportedService(serviceCat, id, queryFields);
+      };
   }
 };
 
@@ -64,5 +110,60 @@ export const getEntityAPIfromSource = (
       return getTopicByFqn;
     case EntityType.CONTAINER:
       return getContainerByName;
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProceduresByName;
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelsByName;
+    case EntityType.GLOSSARY_TERM:
+      return getGlossaryTermByFQN;
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsByFQN;
+    case EntityType.DATABASE:
+      return getDatabaseDetailsByFQN;
+    case EntityType.SEARCH_INDEX:
+      return getSearchIndexDetailsByFQN;
+    case EntityType.MESSAGING_SERVICE:
+    case EntityType.DASHBOARD_SERVICE:
+    case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.DATABASE_SERVICE:
+      return (id, queryFields) => {
+        const serviceCat = getServiceCategoryFromEntityType(source);
+
+        return getDomainSupportedServiceByFQN(serviceCat, id, queryFields);
+      };
+  }
+};
+
+export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
+  const commonAssets: Record<string, SearchIndex> = {
+    [EntityType.TABLE]: SearchIndex.TABLE,
+    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
+    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
+    [EntityType.TOPIC]: SearchIndex.TOPIC,
+    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
+    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
+    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
+  };
+
+  if (
+    source === AssetsOfEntity.DOMAIN ||
+    source === AssetsOfEntity.DATA_PRODUCT
+  ) {
+    commonAssets[EntityType.GLOSSARY] = SearchIndex.GLOSSARY;
+  }
+
+  return commonAssets;
+};
+
+export const getAssetsFields = (source: AssetsOfEntity) => {
+  if (source === AssetsOfEntity.GLOSSARY) {
+    return 'tags';
+  } else if (source === AssetsOfEntity.DOMAIN) {
+    return 'domain';
+  } else {
+    return 'dataProducts';
   }
 };

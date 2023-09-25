@@ -12,7 +12,9 @@
  */
 
 import { Typography } from 'antd';
+import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
+import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -24,7 +26,6 @@ import { Task } from '../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './EntityUtils';
-import SVGIcons from './SvgUtils';
 
 const { Text } = Typography;
 
@@ -60,21 +61,29 @@ export const getFormattedEntityData = (
         ),
       }));
     }
+    case SummaryEntityType.FIELD: {
+      return (entityInfo as SearchIndexField[]).map((field) => ({
+        name: field.name,
+        title: <Text className="entity-title">{getTitleName(field)}</Text>,
+        type: field.dataType,
+        tags: field.tags,
+        description: field.description,
+        children: getFormattedEntityData(
+          SummaryEntityType.FIELD,
+          field.children
+        ),
+      }));
+    }
     case SummaryEntityType.CHART: {
       return (entityInfo as Chart[]).map((chart) => ({
         name: chart.name,
         title: (
           <Link target="_blank" to={{ pathname: chart.sourceUrl }}>
-            <div className="d-flex items-center">
-              <Text className="entity-title text-primary font-medium m-r-xss">
+            <div className="d-flex">
+              <Text className="entity-title text-link-color font-medium m-r-xss">
                 {getTitleName(chart)}
               </Text>
-              <SVGIcons
-                alt="external-link"
-                height="14px"
-                icon="external-link"
-                width="14px"
-              />
+              <IconExternalLink width={12} />
             </div>
           </Link>
         ),
@@ -88,18 +97,13 @@ export const getFormattedEntityData = (
         name: task.name,
         title: (
           <Link target="_blank" to={{ pathname: task.sourceUrl }}>
-            <div className="d-flex items-center">
+            <div className="d-flex">
               <Text
-                className="entity-title text-primary font-medium m-r-xss"
+                className="entity-title text-link-color font-medium m-r-xss"
                 ellipsis={{ tooltip: true }}>
                 {getTitleName(task)}
               </Text>
-              <SVGIcons
-                alt="external-link"
-                height="14px"
-                icon="external-link"
-                width="14px"
-              />
+              <IconExternalLink width={12} />
             </div>
           </Link>
         ),

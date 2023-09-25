@@ -12,162 +12,104 @@
  */
 
 import { Card, Col, Row, Space, Tabs } from 'antd';
-import ActivityFeedList from 'components/ActivityFeed/ActivityFeedList/ActivityFeedList';
+import { AxiosError } from 'axios';
+import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Description from 'components/common/description/Description';
-import EntityPageInfo from 'components/common/entityPageInfo/EntityPageInfo';
-import EntityLineageComponent from 'components/EntityLineage/EntityLineage.component';
-import Loader from 'components/Loader/Loader';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getVersionPath } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { observerOptions } from 'constants/Mydata.constants';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
+import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
 import { CSMode } from 'enums/codemirror.enum';
-import { EntityInfo, EntityType } from 'enums/entity.enum';
-import { OwnerType } from 'enums/user.enum';
-import { Paging } from 'generated/type/paging';
-import { useElementInView } from 'hooks/useElementInView';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
+import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, toString } from 'lodash';
-import { ExtraInfo } from 'Models';
-import { DATA_MODELS_DETAILS_TABS } from 'pages/DataModelPage/DataModelsInterface';
-import React, { RefObject, useEffect, useMemo, useState } from 'react';
+import { EntityTags } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
-import {
-  getCountBadge,
-  getCurrentUserId,
-  getEntityPlaceHolder,
-  getOwnerValue,
-} from 'utils/CommonUtils';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
+import { useHistory, useParams } from 'react-router-dom';
+import { restoreDataModel } from 'rest/dataModelsAPI';
+import { getFeedCounts } from 'utils/CommonUtils';
+import { getEntityName } from 'utils/EntityUtils';
 import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
+import { getTagsWithoutTier } from 'utils/TableUtils';
+import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
-  isEntityThreadLoading,
-  paging,
-  entityFieldTaskCount,
-  entityFieldThreadCount,
-  entityThread,
-  feedCount,
+  updateDataModelDetailsState,
   dataModelData,
-  dashboardDataModelFQN,
-  postFeedHandler,
   dataModelPermissions,
+  fetchDataModel,
   createThread,
-  deletePostHandler,
-  updateThreadHandler,
   handleFollowDataModel,
-  handleRemoveTier,
-  fetchFeedHandler,
   handleUpdateTags,
   handleUpdateOwner,
   handleUpdateTier,
-  activeTab,
-  handleTabChange,
   handleUpdateDescription,
-  handleUpdateDataModel,
-  handleFeedFilterChange,
+  handleColumnUpdateDataModel,
   onUpdateDataModel,
+  handleToggleDelete,
+  onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const [elementRef, isInView] = useElementInView(observerOptions);
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const { fqn: dashboardDataModelFQN, tab: activeTab } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
+
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
-
-  const loader = useMemo(
-    () => (isEntityThreadLoading ? <Loader /> : null),
-    [isEntityThreadLoading]
-  );
+  const [feedCount, setFeedCount] = useState<number>(0);
 
   const {
     hasEditDescriptionPermission,
-    hasEditOwnerPermission,
     hasEditTagsPermission,
-    hasEditTierPermission,
     hasEditLineagePermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
         dataModelPermissions.EditAll || dataModelPermissions.EditDescription,
-      hasEditOwnerPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditOwner,
       hasEditTagsPermission:
         dataModelPermissions.EditAll || dataModelPermissions.EditTags,
-      hasEditTierPermission:
-        dataModelPermissions.EditAll || dataModelPermissions.EditTier,
       hasEditLineagePermission:
         dataModelPermissions.EditAll || dataModelPermissions.EditLineage,
     };
   }, [dataModelPermissions]);
 
-  const {
-    tier,
-    deleted,
-    owner,
-    description,
-    version,
-    tags,
-    entityName,
-    entityId,
-    followers,
-    dataModelType,
-    isUserFollowing,
-    serviceType,
-  } = useMemo(() => {
-    return {
-      deleted: dataModelData?.deleted,
-      owner: dataModelData?.owner,
-      description: dataModelData?.description,
-      version: dataModelData?.version,
-      tier: getTierTags(dataModelData?.tags ?? []),
-      tags: getTagsWithoutTier(dataModelData?.tags ?? []),
-      entityId: dataModelData?.id,
-      entityName: getEntityName(dataModelData),
-      isUserFollowing: dataModelData?.followers?.some(
-        ({ id }: { id: string }) => id === getCurrentUserId()
-      ),
-      followers: dataModelData?.followers ?? [],
-      dataModelType: dataModelData?.dataModelType,
-      serviceType: dataModelData?.serviceType,
-    };
-  }, [dataModelData]);
+  const { deleted, owner, description, version, entityName, tags } =
+    useMemo(() => {
+      return {
+        deleted: dataModelData?.deleted,
+        owner: dataModelData?.owner,
+        description: dataModelData?.description,
+        version: dataModelData?.version,
+        entityName: getEntityName(dataModelData),
+        tags: getTagsWithoutTier(dataModelData.tags || []),
+      };
+    }, [dataModelData]);
 
-  const breadcrumbTitles = useMemo(
-    () =>
-      dataModelData
-        ? getEntityBreadcrumbs(dataModelData, EntityType.DASHBOARD_DATA_MODEL)
-        : [],
-    [dataModelData]
-  );
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DASHBOARD_DATA_MODEL,
+      dashboardDataModelFQN,
+      setFeedCount
+    );
+  };
 
-  const extraInfo: Array<ExtraInfo> = [
-    {
-      key: EntityInfo.OWNER,
-      value: owner && getOwnerValue(owner),
-      placeholderText: getEntityPlaceHolder(
-        getEntityName(owner),
-        owner?.deleted
-      ),
-      isLink: true,
-      openInNewTab: false,
-      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
-    },
-    {
-      key: EntityInfo.TIER,
-      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
-    },
-    {
-      key: EntityInfo.DATA_MODEL_TYPE,
-      value: dataModelType,
-      showLabel: true,
-    },
-  ];
+  useEffect(() => {
+    dashboardDataModelFQN && getEntityFeedCount();
+  }, [dashboardDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
     if (isUndefined(dataModelData)) {
@@ -200,196 +142,258 @@ const DataModelDetails = ({
     setThreadLink('');
   };
 
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (
-      isElementInView &&
-      pagingObj?.after &&
-      !isLoading &&
-      activeTab === DATA_MODELS_DETAILS_TABS.ACTIVITY
-    ) {
-      fetchFeedHandler(pagingObj.after);
+  const handleTabChange = (tabValue: EntityTabs) => {
+    if (tabValue !== activeTab) {
+      history.push({
+        pathname: getDataModelDetailsPath(
+          getDecodedFqn(dashboardDataModelFQN),
+          tabValue
+        ),
+      });
     }
   };
 
-  useEffect(() => {
-    fetchMoreThread(isInView, paging, isEntityThreadLoading);
-  }, [paging, isEntityThreadLoading, isInView]);
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
+      source: tag.source,
+      tagFQN: tag.tagFQN,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    }));
+    handleUpdateTags(updatedTags);
+  };
+
+  const handleRestoreDataModel = async () => {
+    try {
+      await restoreDataModel(dataModelData.id ?? '');
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.data-model'),
+        }),
+        2000
+      );
+      handleToggleDelete();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.data-model'),
+        })
+      );
+    }
+  };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
+
+  const modelComponent = useMemo(() => {
+    return (
+      <Row gutter={[0, 16]} wrap={false}>
+        <Col className="p-t-sm m-x-lg" flex="auto">
+          <div className="d-flex flex-col gap-4">
+            <DescriptionV1
+              description={description}
+              entityFqn={dashboardDataModelFQN}
+              entityName={entityName}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              hasEditAccess={hasEditDescriptionPermission}
+              isEdit={isEditDescription}
+              isReadOnly={deleted}
+              owner={owner}
+              onCancel={() => setIsEditDescription(false)}
+              onDescriptionEdit={() => setIsEditDescription(true)}
+              onDescriptionUpdate={handleUpdateDescription}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+            <ModelTab
+              data={dataModelData?.columns || []}
+              entityFqn={dashboardDataModelFQN}
+              hasEditDescriptionPermission={hasEditDescriptionPermission}
+              hasEditTagsPermission={hasEditTagsPermission}
+              isReadOnly={Boolean(deleted)}
+              onThreadLinkSelect={onThreadLinkSelect}
+              onUpdate={handleColumnUpdateDataModel}
+            />
+          </div>
+        </Col>
+        <Col
+          className="entity-tag-right-panel-container"
+          data-testid="entity-right-panel"
+          flex="320px">
+          <Space className="w-full" direction="vertical" size="large">
+            <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
+              entityFqn={dashboardDataModelFQN}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
+              selectedTags={tags}
+              tagType={TagSource.Classification}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+            <TagsContainerV2
+              displayType={DisplayType.READ_MORE}
+              entityFqn={dashboardDataModelFQN}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              permission={hasEditTagsPermission && !dataModelData.deleted}
+              selectedTags={tags}
+              tagType={TagSource.Glossary}
+              onSelectionChange={handleTagSelection}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+          </Space>
+        </Col>
+      </Row>
+    );
+  }, [
+    dataModelData,
+    description,
+    dashboardDataModelFQN,
+    hasEditTagsPermission,
+    deleted,
+    hasEditDescriptionPermission,
+    isEditDescription,
+    entityName,
+    handleTagSelection,
+    onThreadLinkSelect,
+    handleColumnUpdateDataModel,
+    handleUpdateDescription,
+    getEntityFieldThreadCounts,
+  ]);
+
+  const tabs = useMemo(() => {
+    const allTabs = [
+      {
+        label: (
+          <TabsLabel
+            data-testid={EntityTabs.MODEL}
+            id={EntityTabs.DETAILS}
+            name={t('label.model')}
+          />
+        ),
+        key: EntityTabs.MODEL,
+        children: modelComponent,
+      },
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
+          />
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
+        children: (
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            fqn={dataModelData?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDataModel}
+          />
+        ),
+      },
+      ...(dataModelData?.sql
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  data-testid={EntityTabs.SQL}
+                  id={EntityTabs.SQL}
+                  name={t('label.sql-uppercase')}
+                />
+              ),
+              key: EntityTabs.SQL,
+              children: (
+                <Card>
+                  <SchemaEditor
+                    editorClass="custom-code-mirror-theme full-screen-editor-height"
+                    mode={{ name: CSMode.SQL }}
+                    options={{
+                      styleActiveLine: false,
+                      readOnly: 'nocursor',
+                    }}
+                    value={dataModelData?.sql}
+                  />
+                </Card>
+              ),
+            },
+          ]
+        : []),
+      {
+        label: (
+          <TabsLabel
+            data-testid={EntityTabs.LINEAGE}
+            id={EntityTabs.LINEAGE}
+            name={t('label.lineage')}
+          />
+        ),
+        key: EntityTabs.LINEAGE,
+        children: (
+          <EntityLineageComponent
+            deleted={deleted}
+            entity={dataModelData as SourceType}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={hasEditLineagePermission}
+          />
+        ),
+      },
+    ];
+
+    return allTabs;
+  }, [feedCount, dataModelData?.sql, modelComponent]);
 
   return (
-    <div className="entity-details-container">
-      <EntityPageInfo
-        canDelete={dataModelPermissions.Delete}
-        currentOwner={owner}
-        deleted={deleted}
-        displayName={dataModelData?.displayName}
-        entityFieldTasks={getEntityFieldThreadCounts(
-          EntityField.TAGS,
-          entityFieldTaskCount
-        )}
-        entityFieldThreads={getEntityFieldThreadCounts(
-          EntityField.TAGS,
-          entityFieldThreadCount
-        )}
-        entityFqn={dashboardDataModelFQN}
-        entityId={entityId}
-        entityName={dataModelData?.name ?? ''}
-        entityType={EntityType.DASHBOARD_DATA_MODEL}
-        extraInfo={extraInfo}
-        followHandler={handleFollowDataModel}
-        followers={followers.length}
-        followersList={followers}
-        isFollowing={isUserFollowing}
-        permission={dataModelPermissions}
-        removeTier={hasEditTierPermission ? handleRemoveTier : undefined}
-        serviceType={serviceType ?? ''}
-        tags={tags}
-        tagsHandler={handleUpdateTags}
-        tier={tier}
-        titleLinks={breadcrumbTitles}
-        updateOwner={hasEditOwnerPermission ? handleUpdateOwner : undefined}
-        updateTier={hasEditTierPermission ? handleUpdateTier : undefined}
-        version={version}
-        versionHandler={versionHandler}
-        onThreadLinkSelect={onThreadLinkSelect}
-        onUpdateDisplayName={handleUpdateDisplayName}
-      />
-      <Tabs activeKey={activeTab} className="h-full" onChange={handleTabChange}>
-        <Tabs.TabPane
-          key={DATA_MODELS_DETAILS_TABS.MODEL}
-          tab={
-            <span data-testid={DATA_MODELS_DETAILS_TABS.MODEL}>
-              {t('label.model')}
-            </span>
-          }>
-          <Card className="h-full">
-            <Space className="w-full" direction="vertical" size={8}>
-              <Description
-                description={description}
-                entityFieldTasks={getEntityFieldThreadCounts(
-                  EntityField.DESCRIPTION,
-                  entityFieldTaskCount
-                )}
-                entityFieldThreads={getEntityFieldThreadCounts(
-                  EntityField.DESCRIPTION,
-                  entityFieldThreadCount
-                )}
-                entityFqn={dashboardDataModelFQN}
-                entityName={entityName}
-                entityType={EntityType.DASHBOARD_DATA_MODEL}
-                hasEditAccess={hasEditDescriptionPermission}
-                isEdit={isEditDescription}
-                isReadOnly={deleted}
-                owner={owner}
-                onCancel={() => setIsEditDescription(false)}
-                onDescriptionEdit={() => setIsEditDescription(true)}
-                onDescriptionUpdate={handleUpdateDescription}
-                onThreadLinkSelect={onThreadLinkSelect}
-              />
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle="Data Model Details"
+      title="Data Model Details">
+      <Row gutter={[0, 12]}>
+        <Col className="p-x-lg" span={24}>
+          <DataAssetsHeader
+            afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateDataModelDetailsState}
+            dataAsset={dataModelData}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            permissions={dataModelPermissions}
+            onDisplayNameUpdate={handleUpdateDisplayName}
+            onFollowClick={handleFollowDataModel}
+            onOwnerUpdate={handleUpdateOwner}
+            onRestoreDataAsset={handleRestoreDataModel}
+            onTierUpdate={handleUpdateTier}
+            onUpdateVote={onUpdateVote}
+            onVersionClick={versionHandler}
+          />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab ?? EntityTabs.MODEL}
+            className="entity-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+            onChange={(activeKey: string) =>
+              handleTabChange(activeKey as EntityTabs)
+            }
+          />
+        </Col>
 
-              <ModelTab
-                data={dataModelData?.columns || []}
-                hasEditDescriptionPermission={hasEditDescriptionPermission}
-                hasEditTagsPermission={hasEditTagsPermission}
-                isReadOnly={Boolean(deleted)}
-                onUpdate={handleUpdateDataModel}
-              />
-            </Space>
-          </Card>
-        </Tabs.TabPane>
-
-        <Tabs.TabPane
-          key={DATA_MODELS_DETAILS_TABS.ACTIVITY}
-          tab={
-            <span data-testid={DATA_MODELS_DETAILS_TABS.ACTIVITY}>
-              {t('label.activity-feed-and-task-plural')}{' '}
-              {getCountBadge(
-                feedCount,
-                '',
-                DATA_MODELS_DETAILS_TABS.ACTIVITY === activeTab
-              )}
-            </span>
-          }>
-          <Card className="h-min-full">
-            <Row>
-              <Col data-testid="activityfeed" offset={3} span={18}>
-                <ActivityFeedList
-                  isEntityFeed
-                  withSidePanel
-                  deletePostHandler={deletePostHandler}
-                  entityName={entityName}
-                  feedList={entityThread}
-                  isFeedLoading={isEntityThreadLoading}
-                  postFeedHandler={postFeedHandler}
-                  updateThreadHandler={updateThreadHandler}
-                  onFeedFiltersUpdate={handleFeedFilterChange}
-                />
-              </Col>
-            </Row>
-            {loader}
-          </Card>
-        </Tabs.TabPane>
-        {dataModelData?.sql && (
-          <Tabs.TabPane
-            key={DATA_MODELS_DETAILS_TABS.SQL}
-            tab={
-              <span data-testid={DATA_MODELS_DETAILS_TABS.SQL}>
-                {t('label.sql-uppercase')}
-              </span>
-            }>
-            <Card className="h-full">
-              <SchemaEditor
-                editorClass="custom-code-mirror-theme full-screen-editor-height"
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  styleActiveLine: false,
-                  readOnly: 'nocursor',
-                }}
-                value={dataModelData.sql}
-              />
-            </Card>
-          </Tabs.TabPane>
-        )}
-
-        <Tabs.TabPane
-          key={DATA_MODELS_DETAILS_TABS.LINEAGE}
-          tab={
-            <span data-testid={DATA_MODELS_DETAILS_TABS.LINEAGE}>
-              {t('label.lineage')}
-            </span>
-          }>
-          <Card className="h-full card-body-full" data-testid="lineage-details">
-            <EntityLineageComponent
-              deleted={deleted}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={hasEditLineagePermission}
-            />
-          </Card>
-        </Tabs.TabPane>
-      </Tabs>
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeedHandler}
-          threadLink={threadLink}
-          updateThreadHandler={updateThreadHandler}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
-
-      <div
-        data-testid="observer-element"
-        id="observer-element"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
-    </div>
+        {threadLink ? (
+          <ActivityThreadPanel
+            createThread={createThread}
+            deletePostHandler={deleteFeed}
+            open={Boolean(threadLink)}
+            postFeedHandler={postFeed}
+            threadLink={threadLink}
+            updateThreadHandler={updateFeed}
+            onCancel={onThreadPanelClose}
+          />
+        ) : null}
+      </Row>
+    </PageLayoutV1>
   );
 };
 
-export default DataModelDetails;
+export default withActivityFeed<DataModelDetailsProps>(DataModelDetails);

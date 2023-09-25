@@ -1,0 +1,141 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../variables.less');
+
+.rjsf.no-header #root__title,
+.rjsf.no-header #root__description,
+.rjsf .form-additional .control-label,
+.rjsf .panel.panel-danger.errors .panel-heading {
+  display: none;
+}
+
+.rjsf .form-group.field {
+  margin: 12px 0;
+}
+
+.rjsf .additional-fields .form-group.field,
+.rjsf .array-fields .form-group.field {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.rjsf .property-wrapper.additional-fields ~ .button-comp {
+  margin-top: 6px;
+}
+
+.rjsf .control-label {
+  text-transform: capitalize;
+  line-height: 2;
+}
+.rjsf .control-label .required {
+  margin-left: 2px;
+  color: @failed-color;
+}
+
+.rjsf .field-description {
+  color: @text-grey-muted;
+  font-size: 12px;
+  line-height: 16px;
+  margin: 2px;
+}
+
+.rjsf .form-control {
+  width: 100%;
+  padding: 4px 8px;
+  color: @text-grey-muted;
+  border-radius: 4px;
+  border: @global-border;
+
+  &:hover {
+    border: 1px solid @grey-3;
+  }
+  &:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border: 1px solid @primary-color;
+  }
+}
+
+.rjsf .btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  vertical-align: bottom;
+  cursor: pointer;
+  line-height: 20px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: @white;
+  transition-duration: 150ms;
+  transition-property: color, background-color, border-color,
+    text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  border-radius: 20px;
+
+  &:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}
+
+.rjsf .btn.btn-block {
+  width: 100%;
+}
+
+.rjsf .btn.array-item-remove {
+  padding: 14px;
+  background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIwLjE4NDMgMi44MTI1SDE2LjY2ODdWMi4xMDkzOEMxNi42Njg3IDAuOTQ2MjY2IDE1LjcyMjQgMCAxNC41NTkzIDBIOC45MzQzM0M3Ljc3MTIyIDAgNi44MjQ5NSAwLjk0NjI2NiA2LjgyNDk1IDIuMTA5MzhWMi44MTI1SDMuMzA5MzNDMi4xNDYyMiAyLjgxMjUgMS4xOTk5NSAzLjc1ODc3IDEuMTk5OTUgNC45MjE4OEMxLjE5OTk1IDUuODU2IDEuODEwNSA2LjY0OTczIDIuNjUzMzEgNi45MjYzTDMuOTA3NDUgMjIuMDY1OEMzLjk5Nzc4IDIzLjE1MDQgNC45MjExMiAyNCA2LjAwOTUxIDI0SDE3LjQ4NDFDMTguNTcyNiAyNCAxOS40OTU5IDIzLjE1MDQgMTkuNTg2MyAyMi4wNjU0TDIwLjg0MDMgNi45MjYyNUMyMS42ODMyIDYuNjQ5NzMgMjIuMjkzNyA1Ljg1NiAyMi4yOTM3IDQuOTIxODhDMjIuMjkzNyAzLjc1ODc3IDIxLjM0NzQgMi44MTI1IDIwLjE4NDMgMi44MTI1Wk04LjIzMTIgMi4xMDkzOEM4LjIzMTIgMS43MjE2NyA4LjU0NjYyIDEuNDA2MjUgOC45MzQzMyAxLjQwNjI1SDE0LjU1OTNDMTQuOTQ3IDEuNDA2MjUgMTUuMjYyNSAxLjcyMTY3IDE1LjI2MjUgMi4xMDkzOFYyLjgxMjVIOC4yMzEyVjIuMTA5MzhaTTE4LjE4NDggMjEuOTQ5QzE4LjE1NDcgMjIuMzEwNSAxNy44NDcgMjIuNTkzOCAxNy40ODQxIDIyLjU5MzhINi4wMDk1MUM1LjY0Njc1IDIyLjU5MzggNS4zMzg5NyAyMi4zMTA1IDUuMzA4OTIgMjEuOTQ5NEw0LjA3MzExIDcuMDMxMjVIMTkuNDIwNUwxOC4xODQ4IDIxLjk0OVpNMjAuMTg0MyA1LjYyNUgzLjMwOTMzQzIuOTIxNjIgNS42MjUgMi42MDYyIDUuMzA5NTggMi42MDYyIDQuOTIxODhDMi42MDYyIDQuNTM0MTcgMi45MjE2MiA0LjIxODc1IDMuMzA5MzMgNC4yMTg3NUgyMC4xODQzQzIwLjU3MiA0LjIxODc1IDIwLjg4NzUgNC41MzQxNyAyMC44ODc1IDQuOTIxODhDMjAuODg3NSA1LjMwOTU4IDIwLjU3MiA1LjYyNSAyMC4xODQzIDUuNjI1WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNOS4xODYxOSAyMC40NDA5TDguNDgzMDcgOS4wOTcxNUM4LjQ1OTAyIDguNzA5NTQgOC4xMjM1NCA4LjQxNDc0IDcuNzM3OCA4LjQzODg4QzcuMzUwMiA4LjQ2MjkzIDcuMDU1NDkgOC43OTY1OSA3LjA3OTQ5IDkuMTg0MTVMNy43ODI2MiAyMC41Mjc5QzcuODA1NzMgMjAuOTAwNyA4LjExNTI5IDIxLjE4NzYgOC40ODM3MyAyMS4xODc2QzguODkwOTMgMjEuMTg3NiA5LjIxMTE4IDIwLjg0NDYgOS4xODYxOSAyMC40NDA5WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNMTIgOC40Mzc1QzExLjYxMTcgOC40Mzc1IDExLjI5NjkgOC43NTIzMSAxMS4yOTY5IDkuMTQwNjJWMjAuNDg0NEMxMS4yOTY5IDIwLjg3MjcgMTEuNjExNyAyMS4xODc1IDEyIDIxLjE4NzVDMTIuMzg4MyAyMS4xODc1IDEyLjcwMzEgMjAuODcyNyAxMi43MDMxIDIwLjQ4NDRWOS4xNDA2MkMxMi43MDMxIDguNzUyMzEgMTIuMzg4MyA4LjQzNzUgMTIgOC40Mzc1WiIgZmlsbD0iIzM3MzUyRiIvPgo8cGF0aCBkPSJNMTYuMjYyMiA4LjQzODg3QzE1Ljg3NTUgOC40MTQ4MyAxNS41NDEgOC43MDk1MyAxNS41MTcgOS4wOTcxNEwxNC44MTM5IDIwLjQ0MDlDMTQuNzg5OSAyMC44Mjg0IDE1LjA4NDYgMjEuMTYyMSAxNS40NzIyIDIxLjE4NjFDMTUuODYgMjEuMjEwMSAxNi4xOTM0IDIwLjkxNTMgMTYuMjE3NCAyMC41Mjc5TDE2LjkyMDYgOS4xODQxNEMxNi45NDQ2IDguNzk2NTMgMTYuNjQ5OSA4LjQ2Mjg3IDE2LjI2MjIgOC40Mzg4N1oiIGZpbGw9IiMzNzM1MkYiLz4KPC9zdmc+Cg==)
+    center center no-repeat;
+  background-size: 50%;
+}
+
+.rjsf .row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: -6px;
+}
+
+.rjsf .col-xs-5 {
+  flex: 1 1 0%;
+  padding: 6px;
+}
+
+.rjsf .col-xs-2 {
+  width: 28px;
+  padding: 6px;
+}
+
+.rjsf .errors .list-group > .list-group-item {
+  list-style-type: disc;
+}
+
+.rjsf .panel-danger.errors {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.rjsf .list-group {
+  padding: 20px;
+}
+
+.rjsf .list-group-item {
+  list-style-type: disc;
+}
+
+.rjsf .checkbox input[type='checkbox'] {
+  margin-right: 4px;
+}

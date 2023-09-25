@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Divider, Typography } from 'antd';
+import { Alert, Typography } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import FeedCardBodyV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
-import { EntityListWithV1 } from 'components/EntityList/EntityList';
+import { EntityListWithV1 } from 'components/Entity/EntityList/EntityList';
 import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
 import { getUserPath } from 'constants/constants';
 import { Thread } from 'generated/entity/feed/thread';
@@ -56,8 +56,8 @@ const RightSidebar = ({
     <>
       {announcements.length > 0 && (
         <>
-          <div className="right-panel-heading p-md p-b-xss">
-            <Typography.Paragraph className="m-b-sm">
+          <div className="p-md p-b-xss">
+            <Typography.Paragraph className="right-panel-label m-b-sm">
               {t('label.recent-announcement-plural')}
             </Typography.Paragraph>
             <div className="announcement-container-list">
@@ -99,8 +99,6 @@ const RightSidebar = ({
               })}
             </div>
           </div>
-
-          <Divider className="m-0" />
         </>
       )}
 
@@ -127,10 +125,9 @@ const RightSidebar = ({
           headerTextLabel={t('label.following')}
           loading={isLoadingOwnedData}
           noDataPlaceholder={t('message.not-followed-anything')}
-          testIDText="Following data"
+          testIDText="following"
         />
       </div>
-      <Divider className="m-0" />
       <div className="p-md" data-testid="recently-viewed-container">
         <RecentlyViewed />
       </div>

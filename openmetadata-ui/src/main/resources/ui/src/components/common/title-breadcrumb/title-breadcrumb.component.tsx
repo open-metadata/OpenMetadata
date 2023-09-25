@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, {
   FunctionComponent,
@@ -20,6 +19,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TitleBreadcrumbSkeleton from '../../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps } from './title-breadcrumb.interface';
@@ -28,14 +28,16 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
   noLink = false,
+  loading = false,
   widthDeductions,
 }: TitleBreadcrumbProps) => {
+  const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
     return (
       screenWidth -
-      (widthDeductions ? widthDeductions : 0) - // Any extra deductions due to sibling elements of breadcrumb
+      (widthDeductions ?? 0) - // Any extra deductions due to sibling elements of breadcrumb
       (titleLinks.length - 1) * 25 - // Deduction for every arrow between each titleLink name
       80 // Deduction due to margin of the container on both sides
     );
@@ -49,6 +51,48 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
     setScreenWidth(window.innerWidth);
   }, []);
 
+  const renderBreadcrumb = (
+    index: number,
+    link: {
+      name: string;
+      url: string;
+      imgSrc?: string;
+      activeTitle?: boolean;
+    },
+    classes: string
+  ) => {
+    if (link.url) {
+      return (
+        <Link
+          className={classes}
+          style={{
+            maxWidth,
+          }}
+          to={link.url}>
+          {link.name}
+        </Link>
+      );
+    }
+
+    return (
+      <>
+        <span
+          className={classNames(classes, 'inactive-link cursor-text')}
+          data-testid="inactive-link"
+          style={{
+            maxWidth,
+          }}>
+          {link.name}
+        </span>
+        {noLink && index < titleLinks.length - 1 && (
+          <span className="text-xss text-grey-muted">
+            {t('label.slash-symbol')}
+          </span>
+        )}
+      </>
+    );
+  };
+
   useEffect(() => {
     window.addEventListener('resize', changeWidth);
 
@@ -58,25 +102,20 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   }, []);
 
   return (
-    <TitleBreadcrumbSkeleton titleLinks={titleLinks}>
+    <TitleBreadcrumbSkeleton loading={loading}>
       <nav className={className} data-testid="breadcrumb">
-        <ol className="rounded-4 d-flex">
+        <ol className="rounded-4 d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =
-              'link-title tw-truncate' +
-              (link.activeTitle ? ' font-medium' : '');
+              'link-title truncate' + (link.activeTitle ? ' font-medium' : '');
 
             return (
               <li
                 className="d-flex items-center breadcrumb-item"
                 data-testid="breadcrumb-link"
-                key={index}>
+                key={link.name}>
                 {link.imgSrc ? (
-                  <img
-                    alt=""
-                    className="inline tw-h-5 tw-mr-2"
-                    src={link.imgSrc}
-                  />
+                  <img alt="" className="inline h-5 m-r-xs" src={link.imgSrc} />
                 ) : null}
                 {index < titleLinks.length - 1 && !noLink ? (
                   <>
@@ -89,36 +128,12 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       to={link.url}>
                       {link.name}
                     </Link>
-                    <span className="p-x-xs text-grey-muted">/</span>
+                    <span className="text-xss p-x-xs text-grey-muted">
+                      {t('label.slash-symbol')}
+                    </span>
                   </>
-                ) : link.url ? (
-                  <Link
-                    className={classes}
-                    style={{
-                      maxWidth,
-                    }}
-                    to={link.url}>
-                    {link.name}
-                  </Link>
                 ) : (
-                  <>
-                    <Tooltip align={{ offset: [0, 10] }} title={link.name}>
-                      <span
-                        className={classNames(
-                          classes,
-                          'inactive-link tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
-                        )}
-                        data-testid="inactive-link"
-                        style={{
-                          maxWidth,
-                        }}>
-                        {link.name}
-                      </span>
-                    </Tooltip>
-                    {noLink && index < titleLinks.length - 1 && (
-                      <span className="tw-px-2 text-grey-muted">/</span>
-                    )}
-                  </>
+                  renderBreadcrumb(index, link, classes)
                 )}
               </li>
             );

@@ -39,10 +39,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineState,
 )
-from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -53,17 +53,15 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.utils import entity_link
-from metadata.utils.class_helper import (
-    get_service_class_from_service_type,
-    get_service_type_from_source_type,
-)
+from metadata.utils.fqn import split
 from metadata.utils.importer import get_sink
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.workflow_output_handler import print_test_suite_status
+from metadata.workflow.workflow_output_handler import print_test_suite_status
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger: Logger = test_suite_logger()
@@ -104,8 +102,10 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         )
         self.metadata = create_ometa_client(self.metadata_config)
 
-        self._retrieve_service_connection()
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
+        self.service: DatabaseService = self._retrieve_service()
+        self._retrieve_service_connection()
+
         self.processor_config: TestSuiteProcessorConfig = (
             TestSuiteProcessorConfig.parse_obj(
                 self.config.processor.dict().get("config")
@@ -146,6 +146,34 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 f"Error trying to parse the Profiler Workflow configuration: {err}"
             )
             raise err
+
+    def _retrieve_service(self) -> DatabaseService:
+        """Get service object from source config `entityFullyQualifiedName`"""
+        fully_qualified_name = self.source_config.entityFullyQualifiedName.__root__
+        try:
+            service_name = split(fully_qualified_name)[0]
+        except IndexError as exc:
+            logger.debug(traceback.format_exc())
+            raise IndexError(
+                f"Could not retrieve service name from entity fully qualified name {fully_qualified_name}: {exc}"
+            )
+        try:
+            service = self.metadata.get_by_name(DatabaseService, service_name)
+            if not service:
+                raise ConnectionError(
+                    f"Could not retrieve service with name `{service_name}`. "
+                    "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
+                    "or the JWT Token is invalid."
+                )
+        except ConnectionError as exc:
+            raise exc
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error getting service connection for service name [{service_name}]"
+                f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+            )
+        return service
 
     def _get_table_entity(self, entity_fqn: str) -> Optional[Table]:
         """given an entity fqn return the table entity
@@ -348,9 +376,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 logger.error(error)
                 logger.debug(traceback.format_exc())
                 self.status.failed(
-                    self.source_config.entityFullyQualifiedName.__root__,
-                    error,
-                    traceback.format_exc(),
+                    StackTraceError(
+                        name=self.source_config.entityFullyQualifiedName.__root__,
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
         return test_cases
@@ -383,7 +413,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
 
         test_suite_runner = test_suite_source_factory.create(
-            self.config.source.type.lower(),
+            self.service.serviceType.value.lower(),
             self.config,
             self.metadata,
             self.table_entity,
@@ -403,7 +433,11 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 logger.debug(traceback.format_exc())
                 logger.error(error)
                 self.status.failed(
-                    test_case.name.__root__, error, traceback.format_exc()
+                    StackTraceError(
+                        name=test_case.name.__root__,
+                        error=error,
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def _retrieve_service_connection(self) -> None:
@@ -412,37 +446,13 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
         in OM. When it is configured, we retrieve the service connection from the secrets' manager. Otherwise, we get it
         from the service object itself through the default `SecretsManager`.
         """
-        service_type: ServiceType = get_service_type_from_source_type(
-            self.config.source.type
-        )
         if (
             not self.config.source.serviceConnection
             and not self.metadata.config.forceEntityOverwriting
         ):
-            service_name = self.config.source.serviceName
-            try:
-                service = self.metadata.get_by_name(
-                    get_service_class_from_service_type(service_type),
-                    service_name,
-                )
-                if not service:
-                    raise ConnectionError(
-                        f"Could not retrieve service with name `{service_name}`. "
-                        "Typically caused by the `serviceName` does not exists in OpenMetadata "
-                        "or the JWT Token is invalid."
-                    )
-                if service:
-                    self.config.source.serviceConnection = ServiceConnection(
-                        __root__=service.connection
-                    )
-            except ConnectionError as exc:
-                raise exc
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error getting service connection for service name [{service_name}]"
-                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
-                )
+            self.config.source.serviceConnection = ServiceConnection(
+                __root__=self.service.connection
+            )
 
     def execute(self):
         """Execute test suite workflow"""

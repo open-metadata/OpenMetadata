@@ -14,13 +14,13 @@
 package org.openmetadata.service.workflows.searchIndex;
 
 import java.util.Set;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.search.SearchIndexDefinition;
+import org.opensearch.action.bulk.BulkItemResponse;
+import org.opensearch.action.bulk.BulkResponse;
 
 public class ReindexingUtil {
   public static final String ENTITY_TYPE_KEY = "entityType";
@@ -32,9 +32,9 @@ public class ReindexingUtil {
   }
 
   public static boolean isDataInsightIndex(String entityType) {
-    return entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.ENTITY_REPORT_DATA)
-        || entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)
-        || entityType.equalsIgnoreCase(ElasticSearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
+    return entityType.equalsIgnoreCase(SearchIndexDefinition.ENTITY_REPORT_DATA)
+        || entityType.equalsIgnoreCase(SearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)
+        || entityType.equalsIgnoreCase(SearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
   }
 
   public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
@@ -53,6 +53,16 @@ public class ReindexingUtil {
   public static int getSuccessFromBulkResponse(BulkResponse response) {
     int success = 0;
     for (BulkItemResponse bulkItemResponse : response) {
+      if (!bulkItemResponse.isFailed()) {
+        success++;
+      }
+    }
+    return success;
+  }
+
+  public static int getSuccessFromBulkResponseEs(org.elasticsearch.action.bulk.BulkResponse response) {
+    int success = 0;
+    for (org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (!bulkItemResponse.isFailed()) {
         success++;
       }

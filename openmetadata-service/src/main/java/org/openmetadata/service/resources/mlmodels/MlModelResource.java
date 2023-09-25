@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -47,6 +46,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.MlModel;
@@ -61,7 +61,6 @@ import org.openmetadata.service.jdbi3.MlModelRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/mlmodels")
@@ -73,15 +72,13 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
-  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension";
+  static final String FIELDS = "owner,dashboard,followers,tags,usageSummary,extension,domain";
 
   @Override
   public MlModel addHref(UriInfo uriInfo, MlModel mlmodel) {
-    mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
-    Entity.withHref(uriInfo, mlmodel.getOwner());
+    super.addHref(uriInfo, mlmodel);
     Entity.withHref(uriInfo, mlmodel.getDashboard());
     Entity.withHref(uriInfo, mlmodel.getService());
-    Entity.withHref(uriInfo, mlmodel.getFollowers());
     return mlmodel;
   }
 
@@ -145,8 +142,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -178,8 +174,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -211,8 +206,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -229,8 +223,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create) {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, mlModel);
   }
@@ -255,8 +248,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -273,8 +265,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMlModel create) {
     MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, mlModel);
   }
@@ -296,8 +287,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
-      throws IOException {
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
@@ -319,8 +309,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          UUID userId)
-      throws IOException {
+          UUID userId) {
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
@@ -339,8 +328,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -367,9 +355,29 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
               description = "ML Model version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @DELETE
@@ -389,8 +397,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -411,8 +418,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
-      throws IOException {
+      @Parameter(description = "Name of the ML Model", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -429,12 +436,11 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = MlModel.class)))
       })
   public Response restoreMlModel(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private MlModel getMlModel(CreateMlModel create, String user) throws IOException {
+  private MlModel getMlModel(CreateMlModel create, String user) {
     return copy(new MlModel(), create, user)
         .withService(getEntityReference(Entity.MLMODEL_SERVICE, create.getService()))
         .withDashboard(getEntityReference(Entity.DASHBOARD, create.getDashboard()))
@@ -444,6 +450,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
         .withMlStore(create.getMlStore())
         .withServer(create.getServer())
         .withTarget(create.getTarget())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags());
   }
 }

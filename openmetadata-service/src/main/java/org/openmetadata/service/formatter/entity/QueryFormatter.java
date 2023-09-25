@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.formatter.entity;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
 
 import java.util.List;
@@ -22,10 +23,48 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.util.JsonUtils;
 
 public class QueryFormatter implements EntityFormatter {
+  private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
+
   @Override
   public String format(
+      MessageDecorator<?> messageFormatter,
+      FieldChange fieldChange,
+      EntityInterface entity,
+      FormatterUtil.CHANGE_TYPE changeType) {
+    if (QUERY_USED_IN_FIELD.equals(fieldChange.getName())) {
+      return transformQueryUsedIn(messageFormatter, fieldChange, entity, changeType);
+    }
+    return transformMessage(messageFormatter, fieldChange, entity, changeType);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static String getFieldValue(Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
+    Query query = (Query) entity;
+    StringBuilder field = new StringBuilder();
+    List<EntityReference> tableRefs =
+        fieldValue instanceof String
+            ? JsonUtils.readObjects(fieldValue.toString(), EntityReference.class)
+            : (List<EntityReference>) fieldValue;
+    if (!nullOrEmpty(tableRefs)) {
+      field.append("for '").append(query.getQuery()).append("', ").append(messageFormatter.getLineBreak());
+      field.append("Query Used in :- ");
+      int i = 1;
+      for (EntityReference ref : tableRefs) {
+        field.append(messageFormatter.getEntityUrl(ref.getType(), ref.getFullyQualifiedName()));
+        if (i < tableRefs.size()) {
+          field.append(", ");
+        }
+        i++;
+      }
+    }
+    return field.toString();
+  }
+
+  @SuppressWarnings("unchecked")
+  private String transformQueryUsedIn(
       MessageDecorator<?> messageFormatter,
       FieldChange fieldChange,
       EntityInterface entity,
@@ -34,26 +73,8 @@ public class QueryFormatter implements EntityFormatter {
     String oldVal = getFieldValue(fieldChange.getOldValue(), entity, messageFormatter);
     return transformMessage(
         messageFormatter,
-        new FieldChange().withNewValue(newVal).withOldValue(oldVal).withName("queryUsedIn"),
+        new FieldChange().withNewValue(newVal).withOldValue(oldVal).withName(QUERY_USED_IN_FIELD),
         entity,
         changeType);
-  }
-
-  private static String getFieldValue(Object fieldValue, EntityInterface entity, MessageDecorator<?> messageFormatter) {
-    Query query = (Query) entity;
-    StringBuilder field = new StringBuilder();
-    @SuppressWarnings("unchecked")
-    List<EntityReference> queryUsedIn = (List<EntityReference>) fieldValue;
-    field.append("for '").append(query.getQuery()).append("', ").append(messageFormatter.getLineBreak());
-    field.append("Query Used in :- ");
-    int i = 1;
-    for (EntityReference queryUsage : queryUsedIn) {
-      field.append(messageFormatter.getEntityUrl(queryUsage.getType(), queryUsage.getFullyQualifiedName()));
-      if (i < queryUsedIn.size()) {
-        field.append(", ");
-      }
-      i++;
-    }
-    return field.toString();
   }
 }

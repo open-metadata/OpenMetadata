@@ -29,13 +29,15 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.mode import client
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -85,13 +87,15 @@ class ModeSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: dict
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
+        dashboard_path = dashboard_details[client.LINKS][client.SHARE][client.HREF]
+        dashboard_url = f"{clean_uri(self.service_connection.hostPort)}{dashboard_path}"
         dashboard_request = CreateDashboardRequest(
             name=dashboard_details.get(client.TOKEN),
-            sourceUrl=dashboard_details[client.LINKS][client.SHARE][client.HREF],
+            sourceUrl=dashboard_url,
             displayName=dashboard_details.get(client.NAME),
             description=dashboard_details.get(client.DESCRIPTION),
             charts=[
@@ -105,17 +109,13 @@ class ModeSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
-        yield dashboard_request
+        yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: dict, db_service_name: str
-    ) -> Optional[Iterable[AddLineageRequest]]:
-        """Get lineage method
-
-        Args:
-            dashboard_details
-        """
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Get lineage method"""
         try:
             response_queries = self.client.get_all_queries(
                 workspace_name=self.workspace_name,
@@ -155,21 +155,18 @@ class ModeSource(DashboardServiceSource):
                             to_entity=to_entity, from_entity=from_entity
                         )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def yield_dashboard_chart(
         self, dashboard_details: dict
-    ) -> Optional[Iterable[CreateChartRequest]]:
-        """Get chart method
-
-        Args:
-            dashboard_details:
-        Returns:
-            Iterable[CreateChartRequest]
-        """
+    ) -> Iterable[Either[CreateChartRequest]]:
+        """Get chart method"""
         response_queries = self.client.get_all_queries(
             workspace_name=self.workspace_name,
             report_token=dashboard_details.get(client.TOKEN),
@@ -194,17 +191,25 @@ class ModeSource(DashboardServiceSource):
                             "Chart Pattern not Allowed",
                         )
                         continue
-                    yield CreateChartRequest(
-                        name=chart.get(client.TOKEN),
-                        displayName=chart_name,
-                        chartType=ChartType.Other,
-                        sourceUrl=chart[client.LINKS]["report_viz_web"][client.HREF],
-                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    chart_path = chart[client.LINKS]["report_viz_web"][client.HREF]
+                    chart_url = (
+                        f"{clean_uri(self.service_connection.hostPort)}{chart_path}"
                     )
-                    self.status.scanned(chart_name)
+                    yield Either(
+                        right=CreateChartRequest(
+                            name=chart.get(client.TOKEN),
+                            displayName=chart_name,
+                            chartType=ChartType.Other,
+                            sourceUrl=chart_url,
+                            service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                        )
+                    )
                 except Exception as exc:
                     name = chart_name if chart_name else ""
-                    error = f"Error to yield dashboard chart [{chart}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(name, error, traceback.format_exc())
+                    yield Either(
+                        left=StackTraceError(
+                            name=name,
+                            error=f"Error to yield dashboard chart [{chart}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )

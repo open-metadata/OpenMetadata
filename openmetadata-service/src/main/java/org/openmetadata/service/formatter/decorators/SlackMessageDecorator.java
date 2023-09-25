@@ -13,12 +13,13 @@
 
 package org.openmetadata.service.formatter.decorators;
 
+import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.ChangeEventConfig;
@@ -66,7 +67,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildMessage(ChangeEvent event) {
+  public SlackMessage buildMessage(ChangeEvent event) throws IOException {
     SlackMessage slackMessage = new SlackMessage();
     slackMessage.setUsername(event.getUserName());
     if (event.getEntity() != null) {
@@ -92,7 +93,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       slackMessage.setText(headerText);
     }
     Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), (EntityInterface) event.getEntity());
+        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
     List<SlackAttachment> attachmentList = new ArrayList<>();
     for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
       SlackAttachment attachment = new SlackAttachment();

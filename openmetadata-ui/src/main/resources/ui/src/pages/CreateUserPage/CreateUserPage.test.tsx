@@ -65,6 +65,10 @@ jest.mock('../../AppState', () =>
   })
 );
 
+jest.mock('components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
 const mockCreateUser = jest.fn(() => Promise.resolve({}));
 
 describe('Test AddUserPage component', () => {

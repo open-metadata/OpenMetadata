@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
@@ -34,8 +35,12 @@ import ProfilerLatestValue from '../../ProfilerDashboard/component/ProfilerLates
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { TableProfilerChartProps } from '../TableProfiler.interface';
 
-const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+const TableProfilerChart = ({
+  dateRangeObject,
+  entityFqn = '',
+}: TableProfilerChartProps) => {
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const { t } = useTranslation();
 
   const [rowCountMetrics, setRowCountMetrics] = useState<MetricChartType>(
     INITIAL_ROW_METRIC_VALUE
@@ -82,19 +87,19 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
     setIsLoading(true);
     await fetchTableProfiler(fqn, dateRangeObj);
     await fetchSystemProfiler(fqn, {
-      startTs: dateRangeObj.startTs * 1000,
-      endTs: dateRangeObj.endTs * 1000,
+      startTs: dateRangeObj.startTs,
+      endTs: dateRangeObj.endTs,
     });
     setIsLoading(false);
   };
 
   useEffect(() => {
-    if (datasetFQN) {
-      fetchProfilerData(datasetFQN, dateRangeObject);
+    if (datasetFQN || entityFqn) {
+      fetchProfilerData(datasetFQN || entityFqn, dateRangeObject);
     } else {
       setIsLoading(false);
     }
-  }, [datasetFQN, dateRangeObject]);
+  }, [datasetFQN, dateRangeObject, entityFqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -107,11 +112,19 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
           chartCollection={rowCountMetrics}
           curveType="stepAfter"
           name="rowCount"
+          title={t('label.data-volume')}
         />
       </Col>
       <Col span={24}>
-        <Card className="shadow-none" data-testid="operation-date-metrics">
+        <Card
+          className="shadow-none global-border-radius"
+          data-testid="operation-date-metrics">
           <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Typography.Title level={5}>
+                {t('label.table-update-plural')}
+              </Typography.Title>
+            </Col>
             <Col span={4}>
               <ProfilerLatestValue
                 stringValue
@@ -128,8 +141,15 @@ const TableProfilerChart = ({ dateRangeObject }: TableProfilerChartProps) => {
         </Card>
       </Col>
       <Col span={24}>
-        <Card className="shadow-none" data-testid="operation-metrics">
+        <Card
+          className="shadow-none global-border-radius"
+          data-testid="operation-metrics">
           <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <Typography.Title level={5}>
+                {t('label.volume-change')}
+              </Typography.Title>
+            </Col>
             <Col span={4}>
               <ProfilerLatestValue information={operationMetrics.information} />
             </Col>

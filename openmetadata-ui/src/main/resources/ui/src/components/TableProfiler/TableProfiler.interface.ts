@@ -26,7 +26,6 @@ import { OperationPermission } from '../PermissionProvider/PermissionProvider.in
 
 export interface TableProfilerProps {
   isTableDeleted?: boolean;
-  tableFqn: string;
   permissions: OperationPermission;
 }
 
@@ -51,6 +50,8 @@ export interface ColumnProfileTableProps {
   columns: Column[];
   hasEditAccess: boolean;
   columnTests: TestCase[];
+  dateRangeObject: DateRangeObject;
+  isLoading?: boolean;
 }
 
 export interface ProfilerProgressWidgetProps {
@@ -83,6 +84,7 @@ export type TableProfilerData = {
 
 export type TableProfilerChartProps = {
   dateRangeObject: DateRangeObject;
+  entityFqn?: string;
 };
 
 export interface ProfilerSettingModalState {
