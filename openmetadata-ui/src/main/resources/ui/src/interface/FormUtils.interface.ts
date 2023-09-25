@@ -20,7 +20,10 @@ export type FormValidationRules = Record<
   Array<string>
 >;
 
-export type FormItemLayout = 'horizontal' | 'vertical';
+export enum FormItemLayout {
+  HORIZONATAL = 'horizontal',
+  VERTICAL = 'vertical',
+}
 
 export enum FieldTypes {
   TEXT = 'text',

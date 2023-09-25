@@ -21,7 +21,11 @@ import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { CreateDomain, DomainType } from 'generated/api/domains/createDomain';
 import { Operation } from 'generated/entity/policies/policy';
 import { EntityReference } from 'generated/entity/type';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from 'interface/FormUtils.interface';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
@@ -130,7 +134,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -155,7 +159,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

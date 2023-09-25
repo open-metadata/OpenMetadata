@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PersonaPage } from 'pages/Persona/PersonaPage';
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import {
@@ -169,6 +170,14 @@ const GlobalSettingRouter = () => {
         )}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        )}
+      />
       {/* Roles route start
        * Do not change the order of these route
        */}

@@ -28,6 +28,7 @@ export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
   TEAMS = 'teams',
+  PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
   DATABASES = 'databases',

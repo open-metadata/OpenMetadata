@@ -98,6 +98,16 @@ export const getGlobalSettingsMenuWithPermission = (
           key: 'members.admins',
           icon: <AdminIcon className="side-panel-icons" />,
         },
+
+        {
+          label: i18next.t('label.persona-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.USER,
+            permissions
+          ),
+          key: 'members.persona',
+          icon: <AdminIcon className="side-panel-icons" />,
+        },
       ],
     },
     {
