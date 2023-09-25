@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -44,7 +43,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 class JsonUtilsTest {
   /** Test apply patch method with different operations. */
   @Test
-  void applyPatch() throws IOException {
+  void applyPatch() {
     JsonObjectBuilder teamJson = Json.createObjectBuilder();
     JsonObjectBuilder user1 = Json.createObjectBuilder();
     JsonObjectBuilder user2 = Json.createObjectBuilder();
@@ -109,7 +108,7 @@ class JsonUtilsTest {
   }
 
   @Test
-  void testReadValuePassingTypeReference() throws IOException {
+  void testReadValuePassingTypeReference() {
     Map<String, String> expectedMap = Map.of("key1", "value1", "key2", "value2");
     String json = "{ \"key1\": \"value1\", \"key2\": \"value2\" }";
     TypeReference<Map<String, String>> mapTypeReference = new TypeReference<>() {};
@@ -117,7 +116,7 @@ class JsonUtilsTest {
   }
 
   @Test
-  void testJsonWithFieldsRemoveFields() throws IOException, URISyntaxException {
+  void testJsonWithFieldsRemoveFields() throws URISyntaxException {
     HashMap authType = new HashMap();
     authType.put("username", "username");
     authType.put("password", "password");
@@ -129,7 +128,7 @@ class JsonUtilsTest {
   }
 
   @Test
-  void testPojoToMaskedJson() throws IOException {
+  void testPojoToMaskedJson() {
     String expectedJson = "{\"name\":\"test\",\"connection\":{},\"version\":0.1,\"deleted\":false}";
     DatabaseService databaseService =
         new DatabaseService()

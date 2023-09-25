@@ -123,7 +123,7 @@ public interface EntityDAO<T extends EntityInterface> {
   void updateFqnInternal(@Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
-  String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
+  String findById(@Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name <cond>")
   String findByName(
@@ -239,7 +239,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("offset") int offset);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
-  boolean exists(@Define("table") String table, @Bind("id") String id);
+  boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
   boolean existsByName(
@@ -293,7 +293,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default T findEntityById(UUID id, Include include) {
-    return jsonToEntity(findById(getTableName(), id.toString(), getCondition(include)), id.toString());
+    return jsonToEntity(findById(getTableName(), id, getCondition(include)), id);
   }
 
   default T findEntityById(UUID id) {
@@ -314,12 +314,12 @@ public interface EntityDAO<T extends EntityInterface> {
     return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
   }
 
-  default T jsonToEntity(String json, String identity) {
+  default T jsonToEntity(String json, Object identity) {
     Class<T> clz = getEntityClass();
     T entity = json != null ? JsonUtils.readValue(json, clz) : null;
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity.toString()));
     }
     return entity;
   }
@@ -363,7 +363,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default void exists(UUID id) {
-    if (!exists(getTableName(), id.toString())) {
+    if (!exists(getTableName(), id)) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
