@@ -342,25 +342,6 @@ public final class TablesInitializer {
     }
   }
 
-  private static String getPassword(OpenMetadataApplicationConfig config) {
-    // Local
-    String password = config.getDataSourceFactory().getPassword();
-
-    // Check AWS RDS IAM enabled
-    if (config.getAwsConfiguration() != null && config.getAwsConfiguration().getEnableIamDatabaseAuthentication()) {
-      // Prepare
-      String region = config.getAwsConfiguration().getRegion();
-      URI uri = URI.create(config.getDataSourceFactory().getUrl().substring(5));
-      String username = config.getDataSourceFactory().getUser();
-
-      // Generate
-      password = AWSUtils.generateDBAuthToken(region, uri.getHost(), uri.getPort(), username);
-    }
-
-    // Return
-    return password;
-  }
-
   private static void usage() {
     HelpFormatter formatter = new HelpFormatter();
     formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
