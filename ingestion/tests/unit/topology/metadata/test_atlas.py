@@ -316,7 +316,7 @@ class AtlasUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_atlas_config)
         self.atlas_source = AtlasSource.create(
             mock_atlas_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(
