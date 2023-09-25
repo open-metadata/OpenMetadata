@@ -272,7 +272,7 @@ class SupersetUnitTest(TestCase):
             # This already validates that the source can be initialized
             self.superset_db: SupersetSource = SupersetSource.create(
                 MOCK_SUPERSET_DB_CONFIG["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
 
             self.assertEqual(type(self.superset_db), SupersetDBSource)
