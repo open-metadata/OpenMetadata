@@ -12,7 +12,7 @@
 Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Optional, List
+from typing import Any, Iterable, List, Optional
 
 from pandas import DataFrame
 
@@ -32,8 +32,8 @@ from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig 
     ManifestMetadataConfig,
 )
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
-    StorageServiceMetadataPipeline,
     NoMetadataConfigurationSource,
+    StorageServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,

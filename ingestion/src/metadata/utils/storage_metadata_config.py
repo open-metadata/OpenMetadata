@@ -16,15 +16,15 @@ import traceback
 from functools import singledispatch
 
 import requests
+
 from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
     ManifestMetadataConfig,
 )
-
-from metadata.generated.schema.metadataIngestion.storage.storageMetadataLocalConfig import (
-    StorageMetadataLocalConfig,
-)
 from metadata.generated.schema.metadataIngestion.storage.storageMetadataHttpConfig import (
     StorageMetadataHttpConfig,
+)
+from metadata.generated.schema.metadataIngestion.storage.storageMetadataLocalConfig import (
+    StorageMetadataLocalConfig,
 )
 from metadata.generated.schema.metadataIngestion.storage.storageMetadataS3Config import (
     StorageMetadataS3Config,
