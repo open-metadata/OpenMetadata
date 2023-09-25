@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Menu, Space } from 'antd';
+import { Button, Col, Menu, Row, Skeleton, Space } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -19,12 +19,14 @@ import NextPrevious from 'components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
 import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
-import { AssetsFilterOptions } from 'constants/Assets.constants';
+import {
+  AssetsFilterOptions,
+  ASSETS_INDEXES,
+} from 'constants/Assets.constants';
 import { PAGE_SIZE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -117,22 +119,15 @@ const AssetsTabs = forwardRef(
         return `(domain.fullyQualifiedName:"${fqn}")`;
       } else if (type === AssetsOfEntity.DATA_PRODUCT) {
         return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.TEAM) {
+        return `(owner.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
     }, [type, glossaryName, fqn]);
 
     const searchIndexes = useMemo(() => {
-      const indexesToFetch = [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.STORED_PROCEDURE,
-        SearchIndex.DASHBOARD_DATA_MODEL,
-      ];
+      const indexesToFetch = [...ASSETS_INDEXES];
       if (type !== AssetsOfEntity.GLOSSARY) {
         indexesToFetch.push(SearchIndex.GLOSSARY);
       }
@@ -159,8 +154,8 @@ const AssetsTabs = forwardRef(
             glossaryResponse,
           ]) => {
             const counts = {
-              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.TABLE]: tableResponse.data.hits.total.value,
+              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
@@ -214,6 +209,7 @@ const AssetsTabs = forwardRef(
         page?: number;
       }) => {
         try {
+          setIsLoading(true);
           const res = await searchData(
             '',
             page,
@@ -246,53 +242,66 @@ const AssetsTabs = forwardRef(
           hits[0] && setSelectedCard(hits[0]._source as SourceType);
         } catch (_) {
           // Nothing here
+        } finally {
+          setIsLoading(false);
         }
       },
       [activeFilter, currentPage]
     );
 
-    const assetListing = useMemo(
-      () =>
-        data.length ? (
-          <div className="assets-data-container">
-            {data.map(({ _source, _id = '' }, index) => (
-              <ExploreSearchCard
-                className={classNames(
-                  'm-b-sm cursor-pointer',
-                  selectedCard?.id === _source.id ? 'highlight-card' : ''
-                )}
-                handleSummaryPanelDisplay={setSelectedCard}
-                id={_id}
-                key={index}
-                showTags={false}
-                source={_source}
-              />
-            ))}
-            {total > PAGE_SIZE && data.length > 0 && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={{ total }}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  setCurrentPage(currentPage)
-                }
-              />
-            )}
-          </div>
-        ) : (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={onAddAsset}
+    const assetListing = useMemo(() => {
+      if (isLoading) {
+        return (
+          <Row gutter={[0, 16]}>
+            <Col span={24}>
+              <Skeleton />
+            </Col>
+            <Col span={24}>
+              <Skeleton />
+            </Col>
+          </Row>
+        );
+      }
+
+      return data.length ? (
+        <div className="assets-data-container">
+          {data.map(({ _source, _id = '' }, index) => (
+            <ExploreSearchCard
+              className={classNames(
+                'm-b-sm cursor-pointer',
+                selectedCard?.id === _source.id ? 'highlight-card' : ''
+              )}
+              handleSummaryPanelDisplay={setSelectedCard}
+              id={_id}
+              key={index}
+              showTags={false}
+              source={_source}
             />
-          </div>
-        ),
-      [data, total, currentPage, selectedCard, setSelectedCard]
-    );
+          ))}
+          {total > PAGE_SIZE && data.length > 0 && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={{ total }}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                setCurrentPage(currentPage)
+              }
+            />
+          )}
+        </div>
+      ) : (
+        <div className="m-t-xlg">
+          <ErrorPlaceHolder
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.asset')}
+            permission={permissions.Create}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={onAddAsset}
+          />
+        </div>
+      );
+    }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
 
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
@@ -384,10 +393,6 @@ const AssetsTabs = forwardRef(
         setSelectedCard(undefined);
       }
     }, [isSummaryPanelOpen]);
-
-    if (isLoading) {
-      return <Loader />;
-    }
 
     return (
       <div
