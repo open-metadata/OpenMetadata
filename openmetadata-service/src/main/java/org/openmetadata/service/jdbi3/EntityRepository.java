@@ -717,40 +717,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    searchRepository.updateSearchEntityCreated(entity);
+    if (supportsSearch) {
+      searchRepository.updateSearchEntityCreated(entity);
+    }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    searchRepository.updateSearchEntityUpdated(updated, DEFAULT_UPDATE_SCRIPT, "");
-    if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
-        && (updated.getChangeDescription() != null)) {
-      for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
-        if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-          searchRepository.handleOwnerUpdates(original, updated, "added");
+    if (supportsSearch) {
+      searchRepository.updateSearchEntityUpdated(updated, DEFAULT_UPDATE_SCRIPT, "");
+      if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
+          && (updated.getChangeDescription() != null)) {
+        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+            searchRepository.handleOwnerUpdates(original, updated, "added");
+          }
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+            searchRepository.handleDomainUpdates(original, updated, "added");
+          }
         }
-        if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-          searchRepository.handleDomainUpdates(original, updated, "added");
+        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsUpdated()) {
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+            searchRepository.handleOwnerUpdates(original, updated, "updated");
+          }
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+            searchRepository.handleDomainUpdates(original, updated, "updated");
+          }
+          if (fieldChange.getName().equalsIgnoreCase("disabled")
+              && updated.getEntityReference().getType().equals(Entity.CLASSIFICATION)) {
+            searchRepository.handleClassificationUpdate((Classification) updated);
+          }
         }
-      }
-      for (FieldChange fieldChange : updated.getChangeDescription().getFieldsUpdated()) {
-        if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-          searchRepository.handleOwnerUpdates(original, updated, "updated");
-        }
-        if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-          searchRepository.handleDomainUpdates(original, updated, "updated");
-        }
-        if (fieldChange.getName().equalsIgnoreCase("disabled")
-            && updated.getEntityReference().getType().equals(Entity.CLASSIFICATION)) {
-          searchRepository.handleClassificationUpdate((Classification) updated);
-        }
-      }
-      for (FieldChange fieldChange : updated.getChangeDescription().getFieldsDeleted()) {
-        if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-          searchRepository.handleOwnerUpdates(original, updated, "deleted");
-        }
-        if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-          searchRepository.handleDomainUpdates(original, updated, "deleted");
+        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsDeleted()) {
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+            searchRepository.handleOwnerUpdates(original, updated, "deleted");
+          }
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+            searchRepository.handleDomainUpdates(original, updated, "deleted");
+          }
         }
       }
     }
@@ -1055,9 +1059,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeExtension(entity);
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
-    if (supportsSearch) {
-      postCreate(entity);
-    }
+    postCreate(entity);
     return entity;
   }
 
@@ -1801,9 +1803,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Store the updated entity
       storeUpdate();
-      if (supportsSearch) {
-        postUpdate(original, updated);
-      }
+      postUpdate(original, updated);
     }
 
     public void entitySpecificUpdate() {
