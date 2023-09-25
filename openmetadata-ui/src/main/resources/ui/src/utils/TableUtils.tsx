@@ -30,6 +30,7 @@ import {
   lowerCase,
   reduce,
   toString,
+  uniqBy,
   uniqueId,
   upperCase,
 } from 'lodash';
@@ -496,8 +497,11 @@ export const prepareConstraintIcon = ({
   isTableConstraintDeleted?: boolean;
 }) => {
   // get the table constraints for column
-  const filteredTableConstraints = tableConstraints?.filter((constraint) =>
-    constraint.columns?.includes(columnName)
+  const filteredTableConstraints = uniqBy(
+    tableConstraints?.filter((constraint) =>
+      constraint.columns?.includes(columnName)
+    ),
+    'constraintType'
   );
 
   // prepare column constraint element

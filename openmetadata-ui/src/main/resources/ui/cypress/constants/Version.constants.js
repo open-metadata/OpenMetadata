@@ -24,6 +24,8 @@ const DASHBOARD_NAME = `cypress_version_dashboard-${uuid()}`;
 const PIPELINE_NAME = `cypress_version_pipeline-${uuid()}`;
 const ML_MODEL_NAME = `cypress_version_ml_model-${uuid()}`;
 const CONTAINER_NAME = `cypress_version_container-${uuid()}`;
+const STORED_PROCEDURE_NAME = `cypress_version_stored_procedure-${uuid()}`;
+const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
 
 const TABLE_DETAILS_FOR_VERSION_TEST = {
   name: TABLE_NAME,
@@ -510,90 +512,39 @@ const CONTAINER_PATCH_PAYLOAD = [
   },
 ];
 
-export const ENTITY_DETAILS_FOR_VERSION_TEST = {
-  Table: {
-    name: TABLE_NAME,
-    serviceName: 'sample_data',
-    entity: 'tables',
-    entityCreationDetails: TABLE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: TABLE_PATCH_PAYLOAD,
-    isChildrenExist: true,
-    childSelector: 'data-row-key',
-    entityAddedDescription: `Description for ${TABLE_NAME}`,
-    updatedTagEntityChildName: 'user_id',
-    entityChildRemovedDescription: 'First name of the staff member.',
-    entityChildAddedDescription: 'Last name of the staff member.',
+const STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST = {
+  name: STORED_PROCEDURE_NAME,
+  databaseSchema: 'sample_data.ecommerce_db.shopify',
+  storedProcedureCode: {
+    langauge: 'SQL',
+    code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
   },
-  Topic: {
-    name: TOPIC_NAME,
-    serviceName: 'sample_kafka',
-    entity: 'topics',
-    entityCreationDetails: TOPIC_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: TOPIC_PATCH_PAYLOAD,
-    isChildrenExist: true,
-    childSelector: 'data-row-key',
-    entityAddedDescription: `Description for ${TOPIC_NAME}`,
-    updatedTagEntityChildName: 'default',
-    entityChildRemovedDescription: 'Description for schema field first_name',
-    entityChildAddedDescription: 'Description for schema field last_name',
-  },
-  // TODO - Remove the comment after this issue is resolved https://github.com/open-metadata/OpenMetadata/issues/12924
-  // Dashboard: {
-  //   name: DASHBOARD_NAME,
-  //   serviceName: 'sample_superset',
-  //   entity: 'dashboards',
-  //   entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
-  //   entityPatchPayload: DASHBOARD_PATCH_PAYLOAD,
-  //   isChildrenExist: false,
-  //   entityAddedDescription: `Description for ${DASHBOARD_NAME}`,
-  // },
-  Pipeline: {
-    name: PIPELINE_NAME,
-    serviceName: 'sample_airflow',
-    entity: 'pipelines',
-    entityCreationDetails: PIPELINE_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: PIPELINE_PATCH_PAYLOAD,
-    isChildrenExist: true,
-    childSelector: 'data-row-key',
-    entityAddedDescription: `Description for ${PIPELINE_NAME}`,
-    updatedTagEntityChildName: 'cypress_task_1',
-    entityChildRemovedDescription: 'Description for task cypress_task_2',
-    entityChildAddedDescription: 'Description for task cypress_task_3',
-  },
-  'ML Model': {
-    name: ML_MODEL_NAME,
-    serviceName: 'mlflow_svc',
-    entity: 'mlmodels',
-    entityCreationDetails: ML_MODEL_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: ML_MODEL_PATCH_PAYLOAD,
-    isChildrenExist: true,
-    childSelector: 'data-testid',
-    entityAddedDescription: `Description for ${ML_MODEL_NAME}`,
-    updatedTagEntityChildName: 'feature-card-feature_1',
-    entityChildRemovedDescription: 'Description for mlFeature feature_2',
-    entityChildAddedDescription: 'Description for mlFeature feature_3',
-  },
-  Container: {
-    name: CONTAINER_NAME,
-    serviceName: 's3_storage_sample',
-    entity: 'containers',
-    entityCreationDetails: CONTAINER_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: CONTAINER_PATCH_PAYLOAD,
-    isChildrenExist: true,
-    childSelector: 'data-row-key',
-    entityAddedDescription: `Description for ${CONTAINER_NAME}`,
-    updatedTagEntityChildName: 'column_1',
-    entityChildRemovedDescription: 'Description for column column_2',
-    entityChildAddedDescription: 'Description for column column_3',
-  },
+  tags: [],
 };
 
-export const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
+const STORED_PROCEDURE_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/description',
+    value: `Description for ${STORED_PROCEDURE_NAME}`,
+  },
+];
 
 export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
   name: DATA_MODEL_NAME,
   service: 'sample_looker',
   dataModelType: 'LookMlExplore',
+  tags: [],
   columns: [
     {
       name: 'column_1',
@@ -673,6 +624,96 @@ export const DATA_MODEL_PATCH_PAYLOAD = [
     value: `Description for ${DATA_MODEL_NAME}`,
   },
 ];
+export const ENTITY_DETAILS_FOR_VERSION_TEST = {
+  Table: {
+    name: TABLE_NAME,
+    serviceName: 'sample_data',
+    entity: 'tables',
+    entityCreationDetails: TABLE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: TABLE_PATCH_PAYLOAD,
+    isChildrenExist: true,
+    childSelector: 'data-row-key',
+    entityAddedDescription: `Description for ${TABLE_NAME}`,
+    updatedTagEntityChildName: 'user_id',
+    entityChildRemovedDescription: 'First name of the staff member.',
+    entityChildAddedDescription: 'Last name of the staff member.',
+  },
+  Topic: {
+    name: TOPIC_NAME,
+    serviceName: 'sample_kafka',
+    entity: 'topics',
+    entityCreationDetails: TOPIC_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: TOPIC_PATCH_PAYLOAD,
+    isChildrenExist: true,
+    childSelector: 'data-row-key',
+    entityAddedDescription: `Description for ${TOPIC_NAME}`,
+    updatedTagEntityChildName: 'default',
+    entityChildRemovedDescription: 'Description for schema field first_name',
+    entityChildAddedDescription: 'Description for schema field last_name',
+  },
+  // TODO - Remove the comment after this issue is resolved https://github.com/open-metadata/OpenMetadata/issues/12924
+  // Dashboard: {
+  //   name: DASHBOARD_NAME,
+  //   serviceName: 'sample_superset',
+  //   entity: 'dashboards',
+  //   entityCreationDetails: DASHBOARD_DETAILS_FOR_VERSION_TEST,
+  //   entityPatchPayload: DASHBOARD_PATCH_PAYLOAD,
+  //   isChildrenExist: false,
+  //   entityAddedDescription: `Description for ${DASHBOARD_NAME}`,
+  // },
+  Pipeline: {
+    name: PIPELINE_NAME,
+    serviceName: 'sample_airflow',
+    entity: 'pipelines',
+    entityCreationDetails: PIPELINE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: PIPELINE_PATCH_PAYLOAD,
+    isChildrenExist: true,
+    childSelector: 'data-row-key',
+    entityAddedDescription: `Description for ${PIPELINE_NAME}`,
+    updatedTagEntityChildName: 'cypress_task_1',
+    entityChildRemovedDescription: 'Description for task cypress_task_2',
+    entityChildAddedDescription: 'Description for task cypress_task_3',
+  },
+  'ML Model': {
+    name: ML_MODEL_NAME,
+    serviceName: 'mlflow_svc',
+    entity: 'mlmodels',
+    entityCreationDetails: ML_MODEL_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: ML_MODEL_PATCH_PAYLOAD,
+    isChildrenExist: true,
+    childSelector: 'data-testid',
+    entityAddedDescription: `Description for ${ML_MODEL_NAME}`,
+    updatedTagEntityChildName: 'feature-card-feature_1',
+    entityChildRemovedDescription: 'Description for mlFeature feature_2',
+    entityChildAddedDescription: 'Description for mlFeature feature_3',
+  },
+  Container: {
+    name: CONTAINER_NAME,
+    serviceName: 's3_storage_sample',
+    entity: 'containers',
+    entityCreationDetails: CONTAINER_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: CONTAINER_PATCH_PAYLOAD,
+    isChildrenExist: true,
+    childSelector: 'data-row-key',
+    entityAddedDescription: `Description for ${CONTAINER_NAME}`,
+    updatedTagEntityChildName: 'column_1',
+    entityChildRemovedDescription: 'Description for column column_2',
+    entityChildAddedDescription: 'Description for column column_3',
+  },
+  'Stored Procedure': {
+    name: STORED_PROCEDURE_NAME,
+    serviceName: 'sample_data',
+    entity: 'storedProcedures',
+    entityCreationDetails: STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: STORED_PROCEDURE_PATCH_PAYLOAD,
+    isChildrenExist: false,
+    childSelector: 'data-row-key',
+    entityAddedDescription: `Description for ${STORED_PROCEDURE_NAME}`,
+    updatedTagEntityChildName: '',
+    entityChildRemovedDescription: '',
+    entityChildAddedDescription: '',
+  },
+};
 
 export const DATA_MODEL_DETAILS = {
   name: DATA_MODEL_NAME,
