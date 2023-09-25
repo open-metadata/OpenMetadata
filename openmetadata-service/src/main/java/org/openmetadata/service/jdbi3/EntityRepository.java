@@ -215,7 +215,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
 
-  protected boolean supportsSearchIndex = false;
+  protected boolean supportsSearch = false;
 
   protected EntityRepository(
       String collectionPath,
@@ -823,7 +823,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       postUpdate(entity, entity);
     }
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
@@ -894,7 +894,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postDelete(T entity) {}
 
   public void deleteFromSearch(T entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
@@ -905,7 +905,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public void restoreFromSearch(T entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(entity, false, "");
     }
   }
@@ -929,7 +929,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       cleanup(updated);
       changeType = RestUtil.ENTITY_DELETED;
     }
-    if (supportsSearchIndex) {}
+    if (supportsSearch) {}
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
   }
@@ -1055,7 +1055,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeExtension(entity);
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       postCreate(entity);
     }
     return entity;
@@ -1801,7 +1801,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Store the updated entity
       storeUpdate();
-      if (supportsSearchIndex) {
+      if (supportsSearch) {
         postUpdate(original, updated);
       }
     }

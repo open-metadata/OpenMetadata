@@ -63,7 +63,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao,
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {

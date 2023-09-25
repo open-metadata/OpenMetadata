@@ -37,12 +37,12 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
         MessagingConnection.class,
         UPDATE_FIELDS,
         ServiceType.MESSAGING);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
   public void deleteFromSearch(MessagingService entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, MessagingService.class),
@@ -57,7 +57,7 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
 
   @Override
   public void restoreFromSearch(MessagingService entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, MessagingService.class), false, "service.fullyQualifiedName");
     }

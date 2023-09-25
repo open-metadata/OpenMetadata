@@ -43,7 +43,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -162,7 +162,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void deleteFromSearch(TestSuite entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, TestSuite.class),
@@ -183,7 +183,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void restoreFromSearch(TestSuite entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, TestSuite.class), false, "testSuites.fullyQualifiedName");
     }

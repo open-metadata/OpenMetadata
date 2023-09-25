@@ -39,7 +39,7 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
 
   @Override
   public void deleteFromSearch(PipelineService entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, PipelineService.class),
@@ -53,7 +53,7 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
 
   @Override
   public void restoreFromSearch(PipelineService entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, PipelineService.class), false, "service.fullyQualifiedName");
     }

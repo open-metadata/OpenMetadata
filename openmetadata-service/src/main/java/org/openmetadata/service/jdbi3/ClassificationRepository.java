@@ -50,7 +50,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         "",
         "");
     quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -107,7 +107,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void deleteFromSearch(Classification entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Classification.class),
@@ -122,7 +122,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
 
   @Override
   public void restoreFromSearch(Classification entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, Classification.class), false, "classification.fullyQualifiedName");
     }

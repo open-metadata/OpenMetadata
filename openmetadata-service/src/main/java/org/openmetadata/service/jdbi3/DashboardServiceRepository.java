@@ -35,12 +35,12 @@ public class DashboardServiceRepository extends ServiceEntityRepository<Dashboar
         dao.dashboardServiceDAO(),
         DashboardConnection.class,
         ServiceType.DASHBOARD);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
   public void deleteFromSearch(DashboardService entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, DashboardService.class),
@@ -55,7 +55,7 @@ public class DashboardServiceRepository extends ServiceEntityRepository<Dashboar
 
   @Override
   public void restoreFromSearch(DashboardService entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, DashboardService.class), false, "service.fullyQualifiedName");
     }

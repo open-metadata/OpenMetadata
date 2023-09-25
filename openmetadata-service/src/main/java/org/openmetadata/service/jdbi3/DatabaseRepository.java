@@ -36,7 +36,7 @@ import org.openmetadata.service.util.RestUtil;
 public class DatabaseRepository extends EntityRepository<Database> {
   public DatabaseRepository(CollectionDAO dao) {
     super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -78,7 +78,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void deleteFromSearch(Database entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Database.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "database.id");
@@ -90,7 +90,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public void restoreFromSearch(Database entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
     }

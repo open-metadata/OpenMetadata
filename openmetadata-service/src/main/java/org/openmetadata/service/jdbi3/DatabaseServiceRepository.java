@@ -34,12 +34,12 @@ public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseS
         dao.dbServiceDAO(),
         DatabaseConnection.class,
         ServiceType.DATABASE);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
   public void deleteFromSearch(DatabaseService entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, DatabaseService.class),
@@ -53,7 +53,7 @@ public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseS
 
   @Override
   public void restoreFromSearch(DatabaseService entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, DatabaseService.class), false, "service.fullyQualifiedName");
     }

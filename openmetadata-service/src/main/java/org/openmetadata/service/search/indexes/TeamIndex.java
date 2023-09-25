@@ -20,9 +20,6 @@ public class TeamIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (CommonUtil.nullOrEmpty(team.getDisplayName())) {
-      team.setDisplayName(team.getName());
-    }
     Map<String, Object> doc = JsonUtils.getMap(team);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();

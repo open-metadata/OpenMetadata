@@ -88,7 +88,7 @@ public class TeamRepository extends EntityRepository<Team> {
   public TeamRepository(CollectionDAO dao) {
     super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -227,7 +227,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void deleteFromSearch(Team entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Team.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "parents.id");
@@ -239,7 +239,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   public void restoreFromSearch(Team entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, Team.class), false, "parents.fullyQualifiedName");
     }

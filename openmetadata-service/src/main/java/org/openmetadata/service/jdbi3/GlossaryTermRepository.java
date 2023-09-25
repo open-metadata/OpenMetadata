@@ -83,7 +83,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -251,7 +251,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void deleteFromSearch(GlossaryTerm entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
       searchRepository.deleteEntityAndRemoveRelationships(
@@ -297,7 +297,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void restoreFromSearch(GlossaryTerm entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, GlossaryTerm.class), false, "tags.tagFQN");
     }

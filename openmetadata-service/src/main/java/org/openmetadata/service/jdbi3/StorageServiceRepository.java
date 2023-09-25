@@ -19,12 +19,12 @@ public class StorageServiceRepository extends ServiceEntityRepository<StorageSer
         dao.storageServiceDAO(),
         StorageConnection.class,
         ServiceType.STORAGE);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
   public void deleteFromSearch(StorageService entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, StorageService.class),

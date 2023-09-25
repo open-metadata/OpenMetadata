@@ -43,7 +43,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao,
         "",
         "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -121,7 +121,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public void deleteFromSearch(DatabaseSchema entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, DatabaseSchema.class),
@@ -136,7 +136,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public void restoreFromSearch(DatabaseSchema entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, DatabaseSchema.class), false, "databaseSchema.fullyQualifiedName");
     }

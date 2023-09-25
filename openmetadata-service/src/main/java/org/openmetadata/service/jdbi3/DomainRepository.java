@@ -35,7 +35,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public DomainRepository(CollectionDAO dao) {
     super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -108,7 +108,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void deleteFromSearch(Domain entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       String scriptTxt = "ctx._source.remove('domain')";
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(

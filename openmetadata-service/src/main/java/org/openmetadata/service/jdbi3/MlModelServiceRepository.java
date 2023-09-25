@@ -37,12 +37,12 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
         MlModelConnection.class,
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
   public void deleteFromSearch(MlModelService entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, MlModelService.class),
@@ -56,7 +56,7 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
 
   @Override
   public void restoreFromSearch(MlModelService entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, MlModelService.class), false, "service.fullyQualifiedName");
     }

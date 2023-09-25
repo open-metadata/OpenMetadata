@@ -41,7 +41,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class TagRepository extends EntityRepository<Tag> {
   public TagRepository(CollectionDAO dao) {
     super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -99,7 +99,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void deleteFromSearch(Tag entity, String changeType) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
       searchRepository.deleteEntityAndRemoveRelationships(
@@ -109,7 +109,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void restoreFromSearch(Tag entity) {
-    if (supportsSearchIndex) {
+    if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
     }
   }
