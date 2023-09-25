@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,15 +39,16 @@ public class MigrationUtilV111 {
     }
     resultMap.forEach(
         (k, v) -> {
+          UUID id = UUID.fromString(k);
 
           // Get all the relationship of id1
           List<CollectionDAO.EntityRelationshipRecord> records =
-              collectionDAO.relationshipDAO().findTo(k, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
+              collectionDAO.relationshipDAO().findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE);
 
           List<CollectionDAO.EntityRelationshipRecord> ingestionRecords =
               collectionDAO
                   .relationshipDAO()
-                  .findTo(k, TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
+                  .findTo(id, TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
 
           for (CollectionDAO.EntityRelationshipRecord record : records) {
             UUID toId = record.getId();
@@ -60,16 +60,16 @@ public class MigrationUtilV111 {
 
           // Delete Test Suite
           try {
-            collectionDAO.testSuiteDAO().delete(k);
+            collectionDAO.testSuiteDAO().delete(id);
             // Delete Relationship
-            collectionDAO.relationshipDAO().deleteAllWithId(k);
+            collectionDAO.relationshipDAO().deleteAllWithId(id);
           } catch (Exception ex) {
             // maybe already deleted
           }
 
           for (CollectionDAO.EntityRelationshipRecord record : ingestionRecords) {
             try {
-              String toId = record.getId().toString();
+              UUID toId = record.getId();
               collectionDAO.ingestionPipelineDAO().delete(toId);
               collectionDAO.relationshipDAO().deleteAllWithId(toId);
             } catch (Exception ex) {
@@ -80,8 +80,7 @@ public class MigrationUtilV111 {
   }
 
   public static void runTestSuiteMigration(
-      CollectionDAO collectionDAO, Handle handle, String getSql, String updateSql, String resultListSql)
-      throws IOException {
+      CollectionDAO collectionDAO, Handle handle, String getSql, String updateSql, String resultListSql) {
     List<Map<String, Object>> resultList = handle.createQuery(resultListSql).mapToMap().list();
     for (Map<String, Object> row : resultList) {
       if (row.containsKey("json")) {
@@ -106,9 +105,9 @@ public class MigrationUtilV111 {
               removeDuplicateTestCases(collectionDAO, handle, getSql);
             } catch (Exception ex) {
               try {
-                collectionDAO.testSuiteDAO().delete(suite.getId().toString());
+                collectionDAO.testSuiteDAO().delete(suite.getId());
                 // Delete Relationship
-                collectionDAO.relationshipDAO().deleteAllWithId(suite.getId().toString());
+                collectionDAO.relationshipDAO().deleteAllWithId(suite.getId());
               } catch (Exception ex1) {
                 // Ignore
               }

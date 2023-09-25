@@ -18,6 +18,7 @@ export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',
   DOMAIN = 'DOMAIN',
   DATA_PRODUCT = 'DATA_PRODUCT',
+  TEAM = 'TEAM',
 }
 
 export enum AssetsViewType {
