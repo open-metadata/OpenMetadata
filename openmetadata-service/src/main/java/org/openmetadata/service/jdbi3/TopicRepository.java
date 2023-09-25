@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
@@ -252,6 +253,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (topic.getMessageSchema() != null) {
       applyTags(topic.getMessageSchema().getSchemaFields());
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Topic entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   @Override
