@@ -493,7 +493,16 @@ export const visitEntityDetailsPage = (
   dataTestId,
   entityType
 ) => {
-  interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+  if (entity === 'dashboardDataModel') {
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels/name/*',
+      'getEntityDetails'
+    );
+  } else {
+    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+  }
+
   interceptURL(
     'GET',
     `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,

@@ -32,6 +32,8 @@ export const MYDATA_SUMMARY_OPTIONS = {
   containers: 'containers',
   glossaryTerms: 'glossary-terms',
   tags: 'tags',
+  storedProcedures: 'storedProcedures',
+  dataModel: 'dashboardDataModel',
 };
 
 export const SEARCH_INDEX = {
@@ -153,6 +155,38 @@ export const SEARCH_ENTITY_MLMODEL = {
     serviceName: 'mlflow_svc',
     displayName: 'ETA Predictions',
     entityType: 'ML Model',
+  },
+};
+
+export const SEARCH_ENTITY_STORED_PROCEDURE = {
+  stored_procedure_1: {
+    term: 'update_dim_address_table',
+    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    serviceName: 'sample_data',
+    entityType: 'Stored Procedure',
+  },
+  stored_procedure_2: {
+    term: 'update_dim_address_table',
+    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    serviceName: 'sample_data',
+    displayName: 'update_dim_address_table',
+    entityType: 'Stored Procedure',
+  },
+};
+
+export const SEARCH_ENTITY_DATA_MODEL = {
+  data_model_1: {
+    term: 'operations_view',
+    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    serviceName: 'sample_looker',
+    entityType: 'Data Model',
+  },
+  data_model_2: {
+    term: 'orders_view',
+    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    serviceName: 'sample_looker',
+    displayName: 'Orders View',
+    entityType: 'Data Model',
   },
 };
 
@@ -323,6 +357,7 @@ export const SERVICE_TYPE = {
   Pipeline: 'Pipeline',
   MLModels: 'ML Models',
   Storage: 'Storage',
+  StoredProcedure: 'StoredProcedure',
 };
 
 export const ENTITIES = {
