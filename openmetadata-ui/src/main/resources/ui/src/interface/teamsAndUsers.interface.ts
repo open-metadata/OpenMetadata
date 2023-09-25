@@ -15,7 +15,7 @@ import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { Operation } from 'fast-json-patch';
-import { AssetsDataType, FormErrorData } from 'Models';
+import { FormErrorData } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { UserType } from '../enums/user.enum';
 import { Team } from '../generated/entity/teams/team';
@@ -93,9 +93,9 @@ export interface TeamsAndUsersProps {
 }
 
 export interface TeamDetailsProp {
+  assetsCount: number;
   currentTeam: Team;
   teams?: Team[];
-  assets: AssetsDataType;
   currentTeamUsers: User[];
   teamUserPaging: Paging;
   currentTeamUserPage: number;
@@ -120,7 +120,6 @@ export interface TeamDetailsProp {
   handleLeaveTeamClick: (id: string, data: Operation[]) => Promise<void>;
   childTeams: Team[];
   showDeletedTeam: boolean;
-  onAssetsPaginate: NextPreviousProps['pagingHandler'];
   onShowDeletedTeamChange: () => void;
   parentTeams: Team[];
   onTeamExpand: (

@@ -82,25 +82,28 @@ class LineageSource(QueryParserSource, ABC):
         Given an engine, iterate over the query results to
         yield a TableQuery with query parsing info
         """
-        with self.engine.connect() as conn:
-            rows = conn.execute(
-                self.get_sql_statement(
-                    start_time=self.start,
-                    end_time=self.end,
-                )
-            )
-            for row in rows:
-                query_dict = dict(row)
-                try:
-                    yield TableQuery(
-                        query=query_dict["query_text"],
-                        databaseName=self.get_database_name(query_dict),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=self.get_schema_name(query_dict),
+        for engine in self.get_engine():
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    self.get_sql_statement(
+                        start_time=self.start,
+                        end_time=self.end,
                     )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                )
+                for row in rows:
+                    query_dict = dict(row)
+                    try:
+                        yield TableQuery(
+                            query=query_dict["query_text"],
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(query_dict),
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error processing query_dict {query_dict}: {exc}"
+                        )
 
     def _query_already_processed(self, table_query: TableQuery) -> bool:
         """
