@@ -342,13 +342,15 @@ export const testServiceCreationAndIngestion = ({
 
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
 
-    // Go back and data should persist
-    cy.get('[data-testid="back-button"]').scrollIntoView().click();
+    if (viewIngestionInput) {
+      // Go back and data should persist
+      cy.get('[data-testid="back-button"]').scrollIntoView().click();
 
-    viewIngestionInput && viewIngestionInput();
+      viewIngestionInput();
 
-    // Go Next
-    cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+      // Go Next
+      cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+    }
 
     scheduleIngestion();
 
