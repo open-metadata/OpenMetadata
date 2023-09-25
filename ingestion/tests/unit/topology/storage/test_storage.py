@@ -62,6 +62,15 @@ MOCK_OBJECT_STORE_CONFIG = {
             "config": {
                 "type": "StorageMetadata",
                 "containerFilterPattern": {"includes": ["^test_*"]},
+                "storageMetadataConfigSource": {
+                    "securityConfig": {
+                        "awsRegion": "us-east-1"
+                    },
+                    "prefixConfig": {
+                        "bucketName": "test_bucket",
+                        "objectPrefix": "manifest",
+                    }
+                }
             }
         },
     },
@@ -166,6 +175,15 @@ class StorageUnitTest(TestCase):
             "sourceConfig": {
                 "config": {
                     "type": "StorageMetadata",
+                    "storageMetadataConfigSource": {
+                        "securityConfig": {
+                            "awsRegion": "us-east-1"
+                        },
+                        "prefixConfig": {
+                            "bucketName": "test_bucket",
+                            "objectPrefix": "manifest",
+                        }
+                    }
                 }
             },
         }
