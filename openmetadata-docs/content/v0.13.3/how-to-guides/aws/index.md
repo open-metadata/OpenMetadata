@@ -17,9 +17,8 @@ https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.ht
 
 Set environment variables
 ```Commandline
-  AWS_ENABLE_IAM_DATABASE_AUTHENTICATION: true
-  AWS_REGION: your_region
-  DB_PARAMS: "allowPublicKeyRetrieval=true&sslmode=require&serverTimezone=UTC"
+  DB_USER_PASSWORD: "dummy"
+  DB_PARAMS: "awsRegion=eu-west-1&allowPublicKeyRetrieval=true&sslmode=require&serverTimezone=UTC"
 ```
 Either through helm (if deployed in kubernetes) or as env vars
 
