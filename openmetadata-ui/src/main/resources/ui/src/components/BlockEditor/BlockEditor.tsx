@@ -15,28 +15,52 @@ import { EDITOR_OPTIONS } from 'constants/BlockEditor.constants';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import {
+  getBackendFormat,
+  getFrontEndFormat,
+  HTMLToMarkdown,
+  MarkdownToHTMLConverter,
+} from 'utils/FeedUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
+import ImageModal, { ImageData } from './ImageModal/ImageModal';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 
 export interface BlockEditorProps {
+  // should be markdown string
   content?: string;
   editable?: boolean;
+  // will be call with markdown content
+  onChange?: (content: string) => void;
 }
 
 const BlockEditor: FC<BlockEditorProps> = ({
   content = '',
   editable = true,
+  onChange,
 }) => {
   const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
 
   const editor = useEditor({
     ...EDITOR_OPTIONS,
+    onUpdate({ editor }) {
+      const htmlContent = editor.getHTML();
+
+      const markdown = HTMLToMarkdown.turndown(htmlContent);
+
+      const backendFormat = getBackendFormat(markdown);
+
+      onChange?.(backendFormat);
+    },
   });
 
   const handleLinkToggle = () => {
     setIsLinkModalOpen((prev) => !prev);
+  };
+  const handleImageToggle = () => {
+    setIsImageModalOpen((prev) => !prev);
   };
 
   const handleLinkCancel = () => {
@@ -132,6 +156,16 @@ const BlockEditor: FC<BlockEditorProps> = ({
     }
   };
 
+  const handleAddImage = (values: ImageData) => {
+    if (isNil(editor)) {
+      return;
+    }
+
+    editor.chain().focus().setImage({ src: values.src }).run();
+
+    handleImageToggle();
+  };
+
   const menus = !isNil(editor) && (
     <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
   );
@@ -145,7 +179,10 @@ const BlockEditor: FC<BlockEditorProps> = ({
     // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
     setTimeout(() => {
       if (content !== undefined) {
-        editor.commands.setContent(content);
+        const htmlContent = MarkdownToHTMLConverter.makeHtml(
+          getFrontEndFormat(content)
+        );
+        editor.commands.setContent(htmlContent);
       }
     });
   }, [content, editor]);
@@ -173,6 +210,13 @@ const BlockEditor: FC<BlockEditorProps> = ({
               editor?.getAttributes('link').href ? 'edit' : 'add'
             )
           }
+        />
+      )}
+      {isImageModalOpen && (
+        <ImageModal
+          isOpen={isImageModalOpen}
+          onCancel={handleImageToggle}
+          onSave={handleAddImage}
         />
       )}
       <div className="block-editor-wrapper">

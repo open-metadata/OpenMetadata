@@ -44,9 +44,13 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import AssetsTabs from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { ROUTES } from 'constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -67,19 +71,12 @@ import {
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
 import Qs from 'qs';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../../AppState';
-import { LIST_SIZE, ROUTES } from '../../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../../constants/docs.constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -90,14 +87,13 @@ import {
   User,
 } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { Paging } from '../../../generated/type/paging';
 import {
   AddAttribute,
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../../interface/teamsAndUsers.interface';
 import { getCountBadge, hasEditAccess } from '../../../utils/CommonUtils';
-import { filterEntityAssets, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
@@ -111,7 +107,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Description from '../../common/description/Description';
 import ManageButton from '../../common/entityPageInfo/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
@@ -127,7 +122,7 @@ import './teams.less';
 import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
-  assets,
+  assetsCount,
   hasAccess,
   currentTeam,
   currentTeamUsers,
@@ -152,7 +147,6 @@ const TeamDetailsV1 = ({
   handleAddUser,
   removeUserFromTeam,
   afterDeleteAction,
-  onAssetsPaginate,
   parentTeams,
   entityPermissions,
   isFetchingAdvancedDetails,
@@ -207,6 +201,8 @@ const TeamDetailsV1 = ({
   }>();
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const { showModal } = useEntityExportModalProvider();
 
@@ -236,7 +232,8 @@ const TeamDetailsV1 = ({
       currentTeam,
       isGroupType,
       isOrganization,
-      teamCount
+      teamCount,
+      assetsCount
     ).map((tab) => ({
       ...tab,
       label: (
@@ -252,7 +249,14 @@ const TeamDetailsV1 = ({
     }));
 
     return allTabs;
-  }, [currentTeam, teamUserPaging, searchTerm, teamCount, currentTab]);
+  }, [
+    currentTeam,
+    teamUserPaging,
+    searchTerm,
+    teamCount,
+    currentTab,
+    assetsCount,
+  ]);
 
   const createTeamPermission = useMemo(
     () =>
@@ -705,55 +709,6 @@ const TeamDetailsV1 = ({
     ]
   );
 
-  /**
-   * Check for current team datasets and return the dataset cards
-   * @returns - dataset cards
-   */
-  const getAssetDetailCards = () => {
-    const ownData = filterEntityAssets(currentTeam?.owns || []);
-
-    if (isEmpty(ownData)) {
-      return fetchErrorPlaceHolder({
-        type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
-        heading: t('label.asset'),
-        permission: entityPermissions.EditAll,
-        button: (
-          <Button
-            ghost
-            className="p-x-lg"
-            data-testid="add-placeholder-button"
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={() => history.push(ROUTES.EXPLORE)}>
-            {t('label.add')}
-          </Button>
-        ),
-      });
-    }
-
-    return (
-      <div data-testid="table-container">
-        {assets.data.map(({ _source, _id = '' }, index) => (
-          <TableDataCardV2
-            className="m-b-sm cursor-pointer"
-            id={_id}
-            key={index}
-            source={_source}
-          />
-        ))}
-        {assets.total > LIST_SIZE && assets.data.length > 0 && (
-          <NextPrevious
-            isNumberBased
-            currentPage={assets.currPage}
-            pageSize={LIST_SIZE}
-            paging={{} as Paging}
-            pagingHandler={onAssetsPaginate}
-          />
-        )}
-      </div>
-    );
-  };
-
   const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
@@ -989,16 +944,16 @@ const TeamDetailsV1 = ({
   }
 
   return (
-    <div
-      className="h-full d-flex flex-col flex-grow"
-      data-testid="team-details-container">
+    <Row className="h-full flex-grow" data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
-        <Fragment>
+        <Col span={previewAsset ? 18 : 24}>
           {!isOrganization && (
             <TitleBreadcrumb className="p-b-xs" titleLinks={slashedTeamName} />
           )}
           <div
-            className="d-flex justify-between items-center"
+            className={classNames('d-flex justify-between items-center', {
+              'm-r-xs': previewAsset,
+            })}
             data-testid="header">
             {getTeamHeading()}
             {!isOrganization ? (
@@ -1153,7 +1108,15 @@ const TeamDetailsV1 = ({
                   />
                 )}
 
-                {currentTab === TeamsPageTab.ASSETS && getAssetDetailCards()}
+                {currentTab === TeamsPageTab.ASSETS && (
+                  <AssetsTabs
+                    isSummaryPanelOpen
+                    permissions={entityPermissions}
+                    type={AssetsOfEntity.TEAM}
+                    onAddAsset={() => history.push(ROUTES.EXPLORE)}
+                    onAssetClick={setPreviewAsset}
+                  />
+                )}
 
                 {currentTab === TeamsPageTab.ROLES &&
                   (isEmpty(currentTeam.defaultRoles || []) ? (
@@ -1274,7 +1237,7 @@ const TeamDetailsV1 = ({
               </div>
             )}
           </div>
-        </Fragment>
+        </Col>
       ) : (
         fetchErrorPlaceHolder({
           onClick: () => handleAddTeam(true),
@@ -1282,6 +1245,15 @@ const TeamDetailsV1 = ({
           heading: t('label.team-plural'),
           doc: TEAMS_DOCS,
         })
+      )}
+
+      {previewAsset && (
+        <Col className="border-left team-assets-right-panel" span={6}>
+          <EntitySummaryPanel
+            entityDetails={previewAsset}
+            handleClosePanel={() => setPreviewAsset(undefined)}
+          />
+        </Col>
       )}
 
       <ConfirmationModal
@@ -1334,7 +1306,7 @@ const TeamDetailsV1 = ({
           </Typography.Text>
         </Modal>
       )}
-    </div>
+    </Row>
   );
 };
 

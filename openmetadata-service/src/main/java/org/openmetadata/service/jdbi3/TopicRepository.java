@@ -146,8 +146,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     TopicSampleData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(topic.getId().toString(), "topic.sampleData"),
-            TopicSampleData.class);
+            daoCollection.entityExtensionDAO().getExtension(topic.getId(), "topic.sampleData"), TopicSampleData.class);
     topic.setSampleData(sampleData);
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
 
@@ -167,7 +166,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     daoCollection
         .entityExtensionDAO()
-        .insert(topicId.toString(), "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
+        .insert(topicId, "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic.withSampleData(sampleData);
   }
