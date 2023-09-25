@@ -19,4 +19,5 @@ export enum StatusType {
 export interface StatusBadgeProps {
   label: string;
   status: StatusType;
+  dataTestId?: string;
 }

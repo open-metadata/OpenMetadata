@@ -35,6 +35,7 @@ import { searchData } from 'rest/miscAPI';
 import { getCountBadge, getFeedCounts } from 'utils/CommonUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
@@ -97,7 +98,7 @@ const GlossaryTermsV1 = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY_TERM,
-      glossaryTerm.fullyQualifiedName ?? '',
+      getEncodedFqn(glossaryTerm.fullyQualifiedName ?? ''),
       setFeedCount
     );
   };

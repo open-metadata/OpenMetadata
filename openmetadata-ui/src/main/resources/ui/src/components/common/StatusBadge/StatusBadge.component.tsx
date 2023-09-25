@@ -15,8 +15,14 @@ import React from 'react';
 import './status-badge.less';
 import { StatusBadgeProps } from './StatusBadge.interface';
 
-const StatusBadge = ({ label, status }: StatusBadgeProps) => {
-  return <div className={classNames('w-16 status-badge', status)}>{label}</div>;
+const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
+  return (
+    <div
+      className={classNames('w-16 status-badge', status)}
+      data-testid={dataTestId}>
+      {label}
+    </div>
+  );
 };
 
 export default StatusBadge;

@@ -110,7 +110,7 @@ const GlossaryDetails = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY,
-      glossary.fullyQualifiedName ?? '',
+      getEncodedFqn(glossary.fullyQualifiedName ?? ''),
       setFeedCount
     );
   };

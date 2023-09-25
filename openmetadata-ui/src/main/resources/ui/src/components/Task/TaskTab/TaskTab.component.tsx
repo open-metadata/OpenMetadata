@@ -59,7 +59,6 @@ import { getEntityFQN } from 'utils/FeedUtils';
 import {
   fetchOptions,
   isDescriptionTask,
-  isGlossaryTermApprovalTask,
   isTagsTask,
   TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
@@ -142,9 +141,7 @@ export const TaskTab = ({
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
-  const isTaskGlossaryApproval = isGlossaryTermApprovalTask(
-    taskDetails?.type as TaskType
-  );
+  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
@@ -267,9 +264,14 @@ export const TaskTab = ({
         size="small">
         {(isCreator || hasEditAccess) && (
           <>
-            <Button onClick={onTaskReject}>{t('label.reject')}</Button>
+            <Button data-testid="reject-task" onClick={onTaskReject}>
+              {t('label.reject')}
+            </Button>
             {hasEditAccess && (
-              <Button type="primary" onClick={onTaskResolve}>
+              <Button
+                data-testid="approve-task"
+                type="primary"
+                onClick={onTaskResolve}>
                 {t('label.approve')}
               </Button>
             )}
@@ -347,6 +349,7 @@ export const TaskTab = ({
     isTaskClosed,
     isTaskGlossaryApproval,
     isCreator,
+    approvalWorkflowActions,
   ]);
 
   const initialFormValue = useMemo(() => {

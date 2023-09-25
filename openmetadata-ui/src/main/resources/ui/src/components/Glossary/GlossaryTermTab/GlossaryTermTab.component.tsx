@@ -130,9 +130,17 @@ const GlossaryTermTab = ({
         dataIndex: 'status',
         key: 'status',
         filters: StatusFilters,
-        render: (status: Status) => (
-          <StatusBadge label={status} status={StatusClass[status]} />
-        ),
+        render: (_, record) => {
+          const status = record.status ?? Status.Approved;
+
+          return (
+            <StatusBadge
+              dataTestId={record.fullyQualifiedName + '-status'}
+              label={status}
+              status={StatusClass[status]}
+            />
+          );
+        },
         onFilter: (value, record) => record.status === value,
       },
     ];
