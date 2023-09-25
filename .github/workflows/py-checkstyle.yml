@@ -88,7 +88,7 @@ jobs:
           body: |
             **The Python checkstyle failed.**
 
-            To ensure that your codebase adheres to the formatting guidelines, you can run the command make py_format_fix_validate in the root of your repository. This command will help you identify and fix any formatting issues. Once you have made the necessary changes, please commit them to this pull request.
+            To ensure that your codebase adheres to the formatting guidelines, you can run the command `make py_format_fix_validate` in the root of your repository. This command will help you identify and fix any formatting issues. Once you have made the necessary changes, please commit them to this pull request.
             You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
 
             You can install the pre-commit hooks with `make install_test precommit_install`.
