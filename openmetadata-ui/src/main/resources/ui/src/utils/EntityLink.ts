@@ -109,7 +109,11 @@ export default class EntityLink {
    * @param string entityFqn
    * @returns entityLink
    */
-  static getEntityLink(entityType: string, entityFqn: string) {
+  static getEntityLink(entityType: string, entityFqn: string, field?: string) {
+    if (field) {
+      return `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${entityFqn}${ENTITY_LINK_SEPARATOR}${field}>`;
+    }
+
     return `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${entityFqn}>`;
   }
 }

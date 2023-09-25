@@ -201,8 +201,7 @@ public class FeedResource {
             .after(after)
             .build();
 
-    String userIdStr = userId != null ? userId.toString() : null;
-    ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userIdStr, limitParam);
+    ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userId, limitParam);
     addHref(uriInfo, threads.getData());
     return threads;
   }
@@ -222,7 +221,7 @@ public class FeedResource {
       })
   public Thread get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Thread", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the Thread", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Parameter(description = "Type of the Entity", schema = @Schema(type = "string")) @PathParam("entityType")
           String entityType) {
     return addHref(uriInfo, dao.get(id));
@@ -393,7 +392,7 @@ public class FeedResource {
   public Response addPost(
       @Context SecurityContext securityContext,
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id,
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") UUID id,
       @Valid CreatePost createPost)
       throws IOException {
     Post post = getPost(createPost);
@@ -417,8 +416,8 @@ public class FeedResource {
       @Context SecurityContext securityContext,
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("threadId")
-          String threadId,
-      @Parameter(description = "Id of the post", schema = @Schema(type = "string")) @PathParam("postId") String postId,
+          UUID threadId,
+      @Parameter(description = "Id of the post", schema = @Schema(type = "string")) @PathParam("postId") UUID postId,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -451,7 +450,7 @@ public class FeedResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "ThreadId of the thread to be deleted", schema = @Schema(type = "string"))
           @PathParam("threadId")
-          String threadId) {
+          UUID threadId) {
     // validate and get the thread
     Thread thread = dao.get(threadId);
     // delete thread only if the admin/bot/author tries to delete it
@@ -476,10 +475,10 @@ public class FeedResource {
       @Context SecurityContext securityContext,
       @Parameter(description = "ThreadId of the post to be deleted", schema = @Schema(type = "string"))
           @PathParam("threadId")
-          String threadId,
+          UUID threadId,
       @Parameter(description = "PostId of the post to be deleted", schema = @Schema(type = "string"))
           @PathParam("postId")
-          String postId)
+          UUID postId)
       throws IOException {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
@@ -506,7 +505,7 @@ public class FeedResource {
       })
   public ResultList<Post> getPosts(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") String id) {
+      @Parameter(description = "Id of the thread", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
     return new ResultList<>(dao.listPosts(id));
   }
 

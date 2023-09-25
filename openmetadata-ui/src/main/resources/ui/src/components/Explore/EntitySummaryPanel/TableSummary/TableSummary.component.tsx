@@ -12,7 +12,6 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -21,7 +20,6 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { mockTablePermission } from 'constants/mockTourData.constants';
-import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -47,7 +45,6 @@ import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Table, TestSummary } from '../../../../generated/entity/data/table';
 import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -88,7 +85,7 @@ function TableSummary({
         setTestSuiteSummary(res?.testSuite?.summary);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     }
   };
 
@@ -108,15 +105,7 @@ function TableSummary({
         }
       });
     } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
-        showErrorToast(
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.table-lowercase'),
-            entityName: entityDetails.name,
-          })
-        );
-      }
+      // Error
     }
   }, [entityDetails]);
 

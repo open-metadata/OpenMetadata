@@ -61,11 +61,13 @@ export const getDataModelsByName = async (
 
 export const getDataModelDetailsByFQN = async (
   databaseSchemaName: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include = Include.All
 ) => {
   const url = `${getURLWithQueryFields(
     `${URL}/name/${databaseSchemaName}`,
-    arrQueryFields
+    arrQueryFields,
+    `include=${include}`
   )}`;
 
   const response = await APIClient.get<DashboardDataModel>(url);

@@ -160,7 +160,13 @@ const StoredProcedureVersion = ({
         ),
       },
     ],
-    [description, storedProcedureFQN, currentVersionData, entityPermissions]
+    [
+      tags,
+      description,
+      storedProcedureFQN,
+      currentVersionData,
+      entityPermissions,
+    ]
   );
 
   return (

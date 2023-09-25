@@ -182,6 +182,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
+  @Override
+  public EntityInterface getParentEntity(Container entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+  }
+
   private void applyTags(List<Column> columns) {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
