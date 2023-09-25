@@ -227,3 +227,8 @@ export const StatusClass = {
   [Status.Rejected]: StatusType.Failure,
   [Status.Deprecated]: StatusType.Warning,
 };
+
+export const StatusFilters = Object.values(Status).map((status) => ({
+  text: status,
+  value: status,
+}));

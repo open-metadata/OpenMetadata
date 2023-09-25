@@ -190,27 +190,37 @@ const GlossaryDetails = ({
         key: GlossaryTabs.TERMS,
         children: detailsContent,
       },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount}
-            id={GlossaryTabs.ACTIVITY_FEED}
-            isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-and-task-plural')}
-          />
-        ),
-        key: GlossaryTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            entityType={EntityType.GLOSSARY}
-            fqn={glossary.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={noop}
-          />
-        ),
-      },
+      ...(!isVersionView
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  count={feedCount}
+                  id={GlossaryTabs.ACTIVITY_FEED}
+                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
+                  name={t('label.activity-feed-and-task-plural')}
+                />
+              ),
+              key: GlossaryTabs.ACTIVITY_FEED,
+              children: (
+                <ActivityFeedTab
+                  entityType={EntityType.GLOSSARY}
+                  fqn={glossary.fullyQualifiedName ?? ''}
+                  onFeedUpdate={getEntityFeedCount}
+                  onUpdateEntityDetails={noop}
+                />
+              ),
+            },
+          ]
+        : []),
     ];
-  }, [detailsContent, glossary.fullyQualifiedName, feedCount, activeTab]);
+  }, [
+    detailsContent,
+    glossary.fullyQualifiedName,
+    feedCount,
+    activeTab,
+    isVersionView,
+  ]);
 
   useEffect(() => {
     getEntityFeedCount();

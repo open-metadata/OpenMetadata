@@ -242,18 +242,21 @@ export const TaskTab = ({
   };
 
   const onTaskReject = () => {
-    if (comment && taskDetails?.id) {
-      updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
-        comment,
-      } as unknown as TaskDetails)
-        .then(() => {
-          showSuccessToast(t('server.task-closed-successfully'));
-          rest.onAfterClose?.();
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
+    if (!isTaskGlossaryApproval && isEmpty(comment)) {
       showErrorToast(t('server.task-closed-without-comment'));
+
+      return;
     }
+
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
+      .then(() => {
+        showSuccessToast(t('server.task-closed-successfully'));
+        rest.onAfterClose?.();
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
 
   const approvalWorkflowActions = useMemo(() => {

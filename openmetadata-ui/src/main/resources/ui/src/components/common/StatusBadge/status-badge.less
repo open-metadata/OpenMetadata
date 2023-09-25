@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-@success-color: #43a047;
-@failure-color: #f44336;
-@warning-color: #f0af2c;
+@import (reference) url('../../../styles/variables.less');
 
 .status-badge {
   font-weight: 500;
@@ -23,15 +21,18 @@
   padding: 4px;
   text-align: center;
   &.success {
-    color: @success-color;
-    border-color: @success-color;
+    color: @green-3;
+    border-color: @green-3;
+    background-color: @green-4;
   }
   &.failure {
-    color: @failure-color;
-    border-color: @failure-color;
+    color: @red-3;
+    border-color: @red-3;
+    background-color: @red-4;
   }
   &.warning {
-    color: @warning-color;
-    border-color: @warning-color;
+    color: @yellow-2;
+    border-color: @yellow-2;
+    background-color: @yellow-3;
   }
 }

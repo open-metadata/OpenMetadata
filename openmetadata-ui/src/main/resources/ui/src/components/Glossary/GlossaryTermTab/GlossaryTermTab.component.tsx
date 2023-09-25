@@ -51,7 +51,7 @@ import { Link } from 'react-router-dom';
 import { patchGlossaryTerm } from 'rest/glossaryAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { buildTree, StatusClass } from 'utils/GlossaryUtils';
+import { buildTree, StatusClass, StatusFilters } from 'utils/GlossaryUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
 import { getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
@@ -129,9 +129,11 @@ const GlossaryTermTab = ({
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
+        filters: StatusFilters,
         render: (status: Status) => (
           <StatusBadge label={status} status={StatusClass[status]} />
         ),
+        onFilter: (value, record) => record.status === value,
       },
     ];
     if (permissions.Create) {
