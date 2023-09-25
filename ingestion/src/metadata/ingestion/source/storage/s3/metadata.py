@@ -239,7 +239,7 @@ class S3Source(StorageServiceSource):
         result: List[S3ContainerDetails] = []
         for metadata_entry in entries:
             logger.info(
-                f"Extracting metadata from path {metadata_entry.dataPath.strip(S3_KEY_SEPARATOR)} "
+                f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                 f"and generating structured container"
             )
             structured_container: Optional[
@@ -253,37 +253,6 @@ class S3Source(StorageServiceSource):
                 result.append(structured_container)
 
         return result
-
-    def _get_columns(
-        self, bucket_name: str, sample_key: str, metadata_entry: MetadataEntry
-    ) -> Optional[List[Column]]:
-        """
-        Get the columns from the file and partition information
-        """
-        extracted_cols = self.extract_column_definitions(bucket_name, sample_key)
-        return (metadata_entry.partitionColumns or []) + (extracted_cols or [])
-
-    def extract_column_definitions(
-        self, bucket_name: str, sample_key: str
-    ) -> List[Column]:
-        """
-        Extract Column related metadata from s3
-        """
-        connection_args = self.service_connection.awsConfig
-        data_structure_details = fetch_dataframe(
-            config_source=S3Config(),
-            client=self.s3_client,
-            file_fqn=DatalakeTableSchemaWrapper(
-                key=sample_key, bucket_name=bucket_name
-            ),
-            connection_kwargs=connection_args,
-        )
-        columns = []
-        if isinstance(data_structure_details, DataFrame):
-            columns = DatalakeSource.get_columns(data_structure_details)
-        if isinstance(data_structure_details, list) and data_structure_details:
-            columns = DatalakeSource.get_columns(data_structure_details[0])
-        return columns
 
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []

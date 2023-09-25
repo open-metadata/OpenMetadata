@@ -12,7 +12,9 @@
 Base class for ingesting Object Storage services
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional, List
+
+from pandas import DataFrame
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
@@ -24,10 +26,14 @@ from metadata.generated.schema.entity.services.storageService import (
     StorageService,
 )
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
-    MetadataEntry, ManifestMetadataConfig
+    MetadataEntry,
+)
+from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+    ManifestMetadataConfig,
 )
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
-    StorageServiceMetadataPipeline, NoMetadataConfigurationSource,
+    StorageServiceMetadataPipeline,
+    NoMetadataConfigurationSource,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -123,7 +129,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
         if self.source_config.storageMetadataConfigSource and not isinstance(
-                self.source_config.storageMetadataConfigSource, NoMetadataConfigurationSource):
+            self.source_config.storageMetadataConfigSource,
+            NoMetadataConfigurationSource,
+        ):
             return get_manifest(self.source_config.storageMetadataConfigSource)
         return None
 
