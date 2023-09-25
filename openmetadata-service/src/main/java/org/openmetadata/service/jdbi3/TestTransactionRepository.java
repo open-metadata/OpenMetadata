@@ -39,7 +39,7 @@ public class TestTransactionRepository {
   public void updateUsageStatsWithTransaction(Table table, int count) {
     String today = RestUtil.DATE_FORMAT.format(new Date());
     DailyCount dailyCount = new DailyCount().withCount(count).withDate(today);
-    dao.usageDAO().insertOrReplaceCount(dailyCount.getDate(), table.getId().toString(), "Table", dailyCount.getCount());
+    dao.usageDAO().insertOrReplaceCount(dailyCount.getDate(), table.getId(), "Table", dailyCount.getCount());
   }
 
   public void updateUsageStatsWithTransactionWithError(Table table, int count) {

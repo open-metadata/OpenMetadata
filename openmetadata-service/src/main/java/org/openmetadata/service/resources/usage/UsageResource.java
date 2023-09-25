@@ -89,7 +89,7 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
+          UUID id,
       @Parameter(
               description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
           @QueryParam("days")
@@ -178,7 +178,7 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
+          UUID id,
       @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
     OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
     ResourceContext resourceContext = new ResourceContext(entity);
