@@ -166,7 +166,6 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.bots.BotResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
-import org.openmetadata.service.resources.docstore.DocStoreResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
@@ -426,7 +425,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new KpiResourceTest().setupKpi();
     new BotResourceTest().setupBots();
     new QueryResourceTest().setupQuery(test);
-    new DocStoreResourceTest().setupDocuments(test);
 
     runWebhookTests = new Random().nextBoolean();
     if (runWebhookTests) {

@@ -60,6 +60,6 @@
       "$ref": "../../type/basic.json#/definitions/href"
     }
   },
-  "required": ["name", "data"],
+  "required": ["name","entityType", "fullyQualifiedName", "data"],
   "additionalProperties": false
 }

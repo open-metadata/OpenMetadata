@@ -30,6 +30,6 @@
       "$ref": "../../entity/docStore/document.json#/definitions/data"
     }
   },
-  "required": ["name", "fullyQualifiedName", "data"],
+  "required": ["name", "fullyQualifiedName","entityType", "data"],
   "additionalProperties": false
 }

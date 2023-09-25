@@ -264,5 +264,4 @@ public final class CatalogExceptionMessage {
         Arrays.stream(enumClass.getEnumConstants()).map(Object::toString).collect(Collectors.joining(", "));
     return "query param " + key + " must be one of [" + enumValues + "]";
   }
-
 }

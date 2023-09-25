@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.docstore;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -59,14 +60,9 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
-
 @Slf4j
 @Path("/v1/docStore")
-@Tag(
-    name = "Document Store",
-    description = "A `Document` is an generic entity in OpenMetadata.")
+@Tag(name = "Document Store", description = "A `Document` is an generic entity in OpenMetadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "knowledgePanel", order = 2)
@@ -106,8 +102,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
         @ApiResponse(
             responseCode = "200",
             description = "List of personas",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentList.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = DocumentList.class)))
       })
   public ResultList<Document> list(
       @Context UriInfo uriInfo,
@@ -118,13 +113,28 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
           @Max(1000000)
           @QueryParam("limit")
           int limitParam,
+      @Parameter(
+              description = "Filter docs by entityType",
+              schema = @Schema(type = "string", example = "KnowledgePanel"))
+          @QueryParam("entityType")
+          String entityType,
+      @Parameter(description = "Filter docs by fqnPrefix", schema = @Schema(type = "string", example = "fqnPrefix"))
+          @QueryParam("fqnPrefix")
+          String fqnPrefix,
       @Parameter(description = "Returns list of personas before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
       @Parameter(description = "Returns list of personas after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return super.listInternal(uriInfo, securityContext, "", new ListFilter(null), limitParam, before, after);
+    ListFilter filter = new ListFilter(Include.ALL);
+    if (entityType != null) {
+      filter.addQueryParam("entityType", entityType);
+    }
+    if (fqnPrefix != null) {
+      filter.addQueryParam("fqnPrefix", fqnPrefix);
+    }
+    return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 
   @GET
@@ -156,8 +166,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The Document",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(responseCode = "404", description = "Document for instance {id} is not found")
       })
   public Document get(
@@ -184,14 +193,14 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The Document",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(responseCode = "404", description = "Document for instance {name} is not found")
       })
   public Document getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Document", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Name of the Document", schema = @Schema(type = "string")) @PathParam("name")
+          String name,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -211,8 +220,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
         @ApiResponse(
             responseCode = "200",
             description = "KnowledgePanel",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Document for instance {id} and version {version} is " + "not found")
@@ -241,8 +249,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDocument cd) {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateDocument cd) {
     Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, doc);
   }
@@ -256,8 +263,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
         @ApiResponse(
             responseCode = "200",
             description = "The Document.",
-            content =
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Document.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
@@ -327,7 +333,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
 
   private Document getDocument(CreateDocument cd, String user) {
     return copy(new Document(), cd, user)
-            .withData(cd.getData())
-            .withEntityType(cd.getEntityType());
+        .withFullyQualifiedName(cd.getFullyQualifiedName())
+        .withData(cd.getData())
+        .withEntityType(cd.getEntityType());
   }
 }

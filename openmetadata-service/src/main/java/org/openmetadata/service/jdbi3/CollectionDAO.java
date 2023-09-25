@@ -3697,6 +3697,152 @@ public interface CollectionDAO {
     default boolean supportsSoftDelete() {
       return false;
     }
-  }
 
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String entityType = filter.getQueryParam("entityType");
+      String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String cond = filter.getCondition();
+      if (entityType == null && fqnPrefix == null) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+      mysqlCondition.append(cond);
+      psqlCondition.append(cond);
+
+      if (fqnPrefix != null) {
+        String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        String fqnCond =
+            String.format(" AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)", fqnPrefixHash);
+        mysqlCondition.append(fqnCond);
+        psqlCondition.append(fqnCond);
+      }
+
+      if (entityType != null) {
+        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+      }
+
+      return listBefore(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String entityType = filter.getQueryParam("entityType");
+      String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String cond = filter.getCondition();
+
+      if (entityType == null && fqnPrefix == null) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+      mysqlCondition.append(cond);
+      psqlCondition.append(cond);
+
+      if (fqnPrefix != null) {
+        String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        String fqnCond = String.format(" AND (fqnHash LIKE '%s' OR fqnHash='%s')", fqnPrefixHash + ".%", fqnPrefixHash);
+        mysqlCondition.append(fqnCond);
+        psqlCondition.append(fqnCond);
+      }
+      if (entityType != null) {
+        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+      }
+
+      return listAfter(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String entityType = filter.getQueryParam("entityType");
+      String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String cond = filter.getCondition();
+
+      if (entityType == null && fqnPrefix == null) {
+        return EntityDAO.super.listCount(filter);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+      mysqlCondition.append(cond);
+      psqlCondition.append(cond);
+
+      if (fqnPrefix != null) {
+        String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        String fqnCond = String.format(" AND (fqnHash LIKE '%s' OR fqnHash='%s')", fqnPrefixHash + ".%", fqnPrefixHash);
+        mysqlCondition.append(fqnCond);
+        psqlCondition.append(fqnCond);
+      }
+
+      if (entityType != null) {
+        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+      }
+
+      return listCount(getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString());
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <psqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <psqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <psqlCond>", connectionType = POSTGRES)
+    int listCount(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
+  }
 }

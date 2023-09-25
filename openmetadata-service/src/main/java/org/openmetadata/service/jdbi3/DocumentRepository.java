@@ -34,8 +34,12 @@ public class DocumentRepository extends EntityRepository<Document> {
         dao,
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
-    this.quoteFqn = true;
     supportsSearchIndex = false;
+  }
+
+  @Override
+  public void setFullyQualifiedName(Document doc) {
+    doc.setFullyQualifiedName(doc.getFullyQualifiedName());
   }
 
   @Override
@@ -79,6 +83,7 @@ public class DocumentRepository extends EntityRepository<Document> {
     public DocumentUpdater(Document original, Document updated, Operation operation) {
       super(original, updated, operation);
     }
+
     @Override
     public void entitySpecificUpdate() {
       recordChange("data", original.getData(), updated.getData(), true);

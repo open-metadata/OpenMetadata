@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS persona_entity (
 CREATE TABLE IF NOT EXISTS doc_store (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
-    entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
     fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
     json JSON NOT NULL,
     updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,

@@ -14,9 +14,9 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -24,24 +24,22 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
-import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.system.ui.Configuration;
+import org.openmetadata.schema.system.ui.KnowledgePanel;
+import org.openmetadata.schema.system.ui.Page;
+import org.openmetadata.schema.system.ui.PageType;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDocument> {
   public DocStoreResourceTest() {
-    super(
-        DOCUMENT,
-        Document.class,
-        DocStoreResource.DocumentList.class,
-        "docStore",
-        "");
+    super(DOCUMENT, Document.class, DocStoreResource.DocumentList.class, "docStore", "");
     supportsSearchIndex = false;
     supportsFieldsQueryParam = false;
   }
@@ -55,7 +53,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   @Test
-  void post_validKnowledgePanels_as_admin_200_OK(TestInfo test) throws IOException {
+  void post_validDocuments_as_admin_200_OK(TestInfo test) throws IOException {
     // Create Persona with different optional fields
     CreateDocument create = createRequest(test, 1);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -71,6 +69,109 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
     create = createRequest(test, 5).withDisplayName("displayName").withDescription("description");
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void post_validKnowledgePanels_as_admin_200_OK(TestInfo test) throws IOException {
+    // Create Persona with different optional fields
+    List<Document> panelDocs = new ArrayList<>();
+    KnowledgePanel knowledgePanel =
+        new KnowledgePanel()
+            .withConfiguration(
+                new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/activityFeed'}"));
+    String fqn =
+        FullyQualifiedName.build(
+            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "ActivityFeed");
+    CreateDocument create =
+        createRequest(test, 1)
+            .withName("ActivityFeed")
+            .withFullyQualifiedName(fqn)
+            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withEntityType(knowledgePanel.getEntityType().toString());
+    Document activityFeed = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    panelDocs.add(activityFeed);
+
+    knowledgePanel =
+        new KnowledgePanel()
+            .withConfiguration(
+                new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/knowledgePanel'}"));
+    fqn =
+        FullyQualifiedName.build(
+            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "MyData");
+    create =
+        createRequest(test, 1)
+            .withName("MyData")
+            .withFullyQualifiedName(fqn)
+            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withEntityType(knowledgePanel.getEntityType().toString());
+    Document myData = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    panelDocs.add(myData);
+
+    knowledgePanel = new KnowledgePanel();
+    fqn =
+        FullyQualifiedName.build(
+            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "Following");
+    create =
+        createRequest(test, 1)
+            .withName("Following")
+            .withFullyQualifiedName(fqn)
+            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withEntityType(knowledgePanel.getEntityType().toString());
+    Document following = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    panelDocs.add(following);
+    fqn =
+        FullyQualifiedName.build(
+            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "DataInsights");
+    knowledgePanel =
+        new KnowledgePanel()
+            .withConfiguration(
+                new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/dataInsights'}"));
+    create =
+        createRequest(test, 1)
+            .withData(new Data().withAdditionalProperty(knowledgePanel.getEntityType().toString(), knowledgePanel))
+            .withName("DataInsights")
+            .withFullyQualifiedName(fqn)
+            .withEntityType(knowledgePanel.getEntityType().toString());
+    Document dataInsights = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    panelDocs.add(dataInsights);
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put(
+        "fqnPrefix",
+        FullyQualifiedName.build(DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString()));
+    ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(panelDocs.size(), panelList.getPaging().getTotal());
+
+    // docs
+    List<Document> pageDocs = new ArrayList<>();
+    Page page =
+        new Page()
+            .withPageType(PageType.LANDING_PAGE)
+            .withKnowledgePanels(List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
+    create =
+        createRequest(test, 1)
+            .withName("LandingPage")
+            .withFullyQualifiedName(page.getEntityType().toString() + ".LandingPage")
+            .withEntityType(page.getEntityType().toString())
+            .withData(new Data().withAdditionalProperty(page.getEntityType().toString(), page));
+    Document landingPage = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    pageDocs.add(landingPage);
+
+    page =
+        new Page()
+            .withPageType(PageType.GLOSSARY_TERM_LANDING_PAGE)
+            .withKnowledgePanels(List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
+    create =
+        createRequest(test, 1)
+            .withName("GlossaryTermLandingPage")
+            .withFullyQualifiedName(page.getEntityType().toString() + ".GlossaryTermLandingPage")
+            .withEntityType(page.getEntityType().toString())
+            .withData(new Data().withAdditionalProperty(page.getEntityType().toString(), page));
+    Document glossaryTermLandingPage = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    pageDocs.add(glossaryTermLandingPage);
+    queryParams = new HashMap<>();
+    queryParams.put("entityType", page.getEntityType().toString());
+    ResultList<Document> docList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(pageDocs.size(), docList.getPaging().getTotal());
   }
 
   @Test
@@ -115,11 +216,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   private static void validateKnowledgePanel(
-      Document doc,
-      String expectedDescription,
-      String expectedDisplayName,
-      Object data,
-      String expectedUpdatedBy) {
+      Document doc, String expectedDescription, String expectedDisplayName, Object data, String expectedUpdatedBy) {
     assertListNotNull(doc.getId(), doc.getHref());
     assertEquals(expectedDescription, doc.getDescription());
     assertEquals(expectedUpdatedBy, doc.getUpdatedBy());
@@ -137,8 +234,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   @Override
-  public void validateCreatedEntity(
-      Document document, CreateDocument createRequest, Map<String, String> authHeaders) {}
+  public void validateCreatedEntity(Document document, CreateDocument createRequest, Map<String, String> authHeaders) {}
 
   @Override
   public void compareEntities(Document expected, Document updated, Map<String, String> authHeaders) {
@@ -148,8 +244,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   @Override
-  public Document validateGetWithDifferentFields(Document entity, boolean byName)
-      throws HttpResponseException {
+  public Document validateGetWithDifferentFields(Document entity, boolean byName) throws HttpResponseException {
     return null;
   }
 
@@ -159,7 +254,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
       return;
     }
     if (fieldName.equals("data")) {
-     assertDocData(expected, actual);
+      assertDocData(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -169,5 +264,4 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     Data data = (Data) expected;
     assertEquals(data.getAdditionalProperties(), JsonUtils.getMap(JsonUtils.readJson(actual.toString())));
   }
-
 }
