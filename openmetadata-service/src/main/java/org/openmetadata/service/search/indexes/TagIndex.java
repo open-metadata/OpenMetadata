@@ -28,12 +28,6 @@ public class TagIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (tag.getDomain() != null) {
-      EntityReference domain = tag.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      tag.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(tag);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -50,6 +44,12 @@ public class TagIndex implements ElasticSearchIndex {
     }
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TAG);
+    if (tag.getDomain() != null) {
+      EntityReference domain = tag.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

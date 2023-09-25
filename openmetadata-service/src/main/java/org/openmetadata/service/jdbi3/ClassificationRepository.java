@@ -106,17 +106,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  @SuppressWarnings("unused")
-  public void postUpdate(Classification original, Classification updated) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    if (updated.getDisabled() != null) {
-      scriptTxt = "ctx._source.disabled=" + updated.getDisabled();
-    }
-    searchRepository.updateSearchEntityUpdated(
-        JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.id");
-  }
-
-  @Override
   public void deleteFromSearch(Classification entity, String changeType) {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
@@ -149,7 +138,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
+      recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
 

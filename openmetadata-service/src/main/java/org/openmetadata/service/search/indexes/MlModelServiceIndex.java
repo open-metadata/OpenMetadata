@@ -23,11 +23,6 @@ public class MlModelServiceIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (mlModelService.getOwner() != null) {
-      EntityReference owner = mlModelService.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      mlModelService.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(mlModelService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -40,6 +35,11 @@ public class MlModelServiceIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL_SERVICE);
+    if (mlModelService.getOwner() != null) {
+      EntityReference owner = mlModelService.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 }

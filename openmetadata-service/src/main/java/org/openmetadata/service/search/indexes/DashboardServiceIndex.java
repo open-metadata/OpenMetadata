@@ -23,11 +23,6 @@ public class DashboardServiceIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (dashboardService.getOwner() != null) {
-      EntityReference owner = dashboardService.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      dashboardService.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(dashboardService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -40,6 +35,17 @@ public class DashboardServiceIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DASHBOARD_SERVICE);
+    if (dashboardService.getOwner() != null) {
+      EntityReference owner = dashboardService.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (dashboardService.getDomain() != null) {
+      EntityReference domain = dashboardService.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 }

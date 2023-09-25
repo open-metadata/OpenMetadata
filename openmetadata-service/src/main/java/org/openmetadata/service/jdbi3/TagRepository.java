@@ -102,7 +102,8 @@ public class TagRepository extends EntityRepository<Tag> {
     if (supportsSearchIndex) {
       String scriptTxt =
           "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      searchRepository.deleteEntityAndRemoveRelationships(JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
+      searchRepository.deleteEntityAndRemoveRelationships(
+          JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
     }
   }
 

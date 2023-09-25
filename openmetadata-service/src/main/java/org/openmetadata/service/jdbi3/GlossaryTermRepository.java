@@ -227,10 +227,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    if (supportsSearchIndex) {
-      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, GlossaryTerm.class), scriptTxt, "");
-    }
+    super.postUpdate(original, updated);
     if (original.getStatus() == Status.DRAFT) {
       if (updated.getStatus() == Status.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");

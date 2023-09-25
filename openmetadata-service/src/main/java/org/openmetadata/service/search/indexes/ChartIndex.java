@@ -23,11 +23,6 @@ public class ChartIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (chart.getOwner() != null) {
-      EntityReference owner = chart.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      chart.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(chart);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -39,6 +34,11 @@ public class ChartIndex implements ElasticSearchIndex {
             chart.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.CHART);
+    if (chart.getOwner() != null) {
+      EntityReference owner = chart.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 }

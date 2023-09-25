@@ -34,17 +34,6 @@ public class DashboardIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (dashboard.getOwner() != null) {
-      EntityReference owner = dashboard.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      dashboard.setOwner(owner);
-    }
-    if (dashboard.getDomain() != null) {
-      EntityReference domain = dashboard.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      dashboard.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(dashboard);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -76,6 +65,17 @@ public class DashboardIndex implements ElasticSearchIndex {
     doc.put("entityType", Entity.DASHBOARD);
     doc.put("serviceType", dashboard.getServiceType());
     doc.put("fqnParts", suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList()));
+    if (dashboard.getOwner() != null) {
+      EntityReference owner = dashboard.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (dashboard.getDomain() != null) {
+      EntityReference domain = dashboard.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

@@ -49,7 +49,8 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
             changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
             "service.id");
       } else {
-        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, MessagingService.class), "", "service.id");
+        searchRepository.updateSearchEntityDeleted(
+            JsonUtils.deepCopy(entity, MessagingService.class), "", "service.id");
       }
     }
   }

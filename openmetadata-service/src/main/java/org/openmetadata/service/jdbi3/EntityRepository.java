@@ -43,6 +43,8 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResource.searchRepository;
+import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_CHILDREN_MAPPING;
+import static org.openmetadata.service.search.SearchRepository.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -96,6 +98,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
@@ -721,9 +724,37 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    if (supportsSearchIndex) {
-      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
+    searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), DEFAULT_UPDATE_SCRIPT, "");
+    if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
+        && (updated.getChangeDescription() != null)) {
+      for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
+        if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+          searchRepository.handleOwnerUpdates(original, updated, "added");
+        }
+        if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+          searchRepository.handleDomainUpdates(original, updated, "added");
+        }
+      }
+      for (FieldChange fieldChange : updated.getChangeDescription().getFieldsUpdated()) {
+        if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+          searchRepository.handleOwnerUpdates(original, updated, "updated");
+        }
+        if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+          searchRepository.handleDomainUpdates(original, updated, "updated");
+        }
+        if (fieldChange.getName().equalsIgnoreCase("disabled")
+            && updated.getEntityReference().getType().equals(Entity.CLASSIFICATION)) {
+          searchRepository.handleClassificationUpdate((Classification) updated);
+        }
+      }
+      for (FieldChange fieldChange : updated.getChangeDescription().getFieldsDeleted()) {
+        if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+          searchRepository.handleOwnerUpdates(original, updated, "deleted");
+        }
+        if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+          searchRepository.handleDomainUpdates(original, updated, "deleted");
+        }
+      }
     }
   }
 
@@ -794,7 +825,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(entity, entity);
+    if (supportsSearchIndex) {
+      postUpdate(entity, entity);
+    }
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -898,9 +931,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       cleanup(updated);
       changeType = RestUtil.ENTITY_DELETED;
     }
-    if (supportsSearchIndex) {
-
-    }
+    if (supportsSearchIndex) {}
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
   }
@@ -1770,7 +1801,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Store the updated entity
       storeUpdate();
-      postUpdate(original, updated);
+      if (supportsSearchIndex) {
+        postUpdate(original, updated);
+      }
     }
 
     public void entitySpecificUpdate() {

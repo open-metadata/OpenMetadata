@@ -50,8 +50,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 public final class TablesInitializer {

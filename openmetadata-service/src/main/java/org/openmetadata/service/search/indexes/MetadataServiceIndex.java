@@ -23,11 +23,6 @@ public class MetadataServiceIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (metadataService.getOwner() != null) {
-      EntityReference owner = metadataService.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      metadataService.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(metadataService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -40,6 +35,11 @@ public class MetadataServiceIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.METADATA_SERVICE);
+    if (metadataService.getOwner() != null) {
+      EntityReference owner = metadataService.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 }

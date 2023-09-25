@@ -31,11 +31,6 @@ public class DomainIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (domain.getOwner() != null) {
-      EntityReference owner = domain.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      domain.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(domain);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -48,6 +43,11 @@ public class DomainIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DOMAIN);
+    if (domain.getOwner() != null) {
+      EntityReference owner = domain.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 

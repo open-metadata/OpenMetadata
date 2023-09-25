@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.service.search.EntityBuilderConstant.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,11 +23,6 @@ public class SearchServiceIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (searchService.getOwner() != null) {
-      EntityReference owner = searchService.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      searchService.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(searchService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -42,6 +35,11 @@ public class SearchServiceIndex implements ElasticSearchIndex {
         getFQNParts(
             searchService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (searchService.getOwner() != null) {
+      EntityReference owner = searchService.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 }

@@ -40,17 +40,6 @@ public class TopicIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (topic.getOwner() != null) {
-      EntityReference owner = topic.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      topic.setOwner(owner);
-    }
-    if (topic.getDomain() != null) {
-      EntityReference domain = topic.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      topic.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(topic);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
@@ -86,6 +75,17 @@ public class TopicIndex implements ElasticSearchIndex {
         "fqnParts",
         getFQNParts(
             topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (topic.getOwner() != null) {
+      EntityReference owner = topic.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (topic.getDomain() != null) {
+      EntityReference domain = topic.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

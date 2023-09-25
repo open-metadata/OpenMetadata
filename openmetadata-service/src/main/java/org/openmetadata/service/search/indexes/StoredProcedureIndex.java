@@ -31,17 +31,6 @@ public class StoredProcedureIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (storedProcedure.getOwner() != null) {
-      EntityReference owner = storedProcedure.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      storedProcedure.setOwner(owner);
-    }
-    if (storedProcedure.getDomain() != null) {
-      EntityReference domain = storedProcedure.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      storedProcedure.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(storedProcedure);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -54,6 +43,17 @@ public class StoredProcedureIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORED_PROCEDURE);
+    if (storedProcedure.getOwner() != null) {
+      EntityReference owner = storedProcedure.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (storedProcedure.getDomain() != null) {
+      EntityReference domain = storedProcedure.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

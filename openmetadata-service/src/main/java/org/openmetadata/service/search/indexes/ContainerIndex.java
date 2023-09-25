@@ -34,17 +34,6 @@ public class ContainerIndex implements ColumnIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (container.getOwner() != null) {
-      EntityReference owner = container.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      container.setOwner(owner);
-    }
-    if (container.getDomain() != null) {
-      EntityReference domain = container.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      container.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(container);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
@@ -77,6 +66,17 @@ public class ContainerIndex implements ColumnIndex {
         getFQNParts(
             container.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (container.getOwner() != null) {
+      EntityReference owner = container.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (container.getDomain() != null) {
+      EntityReference domain = container.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

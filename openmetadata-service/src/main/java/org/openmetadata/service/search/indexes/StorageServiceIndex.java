@@ -23,11 +23,6 @@ public class StorageServiceIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (storageService.getOwner() != null) {
-      EntityReference owner = storageService.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      storageService.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(storageService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -40,6 +35,11 @@ public class StorageServiceIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.METADATA_SERVICE);
+    if (storageService.getOwner() != null) {
+      EntityReference owner = storageService.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 }

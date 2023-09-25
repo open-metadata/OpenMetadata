@@ -23,11 +23,6 @@ public class PipelineServiceIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (pipelineService.getOwner() != null) {
-      EntityReference owner = pipelineService.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      pipelineService.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(pipelineService);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -40,6 +35,11 @@ public class PipelineServiceIndex implements ElasticSearchIndex {
         getFQNParts(
             pipelineService.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (pipelineService.getOwner() != null) {
+      EntityReference owner = pipelineService.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 }

@@ -443,7 +443,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
       throws IOException, ParseException {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    return searchRepository.listDataInsightChartResult(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+    return searchRepository.listDataInsightChartResult(
+        startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) {

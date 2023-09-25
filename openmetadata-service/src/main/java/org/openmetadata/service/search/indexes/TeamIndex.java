@@ -34,6 +34,7 @@ public class TeamIndex implements ElasticSearchIndex {
             team.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
+    doc.put("displayName", CommonUtil.nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName());
     return doc;
   }
 }

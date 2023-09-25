@@ -30,17 +30,6 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (glossaryTerm.getOwner() != null) {
-      EntityReference owner = glossaryTerm.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      glossaryTerm.setOwner(owner);
-    }
-    if (glossaryTerm.getDomain() != null) {
-      EntityReference domain = glossaryTerm.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      glossaryTerm.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(glossaryTerm);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -53,6 +42,17 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY_TERM);
+    if (glossaryTerm.getOwner() != null) {
+      EntityReference owner = glossaryTerm.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (glossaryTerm.getDomain() != null) {
+      EntityReference domain = glossaryTerm.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

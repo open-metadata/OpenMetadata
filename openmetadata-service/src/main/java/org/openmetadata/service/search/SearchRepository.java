@@ -6,6 +6,7 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_CHILDREN_MAPPING;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
@@ -25,12 +26,12 @@ import lombok.SneakyThrows;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -44,6 +45,91 @@ import org.opensearch.client.RequestOptions;
 
 public interface SearchRepository {
   String GLOBAL_SEARCH_ALIAS = "AllEntities";
+  String DATABASE_ALIAS = "databaseAlias";
+  String DATABASE_SCHEMA_ALIAS = "databaseSchemaAlias";
+
+  String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
+  String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
+
+  default void handleOwnerUpdates(EntityInterface original, EntityInterface updated, String eventType) {
+    if (eventType.equalsIgnoreCase("added")) {
+      this.updateSearchChildrenUpdated(
+          updated,
+          getOwnerChangeScript(eventType, ""),
+          updated.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getOwner());
+    } else if (eventType.equalsIgnoreCase("updated")) {
+      this.updateSearchChildrenUpdated(
+          updated,
+          getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
+          updated.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getOwner());
+    }
+    if (eventType.equalsIgnoreCase("deleted")) {
+      this.updateSearchChildrenUpdated(
+          updated,
+          getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
+          updated.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getOwner());
+    }
+  }
+
+  default void handleDomainUpdates(EntityInterface original, EntityInterface updated, String eventType) {
+    if (eventType.equalsIgnoreCase("added")) {
+      this.updateSearchChildrenUpdated(
+          updated,
+          getDomainChangeScript(eventType, ""),
+          updated.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getDomain());
+    } else if (eventType.equalsIgnoreCase("updated")) {
+      this.updateSearchChildrenUpdated(
+          updated,
+          getDomainChangeScript(eventType, original.getDomain().getId().toString()),
+          updated.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getDomain());
+    }
+    if (eventType.equalsIgnoreCase("deleted")) {
+      this.updateSearchChildrenUpdated(
+          updated,
+          getDomainChangeScript(eventType, original.getDomain().getId().toString()),
+          updated.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getDomain());
+    }
+  }
+
+  default void handleClassificationUpdate(Classification entity) {
+    this.updateSearchEntityUpdated(entity, String.format(CLASSIFICATION_DISABLE_SCRIPT, entity.getDisabled()), "");
+  }
+
+  default String getOwnerChangeScript(String eventType, String ownerId) {
+    String scriptTxt = "";
+    if (eventType.equals("added")) {
+      scriptTxt = "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
+    } else if (eventType.equals("deleted")) {
+      scriptTxt = String.format("if(ctx._source.owner.id == '%s'){ ctx._source.remove('owner')}", ownerId);
+    } else if (eventType.equals("updated")) {
+      scriptTxt = String.format("if(ctx._source.owner.id == '%s'){ ctx._source.put('owner', params)}", ownerId);
+    }
+    return scriptTxt;
+  }
+
+  default String getDomainChangeScript(String eventType, String domainId) {
+    String scriptTxt = "";
+    if (eventType.equals("added")) {
+      scriptTxt = "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
+    } else if (eventType.equals("deleted")) {
+      scriptTxt = String.format("if(ctx._source.domain.id == '%s'){ ctx._source.remove('domain')}", domainId);
+    } else if (eventType.equals("updated")) {
+      scriptTxt = String.format("if(ctx._source.domain.id == '%s'){ ctx._source.put('domain', params)}", domainId);
+    }
+    return scriptTxt;
+  }
 
   boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
 
@@ -62,14 +148,6 @@ public interface SearchRepository {
   Response suggest(SearchRequest request) throws IOException;
 
   ElasticSearchConfiguration.SearchType getSearchType();
-
-  default UpdateRequest applyOSChangeEvent(ChangeEvent event) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default org.elasticsearch.action.update.UpdateRequest applyESChangeEvent(ChangeEvent event) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
-  }
 
   default void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
@@ -92,6 +170,8 @@ public interface SearchRepository {
   void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field);
 
   void updateSearchEntityUpdated(EntityInterface entity, String script, String field);
+
+  void updateSearchChildrenUpdated(EntityInterface entity, String scriptTxt, String field, String alias, Object data);
 
   void updateSearchByQuery(EntityInterface entity, String script, String field, Object data);
 

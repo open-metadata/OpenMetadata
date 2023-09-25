@@ -57,10 +57,10 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchEventPublisher;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.SearchIndexFactory;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchRetriableException;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -976,8 +976,7 @@ public class OpenSearchClientImpl implements SearchRepository {
     }
     String contextInfo = String.format("Index Info : %s", index);
     SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(index);
-    Script script =
-        new Script(ScriptType.INLINE, org.elasticsearch.script.Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
+    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
     ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
     DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
     deleteByQueryRequest.setQuery(scriptQuery);
@@ -1104,6 +1103,30 @@ public class OpenSearchClientImpl implements SearchRepository {
       handleOpenSearchException(entity, e);
     } catch (IOException ie) {
       handleIOException(entity, ie);
+    }
+  }
+
+  @Override
+  public void updateSearchChildrenUpdated(
+      EntityInterface entity, String scriptTxt, String field, String alias, Object data) {
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
+      updateByQueryRequest.setRefresh(true);
+      ElasticSearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, entity);
+      Map<String, Object> doc = elasticSearchIndex.buildESDoc();
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateByQueryRequest.setScript(script);
+      try {
+        updateElasticSearchByQuery(updateByQueryRequest);
+      } catch (DocumentMissingException ex) {
+        handleDocumentMissingException(entity, ex);
+      } catch (OpenSearchException e) {
+        handleOpenSearchException(entity, e);
+      } catch (IOException ie) {
+        handleIOException(entity, ie);
+      }
     }
   }
 

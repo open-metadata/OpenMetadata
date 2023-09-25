@@ -73,7 +73,8 @@ public class DataInsightsReportJob implements Job {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    SearchRepository searchRepository = (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT);
+    SearchRepository searchRepository =
+        (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT);
     EventSubscription dataReport =
         (EventSubscription) jobExecutionContext.getJobDetail().getJobDataMap().get(EVENT_SUBSCRIPTION);
     // Calculate time diff
@@ -99,7 +100,8 @@ public class DataInsightsReportJob implements Job {
   }
 
   private void sendReportsToTeams(
-          SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange) throws IOException {
+      SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      throws IOException {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
@@ -118,7 +120,8 @@ public class DataInsightsReportJob implements Job {
           DataInsightTotalAssetTemplate totalAssetTemplate =
               createTotalAssetTemplate(searchRepository, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(searchRepository, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createDescriptionTemplate(
+                  searchRepository, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
               createOwnershipTemplate(searchRepository, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
@@ -138,7 +141,8 @@ public class DataInsightsReportJob implements Job {
     }
   }
 
-  private void sendToAdmins(SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
+  private void sendToAdmins(
+      SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
 
@@ -176,7 +180,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightTotalAssetTemplate createTotalAssetTemplate(
-          SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDays)
+      SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDays)
       throws ParseException, IOException {
     // Get total Assets Data
     TreeMap<Long, List<Object>> dateWithDataMap =
@@ -204,7 +208,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
-          SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -253,7 +257,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
-          SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
@@ -303,7 +307,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
-          SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      SearchRepository searchRepository, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given

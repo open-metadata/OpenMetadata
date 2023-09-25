@@ -32,11 +32,6 @@ public class TestCaseIndex implements ElasticSearchIndex {
 
   @SneakyThrows
   public Map<String, Object> buildESDoc() {
-    if (testCase.getOwner() != null) {
-      EntityReference owner = testCase.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      testCase.setOwner(owner);
-    }
     List<TestSuite> testSuiteArray = new ArrayList<>();
     if (testCase.getTestSuites() != null) {
       for (TestSuite suite : testCase.getTestSuites()) {
@@ -57,6 +52,11 @@ public class TestCaseIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
+    if (testCase.getOwner() != null) {
+      EntityReference owner = testCase.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
     return doc;
   }
 

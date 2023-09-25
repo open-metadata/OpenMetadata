@@ -22,11 +22,6 @@ public class DatabaseSchemaIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (databaseSchema.getOwner() != null) {
-      EntityReference owner = databaseSchema.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      databaseSchema.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(databaseSchema);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -39,6 +34,17 @@ public class DatabaseSchemaIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE_SCHEMA);
+    if (databaseSchema.getOwner() != null) {
+      EntityReference owner = databaseSchema.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (databaseSchema.getDomain() != null) {
+      EntityReference domain = databaseSchema.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 }

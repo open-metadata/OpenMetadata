@@ -33,18 +33,6 @@ public class SearchEntityIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-
-    if (searchIndex.getOwner() != null) {
-      EntityReference owner = searchIndex.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      searchIndex.setOwner(owner);
-    }
-    if (searchIndex.getDomain() != null) {
-      EntityReference domain = searchIndex.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      searchIndex.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(searchIndex);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -57,6 +45,17 @@ public class SearchEntityIndex implements ElasticSearchIndex {
         getFQNParts(
             searchIndex.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (searchIndex.getOwner() != null) {
+      EntityReference owner = searchIndex.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (searchIndex.getDomain() != null) {
+      EntityReference domain = searchIndex.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 

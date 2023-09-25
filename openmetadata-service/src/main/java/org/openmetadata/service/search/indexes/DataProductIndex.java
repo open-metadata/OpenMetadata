@@ -23,11 +23,6 @@ public class DataProductIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (dataProduct.getOwner() != null) {
-      EntityReference owner = dataProduct.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      dataProduct.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(dataProduct);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -39,6 +34,17 @@ public class DataProductIndex implements ElasticSearchIndex {
             dataProduct.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("entityType", Entity.DATA_PRODUCT);
+    if (dataProduct.getOwner() != null) {
+      EntityReference owner = dataProduct.getOwner();
+      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
+      doc.put("owner", owner);
+    }
+    if (dataProduct.getDomain() != null) {
+      EntityReference domain = dataProduct.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      doc.put("domain", domain);
+    }
     return doc;
   }
 }

@@ -20,5 +20,4 @@ public interface ElasticSearchIndex {
     fqnParts.addAll(fqnSplits);
     return fqnParts;
   }
-
 }
