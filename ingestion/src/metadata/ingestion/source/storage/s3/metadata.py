@@ -366,23 +366,23 @@ class S3Source(StorageServiceSource):
         )
 
     @staticmethod
-        def _manifest_entries_to_metadata_entries_by_bucket(
-            bucket: str, manifest: ManifestMetadataConfig
-        ) -> List[MetadataEntry]:
-            """
-            Convert manifest entries(which have an extra bucket property) to bucket-level metadata entries, filtered by
-            a given bucket
-            """
-            return [
-                MetadataEntry(
-                    dataPath=entry.dataPath,
-                    structureFormat=entry.structureFormat,
-                    isPartitioned=entry.isPartitioned,
-                    partitionColumns=entry.partitionColumns,
-                )
-                for entry in manifest.entries
-                if entry.bucketName == bucket
-            ]
+    def _manifest_entries_to_metadata_entries_by_bucket(
+        bucket: str, manifest: ManifestMetadataConfig
+    ) -> List[MetadataEntry]:
+        """
+        Convert manifest entries(which have an extra bucket property) to bucket-level metadata entries, filtered by
+        a given bucket
+        """
+        return [
+            MetadataEntry(
+                dataPath=entry.dataPath,
+                structureFormat=entry.structureFormat,
+                isPartitioned=entry.isPartitioned,
+                partitionColumns=entry.partitionColumns,
+            )
+            for entry in manifest.entries
+            if entry.bucketName == bucket
+        ]
 
     def _get_sample_file_path(
         self, bucket_name: str, metadata_entry: MetadataEntry
