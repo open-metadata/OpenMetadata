@@ -713,19 +713,6 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityChildRemovedDescription: '',
     entityChildAddedDescription: '',
   },
-  'Data Model': {
-    name: DATA_MODEL_NAME,
-    serviceName: 'sample_looker',
-    entity: 'dashboard/datamodels',
-    entityCreationDetails: DATA_MODEL_DETAILS_FOR_VERSION_TEST,
-    entityPatchPayload: DATA_MODEL_PATCH_PAYLOAD,
-    isChildrenExist: true,
-    childSelector: 'data-row-key',
-    entityAddedDescription: `Description for ${DATA_MODEL_NAME}`,
-    updatedTagEntityChildName: 'column_1',
-    entityChildRemovedDescription: 'Description for column column_2',
-    entityChildAddedDescription: 'Description for column column_3',
-  },
 };
 
 export const DATA_MODEL_DETAILS = {
