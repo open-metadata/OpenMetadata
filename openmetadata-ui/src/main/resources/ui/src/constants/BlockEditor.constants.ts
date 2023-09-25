@@ -123,3 +123,6 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
     preserveWhitespace: 'full',
   },
 };
+
+export const IMAGE_INPUT_REGEX =
+  /(?:^|\s)(!\[(.+|:?)]\((\S+)(?:(?:\s+)["'](\S+)["'])?\))$/;

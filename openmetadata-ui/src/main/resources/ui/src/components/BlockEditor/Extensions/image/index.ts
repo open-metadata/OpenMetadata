@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node, nodeInputRule } from '@tiptap/core';
+import { IMAGE_INPUT_REGEX } from 'constants/BlockEditor.constants';
 
 export interface ImageOptions {
   inline: boolean;
@@ -32,9 +33,6 @@ declare module '@tiptap/core' {
     };
   }
 }
-
-export const inputRegex =
-  /(?:^|\s)(!\[(.+|:?)]\((\S+)(?:(?:\s+)["'](\S+)["'])?\))$/;
 
 export const Image = Node.create<ImageOptions>({
   name: 'image',
@@ -103,7 +101,7 @@ export const Image = Node.create<ImageOptions>({
   addInputRules() {
     return [
       nodeInputRule({
-        find: inputRegex,
+        find: IMAGE_INPUT_REGEX,
         type: this.type,
         getAttributes: (match) => {
           const [, , alt, src, title] = match;
