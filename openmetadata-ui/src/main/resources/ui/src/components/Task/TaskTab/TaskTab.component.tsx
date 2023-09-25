@@ -59,6 +59,7 @@ import { getEntityFQN } from 'utils/FeedUtils';
 import {
   fetchOptions,
   isDescriptionTask,
+  isGlossaryTermApprovalTask,
   isTagsTask,
   TASK_ACTION_LIST,
 } from 'utils/TasksUtils';
@@ -141,6 +142,10 @@ export const TaskTab = ({
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
+  const isTaskGlossaryApproval = isGlossaryTermApprovalTask(
+    taskDetails?.type as TaskType
+  );
+
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
       <span>{`#${taskDetails?.id} `}</span>
@@ -165,7 +170,7 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
-    if (isEmpty(taskDetails?.suggestion)) {
+    if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
         t('message.field-text-is-required', {
           fieldText: isTaskTags
@@ -183,7 +188,10 @@ export const TaskTab = ({
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const data = { newValue: taskDetails?.suggestion };
+      const newValue = isTaskGlossaryApproval
+        ? 'approved'
+        : taskDetails?.suggestion;
+      const data = { newValue: newValue };
       updateTaskData(data as TaskDetails);
     }
   };
@@ -248,9 +256,33 @@ export const TaskTab = ({
     }
   };
 
+  const approvalWorkflowActions = useMemo(() => {
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        {(isCreator || hasEditAccess) && (
+          <>
+            <Button onClick={onTaskReject}>{t('label.reject')}</Button>
+            {hasEditAccess && (
+              <Button type="primary" onClick={onTaskResolve}>
+                {t('label.approve')}
+              </Button>
+            )}
+          </>
+        )}
+      </Space>
+    );
+  }, [taskDetails, onTaskResolve, hasEditAccess, isCreator]);
+
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
       return null;
+    }
+
+    if (isTaskGlossaryApproval) {
+      return approvalWorkflowActions;
     }
 
     const parsedSuggestion = [
@@ -310,6 +342,7 @@ export const TaskTab = ({
     handleMenuItemClick,
     taskAction,
     isTaskClosed,
+    isTaskGlossaryApproval,
     isCreator,
   ]);
 

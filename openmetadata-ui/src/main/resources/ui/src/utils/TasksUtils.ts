@@ -507,6 +507,9 @@ export const isDescriptionTask = (taskType: TaskType) =>
 export const isTagsTask = (taskType: TaskType) =>
   [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);
 
+export const isGlossaryTermApprovalTask = (taskType: TaskType) =>
+  [TaskType.RequestApproval].includes(taskType);
+
 export const getEntityTaskDetails = (
   entityType: EntityType
 ): {
