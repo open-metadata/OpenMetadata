@@ -47,12 +47,13 @@ SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
 
 SNOWFLAKE_GET_TABLE_NAMES = """
 select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
+where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE' {}
 """
+
 
 SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
 select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE'
+where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE' {}
 """
 
 
@@ -60,8 +61,9 @@ SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' 
 AND TABLE_TYPE = 'BASE TABLE' 
-AND IS_TRANSIENT != 'YES'
+AND IS_TRANSIENT != 'YES' {}
 """
+
 
 SNOWFLAKE_GET_VIEW_NAMES = """
 select TABLE_NAME from information_schema.tables 
@@ -71,8 +73,9 @@ SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME from information_schema.tables 
 where TABLE_SCHEMA = '{}' 
 AND TABLE_TYPE = 'BASE TABLE' 
-AND IS_TRANSIENT = 'YES'
+AND IS_TRANSIENT = 'YES' {}
 """
+
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
@@ -122,6 +125,8 @@ SELECT TABLE_NAME FROM information_schema.tables LIMIT 1
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
+SNOWFLAKE_GET_FILTER_DATABASES = "SHOW DATABASES LIKE '{filter_database_name}'"
+SNOWFLAKE_GET_FILTERSCHEMA = "SHOW DATABASES LIKE '{filter_schema_name}'"
 
 
 SNOWFLAKE_GET_SCHEMA_COLUMNS = """

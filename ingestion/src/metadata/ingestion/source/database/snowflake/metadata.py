@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -81,6 +82,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_CURRENT_REGION,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_GET_FILTER_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_GET_STORED_PROCEDURES,
@@ -102,7 +104,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_table
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
@@ -247,38 +249,118 @@ class SnowflakeSource(CommonDbSourceService):
             self.set_database_description_map()
             yield configured_db
         else:
-            results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
-            for res in results:
-                row = list(res)
-                new_database = row[1]
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=new_database,
+            results = []
+            if self.source_config.pushFilterDown:
+                for filter_db_name in self.source_config.databaseFilterPattern.includes:
+                    result = self.connection.execute(
+                        SNOWFLAKE_GET_FILTER_DATABASES.format(
+                            filter_database_name=filter_db_name
+                        )
+                    )
+                    results.append(result)
+            else:
+                results.append(self.connection.execute(SNOWFLAKE_GET_DATABASES))
+            for fil_res in results:
+                for res in fil_res:
+                    row = list(res)
+                    new_database = row[1]
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=new_database,
+                    )
+                    if not self.source_config.pushFilterDown:
+                        if filter_by_database(
+                            self.source_config.databaseFilterPattern,
+                            database_fqn
+                            if self.source_config.useFqnForFiltering
+                            else new_database,
+                        ):
+                            self.status.filter(database_fqn, "Database Filtered Out")
+                            continue
+
+            try:
+                self.set_inspector(database_name=new_database)
+                self.set_session_query_tag()
+                self.set_partition_details()
+                self.set_schema_description_map()
+                self.set_database_description_map()
+                yield new_database
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to connect to database {new_database}: {exc}"
                 )
 
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
-                    continue
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views.
 
-                try:
-                    self.set_inspector(database_name=new_database)
-                    self.set_session_query_tag()
-                    self.set_partition_details()
-                    self.set_schema_description_map()
-                    self.set_database_description_map()
-                    yield new_database
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error trying to connect to database {new_database}: {exc}"
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        try:
+            schema_name = self.context.database_schema.name.__root__
+            if self.source_config.includeTables:
+                for table_and_type in self.query_table_names_and_types(schema_name):
+                    table_name = self.standardize_table_name(
+                        schema_name, table_and_type.name
                     )
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                        skip_es_search=True,
+                    )
+                    if not self.source_config.pushFilterDown:
+                        if filter_by_table(
+                            self.source_config.tableFilterPattern,
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name,
+                        ):
+                            self.status.filter(
+                                table_fqn,
+                                "Table Filtered Out",
+                            )
+                            continue
+                    yield table_name, table_and_type.type_
+
+            if self.source_config.includeViews:
+                for view_name in self.inspector.get_view_names(schema_name):
+                    view_name = self.standardize_table_name(schema_name, view_name)
+                    view_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=view_name,
+                    )
+
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        view_fqn
+                        if self.source_config.useFqnForFiltering
+                        else view_name,
+                    ):
+                        self.status.filter(
+                            view_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
+                    yield view_name, TableType.View
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {schema_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def __get_identifier_from_function(self, function_token: Function) -> List:
         identifiers = []
@@ -405,6 +487,10 @@ class SnowflakeSource(CommonDbSourceService):
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
+                pushFilterDown=self.source_config.pushFilterDown,
+                filter_table_name=self.source_config.tableFilterPattern.includes
+                if self.source_config.tableFilterPattern
+                else None,  # pylint: disable=line-too-long
             )
         ]
 
@@ -412,7 +498,12 @@ class SnowflakeSource(CommonDbSourceService):
             [
                 TableNameAndType(name=table_name, type_=TableType.External)
                 for table_name in self.inspector.get_table_names(
-                    schema=schema_name, external_tables=True
+                    schema=schema_name,
+                    external_tables=True,
+                    pushFilterDown=self.source_config.pushFilterDown,
+                    filter_table_name=self.source_config.tableFilterPattern.includes
+                    if self.source_config.tableFilterPattern
+                    else None,  # pylint: disable=line-too-long
                 )
             ]
         )
@@ -424,6 +515,10 @@ class SnowflakeSource(CommonDbSourceService):
                     for table_name in self.inspector.get_table_names(
                         schema=schema_name,
                         include_transient_tables=True,
+                        pushFilterDown=self.source_config.pushFilterDown,
+                        filter_table_name=self.source_config.tableFilterPattern.includes
+                        if self.source_config.tableFilterPattern
+                        else None,  # pylint: disable=line-too-long
                     )
                 ]
             )

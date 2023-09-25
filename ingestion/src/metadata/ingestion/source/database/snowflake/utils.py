@@ -74,6 +74,16 @@ def get_table_names_reflection(self, schema=None, **kw):
         )
 
 
+def get_filter_table_name(filter_table_name):
+    table_filter_pattern = (
+        str(tuple(filter_table_name))
+        if len(filter_table_name) > 1
+        else str(tuple(filter_table_name)).replace(",)", ")")
+    )  # pylint: disable=line-too-long
+    format_pattern = "AND TABLE_NAME LIKE ANY " + table_filter_pattern
+    return format_pattern
+
+
 def get_table_names(self, connection, schema, **kw):
     query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
     if kw.get("include_transient_tables"):
@@ -81,8 +91,15 @@ def get_table_names(self, connection, schema, **kw):
 
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
-    cursor = connection.execute(query.format(fqn.unquote_name(schema)))
+    cursor = connection.execute(
+        query.format(
+            fqn.unquote_name(schema), get_filter_table_name(kw["filter_table_name"])
+        )
+        if kw.get("pushFilterDown") and kw["filter_table_name"] is not None
+        else query.format(fqn.unquote_name(schema), "")
+    )
     result = [self.normalize_name(row[0]) for row in cursor]
+
     return result
 
 
