@@ -30,6 +30,11 @@ class StackTraceError(BaseModel):
     stack_trace: Optional[str]
 
 
+class Nothing(BaseModel):
+    name: str
+    description: str
+
+
 class Either(BaseModel, Generic[T]):
     """
     Any execution should return us Either an Entity of an error for us to handle
@@ -39,3 +44,4 @@ class Either(BaseModel, Generic[T]):
 
     left: Optional[StackTraceError]
     right: Optional[T]
+    middle: Optional[Nothing]

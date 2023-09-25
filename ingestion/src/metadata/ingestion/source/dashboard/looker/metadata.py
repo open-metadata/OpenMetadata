@@ -18,6 +18,7 @@ Supports:
 Notes:
 - Filtering is applied on the Dashboard title or ID, if the title is missing
 """
+import copy
 import os
 import traceback
 from datetime import datetime
@@ -99,6 +100,18 @@ from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
+from ingestion.src.metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+)
+from ingestion.src.metadata.ingestion.api.models import Nothing
+from ingestion.src.metadata.ingestion.lineage.models import (
+    Dialect,
+    ConnectionTypeDialectMapper,
+)
+from ingestion.src.metadata.ingestion.lineage.parser import LineageParser
+from ingestion.src.metadata.ingestion.source.dashboard.looker.bulk_parser import (
+    BulkLkmlParser,
+)
 from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
     LookMLRepo,
     LookMLManifest,
@@ -171,6 +184,9 @@ class LookerSource(DashboardServiceSource):
         self._project_parsers: Optional[Dict[str, LkmlParser]] = None
         self._main_lookml_repo: Optional[LookMLRepo] = None
         self._main__lookml_manifest: Optional[LookMLManifest] = None
+        self._view_data_model: Optional[DashboardDataModel] = None
+
+        self._added_lineage: Optional[Dict] = {}
 
     @classmethod
     def create(
@@ -194,7 +210,12 @@ class LookerSource(DashboardServiceSource):
             REPO_TMP_LOCAL_PATH,
             credentials.repositoryName.__root__,
         )
-        _clone_repo(repo_name, repo_path, credentials.token.__root__.get_secret_value())
+        _clone_repo(
+            repo_name,
+            repo_path,
+            credentials.token.__root__.get_secret_value(),
+            overwrite=True,
+        )
         return LookMLRepo(name=repo_name, path=repo_path)
 
     def __read_manifest(
@@ -254,18 +275,31 @@ class LookerSource(DashboardServiceSource):
         if self.repository_credentials:
             all_projects: Set[str] = {model.project_name for model in all_lookml_models}
             self._project_parsers: Dict[str, LkmlParser] = {
-                project_name: LkmlParser(
-                    # reader=self.reader(
-                    #     credentials=self.get_lookml_project_credentials(
-                    #         project_name=project_name
-                    #     )
-                    # )
-                    reader=self.reader(Path(self._main_lookml_repo.path)),
-                    remote_import_path=Includes(
-                        IMPORTED_PROJECTS_DIR
-                        + "/"
-                        + self._main__lookml_manifest.remote_dependency["name"]
-                    ),
+                # project_name: LkmlParser(
+                #     # reader=self.reader(
+                #     #     credentials=self.get_lookml_project_credentials(
+                #     #         project_name=project_name
+                #     #     )
+                #     # )
+                #     reader=self.reader(Path(self._main_lookml_repo.path)),
+                #     remote_readers={
+                #         "central-models": self.reader(
+                #             Path(
+                #                 Includes(
+                #                     self._main_lookml_repo.path
+                #                     + "/"
+                #                     + IMPORTED_PROJECTS_DIR
+                #                     + "/"
+                #                     + self._main__lookml_manifest.remote_dependency[
+                #                         "name"
+                #                     ]
+                #                 )
+                #             )
+                #         )
+                #     },
+                # )
+                project_name: BulkLkmlParser(
+                    reader=self.reader(Path(self._main_lookml_repo.path))
                 )
                 for project_name in all_projects
             }
@@ -419,6 +453,7 @@ class LookerSource(DashboardServiceSource):
 
                 # build datamodel by our hand since ack_sink=False
                 self.context.dataModel = self._build_data_model(datamodel_name)
+                self._view_data_model = copy.deepcopy(self.context.dataModel)
 
                 # Maybe use the project_name as key too?
                 # Save the explores for when we create the lineage with the dashboards and views
@@ -441,6 +476,8 @@ class LookerSource(DashboardServiceSource):
                         yield from self._process_view(
                             view_name=ViewName(view.name), explore=model
                         )
+                else:
+                    logger.info(f"LookerSource::yield_bulk_datamodel: yield empty")
 
         except ValidationError as err:
             yield Either(
@@ -516,11 +553,19 @@ class LookerSource(DashboardServiceSource):
                         project=explore.project_name,
                     )
                 )
-                self.context.dataModel = self._build_data_model(
+                self._view_data_model = self._build_data_model(
                     build_datamodel_name(explore.model_name, view.name)
                 )
 
                 yield from self.add_view_lineage(view, explore)
+            else:
+                yield Either(
+                    left=StackTraceError(
+                        name=view_name,
+                        error=f"Cannot find the view [{view_name}]: empty",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def add_view_lineage(
         self, view: LookMlView, explore: LookmlModelExplore
@@ -537,7 +582,7 @@ class LookerSource(DashboardServiceSource):
             # Now the context has the newly created view
             if explore_model:
                 yield self._get_add_lineage_request(
-                    from_entity=self.context.dataModel, to_entity=explore_model
+                    from_entity=self._view_data_model, to_entity=explore_model
                 )
 
             else:
@@ -551,11 +596,57 @@ class LookerSource(DashboardServiceSource):
 
                 # View to the source is only there if we are informing the dbServiceNames
                 for db_service_name in self.source_config.dbServiceNames or []:
-                    yield self.build_lineage_request(
+                    add_lineage_request = self.build_lineage_request(
                         source=source_table_name,
                         db_service_name=db_service_name,
-                        to_entity=self.context.dataModel,
+                        to_entity=self._view_data_model,
                     )
+                    yield add_lineage_request if add_lineage_request else Either(
+                        middle=Nothing(
+                            name=view.name,
+                            description="No lineage to add or it is already added",
+                        )
+                    )
+            elif view.derived_table:
+                logger.info(
+                    f"LookerSource::add_view_lineage: view.derived_table = {view.derived_table}"
+                )
+
+                sql_query = view.derived_table.sql
+                if not sql_query:
+                    return
+                for db_service_name in self.source_config.dbServiceNames or []:
+                    db_service = self.metadata.get_by_name(
+                        DatabaseService, db_service_name
+                    )
+
+                    lineage_parser = LineageParser(
+                        sql_query,
+                        ConnectionTypeDialectMapper.dialect_of(
+                            db_service.connection.config.type.value
+                        ),
+                        timeout_seconds=30,
+                    )
+                    if lineage_parser.source_tables:
+                        for from_table_name in lineage_parser.source_tables:
+                            logger.info(
+                                f"LookerSource::add_view_lineage: from_table_name = {from_table_name} --- view.name = {view.name}"
+                            )
+                            add_lineage_request = self.build_lineage_request(
+                                source=str(from_table_name),
+                                db_service_name=db_service_name,
+                                to_entity=self._view_data_model,
+                            )
+                            yield add_lineage_request if add_lineage_request else Either(
+                                middle=Nothing(
+                                    name=view.name,
+                                    description="No lineage to add or it is already added",
+                                )
+                            )
+            else:
+                yield Either(
+                    middle=Nothing(name=view.name, description="No lineage to add")
+                )
 
         except Exception as err:
             yield Either(
@@ -797,9 +888,19 @@ class LookerSource(DashboardServiceSource):
             )
 
             if from_entity:
-                return self._get_add_lineage_request(
-                    to_entity=to_entity, from_entity=from_entity
-                )
+                if from_entity.id.__root__ not in self._added_lineage:
+                    self._added_lineage[from_entity.id.__root__] = []
+                if (
+                    to_entity.id.__root__
+                    not in self._added_lineage[from_entity.id.__root__]
+                ):
+
+                    self._added_lineage[from_entity.id.__root__].append(
+                        to_entity.id.__root__
+                    )
+                    return self._get_add_lineage_request(
+                        to_entity=to_entity, from_entity=from_entity
+                    )
 
         return None
 
