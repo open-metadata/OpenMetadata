@@ -15,7 +15,7 @@ import tippy, { Instance, Props } from 'tippy.js';
 
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { entityUrlMap } from 'constants/Feeds.constants';
+import { EntityUrlMapType, ENTITY_URL_MAP } from 'constants/Feeds.constants';
 import { getSearchedUsers, getUserSuggestions } from 'rest/miscAPI';
 import { buildMentionLink } from 'utils/FeedUtils';
 import { ExtensionRef } from '../BlockEditor.interface';
@@ -33,7 +33,7 @@ export const mentionSuggestion = () => ({
         label: hit._source.displayName,
         fqn: hit._source.fullyQualifiedName,
         href: buildMentionLink(
-          entityUrlMap[hit._source.entityType as keyof typeof entityUrlMap],
+          ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
           hit._source.name
         ),
         type: hit._source.entityType,
@@ -48,7 +48,7 @@ export const mentionSuggestion = () => ({
         label: hit._source.displayName,
         fqn: hit._source.fullyQualifiedName,
         href: buildMentionLink(
-          entityUrlMap[hit._source.entityType as keyof typeof entityUrlMap],
+          ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
           hit._source.name
         ),
         type: hit._source.entityType,
