@@ -18,8 +18,6 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.api.configuration.ApplicationConfiguration;
@@ -33,11 +31,13 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
-import org.openmetadata.schema.service.configuration.AWSConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+
+import javax.validation.Valid;
+import javax.validation.constraints.NotNull;
 
 @Getter
 @Setter
@@ -46,9 +46,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @NotNull
   @Valid
   private DataSourceFactory dataSourceFactory;
-
-  @JsonProperty(value = "database.aws")
-  private AWSConfiguration awsConfiguration;
 
   @JsonProperty("swagger")
   private SwaggerBundleConfiguration swaggerBundleConfig;
