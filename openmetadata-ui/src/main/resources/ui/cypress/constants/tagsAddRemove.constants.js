@@ -64,7 +64,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     entity: 'storedProcedures',
     serviceName: 'sample_data',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    permissionApi: '/api/v1/permissions/*/*',
+    permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
     term: 'orders_view',
@@ -72,6 +72,6 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     entity: 'dashboardDataModel',
     serviceName: 'sample_looker',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    permissionApi: '/api/v1/permissions/*/*',
+    permissionApi: '/api/v1/permissions/*/name/*',
   },
 ];

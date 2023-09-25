@@ -716,7 +716,7 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   'Data Model': {
     name: DATA_MODEL_NAME,
     serviceName: 'sample_looker',
-    entity: 'dashboardDataModel',
+    entity: 'dashboard/datamodels',
     entityCreationDetails: DATA_MODEL_DETAILS_FOR_VERSION_TEST,
     entityPatchPayload: DATA_MODEL_PATCH_PAYLOAD,
     isChildrenExist: true,

@@ -108,24 +108,29 @@ describe('Check if tags addition and removal flow working properly from tables',
   });
 
   TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) => {
+    const apiEntity =
+      entityDetails.entity === 'dashboardDataModel'
+        ? 'dashboard/datamodels'
+        : entityDetails.entity;
+
     it(`Adding & removing tags to the ${entityDetails.entity} entity`, () => {
       interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
 
       interceptURL(
         'GET',
-        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        `/api/v1/${apiEntity}/name/*?fields=*`,
         'getEntityDetail'
       );
-      interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
+      interceptURL('PATCH', `/api/v1/${apiEntity}/*`, 'tagsChange');
       interceptURL(
         'PATCH',
-        `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+        `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
         'tagsChange'
       );
       visitEntityDetailsPage(
         entityDetails.term,
         entityDetails.serviceName,
-        entityDetails.entity
+        apiEntity
       );
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
@@ -159,18 +164,14 @@ describe('Check if tags addition and removal flow working properly from tables',
       if (entityDetails.entity !== 'storedProcedures') {
         interceptURL(
           'GET',
-          `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+          `/api/v1/${apiEntity}/name/*?fields=*`,
           'getEntityDetail'
         );
         interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+        interceptURL('PATCH', `/api/v1/${apiEntity}/*`, 'tagsChange');
         interceptURL(
           'PATCH',
-          `/api/v1/${entityDetails.entity}/*`,
-          'tagsChange'
-        );
-        interceptURL(
-          'PATCH',
-          `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+          `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
           'tagsChange'
         );
         if (entityDetails.insideEntity) {
@@ -188,7 +189,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         visitEntityDetailsPage(
           entityDetails.term,
           entityDetails.serviceName,
-          entityDetails.entity
+          apiEntity
         );
         verifyResponseStatusCode('@getEntityDetail', 200);
         verifyResponseStatusCode('@getEntityPermission', 200);

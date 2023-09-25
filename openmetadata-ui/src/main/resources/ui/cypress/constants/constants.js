@@ -182,10 +182,10 @@ export const SEARCH_ENTITY_DATA_MODEL = {
     entityType: 'Data Model',
   },
   data_model_2: {
-    term: 'operations_view',
+    term: 'orders_view',
     entity: MYDATA_SUMMARY_OPTIONS.dataModel,
     serviceName: 'sample_looker',
-    displayName: 'operations_view',
+    displayName: 'Orders View',
     entityType: 'Data Model',
   },
 };
