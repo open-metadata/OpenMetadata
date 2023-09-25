@@ -80,7 +80,7 @@ public class UserRepository extends EntityRepository<User> {
     supportsSearchIndex = true;
   }
 
-  // with the introduction of fqnhash we added case sensitivity to all of the entities
+  // with the introduction of fqnhash we added case sensitivity to all the entities
   // however usernames , emails cannot be case sensitive
   @Override
   public void setFullyQualifiedName(User user) {

@@ -30,7 +30,6 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j

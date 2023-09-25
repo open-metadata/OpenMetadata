@@ -247,6 +247,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     applyTags(pipeline.getTasks());
   }
 
+  @Override
+  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+  }
+
   private void applyTags(List<Task> tasks) {
     if (tasks != null) {
       for (Task task : tasks) {
