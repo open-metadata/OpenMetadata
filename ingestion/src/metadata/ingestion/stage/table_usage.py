@@ -22,9 +22,6 @@ from typing import Iterable, List, Tuple
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
@@ -55,12 +52,11 @@ class TableUsageStage(Stage):
     def __init__(
         self,
         config: TableStageConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.table_usage = {}
         self.table_queries = {}
         init_staging_dir(self.config.filename)

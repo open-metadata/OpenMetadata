@@ -35,9 +35,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableJoins,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableUsageCount
@@ -78,14 +75,13 @@ class MetadataUsageBulkSink(BulkSink):
     def __init__(
         self,
         config: MetadataUsageSinkConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.service_name = None
         self.wrote_something = False
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.table_join_dict = {}
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
