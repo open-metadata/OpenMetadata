@@ -120,8 +120,8 @@ import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.JdbiUtils;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
 
@@ -142,13 +142,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
     ChangeEventConfig.initialize(catalogConfig);
-    // Init Jdbi
-    final Jdbi jdbi = JdbiUtils.createJdbi(catalogConfig, environment);
+    final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
     CollectionDAO daoObject = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
     JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
-
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -276,6 +274,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+    // Check for db auth providers.
+    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl()).ifPresent(databaseAuthenticationProvider -> {
+      String token = databaseAuthenticationProvider.authenticate(
+              dbFactory.getUrl(),
+              dbFactory.getUser(),
+              dbFactory.getPassword());
+      dbFactory.setPassword(token);
+    });
+
+
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
     SqlLogger sqlLogger =
         new SqlLogger() {
