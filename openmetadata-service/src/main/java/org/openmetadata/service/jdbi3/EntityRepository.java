@@ -717,14 +717,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    if (supportsSearchIndex) {
-      searchRepository.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
-    }
+    searchRepository.updateSearchEntityCreated(entity);
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    searchRepository.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), DEFAULT_UPDATE_SCRIPT, "");
+    searchRepository.updateSearchEntityUpdated(updated, DEFAULT_UPDATE_SCRIPT, "");
     if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
         && (updated.getChangeDescription() != null)) {
       for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
@@ -899,16 +897,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsSearchIndex) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
       } else {
-        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
+        searchRepository.updateSearchEntityDeleted(entity, "", "");
       }
     }
   }
 
   public void restoreFromSearch(T entity) {
     if (supportsSearchIndex) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
+      searchRepository.softDeleteOrRestoreEntityFromSearch(entity, false, "");
     }
   }
 
@@ -1057,7 +1055,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     storeExtension(entity);
     storeRelationshipsInternal(entity);
     setInheritedFields(entity, new Fields(allowedFields));
-    postCreate(entity);
+    if (supportsSearchIndex) {
+      postCreate(entity);
+    }
     return entity;
   }
 

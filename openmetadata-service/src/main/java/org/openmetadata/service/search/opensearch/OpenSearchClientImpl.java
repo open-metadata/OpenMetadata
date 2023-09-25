@@ -19,6 +19,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.IndexUtil.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_MAPPING_SCHEMA_MAP;
+import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_SEARCH_ALIAS_MAPPING;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
 import java.io.IOException;
@@ -84,7 +85,6 @@ import org.openmetadata.service.util.JsonUtils;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkRequest;
@@ -96,7 +96,6 @@ import org.opensearch.action.support.WriteRequest;
 import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.action.update.UpdateResponse;
-import org.opensearch.client.GetAliasesResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
@@ -188,11 +187,7 @@ public class OpenSearchClientImpl implements SearchRepository {
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
         LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
         // creating alias for indexes
-        IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-        IndicesAliasesRequest.AliasActions aliasAction =
-            IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).alias(GLOBAL_SEARCH_ALIAS);
-        aliasesRequest.addAliasAction(aliasAction);
-        client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+        createAliases(elasticSearchIndexType);
       }
       elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
     } catch (Exception e) {
@@ -204,6 +199,36 @@ public class OpenSearchClientImpl implements SearchRepository {
       return false;
     }
     return true;
+  }
+
+  private void createAliases(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType) {
+    ActionListener<AcknowledgedResponse> listener =
+        new ActionListener<>() {
+          @Override
+          public void onResponse(AcknowledgedResponse acknowledgedResponse) {
+            LOG.info("Created successfully: " + acknowledgedResponse.toString());
+          }
+
+          @Override
+          public void onFailure(Exception e) {
+            LOG.error("Creation failed: " + e.getMessage());
+          }
+        };
+    IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+    IndicesAliasesRequest.AliasActions aliasAction;
+    if (!CommonUtil.nullOrEmpty(
+        ENTITY_TO_SEARCH_ALIAS_MAPPING.getOrDefault(elasticSearchIndexType.entityType, new ArrayList<>()))) {
+      List<String> aliases = ENTITY_TO_SEARCH_ALIAS_MAPPING.get(elasticSearchIndexType.entityType);
+      aliasAction =
+          IndicesAliasesRequest.AliasActions.add()
+              .index(elasticSearchIndexType.indexName)
+              .aliases(aliases.toArray(new String[0]));
+    } else {
+      aliasAction =
+          IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).aliases(GLOBAL_SEARCH_ALIAS);
+    }
+    aliasesRequest.addAliasAction(aliasAction);
+    client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
   }
 
   @Override
@@ -249,20 +274,6 @@ public class OpenSearchClientImpl implements SearchRepository {
       gRequest.local(false);
       boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
       if (exists) {
-        // check if the alias is exist or not
-        GetAliasesRequest getAliasesRequest = new GetAliasesRequest(GLOBAL_SEARCH_ALIAS);
-        GetAliasesResponse getAliasesResponse = client.indices().getAlias(getAliasesRequest, RequestOptions.DEFAULT);
-        boolean aliasExists = getAliasesResponse.getAliases().containsKey(elasticSearchIndexType.indexName);
-        // deleting alias for indexes if exists
-        if (aliasExists) {
-          IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-          IndicesAliasesRequest.AliasActions aliasAction =
-              IndicesAliasesRequest.AliasActions.remove()
-                  .index(elasticSearchIndexType.indexName)
-                  .alias(GLOBAL_SEARCH_ALIAS);
-          aliasesRequest.addAliasAction(aliasAction);
-          client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-        }
         DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
         AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
         LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
@@ -1110,42 +1121,14 @@ public class OpenSearchClientImpl implements SearchRepository {
   public void updateSearchChildrenUpdated(
       EntityInterface entity, String scriptTxt, String field, String alias, Object data) {
     if (entity != null) {
-      String entityType = entity.getEntityReference().getType();
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
-      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
-      updateByQueryRequest.setRefresh(true);
-      ElasticSearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, entity);
-      Map<String, Object> doc = elasticSearchIndex.buildESDoc();
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateByQueryRequest.setScript(script);
-      try {
-        updateElasticSearchByQuery(updateByQueryRequest);
-      } catch (DocumentMissingException ex) {
-        handleDocumentMissingException(entity, ex);
-      } catch (OpenSearchException e) {
-        handleOpenSearchException(entity, e);
-      } catch (IOException ie) {
-        handleIOException(entity, ie);
-      }
-    }
-  }
-
-  /**
-   * @param entity
-   * @param scriptTxt
-   * @param field
-   */
-  @Override
-  public void updateSearchByQuery(EntityInterface entity, String scriptTxt, String field, Object data) {
-    if (entity != null) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
       updateByQueryRequest.setRefresh(true);
       Script script =
           new Script(
               ScriptType.INLINE,
               Script.DEFAULT_SCRIPT_LANG,
-              String.format(scriptTxt, entity.getFullyQualifiedName()),
+              scriptTxt,
               JsonUtils.getMap(data == null ? new HashMap<>() : data));
       updateByQueryRequest.setScript(script);
       try {

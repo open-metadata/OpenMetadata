@@ -216,9 +216,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   protected void postCreate(GlossaryTerm entity) {
-    if (supportsSearchIndex) {
-      searchRepository.updateSearchEntityCreated(JsonUtils.deepCopy(entity, GlossaryTerm.class));
-    }
+    super.postCreate(entity);
     if (entity.getStatus() == Status.DRAFT) {
       // Create an approval task for glossary term in draft mode
       createApprovalTask(entity, entity.getReviewers());

@@ -1132,36 +1132,6 @@ public class ElasticSearchClientImpl implements SearchRepository {
     }
   }
 
-  /**
-   * @param entity
-   * @param scriptTxt
-   * @param field
-   */
-  @Override
-  public void updateSearchByQuery(EntityInterface entity, String scriptTxt, String field, Object data) {
-    if (entity != null) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
-      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
-      updateByQueryRequest.setRefresh(true);
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              String.format(scriptTxt),
-              JsonUtils.getMap(data == null ? new HashMap<>() : data));
-      updateByQueryRequest.setScript(script);
-      try {
-        updateElasticSearchByQuery(updateByQueryRequest);
-      } catch (DocumentMissingException ex) {
-        handleDocumentMissingException(entity, ex);
-      } catch (ElasticsearchException e) {
-        handleElasticsearchException(entity, e);
-      } catch (IOException ie) {
-        handleIOException(entity, ie);
-      }
-    }
-  }
-
   @Override
   public void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
     if (updateRequest != null) {

@@ -173,8 +173,6 @@ public interface SearchRepository {
 
   void updateSearchChildrenUpdated(EntityInterface entity, String scriptTxt, String field, String alias, Object data);
 
-  void updateSearchByQuery(EntityInterface entity, String script, String field, Object data);
-
   void close();
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
