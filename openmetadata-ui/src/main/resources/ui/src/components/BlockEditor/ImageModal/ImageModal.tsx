@@ -13,47 +13,44 @@
 import { Form, FormProps, Input, Modal } from 'antd';
 import React, { FC } from 'react';
 
-export interface LinkData {
-  href: string;
+export interface ImageData {
+  src: string;
 }
 
 export interface LinkModalProps {
   isOpen: boolean;
-  data: LinkData;
-  onSave: (data: LinkData) => void;
+  onSave: (data: ImageData) => void;
   onCancel: () => void;
 }
 
-const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
-  const handleSubmit: FormProps<LinkData>['onFinish'] = (values) => {
+const ImageModal: FC<LinkModalProps> = ({ isOpen, onSave, onCancel }) => {
+  const handleSubmit: FormProps<ImageData>['onFinish'] = (values) => {
     onSave(values);
   };
 
   return (
     <Modal
-      className="block-editor-link-modal"
+      className="block-editor-image-modal"
       maskClosable={false}
       okButtonProps={{
         htmlType: 'submit',
-        id: 'link-form',
-        form: 'link-form',
+        id: 'image-form',
+        form: 'image-form',
       }}
       okText="Save"
       open={isOpen}
-      title={data.href ? 'Edit link' : 'Add link'}
       onCancel={onCancel}>
       <Form
-        data-testid="link-form"
-        id="link-form"
-        initialValues={{ ...data }}
+        data-testid="image-form"
+        id="image-form"
         layout="vertical"
         onFinish={handleSubmit}>
-        <Form.Item label="Link" name="href">
-          <Input autoFocus />
+        <Form.Item label="Image link" name="src">
+          <Input autoFocus required />
         </Form.Item>
       </Form>
     </Modal>
   );
 };
 
-export default LinkModal;
+export default ImageModal;
