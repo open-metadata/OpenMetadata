@@ -27,7 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.security.credentials.gcpValues import MultipleProjectId
-from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
