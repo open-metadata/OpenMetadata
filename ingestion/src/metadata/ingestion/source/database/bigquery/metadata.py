@@ -17,7 +17,6 @@ from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
-from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
@@ -44,12 +43,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
-    SingleProjectId,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.source import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
@@ -60,7 +59,6 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.utils import fqn
-from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
@@ -203,6 +201,12 @@ class BigquerySource(CommonDbSourceService):
     def set_project_id() -> List[str]:
         _, project_ids = auth.default()
         return project_ids if isinstance(project_ids, list) else [project_ids]
+
+    def test_connection(self) -> None:
+        for project_id in self.set_project_id():
+            self.set_inspector(project_id)
+            test_connection_fn = get_test_connection_fn(self.service_connection)
+            test_connection_fn(self.metadata, self.engine, self.service_connection)
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -347,10 +351,10 @@ class BigquerySource(CommonDbSourceService):
         table_tag_labels = super().get_tag_labels(table_name) or []
         table_obj = self.get_table_obj(table_name=table_name)
         if table_obj.labels:
-            for key, _ in table_obj.labels.items():
+            for key, value in table_obj.labels.items():
                 tag_label = get_tag_label(
                     metadata=self.metadata,
-                    tag_name=key,
+                    tag_name=value,
                     classification_name=key,
                 )
                 if tag_label:
@@ -374,31 +378,13 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        # TODO support location property in JSON Schema
-        # TODO support OAuth 2.0 scopes
-        kwargs = {}
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
-        ):
-            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
-                __root__=database_name
-            )
-            if self.service_connection.credentials.gcpImpersonateServiceAccount:
-                kwargs[
-                    "impersonate_service_account"
-                ] = (
-                    self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-                )
+        inspector_details = get_inspector_details(
+            database_name=database_name, service_connection=self.service_connection
+        )
 
-                kwargs[
-                    "lifetime"
-                ] = (
-                    self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-                )
-
-        self.client = get_bigquery_client(project_id=database_name, **kwargs)
-        self.engine = get_connection(self.service_connection)
-        self.inspector = inspect(self.engine)
+        self.client = inspector_details.client
+        self.engine = inspector_details.engine
+        self.inspector = inspector_details.inspector
 
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
