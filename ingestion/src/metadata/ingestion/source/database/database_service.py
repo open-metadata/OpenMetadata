@@ -429,38 +429,6 @@ class DatabaseServiceSource(
 
         self.database_source_state.add(table_fqn)
 
-    def fetch_all_schema_and_delete_tables(self) -> Iterable[Either[DeleteEntity]]:
-        """
-        Fetch all schemas and delete tables
-        """
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.config.serviceName,
-            database_name=self.context.database.name.__root__,
-        )
-        schema_list = self.metadata.list_all_entities(
-            entity=DatabaseSchema, params={"database": database_fqn}
-        )
-        for schema in schema_list:
-            yield from delete_entity_from_source(
-                metadata=self.metadata,
-                entity_type=Table,
-                entity_source_state=self.database_source_state,
-                mark_deleted_entity=self.source_config.markDeletedTables,
-                params={"databaseSchema": schema.fullyQualifiedName.__root__},
-            )
-
-        # Delete the schema
-        yield from delete_entity_from_source(
-            metadata=self.metadata,
-            entity_type=DatabaseSchema,
-            entity_source_state=list(
-                self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
-            ),
-            mark_deleted_entity=self.source_config.markDeletedTables,
-            params={"database": database_fqn},
-        )
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -490,24 +458,18 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            # If markAllDeletedTables is True, all tables Which are not in FilterPattern will be deleted
-            if self.source_config.markAllDeletedTables:
-                yield from self.fetch_all_schema_and_delete_tables()
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
 
-            # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
-            else:
-                schema_fqn_list = self._get_filtered_schema_names(
-                    return_fqn=True, add_to_status=False
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    entity_source_state=self.database_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    params={"database": schema_fqn},
                 )
-
-                for schema_fqn in schema_fqn_list:
-                    yield from delete_entity_from_source(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        entity_source_state=self.database_source_state,
-                        mark_deleted_entity=self.source_config.markDeletedTables,
-                        params={"database": schema_fqn},
-                    )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """
