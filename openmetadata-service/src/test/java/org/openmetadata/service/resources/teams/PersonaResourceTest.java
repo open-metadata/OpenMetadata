@@ -88,10 +88,10 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     Persona persona = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Ensure that the user entity has relationship to the team
-    user1 = userResourceTest.getEntity(user1.getId(), "persona", TEST_AUTH_HEADERS);
-    assertEquals(persona.getId(), user1.getPersona().getId());
-    user2 = userResourceTest.getEntity(user2.getId(), "persona", TEST_AUTH_HEADERS);
-    assertEquals(persona.getId(), user2.getPersona().getId());
+    user1 = userResourceTest.getEntity(user1.getId(), "personas", TEST_AUTH_HEADERS);
+    assertEntityReferences(List.of(persona.getEntityReference()), user1.getPersonas());
+    user2 = userResourceTest.getEntity(user2.getId(), "personas", TEST_AUTH_HEADERS);
+    assertEntityReferences(List.of(persona.getEntityReference()), user2.getPersonas());
   }
 
   @Test
@@ -108,8 +108,8 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     deleteAndCheckEntity(persona, ADMIN_AUTH_HEADERS);
 
     // Ensure that the user does not have relationship to this persona
-    User user = userResourceTest.getEntity(user1.getId(), "persona", ADMIN_AUTH_HEADERS);
-    assertNull(user.getPersona());
+    User user = userResourceTest.getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertEquals(user.getPersonas().size(), 0);
   }
 
   @Test
@@ -198,7 +198,9 @@ public class PersonaResourceTest extends EntityResourceTest<Persona, CreatePerso
     if (expectedPersona.getUsers() == null) {
       UserResourceTest userResourceTest = new UserResourceTest();
       CreateUser create =
-          userResourceTest.createRequest("user", "", "", null).withPersona(expectedPersona.getEntityReference());
+          userResourceTest
+              .createRequest("user", "", "", null)
+              .withPersonas(List.of(expectedPersona.getEntityReference()));
       userResourceTest.createEntity(create, ADMIN_AUTH_HEADERS);
     }
 

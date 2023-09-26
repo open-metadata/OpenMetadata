@@ -287,7 +287,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withName("testAdmin")
             .withDisplayName("displayName")
             .withEmail("testAdmin@email.com")
-            .withPersona(DATA_ENGINEER.getEntityReference())
+            .withPersonas(List.of(DATA_ENGINEER.getEntityReference()))
             .withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
@@ -626,7 +626,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(timezone)
         .withDisplayName("displayName")
         .withProfile(profile)
-        .withPersona(DATA_SCIENTIST.getEntityReference())
+        .withDefaultPersona(DATA_SCIENTIST.getEntityReference())
+        .withPersonas(List.of(DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference()))
         .withIsBot(false)
         .withIsAdmin(false);
     ChangeDescription change = getChangeDescription(user.getVersion());
@@ -637,7 +638,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "displayName", "displayName");
     fieldAdded(change, "profile", profile);
     fieldAdded(change, "isBot", false);
-    fieldAdded(change, "persona", DATA_SCIENTIST.getEntityReference());
+    fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
+    fieldAdded(change, "personas", List.of(DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference()));
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
@@ -656,19 +658,19 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(timezone1)
         .withDisplayName("displayName1")
         .withProfile(profile1)
-        .withPersona(DATA_ENGINEER.getEntityReference())
+        .withPersonas(List.of(DATA_ENGINEER.getEntityReference()))
         .withIsBot(true)
         .withIsAdmin(false);
 
     change = getChangeDescription(user.getVersion());
     fieldDeleted(change, "roles", listOf(role1));
-    fieldAdded(change, "roles", listOf(role2));
     fieldDeleted(change, "teams", listOf(team2));
+    fieldDeleted(change, "personas", listOf(DATA_SCIENTIST.getEntityReference()));
+    fieldAdded(change, "roles", listOf(role2));
     fieldAdded(change, "teams", listOf(team3));
     fieldUpdated(change, "timezone", timezone, timezone1);
     fieldUpdated(change, "displayName", "displayName", "displayName1");
     fieldUpdated(change, "profile", profile, profile1);
-    fieldUpdated(change, "persona", DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference());
     fieldUpdated(change, "isBot", false, true);
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -681,7 +683,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(null)
         .withDisplayName(null)
         .withProfile(null)
-        .withPersona(null)
+        .withPersonas(null)
         .withIsBot(null)
         .withIsAdmin(false);
 
@@ -694,7 +696,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldDeleted(change, "displayName", "displayName1");
     fieldDeleted(change, "profile", profile1);
     fieldDeleted(change, "isBot", true);
-    fieldDeleted(change, "persona", DATA_ENGINEER.getEntityReference());
+    fieldDeleted(change, "personas", listOf(DATA_ENGINEER.getEntityReference()));
     patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -1246,7 +1248,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
           expectedTeams.stream().filter(t -> !t.getId().equals(ORG_TEAM.getId())).collect(Collectors.toList());
     }
     assertEntityReferences(expectedTeams, user.getTeams());
-
+    assertEntityReferences(createRequest.getPersonas(), user.getPersonas());
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }
@@ -1259,13 +1261,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(expected.getTimezone(), updated.getTimezone());
     assertEquals(expected.getIsBot(), updated.getIsBot());
     assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
-    if (expected.getPersona() != null) {
-      assertEquals(expected.getPersona().getId(), updated.getPersona().getId());
+    if (expected.getDefaultPersona() != null) {
+      assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
     }
 
     TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
     TestUtils.assertEntityReferences(expected.getTeams(), updated.getTeams());
-
+    if (updated.getPersonas() != null) {
+      TestUtils.assertEntityReferences(expected.getPersonas(), updated.getPersonas());
+    }
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());
     }
@@ -1284,12 +1288,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         break;
       case "teams":
       case "roles":
+      case "personas":
         @SuppressWarnings("unchecked")
         List<EntityReference> expectedList = (List<EntityReference>) expected;
         List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
         assertEntityReferences(expectedList, actualList);
         break;
-      case "persona":
+      case "defaultPersona":
         EntityReference expectedRef = (EntityReference) expected;
         EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
         assertEquals(expectedRef.getId(), actualRef.getId());

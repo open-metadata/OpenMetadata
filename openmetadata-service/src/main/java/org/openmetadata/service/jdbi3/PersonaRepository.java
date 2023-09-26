@@ -83,7 +83,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   @Override
   public void storeRelationships(Persona persona) {
     for (EntityReference user : listOrEmpty(persona.getUsers())) {
-      addRelationship(persona.getId(), user.getId(), PERSONA, Entity.USER, Relationship.HAS);
+      addRelationship(persona.getId(), user.getId(), PERSONA, Entity.USER, Relationship.APPLIED_TO);
     }
   }
 
@@ -93,7 +93,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   private List<EntityReference> getUsers(Persona persona) {
-    return findTo(persona.getId(), PERSONA, Relationship.HAS, Entity.USER);
+    return findTo(persona.getId(), PERSONA, Relationship.APPLIED_TO, Entity.USER);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -111,7 +111,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
       List<EntityReference> origUsers = listOrEmpty(origPersona.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedPersona.getUsers());
       updateToRelationships(
-          "users", PERSONA, origPersona.getId(), Relationship.HAS, Entity.USER, origUsers, updatedUsers, false);
+          "users", PERSONA, origPersona.getId(), Relationship.APPLIED_TO, Entity.USER, origUsers, updatedUsers, false);
     }
   }
 }
