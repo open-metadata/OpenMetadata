@@ -116,9 +116,7 @@ from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
     LookMLRepo,
     LookMLManifest,
 )
-from ingestion.src.metadata.ingestion.source.dashboard.looker.parser import (
-    IMPORTED_PROJECTS_DIR,
-)
+
 from ingestion.src.metadata.ingestion.source.dashboard.looker.utils import _clone_repo
 from ingestion.src.metadata.readers.file.local import LocalReader
 
@@ -126,6 +124,7 @@ logger = ingestion_logger()
 
 
 LIST_DASHBOARD_FIELDS = ["id", "title"]
+IMPORTED_PROJECTS_DIR = "imported_projects"
 
 # Here we can update the fields to get further information, such as:
 # created_at, updated_at, last_updater_id, deleted_at, deleter_id, favorite_count, last_viewed_at
@@ -396,6 +395,11 @@ class LookerSource(DashboardServiceSource):
                     )
                     continue
 
+                logger.info(
+                    f"LookerSource::fetch_lookml_explores: explore_nav = {explore_nav}"
+                )
+                if explore_nav.name != "dlth":
+                    continue
                 try:
                     explore = self.client.lookml_model_explore(
                         lookml_model_name=lookml_model.name,
@@ -475,6 +479,10 @@ class LookerSource(DashboardServiceSource):
 
                         yield from self._process_view(
                             view_name=ViewName(view.name), explore=model
+                        )
+                    if len(model.joins) == 0 and model.sql_table_name:
+                        yield from self._process_view(
+                            view_name=ViewName(model.name), explore=model
                         )
                 else:
                     logger.info(f"LookerSource::yield_bulk_datamodel: yield empty")
