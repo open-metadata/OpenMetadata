@@ -95,7 +95,8 @@ with DAG(
         retries=3,
         inlets={
             "tables": [
-                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet"
+                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet",
+                "test-service-table-lineage.test-db.test-schema.lineage-test-inlet2",
             ]
         },
     )

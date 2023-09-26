@@ -19,10 +19,9 @@ from unittest import TestCase
 import pytest
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
-from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
 from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
 from .test_cli import CliBase
 
@@ -69,16 +68,11 @@ class CliDBTBase(TestCase):
         # 4. run tests on dbt test cases and test results
         @pytest.mark.order(4)
         def test_dbt_test_cases(self) -> None:
-            test_suite: TestSuite = self.openmetadata.get_by_name(
-                entity=TestSuite, fqn="DBT TEST SUITE"
-            )
-
             test_case_entity_list = self.openmetadata.list_entities(
-                entity=OMTestCase,
-                fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": str(test_suite.id.__root__)},
+                entity=TestDefinition,
+                params={"testPlatform": TestPlatform.DBT.value},
             )
-            self.assertTrue(len(test_case_entity_list.entities) == 23)
+            self.assertTrue(len(test_case_entity_list.entities) == 26)
 
         # 5. test dbt lineage
         @pytest.mark.order(5)
@@ -113,12 +107,12 @@ class CliDBTBase(TestCase):
 
         @abstractmethod
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_dbt_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()

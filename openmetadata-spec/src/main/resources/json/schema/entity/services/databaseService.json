@@ -45,7 +45,10 @@
         "DomoDatabase",
         "QueryLog",
         "CustomDatabase",
-        "Dbt"
+        "Dbt",
+        "SapHana",
+        "MongoDB",
+        "Couchbase"
       ],
       "javaEnums": [
         {
@@ -140,6 +143,15 @@
         },
         {
           "name": "Dbt"
+        },
+        {
+          "name": "SapHana"
+        },
+        {
+          "name": "MongoDB"
+        },
+        {
+          "name": "Couchbase"
         }
       ]
     },
@@ -239,6 +251,15 @@
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapHanaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mongoDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/couchbaseConnection.json"
             }
           ]
         }
@@ -276,7 +297,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",
@@ -318,6 +339,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Database service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

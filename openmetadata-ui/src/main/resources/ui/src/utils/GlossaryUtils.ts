@@ -13,8 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty, isUndefined, omit } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
 import { searchData } from 'rest/miscAPI';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
@@ -89,26 +88,6 @@ export const getEntityReferenceFromGlossaryTerm = (
   };
 };
 
-export const parseCSV = (csvData: string[][]) => {
-  const recordList: GlossaryCSVRecord[] = [];
-
-  if (!isEmpty(csvData)) {
-    const headers = csvData[0];
-
-    csvData.slice(1).forEach((line) => {
-      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-
-      headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = line[index];
-      });
-
-      recordList.push(record);
-    });
-  }
-
-  return recordList;
-};
-
 // calculate root level glossary term
 export const getRootLevelGlossaryTerm = (
   data: GlossaryTerm[],
@@ -131,24 +110,26 @@ export const getRootLevelGlossaryTerm = (
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
-  const tree: GlossaryTerm[] = [];
 
+  // Create nodes first
   data.forEach((obj) => {
-    if (obj.fullyQualifiedName) {
-      nodes[obj.fullyQualifiedName] = {
-        ...obj,
-        children: obj.children?.length ? [] : undefined,
-      };
-      const parentNode =
-        obj.parent &&
-        obj.parent.fullyQualifiedName &&
-        nodes[obj.parent.fullyQualifiedName];
-      parentNode &&
-        nodes[obj.fullyQualifiedName] &&
-        parentNode.children?.push(
-          nodes[obj.fullyQualifiedName] as unknown as EntityReference
-        );
-      parentNode ? null : tree.push(nodes[obj.fullyQualifiedName]);
+    nodes[obj.fullyQualifiedName ?? ''] = {
+      ...obj,
+      children: obj.children?.length ? [] : undefined,
+    };
+  });
+
+  // Build the tree structure
+  const tree: GlossaryTerm[] = [];
+  data.forEach((obj) => {
+    const current = nodes[obj.fullyQualifiedName ?? ''];
+    const parent = nodes[obj.parent?.fullyQualifiedName || ''];
+
+    if (parent && parent.children) {
+      // converting glossaryTerm to EntityReference
+      parent.children.push({ ...current, type: 'glossaryTerm' });
+    } else {
+      tree.push(current);
     }
   });
 

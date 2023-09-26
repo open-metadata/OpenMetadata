@@ -44,6 +44,16 @@
         "pipeline" : {
           "description": "Pipeline where the sqlQuery is periodically run.",
           "$ref" : "../type/entityReference.json"
+        },
+        "description" :{
+          "description": "description of lineage",
+          "type": "string"
+        },
+        "source": {
+          "description": "Lineage type describes how a lineage was created.",
+          "type": "string",
+          "enum": ["Manual", "ViewLineage", "QueryLineage", "PipelineLineage", "DashboardLineage", "DbtLineage"],
+          "default": "Manual"
         }
       }
     },

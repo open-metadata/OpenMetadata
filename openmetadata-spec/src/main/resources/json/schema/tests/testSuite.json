@@ -18,6 +18,23 @@
         "config": {
           "type": "null"
         }
+      },
+      "resultSummary": {
+        "javaType": "org.openmetadata.schema.tests.ResultSummary",
+        "properties": {
+          "testCaseName": {
+            "description": "Name of the test case.",
+            "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+          },
+          "status": {
+            "description": "Status of the test case.",
+            "$ref": "./basic.json#/definitions/testCaseStatus"
+          },
+          "timestamp": {
+            "description": "Timestamp of the test case execution.",
+            "$ref": "../type/basic.json#/definitions/timestamp"
+          }
+        }
       }
     }
   },
@@ -28,7 +45,7 @@
     },
     "name": {
       "description": "Name that identifies this test suite.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../api/tests/createTestSuite.json#/definitions/testSuiteEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test suite.",
@@ -57,7 +74,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../type/entityReference.json#/definitions/entityReferenceList",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "serviceType": {
@@ -96,8 +113,28 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "executable": {
+      "description": "Indicates if the test suite is executable. Set on the backend.",
+      "type": "boolean",
+      "default": false
+    },
+    "executableEntityReference": {
+      "description": "Entity reference the test suite is executed against. Only applicable if the test suite is executable.",
+      "$ref": "../type/entityReference.json"
+    },
+    "summary": {
+      "description": "Summary of the previous day test cases execution for this test suite.",
+      "$ref": "./basic.json#/definitions/testSummary"
+    },
+    "testCaseResultSummary": {
+      "description": "Summary of test case execution",
+      "type": "array",
+      "items": {
+          "$ref": "#/definitions/testSuiteConnection/resultSummary"
+      }
     }
   },
-  "required": ["name", "description"],
+  "required": ["name"],
   "additionalProperties": false
 }

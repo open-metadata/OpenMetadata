@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SourceException;
@@ -41,7 +42,7 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
     this.dao = dao;
     this.entityType = entityType;
     this.batchSize = batchSize;
-    stats.setTotalRecords(dao.entityExtensionTimeSeriesDao().listCount(entityType));
+    stats.setTotalRecords(dao.reportDataTimeSeriesDao().listCount(entityType));
   }
 
   @Override
@@ -90,10 +91,12 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   }
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
-    int reportDataCount = dao.entityExtensionTimeSeriesDao().listCount(entityFQN);
+    // workaround. Should be fixed in https://github.com/open-metadata/OpenMetadata/issues/12298
+    String upperCaseFQN = StringUtils.capitalize(entityFQN);
+    int reportDataCount = dao.reportDataTimeSeriesDao().listCount(upperCaseFQN);
     List<CollectionDAO.ReportDataRow> reportDataList =
-        dao.entityExtensionTimeSeriesDao()
-            .getAfterExtension(entityFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
+        dao.reportDataTimeSeriesDao()
+            .getAfterExtension(upperCaseFQN, limit + 1, after == null ? "0" : RestUtil.decodeCursor(after));
     return getAfterExtensionList(reportDataList, after, limit, reportDataCount);
   }
 

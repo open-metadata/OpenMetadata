@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.services.metadata;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -82,40 +85,39 @@ public class MetadataServiceResource
   public static final String FIELDS = "pipelines,owner,tags";
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config) {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     registerMetadataServices(config);
   }
 
-  private void registerMetadataServices(OpenMetadataApplicationConfig config) {
-    try {
+  private void registerMetadataServices(OpenMetadataApplicationConfig config) throws IOException {
+    List<MetadataService> servicesList =
+        repository.getEntitiesFromSeedData(".*json/data/metadataService/OpenmetadataService.json$");
+    if (!nullOrEmpty(servicesList)) {
+      MetadataService openMetadataService = servicesList.get(0);
+      openMetadataService.setId(UUID.randomUUID());
+      openMetadataService.setUpdatedBy(ADMIN_USER_NAME);
+      openMetadataService.setUpdatedAt(System.currentTimeMillis());
       if (config.getElasticSearchConfiguration() != null) {
         OpenMetadataConnection openMetadataServerConnection =
             new OpenMetadataConnectionBuilder(config)
                 .build()
                 .withElasticsSearch(getElasticSearchConnectionSink(config.getElasticSearchConfiguration()));
         MetadataConnection metadataConnection = new MetadataConnection().withConfig(openMetadataServerConnection);
-        List<MetadataService> servicesList = dao.getEntitiesFromSeedData(".*json/data/metadataService/.*\\.json$");
-        if (servicesList.size() == 1) {
-          MetadataService service = servicesList.get(0);
-          service.setConnection(metadataConnection);
-          dao.setFullyQualifiedName(service);
-          dao.initializeEntity(service);
-        } else {
-          throw new IOException("Only one Openmetadata Service can be initialized from the Data.");
-        }
+        openMetadataService.setConnection(metadataConnection);
       } else {
         LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
-    } catch (Exception ex) {
-      LOG.error("[MetadataService] Error in creating Metadata Services.", ex);
+      repository.setFullyQualifiedName(openMetadataService);
+      repository.createOrUpdate(null, openMetadataService);
+    } else {
+      throw new IOException("Failed to initialize OpenMetadata Service.");
     }
   }
 
   @Override
   public MetadataService addHref(UriInfo uriInfo, MetadataService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
+    super.addHref(uriInfo, service);
     Entity.withHref(uriInfo, service.getOwner());
-    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 
@@ -123,11 +125,14 @@ public class MetadataServiceResource
     super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class MetadataServiceList extends ResultList<MetadataService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public MetadataServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -166,17 +171,16 @@ public class MetadataServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = getFields(fieldsParam);
     ResultList<MetadataService> metadataServices;
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      metadataServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      metadataServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      metadataServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      metadataServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, metadataServices));
   }
@@ -209,8 +213,7 @@ public class MetadataServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     MetadataService metadataService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
   }
@@ -244,8 +247,7 @@ public class MetadataServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     MetadataService metadataService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, metadataService);
   }
@@ -267,11 +269,10 @@ public class MetadataServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult)
-      throws IOException {
+      @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    MetadataService service = dao.addTestConnectionResult(id, testConnectionResult);
+    MetadataService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 
@@ -290,8 +291,8 @@ public class MetadataServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -301,7 +302,7 @@ public class MetadataServiceResource
                   try {
                     MetadataService metadataService = JsonUtils.readValue((String) json, MetadataService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, metadataService));
-                  } catch (IOException e) {
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -334,8 +335,7 @@ public class MetadataServiceResource
               description = "Metadata Service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     MetadataService metadataService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, metadataService);
   }
@@ -354,8 +354,7 @@ public class MetadataServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService create) {
     MetadataService service = getMetadataService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
@@ -376,8 +375,7 @@ public class MetadataServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMetadataService update) {
     MetadataService service = getMetadataService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
@@ -404,8 +402,7 @@ public class MetadataServiceResource
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -430,8 +427,8 @@ public class MetadataServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -456,8 +453,7 @@ public class MetadataServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the metadata service", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -474,12 +470,11 @@ public class MetadataServiceResource
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Table.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private MetadataService getMetadataService(CreateMetadataService create, String user) throws IOException {
+  private MetadataService getMetadataService(CreateMetadataService create, String user) {
     return copy(new MetadataService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

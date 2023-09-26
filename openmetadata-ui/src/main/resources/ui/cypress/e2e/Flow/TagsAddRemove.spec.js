@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import {
   interceptURL,
   verifyResponseStatusCode,
@@ -19,50 +22,76 @@ import {
 import { TAGS_ADD_REMOVE_ENTITIES } from '../../constants/tagsAddRemove.constants';
 
 const addTags = (tag) => {
-  cy.get('[data-testid="tag-selector"]').should('be.visible').click().type(tag);
+  const tagName = Cypress._.split(tag, '.')[1];
 
-  cy.get('.ant-select-item-option-content').should('be.visible').click();
+  cy.get('[data-testid="tag-selector"]').scrollIntoView().should('be.visible');
+  cy.get('[data-testid="tag-selector"]').click().type(tagName);
+
+  cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
   cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
+};
+const verifyTagFilter = ({ entity, tag }) => {
+  if (!['mlmodels', 'dashboardDataModel'].includes(entity)) {
+    let columnLength = 0;
+    cy.get('.ant-table-tbody')
+      .find('tr')
+      .then(($tr) => {
+        columnLength = $tr.length;
+      });
+    cy.get('[data-testid="tag-filter"]').scrollIntoView().click();
+    cy.get(`[data-menu-id*="${tag}"]`).click();
+    // need to add manual wait as we are not making any api call for filter.
+    cy.wait(500);
+    cy.get('.ant-table-tbody')
+      .find('tr')
+      .then(($tr) => {
+        expect(columnLength).gte($tr.length);
+      });
+    cy.get('[data-testid="tag-filter"]').scrollIntoView().click();
+    cy.get(`[data-menu-id*="${tag}"]`).click();
+    // need to add manual wait as we are not making any api call for filter.
+    cy.wait(500);
+  }
 };
 
 const checkTags = (tag, checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"]  [data-testid="tag-container"]')
+    cy.get(
+      '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+    )
       .scrollIntoView()
-      .should('be.visible')
       .contains(tag);
   } else {
-    cy.get(`[data-testid="tag-${tag}"]`).should('be.visible');
+    cy.get(
+      '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
+    )
+      .scrollIntoView()
+      .contains(tag);
   }
 };
 
-const removeTags = (checkForParentEntity, separate) => {
+const removeTags = (checkForParentEntity) => {
   if (checkForParentEntity) {
-    cy.get('[data-testid="entity-tags"] [data-testid="edit-button"] ')
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="edit-button"]'
+    )
       .scrollIntoView()
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="remove-tags"]').should('be.visible').click();
+    cy.get('[data-testid="remove-tags"]')
+      .should('be.visible')
+      .click({ multiple: true });
 
-    cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+    cy.get('[data-testid="saveAssociatedTag"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
   } else {
-    if (separate) {
-      cy.get(
-        '[data-testid="classification-tags-0"] [data-testid="edit-button"]'
-      )
-        .scrollIntoView()
-        .trigger('mouseover')
-        .click();
-    } else {
-      cy.get(
-        `.ant-table-tbody [data-testid="tag-container"] [data-testid="edit-button"]`
-      )
-        .eq(0)
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-    }
+    cy.get('[data-testid="classification-tags-0"] [data-testid="edit-button"]')
+      .scrollIntoView()
+      .trigger('mouseover')
+      .click();
 
     cy.get(`[data-testid="remove-tags"`)
       .should('be.visible')
@@ -78,56 +107,126 @@ describe('Check if tags addition and removal flow working properly from tables',
     cy.login();
   });
 
-  TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) =>
-    it(`Adding and removing tags to the ${entityDetails.entity} entity should work properly`, () => {
+  TAGS_ADD_REMOVE_ENTITIES.map((entityDetails) => {
+    const apiEntity =
+      entityDetails.entity === 'dashboardDataModel'
+        ? 'dashboard/datamodels'
+        : entityDetails.entity;
+
+    it(`Adding & removing tags to the ${entityDetails.entity} entity`, () => {
+      interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+
+      interceptURL(
+        'GET',
+        `/api/v1/${apiEntity}/name/*?fields=*`,
+        'getEntityDetail'
+      );
+      interceptURL('PATCH', `/api/v1/${apiEntity}/*`, 'tagsChange');
+      interceptURL(
+        'PATCH',
+        `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
+        'tagsChange'
+      );
       visitEntityDetailsPage(
         entityDetails.term,
         entityDetails.serviceName,
-        entityDetails.entity
+        apiEntity
       );
+      verifyResponseStatusCode('@getEntityDetail', 200);
+      verifyResponseStatusCode('@getEntityPermission', 200);
 
       cy.get(
-        '[data-testid="entity-tags"] [data-testid="tags-wrapper"] [data-testid="tag-container"] [data-testid="tags"]  [data-testid="add-tag"]'
-      )
-        .should('be.visible')
-        .click();
+        '[data-testid="entity-right-panel"] [data-testid="tags-container"]'
+      ).then(($container) => {
+        if ($container.find('[data-testid="add-tag"]').length === 0) {
+          removeTags(true);
+        }
+        cy.get(
+          '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
+        ).click();
+      });
 
       addTags(entityDetails.tags[0]);
 
-      interceptURL('PATCH', `/api/v1/${entityDetails.entity}/*`, 'tagsChange');
-
-      cy.get('[data-testid="saveAssociatedTag"]').should('be.visible').click();
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.visible')
+        .click();
 
       verifyResponseStatusCode('@tagsChange', 200);
 
       checkTags(entityDetails.tags[0], true);
 
       removeTags(true);
+    });
 
-      if (entityDetails.entity === 'mlmodels') {
-        cy.get(
-          `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="tag-container"]  [data-testid="tags"] [data-testid="add-tag"]`
-        )
-          .should('be.visible')
-          .click();
-      } else {
-        cy.get(
-          `.ant-table-tbody [data-testid="tag-container"] [data-testid="add-tag"]`
-        )
-          .eq(0)
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
-      }
-
-      if (!entityDetails.separate) {
-        entityDetails.tags.map((tag) => addTags(tag));
-
+    it(`Adding & removing tags to the ${entityDetails.entity} entity schema table`, () => {
+      if (entityDetails.entity !== 'storedProcedures') {
+        interceptURL(
+          'GET',
+          `/api/v1/${apiEntity}/name/*?fields=*`,
+          'getEntityDetail'
+        );
+        interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
+        interceptURL('PATCH', `/api/v1/${apiEntity}/*`, 'tagsChange');
         interceptURL(
           'PATCH',
-          `/api/v1/${entityDetails.insideEntity ?? entityDetails.entity}/*`,
+          `/api/v1/${entityDetails.insideEntity ?? apiEntity}/*`,
           'tagsChange'
         );
+        if (entityDetails.insideEntity) {
+          interceptURL(
+            'GET',
+            `/api/v1/${entityDetails.insideEntity}/*`,
+            'getInsideColumn'
+          );
+          interceptURL(
+            'GET',
+            `/api/v1/permissions/chart/*`,
+            'getInsideColumnPermission'
+          );
+        }
+        visitEntityDetailsPage(
+          entityDetails.term,
+          entityDetails.serviceName,
+          apiEntity
+        );
+        verifyResponseStatusCode('@getEntityDetail', 200);
+        verifyResponseStatusCode('@getEntityPermission', 200);
+        if (entityDetails.insideEntity) {
+          verifyResponseStatusCode('@getInsideColumn', 200);
+          verifyResponseStatusCode('@getInsideColumnPermission', 200);
+        }
+
+        if (entityDetails.entity === 'mlmodels') {
+          cy.get(
+            `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"]`
+          ).then(($container) => {
+            if ($container.find('[data-testid="add-tag"]').length === 0) {
+              removeTags(false);
+            }
+            cy.get(
+              `[data-testid="feature-card-${entityDetails.fieldName}"] [data-testid="classification-tags-0"] [data-testid="add-tag"]`
+            ).click();
+          });
+        } else {
+          if (entityDetails.entity === 'topics') {
+            cy.get('[id*=panel-schema]').contains('Collapse All').click();
+          }
+          cy.get(
+            '.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"]'
+          ).then(($container) => {
+            if ($container.find('[data-testid="add-tag"]').length === 0) {
+              removeTags(false);
+            }
+            cy.get(
+              '.ant-table-tbody [data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="add-tag"]'
+            ).click();
+          });
+        }
+
+        entityDetails.tags.map((tag) => addTags(tag));
+        cy.clickOutside();
 
         cy.get('[data-testid="saveAssociatedTag"]')
           .scrollIntoView()
@@ -137,9 +236,12 @@ describe('Check if tags addition and removal flow working properly from tables',
         verifyResponseStatusCode('@tagsChange', 200);
 
         entityDetails.tags.map((tag) => checkTags(tag));
-
+        verifyTagFilter({
+          entity: entityDetails.entity,
+          tag: entityDetails.tags[0],
+        });
         removeTags(false, entityDetails.separate);
       }
-    })
-  );
+    });
+  });
 });

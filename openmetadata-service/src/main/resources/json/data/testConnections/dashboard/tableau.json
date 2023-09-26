@@ -1,6 +1,5 @@
 {
   "name": "Tableau",
-  "fullyQualifiedName": "Tableau",
   "displayName": "Tableau Test Connection",
   "description": "This Test Connection validates the access against the server and basic metadata extraction of workbooks and views.",
   "steps": [
@@ -27,6 +26,12 @@
       "name": "GetOwners",
       "description": "Validate if the Owner information is retrieved for Workbooks",
       "errorMessage": "Failed to fetch Workbook Owners, please validate if user has access to fetch Owners",
+      "mandatory": false
+    },
+    {
+      "name": "GetDataModels",
+      "description": "Validate if the Data Sources(Data Models) information is retrieved for Workbooks",
+      "errorMessage": "Failed to fetch Workbook Data Sources, please validate if user has access to fetch Data Sources and Metadata API is enabled for tableau server",
       "mandatory": false
     }
   ]

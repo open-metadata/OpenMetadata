@@ -12,9 +12,12 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
+import { PAGE_SIZE } from 'constants/constants';
 import { Operation } from 'fast-json-patch';
+import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -22,15 +25,26 @@ import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+export type ListDataModelParams = {
+  service?: string;
+  fields?: string;
+  after?: string;
+  before?: string;
+  include?: Include;
+  limit?: number;
+};
+
+const BASE_URL = '/dashboards';
+
 export const getDashboardVersions = async (id: string) => {
-  const url = `/dashboards/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
 export const getDashboardVersion = async (id: string, version: string) => {
-  const url = `/dashboards/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Dashboard>(url);
 
@@ -40,16 +54,20 @@ export const getDashboardVersion = async (id: string, version: string) => {
 export const getDashboards = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted,
+  limit: number = PAGE_SIZE
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(`/dashboards`, {
+  }>(`${BASE_URL}`, {
     params: {
       service,
       fields,
       ...paging,
+      include,
+      limit,
     },
   });
 
@@ -60,7 +78,7 @@ export const getDashboardDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/dashboards/${id}`, arrQueryFields);
+  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
 
   return APIClient.get(url);
 };
@@ -70,7 +88,7 @@ export const getDashboardByFqn = async (
   arrQueryFields: string | string[]
 ) => {
   const url = getURLWithQueryFields(
-    `/dashboards/name/${fqn}`,
+    `${BASE_URL}/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
@@ -90,7 +108,7 @@ export const addFollower = async (dashboardID: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/dashboards/${dashboardID}/followers`, userId, configOptions);
+  >(`${BASE_URL}/${dashboardID}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -102,7 +120,7 @@ export const removeFollower = async (dashboardID: string, userId: string) => {
 
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
-  }>(`/dashboards/${dashboardID}/followers/${userId}`, configOptions);
+  }>(`${BASE_URL}/${dashboardID}/followers/${userId}`, configOptions);
 
   return response.data;
 };
@@ -113,7 +131,7 @@ export const patchDashboardDetails = async (id: string, data: Operation[]) => {
   };
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Dashboard>>(
-    `/dashboards/${id}`,
+    `${BASE_URL}/${id}`,
     data,
     configOptions
   );
@@ -125,25 +143,26 @@ export const restoreDashboard = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Dashboard>
-  >('/dashboards/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
 
   return response.data;
 };
 
-export const getDataModels = async (
-  service: string,
-  fields: string,
-  paging?: PagingWithoutTotal
-) => {
+export const getDataModels = async (params?: ListDataModelParams) => {
   const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
     `/dashboard/datamodels`,
     {
-      params: {
-        service,
-        fields,
-        ...paging,
-      },
+      params,
     }
+  );
+
+  return response.data;
+};
+
+export const updateDashboardVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Dashboard>>(
+    `${BASE_URL}/${id}/vote`,
+    data
   );
 
   return response.data;

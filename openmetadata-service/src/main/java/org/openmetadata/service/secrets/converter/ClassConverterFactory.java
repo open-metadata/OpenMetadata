@@ -20,11 +20,14 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.GCSCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -44,11 +47,14 @@ public final class ClassConverterFactory {
             Map.entry(AirflowConnection.class, new AirflowConnectionClassConverter()),
             Map.entry(BigQueryConnection.class, new BigQueryConnectionClassConverter()),
             Map.entry(DatalakeConnection.class, new DatalakeConnectionClassConverter()),
+            Map.entry(MysqlConnection.class, new MysqlConnectionClassConverter()),
+            Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
             Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
             Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
-            Map.entry(GCSConfig.class, new GCSConfigClassConverter()),
-            Map.entry(GCSCredentials.class, new GcsCredentialsClassConverter()),
-            Map.entry(GcsConnection.class, new GcsConnectionClassConverter()),
+            Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
+            Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
+            Map.entry(GcsConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(LookerConnection.class, new LookerConnectionClassConverter()),
             Map.entry(OpenMetadataConnection.class, new OpenMetadataConnectionClassConverter()),
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),

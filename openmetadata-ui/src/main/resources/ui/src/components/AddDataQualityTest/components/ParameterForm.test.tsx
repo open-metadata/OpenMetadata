@@ -15,11 +15,16 @@ import { act, render, screen } from '@testing-library/react';
 import { TestDefinition } from 'generated/tests/testDefinition';
 import {
   MOCK_TABLE_COLUMN_NAME_TO_EXIST,
+  MOCK_TABLE_CUSTOM_SQL_QUERY,
   MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN,
   MOCK_TABLE_WITH_DATE_TIME_COLUMNS,
 } from 'mocks/TestSuite.mock';
 import React from 'react';
 import ParameterForm from './ParameterForm';
+
+jest.mock('components/schema-editor/SchemaEditor', () => {
+  return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
+});
 
 describe('ParameterForm component test', () => {
   it('Select box should render if "columnName" field is present and table data provided', async () => {
@@ -80,5 +85,33 @@ describe('ParameterForm component test', () => {
     expect(parameters).toHaveLength(
       MOCK_TABLE_COLUMN_NAME_TO_EXIST.parameterDefinition.length
     );
+  });
+
+  it('Query editor should render if "sqlExpression" field is present', async () => {
+    await act(async () => {
+      render(
+        <ParameterForm
+          definition={MOCK_TABLE_CUSTOM_SQL_QUERY as TestDefinition}
+        />
+      );
+    });
+
+    const sqlEditor = await screen.findByText('SchemaEditor');
+
+    expect(sqlEditor).toBeInTheDocument();
+  });
+
+  it('Should render select box if optionValues are provided', async () => {
+    await act(async () => {
+      render(
+        <ParameterForm
+          definition={MOCK_TABLE_CUSTOM_SQL_QUERY as TestDefinition}
+        />
+      );
+    });
+
+    const selectBox = await screen.findByRole('combobox');
+
+    expect(selectBox).toBeInTheDocument();
   });
 });

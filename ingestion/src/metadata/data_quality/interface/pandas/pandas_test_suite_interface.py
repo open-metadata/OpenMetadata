@@ -16,8 +16,9 @@ supporting sqlalchemy abstraction layer
 from datetime import datetime, timezone
 from typing import Optional
 
-from metadata.data_quality.interface.test_suite_protocol import TestSuiteProtocol
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.validations.validator import Validator
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -33,7 +34,7 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 
-class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
+class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
@@ -42,24 +43,27 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
 
     def __init__(
         self,
-        ometa_client: OpenMetadata = None,
-        service_connection_config: DatalakeConnection = None,
-        table_entity=None,
-        table_partition_config=None,
-        profile_sample_config=None,
+        service_connection_config: DatalakeConnection,
+        ometa_client: OpenMetadata,
+        table_entity: Table = None,
     ):
         self.table_entity = table_entity
-        self.profile_sample_config = profile_sample_config
 
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
+
+        (
+            self.table_sample_query,
+            self.table_sample_config,
+            self.table_partition_config,
+        ) = self._get_table_config()
+
         # add partition logic to test suite
-        self.table_partition_config = table_partition_config
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
             client=get_connection(self.service_connection_config).client,
             table=self.table_entity,
-            profile_sample_config=self.profile_sample_config,
+            profile_sample_config=self.table_sample_config,
         )
         if self.dfs and self.table_partition_config:
             self.dfs = self.get_partitioned_df(self.dfs)
@@ -89,7 +93,7 @@ class PandasTestSuiteInterface(TestSuiteProtocol, PandasInterfaceMixin):
             test_handler = TestHandler(
                 self.dfs,
                 test_case=test_case,
-                execution_date=datetime.now(tz=timezone.utc).timestamp(),
+                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
             )
 
             return Validator(validator_obj=test_handler).validate()

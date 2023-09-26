@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-@primary-color: #7147e8;
-@success-color: #008376;
-@error-color: #ff4c3b;
+@import url('../../styles/variables.less');
 
 .request-badge {
   &.success {
     .ant-badge-count {
-      background-color: @success-color;
+      background-color: @green-3;
+      color: @text-color;
     }
   }
   &.failed {
     .ant-badge-count {
-      background-color: @error-color;
+      background-color: @red-3;
+      color: @text-color;
     }
   }
   &.running {

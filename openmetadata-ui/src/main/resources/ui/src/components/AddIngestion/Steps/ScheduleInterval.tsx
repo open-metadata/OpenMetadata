@@ -12,12 +12,12 @@
  */
 
 import { CheckOutlined } from '@ant-design/icons';
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Form } from 'antd';
 import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 
 const ScheduleInterval = ({
   disabledCronChange,
@@ -25,28 +25,27 @@ const ScheduleInterval = ({
   onBack,
   onChange,
   onDeploy,
-  repeatFrequency,
+  scheduleInterval,
   status,
   submitButtonLabel,
+  children,
 }: ScheduleIntervalProps) => {
-  const handleRepeatFrequencyChange = (repeatFrequency: string) =>
-    onChange({
-      repeatFrequency: repeatFrequency,
-    });
   const { t } = useTranslation();
 
   return (
-    <Row data-testid="schedule-intervel-container">
-      <Col span={24}>
-        <div>
-          <CronEditor
-            disabledCronChange={disabledCronChange}
-            includePeriodOptions={includePeriodOptions}
-            value={repeatFrequency}
-            onChange={handleRepeatFrequencyChange}
-          />
-        </div>
-      </Col>
+    <Form
+      data-testid="schedule-intervel-container"
+      layout="vertical"
+      onFinish={onDeploy}>
+      <CronEditor
+        disabledCronChange={disabledCronChange}
+        includePeriodOptions={includePeriodOptions}
+        value={scheduleInterval}
+        onChange={onChange}
+      />
+
+      {children}
+
       <Col className="d-flex justify-end mt-4" span={24}>
         <Button
           className="m-r-xs"
@@ -67,14 +66,14 @@ const ScheduleInterval = ({
           <Button
             className="font-medium p-x-md p-y-xxs h-auto rounded-6"
             data-testid="deploy-button"
+            htmlType="submit"
             loading={status === LOADING_STATE.WAITING}
-            type="primary"
-            onClick={onDeploy}>
+            type="primary">
             {submitButtonLabel}
           </Button>
         )}
       </Col>
-    </Row>
+    </Form>
   );
 };
 

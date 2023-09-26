@@ -11,27 +11,25 @@
  *  limitations under the License.
  */
 
+import AppContainer from 'components/AppContainer/AppContainer';
 import { CustomEventTypes } from 'generated/analytics/webAnalyticEventData';
-import AccountActivationConfirmation from 'pages/signup/account-activation-confirmation.component';
+import { AuthProvider } from 'generated/settings/settings';
+import AccountActivationConfirmation from 'pages/SignUp/account-activation-confirmation.component';
 import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
-import { AuthTypes } from '../../enums/signin.enum';
 import SamlCallback from '../../pages/SamlCallback';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
-const AuthenticatedAppRouter = withSuspenseFallback(
-  React.lazy(() => import('./AuthenticatedAppRouter'))
-);
 const SigninPage = withSuspenseFallback(
   React.lazy(() => import('pages/login'))
 );
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found'))
+  React.lazy(() => import('pages/page-not-found/PageNotFound'))
 );
 
 const ForgotPassword = withSuspenseFallback(
@@ -43,7 +41,7 @@ const ResetPassword = withSuspenseFallback(
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('pages/signup/basic-signup.component'))
+  React.lazy(() => import('pages/SignUp/BasicSignup.component'))
 );
 
 const AppRouter = () => {
@@ -62,17 +60,17 @@ const AppRouter = () => {
 
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [
-    AuthTypes.GOOGLE,
-    AuthTypes.AWS_COGNITO,
-    AuthTypes.CUSTOM_OIDC,
+    AuthProvider.Google,
+    AuthProvider.AwsCognito,
+    AuthProvider.CustomOidc,
   ];
   const isOidcProvider =
     authConfig?.provider && oidcProviders.includes(authConfig.provider);
 
   const isBasicAuthProvider =
     authConfig &&
-    (authConfig.provider === AuthTypes.BASIC ||
-      authConfig.provider === AuthTypes.LDAP);
+    (authConfig.provider === AuthProvider.Basic ||
+      authConfig.provider === AuthProvider.LDAP);
 
   useEffect(() => {
     const { pathname } = location;
@@ -114,7 +112,7 @@ const AppRouter = () => {
   }
 
   if (isOidcProvider || isAuthenticated) {
-    return <AuthenticatedAppRouter />;
+    return <AppContainer />;
   }
 
   return (
@@ -155,7 +153,7 @@ const AppRouter = () => {
             />
           </>
         )}
-        {isAuthenticated && <AuthenticatedAppRouter />}
+        {isAuthenticated && <AppContainer />}
         <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       </Switch>
     </>

@@ -19,10 +19,6 @@ from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 
-from metadata.generated.schema.api.classification.createClassification import (
-    CreateClassificationRequest,
-)
-from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -38,7 +34,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -64,6 +61,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
 )
+from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -203,7 +201,9 @@ class PostgresSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Fetch Tags
         """
@@ -214,25 +214,24 @@ class PostgresSource(CommonDbSourceService):
                     schema_name=schema_name,
                 )
             ).all()
-
             for res in result:
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
-                yield OMetaTagAndClassification(
-                    fqn=fqn._build(  # pylint: disable=protected-access
+                yield from get_ometa_tag_and_classification(
+                    tag_fqn=fqn._build(  # pylint: disable=protected-access
                         self.context.database_service.name.__root__, *fqn_elements
                     ),
-                    classification_request=CreateClassificationRequest(
-                        name=self.service_connection.classificationName,
-                        description="Postgres Tag Name",
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=self.service_connection.classificationName,
-                        name=row[1],
-                        description="Postgres Tag Value",
-                    ),
+                    tags=[row[1]],
+                    classification_name=self.service_connection.classificationName,
+                    tag_description="Postgres Tag Value",
+                    classification_description="Postgres Tag Name",
                 )
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classification",
+                    error=f"Skipping Policy Tag: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )

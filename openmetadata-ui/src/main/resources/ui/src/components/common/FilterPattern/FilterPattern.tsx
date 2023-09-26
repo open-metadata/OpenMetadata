@@ -11,12 +11,10 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Row, Space, Typography } from 'antd';
+import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
 import { capitalize } from 'lodash';
 import React from 'react';
-import { getSeparator } from '../../../utils/CommonUtils';
-import { Field } from '../../Field/Field';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -31,20 +29,6 @@ const FilterPattern = ({
   includePatternExtraInfo,
   type,
 }: FilterPatternProps) => {
-  const includeFilterChangeHandler = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
-    getIncludeValue(value, type);
-  };
-
-  const excludeFilterChangeHandler = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
-    getExcludeValue(value, type);
-  };
-
   return (
     <div data-testid="filter-pattern-container">
       <Row>
@@ -66,21 +50,23 @@ const FilterPattern = ({
         </Col>
       </Row>
       {checked && (
-        <div data-testid="field-container">
-          <Field>
+        <Row className="m-t-xs" data-testid="field-container" gutter={[0, 16]}>
+          <Col span={24}>
             <Space size={2}>
               <label className="d-flex flex-col">{t('label.include')}:</label>
             </Space>
 
-            <Input
+            <Select
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
               disabled={isDisabled}
-              placeholder={t('message.list-of-strings-regex-patterns-csv')}
-              type="text"
-              value={includePattern}
-              onChange={includeFilterChangeHandler}
+              mode="tags"
+              open={false}
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={includePattern ?? []}
+              onChange={(value) => getIncludeValue(value, type)}
             />
+
             {includePatternExtraInfo && (
               <Typography.Text
                 className="text-grey-muted m-t-xss m-b-xss"
@@ -88,23 +74,25 @@ const FilterPattern = ({
                 {includePatternExtraInfo}
               </Typography.Text>
             )}
-          </Field>
-          <Field>
+          </Col>
+          <Col span={24}>
             <Space size={2}>
               <label className="d-flex flex-col">{t('label.exclude')}:</label>
             </Space>
-            <Input
+            <Select
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
               disabled={isDisabled}
-              placeholder={t('message.list-of-strings-regex-patterns-csv')}
-              type="text"
-              value={excludePattern}
-              onChange={excludeFilterChangeHandler}
+              mode="tags"
+              open={false}
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={excludePattern ?? []}
+              onChange={(value) => getExcludeValue(value, type)}
             />
-          </Field>
-          {showSeparator && getSeparator('')}
-        </div>
+
+            {showSeparator && <Divider />}
+          </Col>
+        </Row>
       )}
     </div>
   );

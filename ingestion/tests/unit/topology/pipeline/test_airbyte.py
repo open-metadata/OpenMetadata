@@ -119,14 +119,12 @@ EXPECTED_PIPELINE_STATUS = [
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
     displayName="MSSQL <> Postgres",
-    description="",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
+    sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
             displayName="MSSQL <> Postgres",
-            description="",
-            taskUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
+            sourceUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],
     service=FullyQualifiedEntityName(__root__="airbyte_source"),
@@ -145,14 +143,12 @@ MOCK_PIPELINE = Pipeline(
     name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
     fullyQualifiedName="airbyte_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
     displayName="MSSQL <> Postgres",
-    description="",
-    pipelineUrl=MOCK_CONNECTION_URI_PATH,
+    sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
         Task(
             name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
             displayName="MSSQL <> Postgres",
-            description="",
-            taskUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
+            sourceUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],
     service=EntityReference(
@@ -190,11 +186,13 @@ class AirbyteUnitTest(TestCase):
         ) == mock_data.get("connection")[0].get("connectionId")
 
     def test_pipelines(self):
-        pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0]
+        pipline = list(self.airbyte.yield_pipeline(EXPECTED_ARIBYTE_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
-        assert (
-            list(self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS))
-            == EXPECTED_PIPELINE_STATUS
-        )
+
+        status = [
+            either.right
+            for either in self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS)
+        ]
+        assert status == EXPECTED_PIPELINE_STATUS

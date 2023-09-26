@@ -38,7 +38,9 @@
         "EditTeams",
         "EditTier",
         "EditTests",
-        "EditUsers"
+        "EditUsage",
+        "EditUsers",
+        "EditLifeCycle"
       ]
     }
   },

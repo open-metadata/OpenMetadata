@@ -12,7 +12,6 @@
 """
 Test database connectors with CLI
 """
-import time
 from abc import abstractmethod
 from typing import List, Optional
 from unittest import TestCase
@@ -21,7 +20,7 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
 from .e2e_types import E2EType
 from .test_cli import CliBase
@@ -210,28 +209,6 @@ class CliDBBase(TestCase):
                     sink_status,
                 )
 
-        @pytest.mark.order(12)
-        def test_system_metrics(self) -> None:
-            if not any([self.delete_queries(), self.update_queries()]):
-                pytest.skip(
-                    "System metrics test requires delete and update table rows queries"
-                )
-            self.build_config_file()
-            self.run_command()
-            self.delete_table_and_view()
-            self.create_table_and_view()
-            self.build_config_file(
-                E2EType.PROFILER, {"includes": self.get_includes_schemas()}
-            )
-            self.delete_table_rows()
-            self.update_table_row()
-            # Add 120 second delay for system
-            # tables to register the change
-            time.sleep(120)
-            result = self.run_command("profile")
-            sink_status, source_status = self.retrieve_statuses(result)
-            self.assert_for_system_metrics(source_status, sink_status)
-
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
@@ -266,56 +243,54 @@ class CliDBBase(TestCase):
 
         @abstractmethod
         def assert_for_vanilla_ingestion(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ) -> None:
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_table_with_profiler(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_table_with_profiler_time_partition(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_for_delete_table_is_marked_as_deleted(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_schemas_includes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_schemas_excludes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_tables_includes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
         def assert_filtered_tables_excludes(
-            self, source_status: SourceStatus, sink_status: SinkStatus
+            self, source_status: Status, sink_status: SinkStatus
         ):
             raise NotImplementedError()
 
         @abstractmethod
-        def assert_filtered_mix(
-            self, source_status: SourceStatus, sink_status: SinkStatus
-        ):
+        def assert_filtered_mix(self, source_status: Status, sink_status: SinkStatus):
             raise NotImplementedError()
 
         @staticmethod

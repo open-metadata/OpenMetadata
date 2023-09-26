@@ -13,27 +13,27 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
 
-import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi dbi) {
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO dao) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
   }
 
@@ -57,7 +57,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException {
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     subjectContext = changeSubjectContext(user, subjectContext);
     return subjectContext.isAdmin()
@@ -67,11 +67,13 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
-      throws IOException {
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin()) {
       return;
+    }
+    if (isReviewer(resourceContext, subjectContext)) {
+      return; // Reviewer of a resource gets admin level privilege on the resource
     }
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
@@ -86,9 +88,12 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean decryptSecret(SecurityContext securityContext) {
+  public void authorizeAdminOrBot(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return subjectContext.isAdmin() || subjectContext.isBot();
+    if (subjectContext.isAdmin() || subjectContext.isBot()) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(securityContext.getUserPrincipal().getName()));
   }
 
   @Override
@@ -97,15 +102,18 @@ public class DefaultAuthorizer implements Authorizer {
     return !subjectContext.isBot();
   }
 
+  /** In 1.2, evaluate policies here instead of just checking the subject */
+  @Override
+  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owner);
+  }
+
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {
     if (securityContext == null || securityContext.getUserPrincipal() == null) {
       throw new AuthenticationException("No principal in security context");
     }
-    return getSubjectContext(SecurityUtil.getUserName(securityContext.getUserPrincipal()));
-  }
-
-  public static SubjectContext getSubjectContext(String userName) {
-    return SubjectCache.getInstance().getSubjectContext(userName);
+    return SubjectContext.getSubjectContext(SecurityUtil.getUserName(securityContext));
   }
 
   private SubjectContext changeSubjectContext(String user, SubjectContext loggedInUser) {
@@ -115,8 +123,19 @@ public class DefaultAuthorizer implements Authorizer {
         throw new AuthorizationException(notAdmin(loggedInUser.getUser().getName()));
       }
       LOG.debug("Changing subject context from logged-in user to {}", user);
-      return getSubjectContext(user);
+      return SubjectContext.getSubjectContext(user);
     }
     return loggedInUser;
+  }
+
+  private boolean isReviewer(ResourceContextInterface resourceContext, SubjectContext subjectContext) {
+    if (resourceContext.getEntity() == null) {
+      return false;
+    }
+    String updatedBy = subjectContext.getUser().getName();
+    List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
+    return !nullOrEmpty(reviewers)
+        && reviewers.stream()
+            .anyMatch(e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
   }
 }

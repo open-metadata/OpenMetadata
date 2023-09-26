@@ -14,7 +14,6 @@
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   handleIngestionRetry,
   interceptURL,
@@ -58,17 +57,11 @@ describe('RedShift Ingestion', () => {
 
     const addIngestionInput = () => {
       // no schema or database filters
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
-        .type('dbt_jaffle');
-      cy.get('[data-testid="toggle-button-include-views"]')
-        .should('be.visible')
-        .click();
+        .type('dbt_jaffle{enter}');
+
+      cy.get('#root\\/includeViews').click();
     };
 
     testServiceCreationAndIngestion({
@@ -108,7 +101,7 @@ describe('RedShift Ingestion', () => {
       '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*',
       'pipelineStatus'
     );
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getSettingsPage', 200);
@@ -154,7 +147,7 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@airflow', 200);
     verifyResponseStatusCode('@databases', 200);
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -172,22 +165,20 @@ describe('RedShift Ingestion', () => {
     verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
 
     // Add DBT ingestion
-    cy.get('[data-testid="dbt-source"]').should('be.visible').click();
-    cy.get('.ant-select-item-option-content')
-      .contains('HTTP Config Source')
-      .click();
-    cy.get('[data-testid="catalog-url"]')
+    cy.get('#root\\/dbtConfigSource__oneof_select')
       .scrollIntoView()
-      .should('be.visible')
+      .should('be.visible');
+    cy.get('#root\\/dbtConfigSource__oneof_select').select('DBT HTTP Config');
+
+    cy.get('#root\\/dbtConfigSource\\/dbtCatalogHttpPath')
+      .scrollIntoView()
       .type(HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH);
-    cy.get('[data-testid="manifest-url"]')
+    cy.get('#root\\/dbtConfigSource\\/dbtManifestHttpPath')
       .scrollIntoView()
-      .should('be.visible')
       .type(HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH);
-    cy.get('[data-testid="run-result-file"]')
+    cy.get('#root\\/dbtConfigSource\\/dbtRunResultsHttpPath')
       .scrollIntoView()
-      .should('be.visible')
-      .type(HTTP_CONFIG_SOURCE.DBT_RUN_RESTLTS_FILE_PATH);
+      .type(HTTP_CONFIG_SOURCE.DBT_RUN_RESULTS_FILE_PATH);
 
     cy.get('[data-testid="submit-btn"]').should('be.visible').click();
 
@@ -228,7 +219,7 @@ describe('RedShift Ingestion', () => {
       .should('be.visible')
       .click();
 
-    cy.get('[data-testid="appbar-item-tags"]')
+    cy.get('[data-testid="app-bar-item-tags"]')
       .should('exist')
       .should('be.visible')
       .click({ waitForAnimations: true });
@@ -257,17 +248,15 @@ describe('RedShift Ingestion', () => {
     // Verify query is present in the DBT tab
     cy.get('.CodeMirror').should('be.visible').should('contain', DBT.dbtQuery);
 
-    cy.get('[data-testid="Lineage"]').should('be.visible').click();
+    cy.get('[data-testid="lineage"]').should('be.visible').click();
 
-    cy.get('[data-testid="lineage-entity"]').should(
+    cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',
       DBT.dbtLineageNodeLabel
     );
 
     // Verify Data Quality
-    cy.get('[data-testid="Profiler & Data Quality"]')
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="profiler"]').should('be.visible').click();
 
     cy.get('[data-testid="profiler-tab-left-panel"]')
       .should('be.visible')
@@ -282,14 +271,6 @@ describe('RedShift Ingestion', () => {
       .should('exist')
       .should('be.visible')
       .should('contain', DBT.dataQualityTest2);
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      REDSHIFT.serviceName,
-      API_SERVICE.databaseServices
-    );
   });
 
   it('delete created service', () => {

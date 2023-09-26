@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { EntityReference } from '../../generated/type/entityReference';
 import { Paging } from '../../generated/type/paging';
 
 export interface PipeLineDetailsProp {
+  updatePipelineDetailsState?: (data: DataAssetWithDomains) => void;
   pipelineFQN: string;
   pipelineDetails: Pipeline;
-  followers: Array<EntityReference>;
   paging: Paging;
-  followPipelineHandler: (fetchCount: () => void) => void;
-  unfollowPipelineHandler: (fetchCount: () => void) => void;
+  fetchPipeline: () => void;
+  followPipelineHandler: (fetchCount: () => void) => Promise<void>;
+  unFollowPipelineHandler: (fetchCount: () => void) => Promise<void>;
   settingsUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
   descriptionUpdateHandler: (updatedPipeline: Pipeline) => Promise<void>;
-  tagUpdateHandler: (updatedPipeline: Pipeline, fetchCount: () => void) => void;
   taskUpdateHandler: (patch: Array<Operation>) => Promise<void>;
   versionHandler: () => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
+  handleToggleDelete: () => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

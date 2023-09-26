@@ -27,6 +27,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
@@ -38,14 +39,14 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private final StepStats stats = new StepStats();
   private String lastFailedCursor = null;
 
-  private String cursor = null;
+  private String cursor = RestUtil.encodeCursor("0");
   @Getter private boolean isDone = false;
 
   public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).dao.listTotalCount());
+    this.stats.setTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount());
   }
 
   @Override

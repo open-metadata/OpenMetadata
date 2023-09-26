@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityType } from 'enums/entity.enum';
 import { MlFeature } from 'generated/entity/data/mlmodel';
 import { Task } from 'generated/entity/data/pipeline';
 import { Field } from 'generated/entity/data/topic';
@@ -19,34 +20,22 @@ import { EntityTags, TagOption } from 'Models';
 import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Column } from '../../generated/entity/data/table';
-import { EntityFieldThreads } from '../../interface/feed.interface';
 
 export interface TableTagsComponentProps<T> {
-  tags: TableTagsProps;
-  tagList: TagOption[];
-  onUpdateTagsHandler?: (cell: T) => void;
+  tags: TagLabel[];
   isReadOnly?: boolean;
-  entityFqn?: string;
+  entityFqn: string;
   record: T;
   index: number;
-  isTagLoading: boolean;
-  hasTagEditAccess?: boolean;
-  handleTagSelection: (
-    selectedTags: Array<EntityTags>,
-    editColumnTag: T,
-    otherTags: TagLabel[]
-  ) => Promise<void>;
-  onRequestTagsHandler?: (cell: T) => void;
-  getColumnName?: (cell: T) => string;
-  getColumnFieldFQN?: string;
-  entityFieldTasks?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
-  entityFieldThreads?: EntityFieldThreads[];
-  tagFetchFailed: boolean;
+  hasTagEditAccess: boolean;
   type: TagSource;
-  fetchTags: () => Promise<void>;
-  dataTestId: string;
   showInlineEditTagButton?: boolean;
+  entityType: EntityType;
+  handleTagSelection: (
+    selectedTags: EntityTags[],
+    editColumnTag: T
+  ) => Promise<void>;
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
 }
 
 export interface TagsCollection {

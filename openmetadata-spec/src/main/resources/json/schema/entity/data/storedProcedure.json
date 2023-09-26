@@ -1,0 +1,162 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/storedProcedure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StoredProcedure",
+  "$comment": "@om-entity-type",
+  "description": "A `StoredProcedure` entity that contains the set of code statements with an assigned name  and is defined in a `Database Schema`.\"",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "entityName": {
+      "description": "Name of a Stored Procedure. Expected to be unique within a database schema.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
+    },
+    "storedProcedureCode": {
+      "properties": {
+        "language": {
+          "javaType": "org.openmetadata.schema.type.StoredProcedureLanguage",
+          "description": "This schema defines the type of the language used for Stored Procedure's Code.",
+          "type": "string",
+          "enum": [
+            "SQL",
+            "Java",
+            "JavaScript",
+            "Python"
+          ],
+          "javaEnums": [
+            {
+              "name": "SQL"
+            },
+            {
+              "name": "Java"
+            },
+            {
+              "name": "JavaScript"
+            },
+            {
+              "name": "Python"
+            }
+          ]
+        },
+        "code": {
+          "javaType": "org.openmetadata.schema.type.StoredProcedureCode",
+          "description": "This schema defines the type of the language used for Stored Procedure's Code.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the StoredProcedure.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of Stored Procedure.",
+      "$ref": "#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a Stored Procedure.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Stored Procedure.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a Stored Procedure.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "storedProcedureCode": {
+      "description": "Stored Procedure Code.",
+      "$ref": "#/definitions/storedProcedureCode"
+    },
+    "version": {
+      "description": "Metadata version of the Stored Procedure.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the query.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this Query resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "databaseSchema": {
+      "description": "Reference to Database Schema that contains this stored procedure.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "database": {
+      "description": "Reference to Database that contains this stored procedure.",
+      "$ref": "../../type/entityReference.json"
+    },
+  "service": {
+    "description": "Link to Database service this table is hosted in.",
+    "$ref": "../../type/entityReference.json"
+  },
+  "serviceType": {
+    "description": "Service type this table is hosted in.",
+    "$ref": "../services/databaseService.json#/definitions/databaseServiceType"
+  },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "owner": {
+      "description": "Owner of this Query.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this Query.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "code": {
+      "description": "SQL Query definition.",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
+    "tags": {
+      "description": "Tags for this SQL query.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of database schema.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    }
+  },
+  "required": ["id","name","storedProcedureCode"],
+  "additionalProperties": false
+}

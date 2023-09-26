@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import TestConnectionModal from './TestConnectionModal';
 const onCancelMock = jest.fn();
@@ -34,17 +35,23 @@ const testConnectionStepResult = [
   },
 ];
 
+const mockOnTestConnection = jest.fn();
+
+const isConnectionTimeout = false;
+
 describe('TestConnectionModal', () => {
   it('Should render the modal title', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -55,12 +62,14 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -72,12 +81,14 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -88,12 +99,14 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -105,11 +118,13 @@ describe('TestConnectionModal', () => {
       <TestConnectionModal
         isOpen
         isTestingConnection
+        isConnectionTimeout={isConnectionTimeout}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
 
@@ -120,12 +135,14 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
     const cancelButton = screen.getByText('Cancel');
@@ -139,12 +156,14 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={10}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
     const okButton = screen.getByText('OK');
@@ -158,12 +177,14 @@ describe('TestConnectionModal', () => {
     render(
       <TestConnectionModal
         isOpen
+        isConnectionTimeout={isConnectionTimeout}
         isTestingConnection={false}
         progress={90}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
         onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
       />
     );
     const progressBarValue = screen.getByTestId('progress-bar-value');
@@ -171,5 +192,51 @@ describe('TestConnectionModal', () => {
     expect(progressBarValue).toBeInTheDocument();
 
     expect(progressBarValue).toHaveTextContent('90%');
+  });
+
+  it('Should render the timeout widget if "isConnectionTimeout" is true', () => {
+    render(
+      <TestConnectionModal
+        isConnectionTimeout
+        isOpen
+        isTestingConnection={false}
+        progress={90}
+        testConnectionStep={testConnectionStep}
+        testConnectionStepResult={testConnectionStepResult}
+        onCancel={onCancelMock}
+        onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
+      />
+    );
+
+    expect(
+      screen.getByTestId('test-connection-timeout-widget')
+    ).toBeInTheDocument();
+  });
+
+  it('Try again button should work', async () => {
+    render(
+      <TestConnectionModal
+        isConnectionTimeout
+        isOpen
+        isTestingConnection={false}
+        progress={90}
+        testConnectionStep={testConnectionStep}
+        testConnectionStepResult={testConnectionStepResult}
+        onCancel={onCancelMock}
+        onConfirm={onConfirmMock}
+        onTestConnection={mockOnTestConnection}
+      />
+    );
+
+    const tryAgainButton = screen.getByTestId('try-again-button');
+
+    expect(tryAgainButton).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(tryAgainButton);
+    });
+
+    expect(mockOnTestConnection).toHaveBeenCalled();
   });
 });

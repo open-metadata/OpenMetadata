@@ -36,6 +36,9 @@
       "description": "Description of the tag.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "classification": {
       "description": "Reference to the classification that this tag is part of.",
       "$ref": "../../type/entityReference.json"
@@ -46,7 +49,7 @@
     },
     "children": {
       "description": "Children tags under this tag.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

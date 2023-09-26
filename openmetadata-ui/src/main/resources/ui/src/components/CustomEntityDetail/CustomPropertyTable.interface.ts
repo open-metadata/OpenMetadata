@@ -20,4 +20,5 @@ export interface CustomPropertyTableProp {
     customProperties: Type['customProperties']
   ) => Promise<void>;
   isLoading: boolean;
+  isButtonLoading: boolean;
 }

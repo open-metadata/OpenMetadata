@@ -1,6 +1,5 @@
 {
     "name": "PowerBI",
-    "fullyQualifiedName": "PowerBI",
     "displayName": "PowerBI Test Connection",
     "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
     "steps": [

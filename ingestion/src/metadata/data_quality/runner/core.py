@@ -14,7 +14,7 @@ Main class to run data tests
 """
 
 
-from metadata.data_quality.interface.test_suite_protocol import TestSuiteProtocol
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.models import TestCaseResultResponse
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
@@ -25,7 +25,7 @@ logger = test_suite_logger()
 class DataTestsRunner:
     """class to execute the test validation"""
 
-    def __init__(self, test_runner_interface: TestSuiteProtocol):
+    def __init__(self, test_runner_interface: TestSuiteInterface):
         self.test_runner_interace = test_runner_interface
 
     def run_and_handle(self, test_case: TestCase):

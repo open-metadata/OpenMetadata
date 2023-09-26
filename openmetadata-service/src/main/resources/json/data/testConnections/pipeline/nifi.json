@@ -1,6 +1,5 @@
 {
     "name": "Nifi",
-    "fullyQualifiedName": "Nifi",
     "displayName": "Nifi Test Connection",
     "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
     "steps": [

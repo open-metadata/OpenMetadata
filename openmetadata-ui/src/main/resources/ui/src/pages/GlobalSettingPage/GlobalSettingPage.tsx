@@ -14,11 +14,13 @@
 import { Menu, MenuProps } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import GlobalSettingRouter from 'components/router/GlobalSettingRouter';
-import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from 'constants/GlobalSettings.constants';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import { TeamType } from 'generated/entity/teams/team';
 import { useAuth } from 'hooks/authHooks';
@@ -40,7 +42,8 @@ import './global-setting-page.style.less';
 const GlobalSettingPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { tab, settingCategory } = useParams<{ [key: string]: string }>();
+  const { tab, settingCategory } =
+    useParams<{ tab: string; settingCategory: string }>();
 
   const { permissions } = usePermissionProvider();
 
@@ -79,13 +82,17 @@ const GlobalSettingPage = () => {
 
         break;
       case GlobalSettingOptions.SEARCH:
-        history.push(
-          getSettingsPathWithFqn(
-            category,
-            option,
-            ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
-          )
-        );
+        if (category === GlobalSettingsMenuCategory.OPEN_METADATA) {
+          history.push(
+            getSettingsPathWithFqn(
+              category,
+              option,
+              ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
+            )
+          );
+        } else {
+          history.push(getSettingPath(category, option));
+        }
 
         break;
       default:
@@ -109,14 +116,11 @@ const GlobalSettingPage = () => {
   ) : null;
 
   return (
-    <PageContainerV1>
-      <PageLayoutV1
-        className="tw-h-full tw-px-6"
-        leftPanel={leftPanel}
-        pageTitle={t('label.setting-plural')}>
+    <PageLayoutV1 leftPanel={leftPanel} pageTitle={t('label.setting-plural')}>
+      <div className="page-container h-full">
         <GlobalSettingRouter />
-      </PageLayoutV1>
-    </PageContainerV1>
+      </div>
+    </PageLayoutV1>
   );
 };
 

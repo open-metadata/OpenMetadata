@@ -74,9 +74,9 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
 )
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
-SELECT oid, polname, table_catalog , table_schema ,table_name  
+SELECT object_id, polname, table_catalog , table_schema ,table_name  
 FROM information_schema.tables AS it
-JOIN (SELECT pc.relname, pp.*
+JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       FROM pg_policy AS pp
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
@@ -115,9 +115,9 @@ select datname from pg_catalog.pg_database
 """
 
 POSTGRES_TEST_GET_TAGS = """
-SELECT oid, polname, table_catalog , table_schema ,table_name  
+SELECT object_id, polname, table_catalog , table_schema ,table_name  
 FROM information_schema.tables AS it
-JOIN (SELECT pc.relname, pp.*
+JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       FROM pg_policy AS pp
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
@@ -129,7 +129,7 @@ POSTGRES_TEST_GET_QUERIES = """
         u.usename,
         d.datname database_name,
         s.query query_text,
-        s.total_exec_time/1000 duration
+        s.{time_column_name}/1000 duration
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid

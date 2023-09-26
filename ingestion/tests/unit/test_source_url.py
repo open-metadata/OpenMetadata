@@ -14,6 +14,9 @@ OpenMetadata source URL building tests
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
     MssqlScheme,
@@ -34,7 +37,7 @@ class TestConfig(TestCase):
         """
         connection = MysqlConnection(
             username="username",
-            password="password",
+            authType=BasicAuth(password="password"),
             hostPort="localhost:1234",
         )
         url = get_connection_url_common(connection)
@@ -61,13 +64,13 @@ class TestConfig(TestCase):
             get_connection_url,
         )
 
-        expected_url = "mssql+pytds://sa:password@james\\bond:1433"
+        expected_url = "mssql+pytds://sa:password@james\\bond:1433/master"
         mssql_conn_obj = MssqlConnection(
             username="sa",
             password="password",
             hostPort="james\\bond:1433",
             scheme=MssqlScheme.mssql_pytds,
-            database=None,
+            database="master",
         )
 
         assert expected_url == get_connection_url(mssql_conn_obj)

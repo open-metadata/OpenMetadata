@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CustomEdge } from 'components/EntityLineage/CustomEdge.component';
-import CustomNode from 'components/EntityLineage/CustomNode.component';
+import { CustomEdge } from 'components/Entity/EntityLineage/CustomEdge.component';
+import CustomNodeV1 from 'components/Entity/EntityLineage/CustomNodeV1.component';
 import {
   CustomEdgeData,
   CustomElement,
   CustomFlow,
-  Edge as InterfaceEdge,
   EdgeData,
   EdgeTypeEnum,
   EntityReferenceChild,
@@ -31,11 +30,11 @@ import {
   NodeIndexMap,
   SelectedEdge,
   SelectedNode,
-} from 'components/EntityLineage/EntityLineage.interface';
-import LineageNodeLabel from 'components/EntityLineage/LineageNodeLabel';
-import LoadMoreNode from 'components/EntityLineage/LoadMoreNode.component';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from 'components/Explore/explore.interface';
 import Loader from 'components/Loader/Loader';
 import dagre from 'dagre';
+import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -43,9 +42,9 @@ import {
   isEqual,
   isNil,
   isUndefined,
-  lowerCase,
   uniqueId,
   uniqWith,
+  upperCase,
 } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, MouseEvent as ReactMouseEvent } from 'react';
@@ -65,15 +64,15 @@ import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
+  getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
-  SECONDARY_COLOR,
+  INFO_COLOR,
 } from '../constants/constants';
 import {
   EXPANDED_NODE_HEIGHT,
@@ -101,9 +100,7 @@ import {
   getPartialNameFromTableFQN,
   prepareLabel,
 } from './CommonUtils';
-import { getContainerDetailPath } from './ContainerDetailUtils';
 import { getEntityName } from './EntityUtils';
-import SVGIcons from './SvgUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -118,11 +115,12 @@ export const getHeaderLabel = (
   return (
     <Fragment>
       {isMainNode ? (
-        <span
-          className="tw-break-words description-text tw-self-center tw-font-medium"
-          data-testid="lineage-entity">
+        <Typography.Text
+          className="description-text text-left text-md font-medium w-68"
+          data-testid="lineage-entity"
+          ellipsis={{ tooltip: true }}>
           {name || prepareLabel(type, fqn, false)}
-        </span>
+        </Typography.Text>
       ) : (
         <Typography.Title
           ellipsis
@@ -340,27 +338,20 @@ export const getLineageData = (
         type === EntityLineageNodeType.LOAD_MORE || !isEditMode
           ? type
           : EntityLineageNodeType.DEFAULT,
-      className: 'leaf-node',
+      className: '',
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={lineageLeafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={node}
-            type={type}
-            onNodeExpand={onNodeExpand}
-            onSelect={onSelect}
-          />
-        ),
         entityType: node.type,
+        lineageLeafNodes: lineageLeafNodes,
         removeNodeHandler,
         isEditMode,
         isExpanded,
         columns: cols,
         handleColumnClick,
+        onNodeExpand,
         node,
+        isNodeLoading,
+        loadNodeHandler,
+        onSelect,
       },
       position: {
         x: x,
@@ -385,23 +376,12 @@ export const getLineageData = (
       sourcePosition: 'right',
       targetPosition: 'left',
       type: mainNodeType,
-      className: `leaf-node core`,
+      className: `core`,
       data: {
-        label: (
-          <LineageNodeLabel
-            isExpanded={isExpanded}
-            isNodeLoading={isNodeLoading}
-            lineageLeafNodes={lineageLeafNodes}
-            loadNodeHandler={loadNodeHandler}
-            node={mainNode}
-            type={mainNodeType}
-            onNodeExpand={onNodeExpand}
-            onSelect={onSelect}
-          />
-        ),
         isEditMode,
         removeNodeHandler,
         handleColumnClick,
+        onNodeExpand,
         columns: mainCols,
         isExpanded,
         node: mainNode,
@@ -415,45 +395,9 @@ export const getLineageData = (
   return { node: lineageData, edge: lineageEdgesV1 };
 };
 
-export const getDataLabel = (
-  displayName?: string,
-  fqn = '',
-  isTextOnly = false,
-  type?: string
-) => {
-  const databaseName = getPartialNameFromTableFQN(fqn, [FqnPart.Database]);
-  const schemaName = getPartialNameFromTableFQN(fqn, [FqnPart.Schema]);
-
-  let label = '';
-  if (displayName) {
-    label = displayName;
-  } else {
-    label = prepareLabel(type as string, fqn);
-  }
-
-  if (isTextOnly) {
-    return label;
-  } else {
-    return (
-      <span
-        className="tw-break-words tw-self-center w-72"
-        data-testid="lineage-entity">
-        {type === 'table' && databaseName && schemaName ? (
-          <span className="d-block text-xs custom-lineage-heading">
-            {databaseName}
-            {FQN_SEPARATOR_CHAR}
-            {schemaName}
-          </span>
-        ) : null}
-        <span className="text-base">{label}</span>
-      </span>
-    );
-  }
-};
-
 export const getDeletedLineagePlaceholder = () => {
   return (
-    <div className="tw-mt-4 tw-ml-4 d-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+    <div className="m-t-md m-l-md global-border rounded-4 flex-center p-8 font-medium">
       <span>
         {t('message.lineage-data-is-not-available-for-deleted-entities')}
       </span>
@@ -558,21 +502,6 @@ export const getUniqueFlowElements = (elements: CustomFlow[]) => {
   });
 
   return uniqueElements;
-};
-
-/**
- *
- * @param onClick - callback
- * @returns - Button element with attach callback
- */
-export const getNodeRemoveButton = (onClick: () => void) => {
-  return (
-    <button
-      className="tw-absolute tw--top-3.5 tw--right-3 tw-cursor-pointer tw-z-9999 tw-bg-body-hover tw-rounded-full"
-      onClick={() => onClick()}>
-      <SVGIcons alt="times-circle" icon="icon-times-circle" width="16px" />
-    </button>
-  );
 };
 
 export const getSelectedEdgeArr = (
@@ -861,7 +790,7 @@ export const getUpdatedEdgeWithPipeline = (
   edges: EntityLineage['downstreamEdges'],
   updatedLineageDetails: LineageDetails,
   selectedEdge: CustomEdgeData,
-  pipelineDetail: EntityReference | undefined
+  edgeDetails: EntityReference | undefined
 ) => {
   if (isUndefined(edges)) {
     return [];
@@ -877,8 +806,9 @@ export const getUpdatedEdgeWithPipeline = (
           ...updatedLineageDetails,
           pipeline: !isUndefined(updatedLineageDetails.pipeline)
             ? {
-                displayName: pipelineDetail?.displayName,
-                name: pipelineDetail?.name,
+                displayName: edgeDetails?.displayName,
+                name: edgeDetails?.name,
+                fullyQualifiedName: edgeDetails?.fullyQualifiedName,
                 ...updatedLineageDetails.pipeline,
               }
             : undefined,
@@ -893,7 +823,8 @@ export const getUpdatedEdgeWithPipeline = (
 export const getNewLineageConnectionDetails = (
   selectedEdgeValue: EntityLineageEdge | undefined,
   selectedPipelineId: string | undefined,
-  customEdgeData: CustomEdgeData
+  customEdgeData: CustomEdgeData,
+  type: EntityType
 ) => {
   const { source, sourceType, target, targetType } = customEdgeData;
   const updatedLineageDetails: LineageDetails = {
@@ -904,7 +835,7 @@ export const getNewLineageConnectionDetails = (
       ? undefined
       : {
           id: selectedPipelineId,
-          type: EntityType.PIPELINE,
+          type,
         },
   };
 
@@ -1132,7 +1063,7 @@ export const getEdgeStyle = (value: boolean) => {
   return {
     opacity: value ? 1 : 0.25,
     strokeWidth: value ? 2 : 1,
-    stroke: value ? SECONDARY_COLOR : undefined,
+    stroke: value ? INFO_COLOR : undefined,
   };
 };
 
@@ -1307,10 +1238,10 @@ export const removeDuplicates = (arr: EntityLineageEdge[]) => {
 };
 
 export const nodeTypes = {
-  output: CustomNode,
-  input: CustomNode,
-  default: CustomNode,
-  'load-more': LoadMoreNode,
+  output: CustomNodeV1,
+  input: CustomNodeV1,
+  default: CustomNodeV1,
+  'load-more': CustomNodeV1,
 };
 
 export const customEdges = { buttonedge: CustomEdge };
@@ -1347,7 +1278,7 @@ export const findNodeById = (
   return undefined;
 };
 
-export const addLineageHandler = async (edge: InterfaceEdge): Promise<void> => {
+export const addLineageHandler = async (edge: AddLineage): Promise<void> => {
   try {
     await addLineage(edge);
   } catch (err) {
@@ -1379,30 +1310,6 @@ export const removeLineageHandler = async (data: EdgeData): Promise<void> => {
     );
 
     throw err;
-  }
-};
-
-export const getParamByEntityType = (entityType: EntityType): string => {
-  switch (entityType) {
-    case EntityType.DATASET:
-    case EntityType.TABLE:
-      return 'datasetFQN';
-    case EntityType.TOPIC:
-      return 'topicFQN';
-    case EntityType.PIPELINE:
-      return 'pipelineFQN';
-    case EntityType.MLMODEL:
-      return 'mlModelFqn';
-    case EntityType.DASHBOARD:
-      return 'dashboardFQN';
-    case EntityType.DATABASE:
-      return 'databaseFQN';
-    case EntityType.DATABASE_SCHEMA:
-      return 'databaseSchemaFQN';
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return 'dashboardDataModelFQN';
-    default:
-      return 'entityFQN';
   }
 };
 
@@ -1439,7 +1346,7 @@ export const getEntityLineagePath = (
 
 // Nodes Icons
 export const getEntityNodeIcon = (label: string) => {
-  switch (lowerCase(label)) {
+  switch (label) {
     case EntityType.TABLE:
       return TableIcon;
     case EntityType.DASHBOARD:
@@ -1450,7 +1357,31 @@ export const getEntityNodeIcon = (label: string) => {
       return PipelineIcon;
     case EntityType.MLMODEL:
       return MlModelIcon;
+    case EntityType.SEARCH_INDEX:
+      return SearchOutlined;
     default:
       return TableIcon;
   }
+};
+
+export const getSearchIndexFromNodeType = (entityType: string) => {
+  const searchIndexKey = upperCase(entityType).replace(
+    ' ',
+    '_'
+  ) as keyof typeof SearchIndex;
+
+  return SearchIndex[searchIndexKey] as ExploreSearchIndex;
+};
+
+export const updateEdgesWithLineageDetails = (
+  edgesArray: EntityLineageEdge[],
+  updatedEdgeDetails: AddLineage
+) => {
+  const { fromEntity, toEntity, lineageDetails } = updatedEdgeDetails.edge;
+
+  return edgesArray.map((item) =>
+    item.toEntity === toEntity.id && item.fromEntity === fromEntity.id
+      ? { ...item, lineageDetails: lineageDetails }
+      : item
+  );
 };

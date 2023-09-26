@@ -12,7 +12,6 @@
  */
 
 import { RedocStandalone } from '@deuex-solutions/redoc';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import React from 'react';
 import './swagger.less';
 
@@ -21,17 +20,15 @@ const SwaggerPage = () => {
   //   specUrl="https://raw.githubusercontent.com/deuex-solutions/redoc/master/demo/petstore.json"
   // />);
   return (
-    <PageContainerV1>
-      <div
-        className="container-fluid"
-        data-testid="fluid-container"
-        id="doc-container">
-        <RedocStandalone
-          options={{ enableConsole: true }}
-          specUrl="./swagger.json"
-        />
-      </div>
-    </PageContainerV1>
+    <div
+      className="container-fluid"
+      data-testid="fluid-container"
+      id="doc-container">
+      <RedocStandalone
+        options={{ enableConsole: true }}
+        specUrl="./swagger.json"
+      />
+    </div>
   );
 };
 

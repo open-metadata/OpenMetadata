@@ -14,6 +14,7 @@ OpenMetadata high-level API Table test
 """
 import logging
 import time
+from datetime import datetime
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -29,6 +30,9 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -45,6 +49,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.tests.testCase import TestCase as TestCaseEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -78,6 +83,7 @@ class OMetaTableTest(TestCase):
 
     service_entity_id = None
     table: Table = None
+    test_case: TestCaseEntity = None
     db_entity: Database = None
     db_schema_entity: DatabaseSchema = None
     user_1: User = None
@@ -106,7 +112,9 @@ class OMetaTableTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -160,6 +168,14 @@ class OMetaTableTest(TestCase):
                 Column(name="id", dataType=DataType.BIGINT),
                 Column(name="another", dataType=DataType.BIGINT),
             ],
+        )
+
+        cls.test_case = cls.metadata.get_by_name(
+            entity=TestCaseEntity,
+            fqn="sample_data.ecommerce_db.shopify"
+            ".dim_address.shop_id"
+            ".column_value_max_to_be_between",
+            fields=["testDefinition", "testSuite"],
         )
 
         cls.table = cls.metadata.create_or_update(data=cls.create)
@@ -258,6 +274,37 @@ class OMetaTableTest(TestCase):
         force_updated: Table = self.metadata.patch_description(
             entity=Table,
             source=self.table,
+            description="Forced new",
+            force=True,
+        )
+
+        assert force_updated.description.__root__ == "Forced new"
+
+    def test_patch_description_TestCase(self):
+        """
+        Update description and force
+        """
+        new_description = "Description " + str(datetime.now())
+        updated: TestCaseEntity = self.metadata.patch_description(
+            entity=TestCaseEntity,
+            source=self.test_case,
+            description=new_description,
+            force=True,
+        )
+
+        assert updated.description.__root__ == new_description
+
+        not_updated = self.metadata.patch_description(
+            entity=TestCaseEntity,
+            source=self.test_case,
+            description="Not passing force",
+        )
+
+        assert not not_updated
+
+        force_updated: TestCaseEntity = self.metadata.patch_description(
+            entity=TestCaseEntity,
+            source=self.test_case,
             description="Forced new",
             force=True,
         )

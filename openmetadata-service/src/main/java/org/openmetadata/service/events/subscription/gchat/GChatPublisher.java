@@ -18,7 +18,6 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhook;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.List;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.Invocation;
@@ -30,20 +29,22 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.formatter.decorators.GChatMessageDecorator;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GChatPublisher extends SubscriptionPublisher {
+  private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator = new GChatMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;
   private final Client client;
   private final CollectionDAO daoCollection;
 
   public GChatPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == G_CHAT_WEBHOOK) {
       this.daoCollection = dao;
       this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
@@ -76,11 +77,10 @@ public class GChatPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  protected void sendAlert(EventResource.EventList list) throws JsonProcessingException {
-
+  protected void sendAlert(EventResource.EventList list) {
     for (ChangeEvent event : list.getData()) {
       try {
-        GChatMessage gchatMessage = ChangeEventParser.buildGChatMessage(event);
+        GChatMessage gchatMessage = gChatMessageMessageDecorator.buildMessage(event);
         List<Invocation.Builder> targets = getTargetsForWebhook(webhook, G_CHAT_WEBHOOK, client, daoCollection, event);
         if (target != null) {
           targets.add(target);

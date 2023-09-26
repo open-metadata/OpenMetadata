@@ -52,6 +52,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.ValidatorUtil;
 
 /**
  * EntityCsv provides export and import capabilities for an entity. Each entity must implement the abstract methods to
@@ -153,8 +154,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> list = CsvUtil.fieldToStrings(owner);
     if (list.size() != 2) {
       importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+      return null;
     }
     return getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
+  }
+
+  /** Owner field is in entityName format */
+  public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    String owner = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(owner)) {
+      return null;
+    }
+    return getEntityReference(printer, csvRecord, fieldNumber, Entity.USER, owner);
   }
 
   protected final Boolean getBoolean(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
@@ -183,7 +194,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     EntityInterface entity = entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
     if (entity == null) {
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-      entity = entityRepository.findByNameOrNull(fqn, "", Include.NON_DELETED);
+      entity = entityRepository.findByNameOrNull(fqn, Include.NON_DELETED);
     }
     return entity;
   }
@@ -203,6 +214,26 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   protected final List<EntityReference> getEntityReferences(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
+    String fqns = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String fqn : fqnList) {
+      EntityReference ref = getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
+      if (!processRecord) {
+        return null;
+      }
+      if (ref != null) {
+        refs.add(ref);
+      }
+    }
+    return refs.isEmpty() ? null : refs;
+  }
+
+  protected final List<EntityReference> getUserOrTeamEntityReferences(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType) throws IOException {
     String fqns = csvRecord.get(fieldNumber);
     if (nullOrEmpty(fqns)) {
@@ -310,19 +341,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
     entity.setUpdatedAt(System.currentTimeMillis());
     EntityRepository<T> repository = (EntityRepository<T>) Entity.getEntityRepository(entityType);
     Response.Status responseStatus;
-    if (Boolean.FALSE.equals(importResult.getDryRun())) {
+    String violations = ValidatorUtil.validate(entity);
+    if (violations != null) {
+      // JSON schema based validation failed for the entity
+      importFailure(resultsPrinter, violations, csvRecord);
+      return;
+    }
+    if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity);
+        repository.prepareInternal(entity, false);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         return;
       }
-    } else {
+    } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
       responseStatus =
-          repository.findByNameOrNull(entity.getFullyQualifiedName(), "", Include.NON_DELETED) == null
+          repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
               ? Response.Status.CREATED
               : Response.Status.OK;
       // Track the dryRun created entities, as they may be referred by other entities being created during import

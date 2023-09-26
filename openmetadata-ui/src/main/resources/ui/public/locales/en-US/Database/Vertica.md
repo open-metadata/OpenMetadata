@@ -70,8 +70,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the Vertica service. E.g., `my-host.com:5433`.
+This parameter specifies the host and port of the Vertica instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5433`.
 
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:5433` as the value.
 $$
 
 $$section

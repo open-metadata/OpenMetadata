@@ -25,6 +25,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -43,7 +46,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.orm.converter import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 
 
@@ -71,7 +74,9 @@ class ProfilerWorkflowTest(TestCase):
         connection = DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         )

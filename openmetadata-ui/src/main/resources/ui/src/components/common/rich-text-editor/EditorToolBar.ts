@@ -34,6 +34,7 @@ const markdownButton = (): HTMLButtonElement => {
     <img
       alt="markdown-icon"
       className="svg-icon"
+      height="16px"
       src=${MarkdownIcon} />
   </a>`;
 

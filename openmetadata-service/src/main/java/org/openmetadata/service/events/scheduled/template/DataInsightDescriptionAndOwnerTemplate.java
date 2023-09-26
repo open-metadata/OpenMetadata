@@ -28,7 +28,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
     NOT_MET
   }
 
-  private Double percentCompleted;
+  private final Double percentCompleted;
   private boolean kpiAvailable;
   private Double percentChange;
   private String targetKpi;
@@ -60,7 +60,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
     }
     this.completeMessage =
         String.format(
-            "The %s changed by <strong style=\"color: %s;\">%s%%</strong> per cent in the last week. %s",
+            "The %s changed by <strong style=\"color: %s;\">%.2f%%</strong> per cent in the last week. %s",
             getMetricTypeMessage(metricType), color, percentChange, getKpiCriteriaMessage(metricType, criteria));
   }
 

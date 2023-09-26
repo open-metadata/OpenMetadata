@@ -11,8 +11,33 @@
  *  limitations under the License.
  */
 
+import { SearchOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as AdminIcon } from 'assets/svg/admin.svg';
+import { ReactComponent as AllActivityIcon } from 'assets/svg/all-activity.svg';
+import { ReactComponent as BotIcon } from 'assets/svg/bot-profile.svg';
+import { ReactComponent as DashboardIcon } from 'assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataInsightIcon } from 'assets/svg/data-insight.svg';
+import { ReactComponent as ElasticSearchIcon } from 'assets/svg/elasticsearch.svg';
+import { ReactComponent as EmailSettingsIcon } from 'assets/svg/email-settings.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
+import { ReactComponent as BellIcon } from 'assets/svg/ic-alert-bell.svg';
+import { ReactComponent as CustomLogoIcon } from 'assets/svg/ic-custom-logo.svg';
+import { ReactComponent as DataInsightReportIcon } from 'assets/svg/ic-data-insight-report.svg';
+import { ReactComponent as DatabaseIcon } from 'assets/svg/ic-database.svg';
+import { ReactComponent as SchemaIcon } from 'assets/svg/ic-schema.svg';
+import { ReactComponent as StorageIcon } from 'assets/svg/ic-storage.svg';
+import { ReactComponent as StoredProcedureIcon } from 'assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as RolesIcon } from 'assets/svg/icon-role-grey.svg';
+import { ReactComponent as OMLogo } from 'assets/svg/metadata.svg';
+import { ReactComponent as MlModelIcon } from 'assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from 'assets/svg/pipeline-grey.svg';
+import { ReactComponent as PoliciesIcon } from 'assets/svg/policies.svg';
+import { ReactComponent as TableIcon } from 'assets/svg/table-grey.svg';
+import { ReactComponent as TeamsIcon } from 'assets/svg/teams-grey.svg';
+import { ReactComponent as TopicIcon } from 'assets/svg/topic-grey.svg';
+import { ReactComponent as UsersIcon } from 'assets/svg/user.svg';
 import classNames from 'classnames';
 import {
   ResourceEntity,
@@ -22,27 +47,7 @@ import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
 import { EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import React, { ReactNode } from 'react';
-import { ReactComponent as AdminIcon } from '../../src/assets/svg/admin.svg';
-import { ReactComponent as AllActivityIcon } from '../../src/assets/svg/all-activity.svg';
-import { ReactComponent as BotIcon } from '../../src/assets/svg/bot-profile.svg';
-import { ReactComponent as DashboardIcon } from '../../src/assets/svg/dashboard-grey.svg';
-import { ReactComponent as DataInsightIcon } from '../../src/assets/svg/data-insight.svg';
-import { ReactComponent as ElasticSearchIcon } from '../../src/assets/svg/elasticsearch.svg';
-import { ReactComponent as EmailSettingsIcon } from '../../src/assets/svg/email-settings.svg';
-import { ReactComponent as BellIcon } from '../../src/assets/svg/ic-alert-bell.svg';
-import { ReactComponent as DataInsightReportIcon } from '../../src/assets/svg/ic-data-insight-report.svg';
-import { ReactComponent as RolesIcon } from '../../src/assets/svg/icon-role-grey.svg';
-import { ReactComponent as OMLogo } from '../../src/assets/svg/metadata.svg';
-import { ReactComponent as MlModelIcon } from '../../src/assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from '../../src/assets/svg/pipeline-grey.svg';
-import { ReactComponent as PoliciesIcon } from '../../src/assets/svg/policies.svg';
-import { ReactComponent as TableIcon } from '../../src/assets/svg/table-grey.svg';
-import { ReactComponent as TeamsIcon } from '../../src/assets/svg/teams-grey.svg';
-import { ReactComponent as TopicIcon } from '../../src/assets/svg/topic-grey.svg';
-import { ReactComponent as UsersIcon } from '../../src/assets/svg/user.svg';
-import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
-import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
-import { userPermissions } from '../utils/PermissionsUtils';
+import { userPermissions } from 'utils/PermissionsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -101,19 +106,13 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.role-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.ROLE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.roles',
           icon: <RolesIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.policy-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.POLICY,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'access.policies',
           icon: <PoliciesIcon className="side-panel-icons" />,
         },
@@ -185,7 +184,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.storages',
           icon: <StorageIcon className="side-panel-icons w-4 h-4" />,
-          isBeta: Boolean,
+        },
+        {
+          label: i18next.t('label.search'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.SEARCH_SERVICE,
+            permissions
+          ),
+          key: 'services.search',
+          icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
         },
       ],
     },
@@ -195,28 +202,19 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.activity-feed-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.EVENT_SUBSCRIPTION,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'notifications.activityFeeds',
           icon: <AllActivityIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.alert-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.EVENT_SUBSCRIPTION,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'notifications.alerts',
           icon: <BellIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.data-insight-report'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.EVENT_SUBSCRIPTION,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'notifications.dataInsightReport',
           icon: <DataInsightReportIcon className="side-panel-icons" />,
         },
@@ -228,57 +226,69 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.table-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.tables',
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.topic-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.topics',
           icon: <TopicIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.dashboard-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.dashboards',
           icon: <DashboardIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.pipeline-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.pipelines',
           icon: <PipelineIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.ml-model-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.mlModels',
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.container-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.TYPE,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'customAttributes.containers',
           icon: <StorageIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.search-index'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.searchIndex',
+          icon: <SearchOutlined className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.stored-procedure-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.storedProcedure',
+          icon: <StoredProcedureIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.glossary-term'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.glossaryTerm',
+          icon: <GlossaryIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.database'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.database',
+          icon: <DatabaseIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.database-schema'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.databaseSchema',
+          icon: <SchemaIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -318,12 +328,9 @@ export const getGlobalSettingsMenuWithPermission = (
       items: [
         {
           label: i18next.t('label.bot-plural'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.BOT,
-            permissions
-          ),
+          isProtected: Boolean(isAdminUser),
           key: 'integrations.bots',
-          icon: <BotIcon className="tw-w-4 side-panel-icons" />,
+          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -377,7 +384,7 @@ export const getGlobalSettingMenuItem = (args: {
     label: isBeta ? (
       <Badge
         className={classNames({ 'text-xs text-grey-muted': !isChildren })}
-        color="#7147e8"
+        color="#0968da"
         count="beta"
         offset={[30, 8]}
         size="small">
@@ -402,6 +409,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
       return GlobalSettingOptions.MLMODELS;
     case EntityType.CONTAINER:
       return GlobalSettingOptions.CONTAINERS;
+    case EntityType.DATABASE:
+      return GlobalSettingOptions.DATABASE;
+    case EntityType.DATABASE_SCHEMA:
+      return GlobalSettingOptions.DATABASE_SCHEMA;
+    case EntityType.GLOSSARY_TERM:
+      return GlobalSettingOptions.GLOSSARY_TERM;
 
     case EntityType.TABLE:
     default:

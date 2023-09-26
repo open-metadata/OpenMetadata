@@ -320,7 +320,7 @@ class TestWorkflowParse(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "localhost:3306",
                 }
             },
@@ -337,7 +337,7 @@ class TestWorkflowParse(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                 }
             },
             "connectionType": "Database",
@@ -355,7 +355,7 @@ class TestWorkflowParse(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "localhost:3306",
                     "random": "value",
                 }

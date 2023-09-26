@@ -11,22 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from 'components/common/TabsPane/TabsPane';
 import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
 import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import { EntityTabs } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -35,8 +34,6 @@ import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
-import { CUSTOM_PROPERTIES_DOCS } from '../../constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { Type } from '../../generated/entity/type';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -45,10 +42,12 @@ import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ [key: string]: string }>();
+  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
   const history = useHistory();
 
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<EntityTabs>(
+    EntityTabs.CUSTOM_PROPERTIES
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isError, setIsError] = useState<boolean>(false);
   const [selectedEntityTypeDetail, setSelectedEntityTypeDetail] =
@@ -56,7 +55,7 @@ const CustomEntityDetailV1 = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
+  const tabAttributePath = ENTITY_PATH[tab];
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -75,11 +74,6 @@ const CustomEntityDetailV1 = () => {
     }
   };
 
-  const viewPermission = useMemo(
-    () => propertyPermission.ViewAll || propertyPermission.ViewBasic,
-    [propertyPermission, tab]
-  );
-
   const editPermission = useMemo(
     () => propertyPermission.EditAll,
     [propertyPermission, tab]
@@ -97,32 +91,14 @@ const CustomEntityDetailV1 = () => {
     setIsLoading(false);
   };
 
-  const onTabChange = (tab: number) => {
-    setActiveTab(tab);
+  const onTabChange = (activeKey: string) => {
+    setActiveTab(activeKey as EntityTabs);
   };
 
   const handleAddProperty = () => {
     const path = getAddCustomPropertyPath(tabAttributePath);
     history.push(path);
   };
-
-  const tabs = useMemo(() => {
-    const { customProperties } = selectedEntityTypeDetail;
-
-    return [
-      {
-        name: t('label.custom-property-plural'),
-        isProtected: false,
-        position: 1,
-        count: (customProperties || []).length,
-      },
-      {
-        name: t('label.schema'),
-        isProtected: false,
-        position: 2,
-      },
-    ];
-  }, [selectedEntityTypeDetail]);
 
   const updateEntityType = async (properties: Type['customProperties']) => {
     setIsButtonLoading(true);
@@ -158,11 +134,27 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.mlmodels:
+      case ENTITY_PATH.mlModels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
 
       case ENTITY_PATH.containers:
         return PAGE_HEADERS.CONTAINER_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.searchindex:
+        return PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.storedProcedure:
+        return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.glossaryTerm:
+        return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.database:
+        return PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.databaseSchema:
+        return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
+
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }
@@ -170,7 +162,7 @@ const CustomEntityDetailV1 = () => {
 
   useEffect(() => {
     if (!isUndefined(tab)) {
-      setActiveTab(1);
+      setActiveTab(EntityTabs.CUSTOM_PROPERTIES);
       setIsError(false);
       fetchTypeDetail(tabAttributePath);
     }
@@ -182,15 +174,73 @@ const CustomEntityDetailV1 = () => {
     }
   }, [selectedEntityTypeDetail]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
+  const tabs = useMemo(() => {
+    const { customProperties } = selectedEntityTypeDetail;
+
+    return [
+      {
+        label: (
+          <TabsLabel
+            count={(customProperties || []).length}
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            isActive={activeTab === EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <div data-testid="entity-custom-fields">
+            <div className="flex justify-end">
+              {editPermission && (
+                <Button
+                  className="m-b-md p-y-xss p-x-xs rounded-4"
+                  data-testid="add-field-button"
+                  size="middle"
+                  type="primary"
+                  onClick={handleAddProperty}>
+                  {t('label.add-entity', {
+                    entity: t('label.property'),
+                  })}
+                </Button>
+              )}
+            </div>
+            <CustomPropertyTable
+              customProperties={selectedEntityTypeDetail.customProperties ?? []}
+              hasAccess={editPermission}
+              isButtonLoading={isButtonLoading}
+              isLoading={isLoading}
+              updateEntityType={updateEntityType}
+            />
+          </div>
+        ),
+      },
+      {
+        label: t('label.schema'),
+        key: EntityTabs.SCHEMA,
+        children: (
+          <div data-testid="entity-schema">
+            <SchemaEditor
+              className="custom-properties-schemaEditor p-y-md"
+              editorClass="custom-entity-schema"
+              value={JSON.parse(selectedEntityTypeDetail.schema ?? '{}')}
+            />
+          </div>
+        ),
+      },
+    ];
+  }, [
+    selectedEntityTypeDetail,
+    editPermission,
+    isButtonLoading,
+    customPageHeader,
+    isLoading,
+  ]);
 
   if (isError) {
     return <ErrorPlaceHolder />;
   }
 
-  return viewPermission ? (
+  return (
     <Row
       className="m-y-xs"
       data-testid="custom-entity-container"
@@ -199,75 +249,7 @@ const CustomEntityDetailV1 = () => {
         <PageHeader data={customPageHeader} />
       </Col>
       <Col className="global-settings-tabs" span={24}>
-        <TabsPane
-          activeTab={activeTab}
-          setActiveTab={onTabChange}
-          tabs={tabs}
-        />
-      </Col>
-      <Col span={24}>
-        {activeTab === 2 && (
-          <div data-testid="entity-schema">
-            <SchemaEditor
-              className="custom-properties-schemaEditor p-y-md"
-              editorClass="custom-entity-schema"
-              value={JSON.parse(selectedEntityTypeDetail.schema ?? '{}')}
-            />
-          </div>
-        )}
-        {activeTab === 1 &&
-          (isEmpty(selectedEntityTypeDetail.customProperties) ? (
-            <div data-testid="entity-custom-fields">
-              <ErrorPlaceHolder
-                className="mt-24"
-                doc={CUSTOM_PROPERTIES_DOCS}
-                heading="Property"
-                permission={editPermission}
-                type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                onClick={handleAddProperty}
-              />
-            </div>
-          ) : (
-            <div data-testid="entity-custom-fields">
-              <div className="flex justify-end">
-                <Tooltip
-                  placement="topRight"
-                  title={
-                    editPermission
-                      ? t('label.add-custom-entity-property', {
-                          entity: customPageHeader.header,
-                        })
-                      : NO_PERMISSION_FOR_ACTION
-                  }>
-                  <Button
-                    className="m-b-md p-y-xss p-x-xs rounded-4"
-                    data-testid="add-field-button"
-                    disabled={!editPermission}
-                    size="middle"
-                    type="primary"
-                    onClick={() => handleAddProperty()}>
-                    {t('label.add-entity', {
-                      entity: t('label.property'),
-                    })}
-                  </Button>
-                </Tooltip>
-              </div>
-              <CustomPropertyTable
-                customProperties={
-                  selectedEntityTypeDetail.customProperties || []
-                }
-                hasAccess={editPermission}
-                isLoading={isButtonLoading}
-                updateEntityType={updateEntityType}
-              />
-            </div>
-          ))}
-      </Col>
-    </Row>
-  ) : (
-    <Row>
-      <Col span={24}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <Tabs activeKey={activeTab} items={tabs} onChange={onTabChange} />
       </Col>
     </Row>
   );

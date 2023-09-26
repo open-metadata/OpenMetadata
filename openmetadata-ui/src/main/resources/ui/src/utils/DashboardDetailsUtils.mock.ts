@@ -30,7 +30,7 @@ export const mockCharts = [
     updatedAt: 1669804896748,
     updatedBy: 'admin',
     chartType: ChartType.Other,
-    chartUrl:
+    sourceUrl:
       'http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D',
     href: 'http://localhost:8585/api/v1/charts/86dad1d4-8830-4d35-ab03-dd6190c1f05d',
     tags: [
@@ -114,7 +114,7 @@ export const sortedTagsMockCharts = [
     updatedAt: 1669804896748,
     updatedBy: 'admin',
     chartType: ChartType.Other,
-    chartUrl:
+    sourceUrl:
       'http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D',
     href: 'http://localhost:8585/api/v1/charts/86dad1d4-8830-4d35-ab03-dd6190c1f05d',
     tags: [

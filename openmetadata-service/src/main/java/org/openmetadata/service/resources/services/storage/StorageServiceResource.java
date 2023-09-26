@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -67,15 +66,13 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storageServices")
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
-
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  static final String FIELDS = "pipelines,owner,tags";
+  static final String FIELDS = "pipelines,owner,tags,domain";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
+    super.addHref(uriInfo, service);
     Entity.withHref(uriInfo, service.getOwner());
-    Entity.withHref(uriInfo, service.getPipelines());
     return service;
   }
 
@@ -83,11 +80,14 @@ public class StorageServiceResource
     super(StorageService.class, new StorageServiceRepository(dao), authorizer, ServiceType.STORAGE);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class StorageServiceList extends ResultList<StorageService> {
-    @SuppressWarnings("unused") /* Required for tests */
-    public StorageServiceList() {
-      /* unused */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -124,17 +124,16 @@ public class StorageServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = getFields(fieldsParam);
     ResultList<StorageService> storageServices;
 
     ListFilter filter = new ListFilter(include);
     if (before != null) {
-      storageServices = dao.listBefore(uriInfo, fields, filter, limitParam, before);
+      storageServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
     } else {
-      storageServices = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      storageServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, decryptOrNullify(securityContext, storageServices));
   }
@@ -167,8 +166,7 @@ public class StorageServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     StorageService storageService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, storageService);
   }
@@ -201,8 +199,7 @@ public class StorageServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     StorageService storageService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, storageService);
   }
@@ -224,11 +221,10 @@ public class StorageServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult)
-      throws IOException {
+      @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    StorageService service = dao.addTestConnectionResult(id, testConnectionResult);
+    StorageService service = repository.addTestConnectionResult(id, testConnectionResult);
     return decryptOrNullify(securityContext, service);
   }
 
@@ -247,8 +243,7 @@ public class StorageServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "storage service Id", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -258,7 +253,7 @@ public class StorageServiceResource
                   try {
                     StorageService storageService = JsonUtils.readValue((String) json, StorageService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, storageService));
-                  } catch (IOException e) {
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -291,8 +286,7 @@ public class StorageServiceResource
               description = "storage service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     StorageService storageService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, storageService);
   }
@@ -311,8 +305,7 @@ public class StorageServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService create) {
     StorageService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
@@ -333,8 +326,7 @@ public class StorageServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateStorageService update) {
     StorageService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
@@ -361,8 +353,7 @@ public class StorageServiceResource
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -387,8 +378,8 @@ public class StorageServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the storage service", schema = @Schema(type = "string")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -410,8 +401,7 @@ public class StorageServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the StorageService", schema = @Schema(type = "string")) @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -428,12 +418,11 @@ public class StorageServiceResource
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = StorageService.class)))
       })
   public Response restoreStorageService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private StorageService getService(CreateStorageService create, String user) throws IOException {
+  private StorageService getService(CreateStorageService create, String user) {
     return copy(new StorageService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());

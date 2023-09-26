@@ -56,7 +56,7 @@ describe('TableQueryRightPanel component test', () => {
     render(<TableQueryRightPanel {...mockProps} />, {
       wrapper: MemoryRouter,
     });
-    const owner = await screen.findByTestId('owner-name');
+    const owner = await screen.findByTestId('owner-link');
 
     expect(
       await screen.findByTestId('owner-name-container')

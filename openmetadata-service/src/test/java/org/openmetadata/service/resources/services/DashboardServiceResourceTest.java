@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
@@ -165,12 +166,12 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
     // Validate that the data got properly stored
     assertNotNull(updatedService.getTestConnectionResult());
-    assertEquals(updatedService.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
     assertEquals(updatedService.getConnection(), service.getConnection());
     // Check that the stored data is also correct
     DashboardService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
     assertNotNull(stored.getTestConnectionResult());
-    assertEquals(stored.getTestConnectionResult().getStatus(), TestConnectionResultStatus.SUCCESSFUL);
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
     assertEquals(stored.getConnection(), service.getConnection());
   }
 
@@ -183,21 +184,16 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Override
   public CreateDashboardService createRequest(String name) {
-    try {
-      return new CreateDashboardService()
-          .withName(name)
-          .withServiceType(DashboardServiceType.Metabase)
-          .withConnection(
-              new DashboardConnection()
-                  .withConfig(
-                      new MetabaseConnection()
-                          .withHostPort(new URI("http://localhost:8080"))
-                          .withUsername("admin")
-                          .withPassword("admin")));
-    } catch (URISyntaxException e) {
-      LOG.error("Failed to create CreateDashboardService request", e);
-    }
-    return null;
+    return new CreateDashboardService()
+        .withName(name)
+        .withServiceType(DashboardServiceType.Metabase)
+        .withConnection(
+            new DashboardConnection()
+                .withConfig(
+                    new MetabaseConnection()
+                        .withHostPort(CommonUtil.getUri("http://localhost:8080"))
+                        .withUsername("admin")
+                        .withPassword("admin")));
   }
 
   @Override
@@ -262,7 +258,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
         if (INGESTION_BOT_AUTH_HEADERS.equals(authHeaders)) {
           assertEquals(expectedmetabaseConnection.getPassword(), actualMetabaseConnection.getPassword());
         } else {
-          assertEquals(actualMetabaseConnection.getPassword(), PasswordEntityMasker.PASSWORD_MASK);
+          assertEquals(PasswordEntityMasker.PASSWORD_MASK, actualMetabaseConnection.getPassword());
         }
       }
     }
@@ -279,7 +275,7 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
                     .withHostPort(new URI("http://localhost:8080"))
                     .withPassword("test")
                     .withUsername("admin"));
-    createDashboardService.withConnection(dashboardConnection);
+    createDashboardService.withConnection(dashboardConnection).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService dashboardService =
         new DashboardServiceResourceTest().createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
     METABASE_REFERENCE = dashboardService.getEntityReference();

@@ -174,6 +174,7 @@ describe('Test Add Data Insight Report Alert', () => {
         scheduleInfo: 'Weekly',
         triggerType: 'Scheduled',
       },
+      enabled: true,
       provider: 'system',
     });
     expect(mockPush).toHaveBeenCalled();

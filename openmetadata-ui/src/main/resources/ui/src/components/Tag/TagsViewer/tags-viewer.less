@@ -14,16 +14,12 @@
 @import url('../../../styles/variables.less');
 
 .tag-popover-container {
-  background: @background-color;
-  border: @global-border;
-  box-shadow: @card-shadow;
-  border-radius: @border-radius-base;
   padding: 0;
 
   .ant-popover-inner {
-    box-shadow: none;
-    background-color: transparent;
+    background-color: @background-color;
     border-radius: 0;
+    box-shadow: @box-shadow-base;
   }
 
   .ant-popover-inner-content {

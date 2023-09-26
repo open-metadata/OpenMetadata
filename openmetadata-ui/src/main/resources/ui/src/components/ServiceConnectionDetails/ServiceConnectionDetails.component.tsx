@@ -17,9 +17,12 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Tooltip } from 'antd';
+import Input from 'antd/lib/input/Input';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { StorageServiceType } from 'generated/entity/services/storageService';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
+import { getSearchServiceConfig } from 'utils/SearchServiceUtils';
 import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
@@ -76,9 +79,9 @@ const ServiceConnectionDetails = ({
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'credentials'
         ) {
-          // Condition for GCS Credentials path
+          // Condition for GCP Credentials path
           const newSchemaPropertyObject =
-            schemaPropertyObject[key].definitions.GCSCredentialsPath;
+            schemaPropertyObject[key].definitions.gcpCredentialsPath;
 
           return getKeyValues(value, newSchemaPropertyObject);
         } else if (
@@ -86,7 +89,7 @@ const ServiceConnectionDetails = ({
           key === 'configSource'
         ) {
           if (isObject(value.securityConfig)) {
-            if (!value.securityConfig.gcsConfig) {
+            if (!value.securityConfig.gcpConfig) {
               if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
                 if (
                   value.securityConfig?.awsAccessKeyId ||
@@ -113,24 +116,24 @@ const ServiceConnectionDetails = ({
                 return getKeyValues(value, newSchemaPropertyObject);
               }
             } else {
-              if (isObject(value.securityConfig.gcsConfig)) {
-                // Condition for GCS Credentials value
+              if (isObject(value.securityConfig.gcpConfig)) {
+                // Condition for GCP Credentials value
                 return getKeyValues(
-                  value.securityConfig.gcsConfig,
+                  value.securityConfig.gcpConfig,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSValues.properties',
+                    'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
                     {}
                   )
                 );
               } else {
-                // Condition for GCS Credentials path
+                // Condition for GCP Credentials path
 
                 return getKeyValues(
                   value,
                   get(
                     schema,
-                    'definitions.GCSConfig.properties.securityConfig.definitions.GCSCredentialsPath',
+                    'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
                     {}
                   )
                 );
@@ -171,7 +174,7 @@ const ServiceConnectionDetails = ({
         return (
           <Col key={key} span={12}>
             <Row>
-              <Col span={8}>
+              <Col className="d-flex items-center" span={8}>
                 <Space size={0}>
                   <p className="text-grey-muted m-0">{key || title}:</p>
                   <Tooltip
@@ -179,16 +182,16 @@ const ServiceConnectionDetails = ({
                     title={description}
                     trigger="hover">
                     <InfoCircleOutlined
-                      className="tw-mx-1"
+                      className="m-x-xss"
                       style={{ color: '#C4C4C4' }}
                     />
                   </Tooltip>
                 </Space>
               </Col>
               <Col span={16}>
-                <input
+                <Input
                   readOnly
-                  className="w-full tw-outline-none"
+                  className="w-full border-none"
                   type={format !== 'password' ? 'text' : 'password'}
                   value={value}
                 />
@@ -235,6 +238,12 @@ const ServiceConnectionDetails = ({
       case EntityType.STORAGE_SERVICE:
         setSchema(
           getStorageServiceConfig(serviceFQN as StorageServiceType).schema
+        );
+
+        break;
+      case EntityType.SEARCH_SERVICE:
+        setSchema(
+          getSearchServiceConfig(serviceFQN as SearchServiceType).schema
         );
     }
   }, [serviceCategory, serviceFQN]);

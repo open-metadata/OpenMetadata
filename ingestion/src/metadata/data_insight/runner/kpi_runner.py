@@ -26,7 +26,7 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult, KpiTarget
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import (
@@ -53,7 +53,7 @@ class KpiRunner:
 
         self.metadata = metadata
         self.datetime = datetime.utcnow()
-        self.processor_status = SourceStatus()
+        self.processor_status = Status()
 
     def _get_data_insight_chart_result(
         self, data_insight_chart: EntityReference
@@ -69,7 +69,7 @@ class KpiRunner:
         ] = self.metadata.get_by_name(
             entity=DataInsightChart,
             fqn=data_insight_chart.fullyQualifiedName,
-            fields="*",
+            fields=["*"],
         )
 
         if not data_insight_chart_entity:

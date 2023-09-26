@@ -45,6 +45,9 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
     TableProfilerConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -60,6 +63,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -97,7 +101,9 @@ class OMetaTableTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -204,6 +210,10 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
+
+        # Now check that we get a None if the table does not exist
+        nullable_res = self.metadata.get_by_name(entity=Table, fqn="something.made.up")
+        self.assertIsNone(nullable_res)
 
     def test_get_id(self):
         """
@@ -339,7 +349,7 @@ class OMetaTableTest(TestCase):
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                timestamp=datetime.now(tz=timezone.utc).timestamp() + 1,
                 operation="UPDATE",
                 rowsAffected=110,
             ),
@@ -444,7 +454,10 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        query_no_user = CreateQueryRequest(query="select * from awesome")
+        query_no_user = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from awesome"),
+            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
+        )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
         table_with_query: List[Query] = self.metadata.get_entity_queries(
@@ -457,7 +470,9 @@ class OMetaTableTest(TestCase):
 
         # Validate that we can properly add user information
         query_with_user = CreateQueryRequest(
-            query="select * from awesome", users=[self.owner.fullyQualifiedName]
+            query="select * from awesome",
+            users=[self.owner.fullyQualifiedName],
+            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
 
         self.metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])

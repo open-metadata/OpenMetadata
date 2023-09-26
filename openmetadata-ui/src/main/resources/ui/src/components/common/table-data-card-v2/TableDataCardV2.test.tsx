@@ -18,7 +18,6 @@ import TableDataCardV2 from './TableDataCardV2';
 
 jest.mock('../../../utils/TableUtils', () => ({
   getEntityLink: jest.fn().mockReturnValue('EntityLink'),
-  getEntityHeaderLabel: jest.fn(),
   getServiceIcon: jest.fn(),
   getEntityIcon: jest.fn().mockReturnValue(<p>icon</p>),
   getUsagePercentile: jest
@@ -35,7 +34,7 @@ jest.mock('../../../constants/constants', () => ({
     .mockImplementation((path) => `/dataset/${path}`),
 }));
 
-jest.mock('../table-data-card/TableDataCardBody', () => {
+jest.mock('components/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 

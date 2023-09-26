@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Divider } from 'antd';
+import { Alert, Typography } from 'antd';
 import AppState from 'AppState';
 import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import FeedCardBodyV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
-import { EntityListWithV1 } from 'components/EntityList/EntityList';
+import { EntityListWithV1 } from 'components/Entity/EntityList/EntityList';
 import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
 import { getUserPath } from 'constants/constants';
 import { Thread } from 'generated/entity/feed/thread';
@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getActiveAnnouncement } from 'rest/feedsAPI';
 import { showErrorToast } from 'utils/ToastUtils';
+import './right-sidebar.less';
 
 interface RightSidebarProps {
   followedDataCount: number;
@@ -53,6 +54,54 @@ const RightSidebar = ({
 
   return (
     <>
+      {announcements.length > 0 && (
+        <>
+          <div className="p-md p-b-xss">
+            <Typography.Paragraph className="right-panel-label m-b-sm">
+              {t('label.recent-announcement-plural')}
+            </Typography.Paragraph>
+            <div className="announcement-container-list">
+              {announcements.map((item) => {
+                return (
+                  <Alert
+                    className="m-b-xs right-panel-announcement"
+                    description={
+                      <>
+                        <FeedCardHeaderV1
+                          about={item.about}
+                          className="d-inline"
+                          createdBy={item.createdBy}
+                          showUserAvatar={false}
+                          timeStamp={item.threadTs}
+                        />
+                        <FeedCardBodyV1
+                          isOpenInDrawer
+                          announcement={item.announcement}
+                          className="p-t-xs"
+                          isEditPost={false}
+                          message={item.message}
+                          showSchedule={false}
+                        />
+                      </>
+                    }
+                    key={item.id}
+                    message={
+                      <div className="d-flex announcement-alert-heading">
+                        <AnnouncementIcon width={20} />
+                        <span className="text-sm p-l-xss">
+                          {t('label.announcement')}
+                        </span>
+                      </div>
+                    }
+                    type="info"
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="p-md" data-testid="following-data-container">
         <EntityListWithV1
           entityList={followedData}
@@ -60,7 +109,7 @@ const RightSidebar = ({
             <>
               {followedData.length ? (
                 <Link
-                  className="view-all-btn"
+                  className="view-all-btn text-grey-muted"
                   data-testid="following-data"
                   to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
                   <span className="font-normal text-xs">
@@ -76,51 +125,11 @@ const RightSidebar = ({
           headerTextLabel={t('label.following')}
           loading={isLoadingOwnedData}
           noDataPlaceholder={t('message.not-followed-anything')}
-          testIDText="Following data"
+          testIDText="following"
         />
       </div>
-      <Divider className="m-0" />
       <div className="p-md" data-testid="recently-viewed-container">
         <RecentlyViewed />
-      </div>
-      <Divider className="m-0" />
-      <div className="p-md">
-        {announcements.map((item) => {
-          return (
-            <Alert
-              className="m-b-xs right-panel-announcement"
-              description={
-                <>
-                  <FeedCardHeaderV1
-                    about={item.about}
-                    className="d-inline"
-                    createdBy={item.createdBy}
-                    showUserAvatar={false}
-                    timeStamp={item.threadTs}
-                  />
-                  <FeedCardBodyV1
-                    announcement={item.announcement}
-                    className="p-t-xs"
-                    isEditPost={false}
-                    message={item.message}
-                    reactions={item.reactions}
-                    showSchedule={false}
-                  />
-                </>
-              }
-              key={item.id}
-              message={
-                <div className="d-flex announcement-alert-heading">
-                  <AnnouncementIcon width={20} />
-                  <span className="text-sm p-l-xss">
-                    {t('label.announcement')}
-                  </span>
-                </div>
-              }
-              type="info"
-            />
-          );
-        })}
       </div>
     </>
   );

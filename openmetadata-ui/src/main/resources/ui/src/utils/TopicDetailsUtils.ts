@@ -12,75 +12,7 @@
  */
 
 import { TopicConfigObjectInterface } from 'components/TopicDetails/TopicDetails.interface';
-import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
-import { sortTagsCaseInsensitive } from './CommonUtils';
-
-export const topicDetailsTabs = [
-  {
-    name: t('label.schema'),
-    path: 'schema',
-  },
-  {
-    name: t('label.activity-feed-and-task-plural'),
-    path: 'activity_feed',
-    field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: t('label.sample-data'),
-    path: 'sample_data',
-    field: TabSpecificField.SAMPLE_DATA,
-  },
-  {
-    name: t('label.config'),
-    path: 'config',
-  },
-  {
-    name: t('label.lineage'),
-    path: 'lineage',
-    field: TabSpecificField.LINEAGE,
-  },
-  {
-    name: t('label.custom-property-plural'),
-    path: 'custom_properties',
-  },
-];
-
-export const getCurrentTopicTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'activity_feed':
-      currentTab = 2;
-
-      break;
-    case 'sample_data':
-      currentTab = 3;
-
-      break;
-    case 'config':
-      currentTab = 4;
-
-      break;
-    case 'lineage':
-      currentTab = 5;
-
-      break;
-    case 'custom_properties':
-      currentTab = 6;
-
-      break;
-
-    case 'schema':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
 
 export const getConfigObject = (
   topicDetails: Topic
@@ -93,29 +25,4 @@ export const getConfigObject = (
     'Max Message Size': topicDetails.maximumMessageSize,
     'Schema Type': topicDetails.messageSchema?.schemaType,
   };
-};
-
-export const getFormattedTopicDetails = (topicDetails: Topic): Topic => {
-  if (
-    !isUndefined(topicDetails.messageSchema) &&
-    !isUndefined(topicDetails.messageSchema?.schemaFields)
-  ) {
-    // Sorting tags as the response of PATCH request does not return the sorted order
-    // of tags, but is stored in sorted manner in the database
-    // which leads to wrong PATCH payload sent after further tags removal
-    const schemaFields = topicDetails.messageSchema.schemaFields.map(
-      (schemaField) =>
-        isUndefined(schemaField.tags)
-          ? schemaField
-          : { ...schemaField, tags: sortTagsCaseInsensitive(schemaField.tags) }
-    );
-
-    return {
-      ...topicDetails,
-      tags: topicDetails.tags ?? [],
-      messageSchema: { ...topicDetails.messageSchema, schemaFields },
-    };
-  } else {
-    return { ...topicDetails, tags: topicDetails.tags ?? [] };
-  }
 };

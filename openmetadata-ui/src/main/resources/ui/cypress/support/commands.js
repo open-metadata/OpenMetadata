@@ -125,3 +125,7 @@ Cypress.Commands.add('login', () => {
   cy.storeSession(LOGIN.username, LOGIN.password);
   cy.goToHomePage();
 });
+
+Cypress.Commands.add('clickOutside', function () {
+  return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
+});

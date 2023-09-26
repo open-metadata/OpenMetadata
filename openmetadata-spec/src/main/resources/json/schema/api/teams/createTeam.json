@@ -40,7 +40,7 @@
       "default": null
     },
     "children": {
-      "description": "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
+      "description": "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/uuid"
@@ -80,6 +80,10 @@
         "$ref": "../../type/basic.json#/definitions/uuid"
       },
       "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Team belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "teamType"],

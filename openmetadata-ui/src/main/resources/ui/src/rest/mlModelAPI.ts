@@ -12,10 +12,11 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
@@ -23,8 +24,10 @@ import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+const BASE_URL = '/mlmodels';
+
 export const getMlModelVersions = async (id: string) => {
-  const url = `/mlmodels/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
@@ -32,7 +35,7 @@ export const getMlModelVersions = async (id: string) => {
 };
 
 export const getMlModelVersion = async (id: string, version: string) => {
-  const url = `/mlmodels/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Mlmodel>(url);
 
@@ -45,7 +48,7 @@ export const getMlModelByFQN = async (
   include = Include.All
 ) => {
   const url = getURLWithQueryFields(
-    `mlmodels/name/${fqn}`,
+    `${BASE_URL}/name/${fqn}`,
     arrQueryFields,
     `include=${include}`
   );
@@ -58,16 +61,18 @@ export const getMlModelByFQN = async (
 export const getMlModels = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(`/mlmodels`, {
+  }>(`${BASE_URL}`, {
     params: {
       service,
       fields,
       ...paging,
+      include,
     },
   });
 
@@ -80,7 +85,7 @@ export const patchMlModelDetails = async (id: string, data: Operation[]) => {
   };
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Mlmodel>>(
-    `/mlmodels/${id}`,
+    `${BASE_URL}/${id}`,
     data,
     configOptions
   );
@@ -98,7 +103,7 @@ export const addFollower = async (mlModelId: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/mlmodels/${mlModelId}/followers`, userId, configOptions);
+  >(`${BASE_URL}/${mlModelId}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -113,7 +118,7 @@ export const removeFollower = async (mlModelId: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/mlmodels/${mlModelId}/followers/${userId}`, configOptions);
+  >(`${BASE_URL}/${mlModelId}/followers/${userId}`, configOptions);
 
   return response.data;
 };
@@ -122,7 +127,16 @@ export const restoreMlmodel = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Mlmodel>
-  >('/mlmodels/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const updateMlModelVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Mlmodel>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

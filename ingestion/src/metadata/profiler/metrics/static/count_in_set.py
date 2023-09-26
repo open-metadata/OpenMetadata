@@ -56,7 +56,11 @@ class CountInSet(StaticMetric):
 
         try:
             set_values = set(self.values)
-            return SumFn(case([(column(self.col.name).in_(set_values), 1)], else_=0))
+            return SumFn(
+                case(
+                    [(column(self.col.name, self.col.type).in_(set_values), 1)], else_=0
+                )
+            )
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

@@ -11,46 +11,25 @@
  *  limitations under the License.
  */
 
-import { FeedFilter } from '../../enums/mydata.enum';
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
 import { SchemaType } from '../../generated/type/schema';
-import {
-  EntityFieldThreadCount,
-  ThreadUpdatedFunc,
-} from '../../interface/feed.interface';
 
 export interface TopicDetailsProps {
-  topicFQN: string;
+  updateTopicDetailsState?: (data: DataAssetWithDomains) => void;
   topicDetails: Topic;
-  activeTab: number;
-  entityThread: Thread[];
-  isEntityThreadLoading: boolean;
-  feedCount: number;
-  entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
-  paging: Paging;
-
-  fetchFeedHandler: (
-    after?: string,
-    feedFilter?: FeedFilter,
-    threadFilter?: ThreadType
-  ) => void;
+  topicPermissions: OperationPermission;
+  fetchTopic: () => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
-  followTopicHandler: () => void;
-  unfollowTopicHandler: () => void;
+  followTopicHandler: () => Promise<void>;
+  unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
+  handleToggleDelete: () => void;
 }
 
 export interface TopicConfigObjectInterface {

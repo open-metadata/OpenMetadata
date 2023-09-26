@@ -113,6 +113,7 @@ def _test_connection_steps_automation_workflow(
     Run the test connection as part of the automation workflow
     We need to update the automation workflow in each step
     """
+    logger.info("Starting Test Connection Workflow Steps")
     test_connection_result = TestConnectionResult(
         status=StatusType.Running,
         steps=[],
@@ -120,6 +121,7 @@ def _test_connection_steps_automation_workflow(
     try:
         for step in steps:
             try:
+                logger.info(f"Running {step.name}...")
                 step.function()
                 test_connection_result.steps.append(
                     TestConnectionStepResult(
@@ -157,6 +159,7 @@ def _test_connection_steps_automation_workflow(
             else StatusType.Successful
         )
 
+        logger.info("Updating Workflow Response")
         metadata.patch_automation_workflow_response(
             automation_workflow, test_connection_result, WorkflowStatus.Successful
         )
@@ -220,7 +223,7 @@ def _test_connection_steps_during_ingestion(steps: List[TestConnectionStep]) -> 
 
 def test_connection_steps(
     metadata: OpenMetadata,
-    service_fqn: str,
+    service_type: str,
     test_fn: dict,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: int = 3 * 60,
@@ -233,15 +236,18 @@ def test_connection_steps(
     :return: None or raise an exception if we cannot connect
     """
 
+    test_connection_def_fqn = service_type + ".testConnectionDefinition"
+
     test_connection_definition: TestConnectionDefinition = metadata.get_by_name(
         entity=TestConnectionDefinition,
-        fqn=service_fqn,
+        fqn=test_connection_def_fqn,
     )
 
     if not test_connection_definition:
         raise SourceConnectionException(
-            f"Test connection definition for {service_fqn} not found please review the Server Configuration of the "
-            f"Workflow configuration. Check that the Security Configuration has been set up correctly."
+            f"Test connection definition for {test_connection_def_fqn} not found! Make sure the"
+            " ingestion-bot JWT token is valid and that the Workflow is deployed with the latest one."
+            " If this error persists, recreate the JWT token and redeploy the Workflow."
         )
 
     steps = [
@@ -311,7 +317,7 @@ def test_connection_db_common(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
@@ -344,13 +350,13 @@ def test_connection_db_schema_sources(
     """
     queries = queries or {}
 
-    def custom_executor(engine, inspector_fn_str: str):
+    def custom_executor(engine_: Engine, inspector_fn_str: str):
         """
         Check if we can list tables or views from a given schema
         or a random one
         """
 
-        inspector = inspect(engine)
+        inspector = inspect(engine_)
         inspector_fn = getattr(inspector, inspector_fn_str)
 
         if service_connection.databaseSchema:
@@ -375,7 +381,7 @@ def test_connection_db_schema_sources(
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
 

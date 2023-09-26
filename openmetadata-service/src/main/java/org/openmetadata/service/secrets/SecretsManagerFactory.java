@@ -34,6 +34,17 @@ public class SecretsManagerFactory {
       case NOOP:
       case AWS_SSM:
       case AWS:
+        /*
+        We handle AWS and AWS_SSM as a NoopSecretsManager since we don't
+        need to WRITE any secrets. We will be just reading them out of the
+        AWS instance on the INGESTION side, but the server does not need
+        to do anything here.
+
+        If for example we want to set the AWS SSM (non-managed) we configure
+        the server as `secretsManager: aws-ssm` and set the Airflow env vars
+        to connect to AWS SSM as specified in the docs:
+        https://docs.open-metadata.org/v1.0.0/deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+        */
         secretsManager = NoopSecretsManager.getInstance(clusterName, secretsManagerProvider);
         break;
       case MANAGED_AWS:

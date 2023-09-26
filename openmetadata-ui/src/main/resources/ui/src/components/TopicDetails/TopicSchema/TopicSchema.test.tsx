@@ -35,28 +35,18 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  entityFqn: 'topic.fqn',
+  onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('../../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn().mockReturnValue([]),
-  getTaglist: jest.fn().mockReturnValue([]),
+jest.mock('utils/TagsUtils', () => ({
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn().mockReturnValue([]),
-  getGlossaryTermlist: jest.fn().mockReturnValue([]),
-}));
-
-jest.mock('utils/TableTags/TableTags.utils', () => ({
-  getFilterTags: jest.fn().mockReturnValue({
-    Classification: [],
-    Glossary: [],
-  }),
-}));
-
-jest.mock('../../../utils/TopicSchema.utils', () => ({
-  updateFieldTags: jest.fn(),
-  updateFieldDescription: jest.fn(),
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
 jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
@@ -68,7 +58,7 @@ jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
 );
 
 jest.mock(
-  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -84,6 +74,22 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
+jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+    ))
+);
+
+jest.mock('components/schema-editor/SchemaEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="schema-editor">SchemaEditor</div>
+    ))
+);
+
 describe('Topic Schema', () => {
   it('Should render the schema component', async () => {
     render(<TopicSchema {...mockProps} />);
@@ -96,7 +102,7 @@ describe('Topic Schema', () => {
     expect(schemaFields).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(10);
+    expect(rows).toHaveLength(20);
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
@@ -127,13 +133,13 @@ describe('Topic Schema', () => {
     expect(singleRowExpandIcon).toBeNull();
 
     // order_id is child of nested row, so should be null initially
-    expect(screen.queryByText('order_id')).toBeNull();
+    expect(await screen.findByText('order_id')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(expandIcon);
     });
 
-    expect(await screen.findByText('order_id')).toBeInTheDocument();
+    expect(screen.queryByText('order_id')).toBeNull();
   });
 
   it('On edit description button click modal editor should render', async () => {

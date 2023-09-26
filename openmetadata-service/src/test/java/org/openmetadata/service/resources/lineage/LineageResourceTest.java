@@ -327,6 +327,16 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
         "Column level lineage is only allowed between two tables or from table to dashboard.");
   }
 
+  @Order(5)
+  @Test
+  void put_lineageWithDescription() throws HttpResponseException {
+    LineageDetails lineageDetails = new LineageDetails();
+    lineageDetails.setDescription("lineage edge description");
+    addEdge(TABLES.get(0), TABLES.get(1), lineageDetails, ADMIN_AUTH_HEADERS);
+    Edge edge = getEdge(TABLES.get(0).getId(), TABLES.get(1).getId(), lineageDetails);
+    assertEquals(lineageDetails.getDescription(), edge.getLineageDetails().getDescription());
+  }
+
   public Edge getEdge(Table from, Table to) {
     return getEdge(from.getId(), to.getId(), null);
   }

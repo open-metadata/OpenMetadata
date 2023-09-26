@@ -12,8 +12,6 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
@@ -22,7 +20,6 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { mockTablePermission } from 'constants/mockTourData.constants';
-import { ClientErrors } from 'enums/axios.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
@@ -33,34 +30,25 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation } from 'react-router-dom';
-import { getLatestTableProfileByFqn } from 'rest/tableAPI';
-import { getListTestCase } from 'rest/testAPI';
+import { useLocation } from 'react-router-dom';
+import {
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+} from 'rest/tableAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import SVGIcons from 'utils/SvgUtils';
-import { API_RES_MAX_SIZE, ROUTES } from '../../../../constants/constants';
-import { INITIAL_TEST_RESULT_SUMMARY } from '../../../../constants/profiler.constant';
+import { ROUTES } from '../../../../constants/constants';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Table } from '../../../../generated/entity/data/table';
-import { Include } from '../../../../generated/type/include';
-import {
-  formatNumberWithComma,
-  formTwoDigitNmber as formTwoDigitNumber,
-} from '../../../../utils/CommonUtils';
-import { updateTestResults } from '../../../../utils/DataQualityAndProfilerUtils';
+import { Table, TestSummary } from '../../../../generated/entity/data/table';
+import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import {
-  OverallTableSummeryType,
-  TableTestsType,
-} from '../../../TableProfiler/TableProfiler.interface';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import './table-summary.less';
 import { TableSummaryProps } from './TableSummary.interface';
 
 function TableSummary({
@@ -74,79 +62,30 @@ function TableSummary({
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
   const [tableDetails, setTableDetails] = useState<Table>(entityDetails);
-  const [tableTests, setTableTests] = useState<TableTestsType>({
-    tests: [],
-    results: INITIAL_TEST_RESULT_SUMMARY,
-  });
+  const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      const tablePermission = await getEntityPermission(
-        ResourceEntity.TABLE,
-        tableDetails.id
-      );
-
-      setTablePermissions(tablePermission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
-    }
-  }, [tableDetails.id, getEntityPermission, setTablePermissions]);
-
-  useEffect(() => {
-    if (tableDetails.id && !isTourPage) {
-      fetchResourcePermission();
-    }
-
-    if (isTourPage) {
-      setTablePermissions(mockTablePermission as OperationPermission);
-    }
-  }, [tableDetails.id]);
 
   const viewProfilerPermission = useMemo(
     () => tablePermissions.ViewDataProfile || tablePermissions.ViewAll,
     [tablePermissions]
   );
 
-  const isExplore = useMemo(
-    () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
-    [componentType]
-  );
-
   const isTableDeleted = useMemo(() => entityDetails.deleted, [entityDetails]);
 
   const fetchAllTests = async () => {
     try {
-      const { data } = await getListTestCase({
-        fields: 'testCaseResult',
-        entityLink: generateEntityLink(entityDetails?.fullyQualifiedName || ''),
-        includeAllTests: true,
-        limit: API_RES_MAX_SIZE,
-        include: Include.NonDeleted,
-      });
-      const tableTests: TableTestsType = {
-        tests: [],
-        results: { ...INITIAL_TEST_RESULT_SUMMARY },
-      };
-      data.forEach((test) => {
-        if (test.entityFQN === entityDetails?.fullyQualifiedName) {
-          tableTests.tests.push(test);
+      const res = await getTableDetailsByFQN(
+        entityDetails.fullyQualifiedName ?? '',
+        'testSuite'
+      );
 
-          updateTestResults(
-            tableTests.results,
-            test.testCaseResult?.testCaseStatus || ''
-          );
-        }
-      });
-      setTableTests(tableTests);
+      if (res?.testSuite?.summary) {
+        setTestSuiteSummary(res?.testSuite?.summary);
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     }
   };
 
@@ -166,60 +105,9 @@ function TableSummary({
         }
       });
     } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
-        showErrorToast(
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.table-lowercase'),
-            entityName: entityDetails.name,
-          })
-        );
-      }
+      // Error
     }
   }, [entityDetails]);
-
-  const overallSummary: OverallTableSummeryType[] | undefined = useMemo(() => {
-    if (isUndefined(tableDetails.profile)) {
-      return undefined;
-    }
-
-    return [
-      {
-        title: t('label.entity-count', {
-          entity: t('label.row'),
-        }),
-        value: formatNumberWithComma(tableDetails?.profile?.rowCount ?? 0),
-      },
-      {
-        title: t('label.column-entity', {
-          entity: t('label.count'),
-        }),
-        value:
-          tableDetails?.profile?.columnCount ?? entityDetails.columns.length,
-      },
-      {
-        title: `${t('label.table-entity-text', {
-          entityText: t('label.sample'),
-        })} %`,
-        value: `${tableDetails?.profile?.profileSample ?? 100}%`,
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.passed')}`,
-        value: formTwoDigitNumber(tableTests.results.success),
-        className: 'success',
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.aborted')}`,
-        value: formTwoDigitNumber(tableTests.results.aborted),
-        className: 'aborted',
-      },
-      {
-        title: `${t('label.test-plural')} ${t('label.failed')}`,
-        value: formTwoDigitNumber(tableTests.results.failed),
-        className: 'failed',
-      },
-    ];
-  }, [tableDetails, tableTests, viewProfilerPermission]);
 
   const profilerSummary = useMemo(() => {
     if (!viewProfilerPermission) {
@@ -232,40 +120,47 @@ function TableSummary({
       );
     }
 
-    return isUndefined(overallSummary) ? (
+    return isUndefined(tableDetails.profile) ? (
       <Typography.Text
         className="text-grey-body"
         data-testid="no-profiler-enabled-message">
         {t('message.no-profiler-enabled-summary-message')}
       </Typography.Text>
     ) : (
-      <Row gutter={[0, 16]}>
-        {overallSummary.map((field) => (
-          <Col key={field.title} span={10}>
-            <Row>
-              <Col span={24}>
-                <Typography.Text
-                  className="text-grey-muted"
-                  data-testid={`${field.title}-label`}>
-                  {field.title}
-                </Typography.Text>
-              </Col>
-              <Col span={24}>
-                <Typography.Text
-                  className={classNames(
-                    'summary-panel-statistics-count',
-                    field.className
-                  )}
-                  data-testid={`${field.title}-value`}>
-                  {field.value}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-        ))}
-      </Row>
+      <div className="d-flex justify-between">
+        <div className="profiler-item green" data-testid="test-passed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-passed-value">
+            {formTwoDigitNumber(testSuiteSummary?.success ?? 0)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.passed')}`}</div>
+        </div>
+        <div className="profiler-item amber" data-testid="test-aborted">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-aborted-value">
+            {formTwoDigitNumber(testSuiteSummary?.aborted ?? 0)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.aborted')}`}</div>
+        </div>
+        <div className="profiler-item red" data-testid="test-failed">
+          <div
+            className="font-semibold text-lg"
+            data-testid="test-failed-value">
+            {formTwoDigitNumber(testSuiteSummary?.failed ?? 0)}
+          </div>
+          <div className="text-xs text-grey-muted">{`${t(
+            'label.test-plural'
+          )} ${t('label.failed')}`}</div>
+        </div>
+      </div>
     );
-  }, [overallSummary, viewProfilerPermission]);
+  }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
   const { columns } = tableDetails;
 
@@ -284,96 +179,50 @@ function TableSummary({
     [columns, tableDetails]
   );
 
-  useEffect(() => {
-    if (!isEmpty(entityDetails)) {
-      const isTourPage = location.pathname.includes(ROUTES.TOUR);
-      setTableDetails(entityDetails);
-
+  const init = useCallback(async () => {
+    if (entityDetails.id && !isTourPage) {
+      const tablePermission = await getEntityPermission(
+        ResourceEntity.TABLE,
+        entityDetails.id
+      );
+      setTablePermissions(tablePermission);
       const shouldFetchProfilerData =
         !isTableDeleted &&
         entityDetails.service?.type === 'databaseService' &&
         !isTourPage &&
-        viewProfilerPermission;
+        tablePermission;
 
       if (shouldFetchProfilerData) {
         fetchProfilerData();
         fetchAllTests();
       }
+    } else {
+      setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [entityDetails, viewProfilerPermission]);
+  }, [entityDetails.fullyQualifiedName, isTourPage, isTableDeleted]);
+
+  useEffect(() => {
+    init();
+  }, [entityDetails.id]);
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(tableDetails)}>
       <>
-        <Row className="m-md" gutter={[0, 4]}>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
           <Col span={24}>
-            <Row>
-              {entityInfo.map((info) => {
-                const isOwner = info.name === t('label.owner');
-
-                return info.visible?.includes(componentType) ? (
-                  <Col key={info.name} span={24}>
-                    <Row
-                      className={classNames('', {
-                        'p-b-md': isOwner,
-                      })}
-                      gutter={[16, 32]}>
-                      {!isOwner ? (
-                        <Col data-testid={`${info.name}-label`} span={8}>
-                          <Typography.Text className="text-grey-muted">
-                            {info.name}
-                          </Typography.Text>
-                        </Col>
-                      ) : null}
-                      <Col data-testid={`${info.name}-value`} span={16}>
-                        {info.isLink ? (
-                          <Link
-                            component={Typography.Link}
-                            target={info.isExternal ? '_blank' : '_self'}
-                            to={{ pathname: info.url }}>
-                            {info.value}
-                            {info.isExternal ? (
-                              <SVGIcons
-                                alt="external-link"
-                                className="m-l-xs"
-                                icon="external-link"
-                                width="12px"
-                              />
-                            ) : null}
-                          </Link>
-                        ) : (
-                          <Typography.Text
-                            className={classNames('text-grey-muted', {
-                              'text-grey-body': !isOwner,
-                            })}>
-                            {info.value}
-                          </Typography.Text>
-                        )}
-                      </Col>
-                    </Row>
-                  </Col>
-                ) : null;
-              })}
-            </Row>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
           </Col>
         </Row>
 
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
-            />
-            <Divider className="m-y-xs" />
-          </>
-        ) : null}
-
-        <Row className="m-md" gutter={[0, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="profiler-header">
               {t('label.profiler-amp-data-quality')}
             </Typography.Text>
@@ -383,10 +232,16 @@ function TableSummary({
 
         <Divider className="m-y-xs" />
 
-        <Row className="m-md" gutter={[0, 16]}>
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ?? []}
+        />
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
-              className="text-base text-grey-muted"
+              className="summary-panel-section-title"
               data-testid="schema-header">
               {t('label.schema')}
             </Typography.Text>

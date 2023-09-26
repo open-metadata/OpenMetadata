@@ -1,6 +1,5 @@
 {
     "name": "Datalake",
-    "fullyQualifiedName": "Datalake",
     "displayName": "Datalake Test Connection",
     "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
     "steps": [

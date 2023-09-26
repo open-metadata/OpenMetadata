@@ -20,9 +20,8 @@ import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataIns
 import static org.openmetadata.service.Entity.EVENT_SUBSCRIPTION;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.elasticsearch.ElasticSearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
-import static org.openmetadata.service.events.scheduled.ReportsHandler.ES_REST_CLIENT;
-import static org.openmetadata.service.events.scheduled.ReportsHandler.JOB_CONTEXT_CHART_REPO;
+import static org.openmetadata.service.events.scheduled.ReportsHandler.SEARCH_CLIENT;
+import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
 
@@ -30,7 +29,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -39,12 +37,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.DataInsightInterface;
+import org.openmetadata.schema.alert.type.DataInsightAlertConfig;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -56,15 +50,16 @@ import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.DataInsightJobException;
-import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -78,10 +73,7 @@ public class DataInsightsReportJob implements Job {
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    DataInsightChartRepository repository =
-        (DataInsightChartRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(JOB_CONTEXT_CHART_REPO);
-    RestHighLevelClient client =
-        (RestHighLevelClient) jobExecutionContext.getJobDetail().getJobDataMap().get(ES_REST_CLIENT);
+    SearchClient searchClient = (SearchClient) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT);
     EventSubscription dataReport =
         (EventSubscription) jobExecutionContext.getJobDetail().getJobDataMap().get(EVENT_SUBSCRIPTION);
     // Calculate time diff
@@ -89,8 +81,17 @@ public class DataInsightsReportJob implements Job {
     long scheduleTime = currentTime - getTimeFromSchedule(dataReport.getTrigger());
     int numberOfDaysChange = getNumberOfDays(dataReport.getTrigger());
     try {
-      sendReportsToTeams(repository, client, scheduleTime, currentTime, numberOfDaysChange);
-      sendToAdmins(repository, client, scheduleTime, currentTime, numberOfDaysChange);
+      DataInsightAlertConfig insightAlertConfig =
+          JsonUtils.convertValue(dataReport.getSubscriptionConfig(), DataInsightAlertConfig.class);
+      // Send to Admins
+      if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
+        sendToAdmins(searchClient, scheduleTime, currentTime, numberOfDaysChange);
+      }
+
+      // Send to Teams
+      if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
+        sendReportsToTeams(searchClient, scheduleTime, currentTime, numberOfDaysChange);
+      }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
       throw new DataInsightJobException(e);
@@ -98,12 +99,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private void sendReportsToTeams(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
-      throws IOException {
+      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) throws IOException {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
@@ -113,29 +109,28 @@ public class DataInsightsReportJob implements Job {
         if (!CommonUtil.nullOrEmpty(email)) {
           emails.add(email);
         } else {
-          team.getUsers().forEach(user -> emails.add(SubjectCache.getInstance().getUserById(user.getId()).getEmail()));
+          for (EntityReference userRef : team.getUsers()) {
+            User user = Entity.getEntity(Entity.USER, userRef.getId(), "", Include.NON_DELETED);
+            emails.add(user.getEmail());
+          }
         }
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
-              createTotalAssetTemplate(
-                  repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(
-                  repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-              createOwnershipTemplate(
-                  repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
-              createTierTemplate(repository, client, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          EmailUtil.getInstance()
-              .sendDataInsightEmailNotificationToUser(
-                  emails,
-                  totalAssetTemplate,
-                  descriptionTemplate,
-                  ownershipTemplate,
-                  tierTemplate,
-                  EmailUtil.getInstance().getDataInsightReportSubject(),
-                  EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+              createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+          EmailUtil.sendDataInsightEmailNotificationToUser(
+              emails,
+              totalAssetTemplate,
+              descriptionTemplate,
+              ownershipTemplate,
+              tierTemplate,
+              EmailUtil.getDataInsightReportSubject(),
+              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
         } catch (Exception ex) {
           LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
         }
@@ -143,67 +138,50 @@ public class DataInsightsReportJob implements Job {
     }
   }
 
-  private void sendToAdmins(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange) {
+  private void sendToAdmins(SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
 
     try {
       // Build Insights Report
       DataInsightTotalAssetTemplate totalAssetTemplate =
-          createTotalAssetTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+          createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-          createDescriptionTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+          createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-          createOwnershipTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
+          createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
       DataInsightDescriptionAndOwnerTemplate tierTemplate =
-          createTierTemplate(repository, client, null, scheduleTime, currentTime, numberOfDaysChange);
-      EmailUtil.getInstance()
-          .sendDataInsightEmailNotificationToUser(
-              emailList,
-              totalAssetTemplate,
-              descriptionTemplate,
-              ownershipTemplate,
-              tierTemplate,
-              EmailUtil.getInstance().getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
+          createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+      EmailUtil.sendDataInsightEmailNotificationToUser(
+          emailList,
+          totalAssetTemplate,
+          descriptionTemplate,
+          ownershipTemplate,
+          tierTemplate,
+          EmailUtil.getDataInsightReportSubject(),
+          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
     } catch (Exception ex) {
       LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
     }
   }
 
-  private List<Kpi> getAvailableKpi() throws IOException {
+  private List<Kpi> getAvailableKpi() {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
     return repository.listAll(repository.getFields("dataInsightChart"), new ListFilter(Include.NON_DELETED));
   }
 
-  private KpiResult getKpiResult(String fqn) throws IOException {
+  private KpiResult getKpiResult(String fqn) {
     KpiRepository repository = (KpiRepository) Entity.getEntityRepository(KPI);
     return repository.getKpiResult(fqn);
   }
 
   private DataInsightTotalAssetTemplate createTotalAssetTemplate(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDays)
+      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDays)
       throws ParseException, IOException {
     // Get total Assets Data
     TreeMap<Long, List<Object>> dateWithDataMap =
-        getSortedDate(
-            repository,
-            client,
-            team,
-            scheduleTime,
-            currentTime,
-            TOTAL_ENTITIES_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.indexName);
+        searchClient.getSortedDate(
+            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TYPE, ENTITY_REPORT_DATA_INDEX.indexName);
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
 
       List<TotalEntitiesByType> first =
@@ -226,19 +204,12 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
+      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
     TreeMap<Long, List<Object>> dateWithDataMap =
-        getSortedDate(
-            repository,
-            client,
+        searchClient.getSortedDate(
             team,
             scheduleTime,
             currentTime,
@@ -282,19 +253,12 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
+      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
     TreeMap<Long, List<Object>> dateWithDataMap =
-        getSortedDate(
-            repository,
-            client,
+        searchClient.getSortedDate(
             team,
             scheduleTime,
             currentTime,
@@ -339,24 +303,13 @@ public class DataInsightsReportJob implements Job {
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
+      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDaysChange)
       throws ParseException, IOException {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
     TreeMap<Long, List<Object>> dateWithDataMap =
-        getSortedDate(
-            repository,
-            client,
-            team,
-            scheduleTime,
-            currentTime,
-            TOTAL_ENTITIES_BY_TIER,
-            ENTITY_REPORT_DATA_INDEX.indexName);
+        searchClient.getSortedDate(
+            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TIER, ENTITY_REPORT_DATA_INDEX.indexName);
     if (dateWithDataMap.lastEntry() != null) {
       List<TotalEntitiesByTier> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
@@ -435,8 +388,7 @@ public class DataInsightsReportJob implements Job {
       DataInsightChartResult.DataInsightChartType chartType,
       Double percentCompleted,
       Double percentChange,
-      int numberOfDaysChange)
-      throws IOException {
+      int numberOfDaysChange) {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
@@ -485,34 +437,6 @@ public class DataInsightsReportJob implements Job {
         null);
   }
 
-  private TreeMap<Long, List<Object>> getSortedDate(
-      DataInsightChartRepository repository,
-      RestHighLevelClient client,
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    SearchRequest searchRequestTotalAssets =
-        repository.buildSearchRequest(scheduleTime, currentTime, null, team, chartType, indexName);
-    SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
-    DataInsightChartResult processedDataTotalAssets =
-        repository.processDataInsightChartResult(searchResponseTotalAssets, chartType);
-    TreeMap<Long, List<Object>> dateWithDataMap = new TreeMap<>();
-    for (Object data : processedDataTotalAssets.getData()) {
-      DataInsightInterface convertedData = (DataInsightInterface) data;
-      Long timestamp = convertedData.getTimestamp();
-      List<Object> totalEntitiesByTypeList = new ArrayList<>();
-      if (dateWithDataMap.containsKey(timestamp)) {
-        totalEntitiesByTypeList = dateWithDataMap.get(timestamp);
-      }
-      totalEntitiesByTypeList.add(convertedData);
-      dateWithDataMap.put(timestamp, totalEntitiesByTypeList);
-    }
-    return dateWithDataMap;
-  }
-
   private long getTimeFromSchedule(TriggerConfig config) {
     if (config.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
       TriggerConfig.ScheduleInfo scheduleInfo = config.getScheduleInfo();
@@ -523,8 +447,10 @@ public class DataInsightsReportJob implements Job {
           return 604800000L;
         case MONTHLY:
           return 2592000000L;
+        default:
+          throw new IllegalArgumentException("Invalid Trigger Type, Cannot be Scheduled.");
       }
     }
-    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
+    throw new IllegalArgumentException("Invalid Trigger Type, Cannot be Scheduled.");
   }
 }

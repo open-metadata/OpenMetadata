@@ -25,6 +25,7 @@ export interface AdvanceSearchContext {
   treeInternal: ImmutableTree;
   config: Config;
   onReset: () => void;
+  onResetAllFilters: () => void;
 }
 
 export type FilterObject = Record<string, string[]>;

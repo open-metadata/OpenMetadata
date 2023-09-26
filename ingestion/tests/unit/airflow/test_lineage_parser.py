@@ -18,9 +18,8 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
-    INLETS_ATTR,
-    OUTLETS_ATTR,
     XLets,
+    XLetsMode,
     get_xlets_from_dag,
     get_xlets_from_operator,
     parse_xlets,
@@ -64,11 +63,11 @@ class TestAirflowLineageParser(TestCase):
             outlets={"tables": ["A"]},
         )
 
-        # By default we try with inlets. There are none here
-        self.assertIsNone(get_xlets_from_operator(operator))
+        self.assertIsNone(get_xlets_from_operator(operator, XLetsMode.INLETS))
         # But the outlets are parsed correctly
         self.assertEqual(
-            get_xlets_from_operator(operator, xlet_mode=OUTLETS_ATTR), {"tables": ["A"]}
+            get_xlets_from_operator(operator, xlet_mode=XLetsMode.OUTLETS),
+            {"tables": ["A"]},
         )
 
         operator = BashOperator(
@@ -78,16 +77,20 @@ class TestAirflowLineageParser(TestCase):
         )
 
         self.assertEqual(
-            get_xlets_from_operator(operator, xlet_mode=INLETS_ATTR),
+            get_xlets_from_operator(operator, xlet_mode=XLetsMode.INLETS),
             {"tables": ["A"], "more_tables": ["X"]},
         )
-        self.assertIsNone(get_xlets_from_operator(operator, xlet_mode=OUTLETS_ATTR))
+        self.assertIsNone(
+            get_xlets_from_operator(operator, xlet_mode=XLetsMode.OUTLETS)
+        )
 
     def test_get_xlets_from_dag(self):
         """
         Check that we can properly join the xlet information from
         all operators in the DAG
         """
+
+        sleep_1 = "sleep 1"
 
         with DAG("test_dag", start_date=datetime(2021, 1, 1)) as dag:
             BashOperator(
@@ -98,7 +101,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command="sleep 1",
+                bash_command=sleep_1,
                 outlets={"tables": ["B"]},
             )
 
@@ -115,7 +118,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command="sleep 1",
+                bash_command=sleep_1,
                 outlets={"tables": ["B"]},
             )
 
@@ -136,7 +139,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command="sleep 1",
+                bash_command=sleep_1,
                 outlets={
                     "tables": ["B"],
                     "more_tables": ["Z"],
@@ -162,7 +165,7 @@ class TestAirflowLineageParser(TestCase):
 
             BashOperator(
                 task_id="sleep",
-                bash_command="sleep 1",
+                bash_command=sleep_1,
                 outlets={
                     "tables": ["B"],
                 },

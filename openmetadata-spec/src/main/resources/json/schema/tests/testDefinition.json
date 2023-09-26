@@ -75,6 +75,11 @@
           "description": "Is this parameter required.",
           "type": "boolean",
           "default": false
+        },
+        "optionValues": {
+          "description": "List of values that can be passed for this parameter.",
+          "type": "array",
+          "default": []
         }
       }
     }

@@ -19,7 +19,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_data',
     fieldName: 'SKU',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    separate: true,
+    permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
     term: 'address_book',
@@ -28,7 +28,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_kafka',
     fieldName: 'AddressBook',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    separate: true,
+    permissionApi: '/api/v1/permissions/*/name/*',
   },
   {
     term: 'deck.gl Demo',
@@ -38,7 +38,7 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_superset',
     fieldName: 'e3cfd274-44f8-4bf3-b75d-d40cf88869ba',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    separate: true,
+    permissionApi: '/api/v1/permissions/*/*',
   },
   {
     term: 'dim_address_etl',
@@ -47,16 +47,31 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     serviceName: 'sample_airflow',
     fieldName: 'dim_address_task',
     tags: ['PersonalData.Personal', 'PII.Sensitive'],
-    separate: true,
+    permissionApi: '/api/v1/permissions/*/*',
   },
-  // Todo: need to investigate on below test
-  // more details:- https://cloud.cypress.io/projects/a9yxci/runs/18306/test-results/abe5ab43-84c9-49da-b50f-4936bbcfdd3d
-  // {
-  //   term: 'eta_predictions',
-  //   displayName: 'ETA Predictions',
-  //   entity: 'mlmodels',
-  //   serviceName: 'mlflow_svc',
-  //   fieldName: 'sales',
-  //   tags: ['PersonalData.Personal', 'PII.Sensitive'],
-  // },
+  {
+    term: 'eta_predictions',
+    displayName: 'ETA Predictions',
+    entity: 'mlmodels',
+    serviceName: 'mlflow_svc',
+    fieldName: 'sales',
+    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    permissionApi: '/api/v1/permissions/*/*',
+  },
+  {
+    term: 'update_orders_table',
+    displayName: 'update_orders_table',
+    entity: 'storedProcedures',
+    serviceName: 'sample_data',
+    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    permissionApi: '/api/v1/permissions/*/name/*',
+  },
+  {
+    term: 'orders_view',
+    displayName: 'orders_view',
+    entity: 'dashboardDataModel',
+    serviceName: 'sample_looker',
+    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    permissionApi: '/api/v1/permissions/*/name/*',
+  },
 ];

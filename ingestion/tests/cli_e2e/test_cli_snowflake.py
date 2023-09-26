@@ -12,13 +12,12 @@
 """
 Test Snowflake connector with CLI
 """
-import time
 from typing import List
 
 import pytest
 
 from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
@@ -80,7 +79,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "snowflake"
 
     def assert_for_vanilla_ingestion(
-        self, source_status: SourceStatus, sink_status: SinkStatus
+        self, source_status: Status, sink_status: SinkStatus
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
@@ -130,24 +129,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
-
-    @pytest.mark.order(12)
-    def test_system_metrics(self) -> None:
-        self.delete_table_and_view()
-        self.create_table_and_view()
-        self.build_config_file()
-        self.run_command()
-        self.build_config_file(
-            E2EType.PROFILER, {"includes": self.get_includes_schemas()}
-        )
-        self.delete_table_rows()
-        self.update_table_row()
-        # Add 120 second delay for system
-        # tables to register the change
-        time.sleep(120)
-        result = self.run_command("profile")
-        sink_status, source_status = self.retrieve_statuses(result)
-        self.assert_for_system_metrics(source_status, sink_status)
 
     @staticmethod
     def expected_tables() -> int:

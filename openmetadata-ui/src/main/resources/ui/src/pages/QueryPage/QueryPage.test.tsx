@@ -20,7 +20,7 @@ import QueryPage from './QueryPage.component';
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockImplementation(() => ({
-    datasetFQN: 'testDatasetFQN',
+    fqn: 'testDatasetFQN',
     queryId: 'queryId',
   })),
 }));
@@ -32,9 +32,6 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
     }),
   }),
 }));
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
 jest.mock('components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });

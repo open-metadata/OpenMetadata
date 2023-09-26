@@ -19,7 +19,7 @@ from typing import List, Optional, Tuple
 
 import msal
 
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
@@ -28,8 +28,10 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     GroupsResponse,
     PowerBIDashboard,
+    PowerBIReport,
     PowerBiTable,
     PowerBiToken,
+    ReportsResponse,
     TablesResponse,
     Tile,
     TilesResponse,
@@ -127,6 +129,21 @@ class PowerBiApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching group dashboards: {exc}")
+
+        return None
+
+    def fetch_all_org_reports(self, group_id: str) -> Optional[List[PowerBIReport]]:
+        """Method to fetch all powerbi reports within the group
+        Returns:
+            List[PowerBIReport]
+        """
+        try:
+            response_data = self.client.get(f"/myorg/groups/{group_id}/reports")
+            response = ReportsResponse(**response_data)
+            return response.value
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching group reports: {exc}")
 
         return None
 

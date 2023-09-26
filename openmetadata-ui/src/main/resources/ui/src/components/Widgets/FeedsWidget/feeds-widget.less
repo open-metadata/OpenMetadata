@@ -18,17 +18,20 @@
   border-radius: 10px;
 
   .ant-tabs-tab-btn {
-    color: black !important;
     padding: 0 12px;
   }
   .ant-tabs-content {
-    height: 540px;
+    height: 515px;
+    overflow: hidden;
+  }
+  .feed-list-container {
+    height: 515px;
+  }
+  .ant-tabs-content:hover {
     overflow-y: auto;
-    overflow-x: hidden;
   }
   .ant-tabs-nav {
-    padding: 8px 16px 0 16px;
-    margin-left: 12px;
+    padding: 8px 16px 0 28px;
     margin-bottom: 0;
   }
 
@@ -37,4 +40,7 @@
     justify-content: center;
     border: none;
   }
+}
+.feed-card-body {
+  padding-left: 32px;
 }

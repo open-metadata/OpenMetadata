@@ -22,15 +22,15 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.security.credentials.gcsValues import (
-    GcsCredentialsValues,
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.profiler.source.base_profiler_source import BaseProfilerSource
+from metadata.profiler.source.base.profiler_source import ProfilerSource
 
 
-class BigQueryProfilerSource(BaseProfilerSource):
+class BigQueryProfilerSource(ProfilerSource):
     """override the base profiler source to handle BigQuery specific connection configs"""
 
     def _copy_service_config(
@@ -50,11 +50,11 @@ class BigQueryProfilerSource(BaseProfilerSource):
             config.source.serviceConnection.__root__.config  # type: ignore
         )
 
-        if isinstance(config_copy.credentials.gcsConfig, GcsCredentialsValues):
+        if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):
             if isinstance(
-                config_copy.credentials.gcsConfig.projectId, MultipleProjectId
+                config_copy.credentials.gcpConfig.projectId, MultipleProjectId
             ):
-                config_copy.credentials.gcsConfig.projectId = SingleProjectId(
+                config_copy.credentials.gcpConfig.projectId = SingleProjectId(
                     __root__=database.name.__root__
                 )
 

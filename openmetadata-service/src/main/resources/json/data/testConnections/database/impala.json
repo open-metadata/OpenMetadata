@@ -1,6 +1,5 @@
 {
     "name": "Impala",
-    "fullyQualifiedName": "Impala",
     "displayName": "Impala Test Connection",
     "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
     "steps": [

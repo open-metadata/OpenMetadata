@@ -19,9 +19,9 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Objects;
+import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -34,15 +34,19 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -53,9 +57,11 @@ import org.openmetadata.service.util.RestUtil;
 @Collection(name = "usage")
 public class UsageResource {
   private final UsageRepository dao;
+  private final Authorizer authorizer;
 
   public UsageResource(CollectionDAO dao, Authorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
+    this.authorizer = authorizer;
     this.dao = new UsageRepository(dao);
   }
 
@@ -75,6 +81,7 @@ public class UsageResource {
       })
   public EntityUsage get(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which usage is requested",
               required = true,
@@ -82,7 +89,7 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
+          UUID id,
       @Parameter(
               description = "Usage for number of days going back from the given date " + "(default=1, min=1, max=30)")
           @QueryParam("days")
@@ -91,9 +98,10 @@ public class UsageResource {
               description =
                   "Usage for number of days going back from this date in ISO 8601 format. " + "(default = currentDate)")
           @QueryParam("date")
-          String date)
-      throws IOException {
-    // TODO add href
+          String date) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
     return addHref(uriInfo, dao.get(entity, id, actualDate, actualDays));
@@ -115,6 +123,7 @@ public class UsageResource {
       })
   public EntityUsage getByName(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which usage is requested",
               required = true,
@@ -136,7 +145,9 @@ public class UsageResource {
                   "Usage for number of days going back from this date in ISO 8601 format " + "(default = currentDate)")
           @QueryParam("date")
           String date) {
-    // TODO add href
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.VIEW_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity, null, fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
     return addHref(uriInfo, dao.getByName(entity, fqn, actualDate, actualDays));
@@ -159,6 +170,7 @@ public class UsageResource {
       })
   public Response create(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which usage is reported",
               required = true,
@@ -166,9 +178,11 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+          UUID id,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.create(entity, id, usage).toResponse();
   }
 
@@ -189,6 +203,7 @@ public class UsageResource {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which usage is reported",
               required = true,
@@ -196,9 +211,11 @@ public class UsageResource {
           @PathParam("entity")
           String entity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("id")
-          String id,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+          UUID id,
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity, id, null);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdate(entity, id, usage).toResponse();
   }
 
@@ -219,6 +236,7 @@ public class UsageResource {
       })
   public Response createByName(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which usage is reported",
               required = true,
@@ -231,8 +249,10 @@ public class UsageResource {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fullyQualifiedName,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createByName(entity, fullyQualifiedName, usage).toResponse();
   }
 
@@ -253,6 +273,7 @@ public class UsageResource {
       })
   public Response createOrUpdateByName(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity type for which usage is reported",
               required = true,
@@ -265,8 +286,10 @@ public class UsageResource {
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fullyQualifiedName,
-      @Parameter(description = "Usage information a given date") @Valid DailyCount usage)
-      throws IOException {
+      @Parameter(description = "Usage information a given date") @Valid DailyCount usage) {
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity, null, fullyQualifiedName);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.createOrUpdateByName(entity, fullyQualifiedName, usage).toResponse();
   }
 
@@ -283,6 +306,7 @@ public class UsageResource {
       })
   public Response computePercentile(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Entity name for which usage is requested",
               schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
@@ -293,7 +317,9 @@ public class UsageResource {
               schema = @Schema(type = "string", example = "2021-01-28"))
           @PathParam("date")
           String date) {
-    // TODO delete this?
+    OperationContext operationContext = new OperationContext(entity, MetadataOperation.EDIT_USAGE);
+    ResourceContext resourceContext = new ResourceContext(entity);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();
   }

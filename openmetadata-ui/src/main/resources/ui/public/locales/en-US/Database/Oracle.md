@@ -61,7 +61,9 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-Host and port of the oracle service. This should be specified as a string in the format `hostname:port`. E.g., `localhost:1521`
+This parameter specifies the host and port of the Oracle instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:1521`.
+
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:1521` as the value.
 $$
 
 $$section
@@ -71,6 +73,7 @@ Connect with oracle by either passing service name or database schema name.
 
 - **Database Schema**: Using a database schema name when connecting to an Oracle database allows the user to access only the objects within that schema, rather than the entire database.
 - **Oracle Service Name**: Oracle Service Name is a unique identifier for a database instance or group of instances that perform a particular function.
+- **Oracle TNS Connection**: You can directly use the TNS connection string, e.g., `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))`.
 $$
 
 $$section
@@ -86,9 +89,29 @@ The name of the Database Schema available in Oracle that you want to connect wit
 $$
 
 $$section
+### Oracle TNS Connection $(id="oracleTNSConnection")
+
+TNS connection string you would set in `tnsnames.ora`, e.g., `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME)))`.
+
+Note that if this is informed, we will ignore the `hostPort` property, so you should make sure that the `HOST` entry is present here.
+$$
+
+$$section
 ### Instant Client Directory $(id="instantClientDirectory")
 
 This directory will be used to set the `LD_LIBRARY_PATH` env variable. It is required if you need to enable thick connection mode. By default, we bring Instant Client 19 and point to `/instantclient`.
+$$
+
+$$section
+### Database Name $(id="databaseName")
+In OpenMetadata, the Database Service hierarchy works as follows:
+```
+Database Service > Database > Schema > Table
+```
+In the case of Oracle, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+
+**Note:** It is recommended to use the database name same as the SID, This ensures accurate results and proper identification of tables during profiling, data quality checks and dbt workflow.
+
 $$
 
 $$section

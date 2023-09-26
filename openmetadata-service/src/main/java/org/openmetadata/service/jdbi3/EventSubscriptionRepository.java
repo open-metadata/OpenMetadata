@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.SubscriptionType.ACTIVITY_FEED;
 
 import com.lmax.disruptor.BatchEventProcessor;
-import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -40,8 +39,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   private static final String INVALID_ALERT = "Invalid Alert Type";
   private static final ConcurrentHashMap<UUID, SubscriptionPublisher> subscriptionPublisherMap =
       new ConcurrentHashMap<>();
-  static final String ALERT_PATCH_FIELDS = "owner,trigger,enabled,batchSize,timeout";
-  static final String ALERT_UPDATE_FIELDS = "owner,trigger,enabled,batchSize,timeout,filteringRules";
+  static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
+  static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
 
   public EventSubscriptionRepository(CollectionDAO dao) {
     super(
@@ -51,18 +50,24 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         dao.eventSubscriptionDAO(),
         dao,
         ALERT_PATCH_FIELDS,
-        ALERT_UPDATE_FIELDS,
-        null);
+        ALERT_UPDATE_FIELDS);
   }
 
   @Override
   public EventSubscription setFields(EventSubscription entity, Fields fields) {
-    entity.setStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
-    return entity; // No fields to set
+    if (entity.getStatusDetails() == null) {
+      entity.withStatusDetails(fields.contains("statusDetails") ? getStatusForEventSubscription(entity.getId()) : null);
+    }
+    return entity;
   }
 
   @Override
-  public void prepare(EventSubscription entity) {
+  public EventSubscription clearFields(EventSubscription entity, Fields fields) {
+    return entity.withStatusDetails(fields.contains("statusDetails") ? entity.getStatusDetails() : null);
+  }
+
+  @Override
+  public void prepare(EventSubscription entity, boolean update) {
     validateFilterRules(entity);
   }
 
@@ -79,13 +84,13 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public void storeEntity(EventSubscription entity, boolean update) throws IOException {
+  public void storeEntity(EventSubscription entity, boolean update) {
     store(entity, update);
   }
 
   @Override
   public void storeRelationships(EventSubscription entity) {
-    storeOwner(entity, entity.getOwner());
+    // No relationships to store beyond what is stored in the super class
   }
 
   @Override
@@ -145,15 +150,8 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
           }
 
           // Update the existing publisher
-          SubscriptionStatus.Status status = previousPublisher.getEventSubscription().getStatusDetails().getStatus();
-          previousPublisher.updateEventSubscription(eventSubscription);
-          if (status != SubscriptionStatus.Status.ACTIVE && status != SubscriptionStatus.Status.AWAITING_RETRY) {
-            // Restart the previously stopped publisher (in states notStarted, error, retryLimitReached)
-            BatchEventProcessor<EventPubSub.ChangeEventHolder> processor =
-                EventPubSub.addEventHandler(previousPublisher);
-            previousPublisher.setProcessor(processor);
-            LOG.info("Webhook publisher restarted for {}", eventSubscription.getName());
-          }
+          deleteEventSubscriptionPublisher(eventSubscription);
+          addSubscriptionPublisher(eventSubscription);
         } else {
           // Remove the webhook publisher
           removeProcessorForEventSubscription(
@@ -185,7 +183,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     switch (deletedEntity.getAlertType()) {
       case CHANGE_EVENT:
         SubscriptionPublisher publisher = subscriptionPublisherMap.remove(deletedEntity.getId());
-        if (publisher != null) {
+        if (publisher != null && publisher.getProcessor() != null) {
           publisher.getProcessor().halt();
           publisher.awaitShutdown();
           EventPubSub.removeProcessor(publisher.getProcessor());
@@ -220,7 +218,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("timeout", original.getTimeout(), updated.getTimeout());

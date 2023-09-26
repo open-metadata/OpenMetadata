@@ -19,21 +19,17 @@ on:
       - '1.[0-9]+[0-9]+'
     paths:
       - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
     paths:
       - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
 
 jobs:
-  test:
+  cypress-ci-postgresql:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-        node-version:
-          - 16.x
+        job: [0]
+    environment: test
     steps:
       - run: 'echo "Step is not required"'

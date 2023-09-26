@@ -37,6 +37,10 @@
     "owner": {
       "description": "Owner of this mlModel service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the MLModel Service belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "serviceType", "connection"],

@@ -13,18 +13,15 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.schema.type.Include.ALL;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
@@ -33,35 +30,25 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  private static final String CHART_UPDATE_FIELDS = "owner";
-  private static final String CHART_PATCH_FIELDS = "owner,tags";
-
   public ChartRepository(CollectionDAO dao) {
-    super(
-        ChartResource.COLLECTION_PATH,
-        Entity.CHART,
-        Chart.class,
-        dao.chartDAO(),
-        dao,
-        CHART_PATCH_FIELDS,
-        CHART_UPDATE_FIELDS,
-        listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE));
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
+    supportsSearchIndex = true;
   }
 
   @Override
   public void setFullyQualifiedName(Chart chart) {
-    chart.setFullyQualifiedName(FullyQualifiedName.add(chart.getService().getName(), chart.getName()));
+    chart.setFullyQualifiedName(FullyQualifiedName.add(chart.getService().getFullyQualifiedName(), chart.getName()));
   }
 
   @Override
-  public void prepare(Chart chart) throws IOException {
+  public void prepare(Chart chart, boolean update) {
     DashboardService dashboardService = Entity.getEntity(chart.getService(), "", Include.ALL);
     chart.setService(dashboardService.getEntityReference());
     chart.setServiceType(dashboardService.getServiceType());
   }
 
   @Override
-  public void storeEntity(Chart chart, boolean update) throws JsonProcessingException {
+  public void storeEntity(Chart chart, boolean update) {
     // Relationships and fields such as tags are not stored as part of json
     EntityReference service = chart.getService();
     chart.withService(null);
@@ -74,14 +61,22 @@ public class ChartRepository extends EntityRepository<Chart> {
   public void storeRelationships(Chart chart) {
     EntityReference service = chart.getService();
     addRelationship(service.getId(), chart.getId(), service.getType(), Entity.CHART, Relationship.CONTAINS);
-    storeOwner(chart, chart.getOwner());
-    applyTags(chart);
   }
 
   @Override
-  public Chart setFields(Chart chart, Fields fields) throws IOException {
-    chart.setService(getContainer(chart.getId()));
-    return chart.withFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(chart) : null);
+  public Chart setInheritedFields(Chart chart, Fields fields) {
+    DashboardService dashboardService = Entity.getEntity(chart.getService(), "domain", ALL);
+    return inheritDomain(chart, fields, dashboardService);
+  }
+
+  @Override
+  public Chart setFields(Chart chart, Fields fields) {
+    return chart.withService(getContainer(chart.getId()));
+  }
+
+  @Override
+  public Chart clearFields(Chart chart, Fields fields) {
+    return chart; // Nothing to do
   }
 
   @Override
@@ -99,15 +94,20 @@ public class ChartRepository extends EntityRepository<Chart> {
     return new ChartUpdater(original, updated, operation);
   }
 
+  @Override
+  public EntityInterface getParentEntity(Chart entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+  }
+
   public class ChartUpdater extends ColumnEntityUpdater {
     public ChartUpdater(Chart chart, Chart updated, Operation operation) {
       super(chart, updated, operation);
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("chartType", original.getChartType(), updated.getChartType());
-      recordChange("chartUrl", original.getChartUrl(), updated.getChartUrl());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }

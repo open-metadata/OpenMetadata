@@ -11,70 +11,59 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
+import { Popover } from 'antd';
 import { EntityUnion } from 'components/Explore/explore.interface';
-import { get, uniqueId } from 'lodash';
-import { EntityTags } from 'Models';
-import React, { FC, HTMLAttributes, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from 'components/Loader/Loader';
+import { Include } from 'generated/type/include';
+import React, {
+  FC,
+  HTMLAttributes,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from 'rest/databaseAPI';
+import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
+import { getDataProductByName } from 'rest/dataProductAPI';
+import { getDomainByName } from 'rest/domainAPI';
+import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getContainerByFQN } from 'rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { TagSource } from '../../../generated/type/tagLabel';
-import SVGIcons from '../../../utils/SvgUtils';
-import {
-  getEntityLink,
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
 }
 
-const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
-  const { t } = useTranslation();
+const PopoverContent: React.FC<{
+  entityFQN: string;
+  entityType: string;
+}> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
+  const [loading, setLoading] = useState(true);
 
-  const entityTier = useMemo(() => {
-    const tierFQN = getTierTags((entityData as Table).tags || [])?.tagFQN;
-
-    return tierFQN?.split(FQN_SEPARATOR_CHAR)[1];
-  }, [(entityData as Table).tags]);
-
-  const entityTags = useMemo(() => {
-    const tags: EntityTags[] =
-      getTagsWithoutTier((entityData as Table).tags || []) || [];
-
-    return tags.map((tag) =>
-      tag.source === TagSource.Glossary ? tag.tagFQN : `#${tag.tagFQN}`
-    );
-  }, [(entityData as Table).tags]);
-
-  const getData = () => {
+  const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
       AppState.entityData[entityFQN] = entityDetail;
     };
 
     const fields = 'tags,owner';
-
     let promise: Promise<EntityUnion> | null = null;
 
     switch (entityType) {
@@ -82,11 +71,19 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
         promise = getTableDetailsByFQN(entityFQN, fields);
 
         break;
+      case EntityType.TEST_CASE:
+        promise = getTableDetailsByFQN(
+          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
+          fields
+        );
+
+        break;
       case EntityType.TOPIC:
         promise = getTopicByFqn(entityFQN, fields);
 
         break;
       case EntityType.DASHBOARD:
+      case EntityType.CHART:
         promise = getDashboardByFqn(entityFQN, fields);
 
         break;
@@ -99,11 +96,47 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(entityFQN, 'owner');
+        promise = getDatabaseSchemaDetailsByFQN(
+          entityFQN,
+          'owner',
+          'include=all'
+        );
+
+        break;
+      case EntityType.GLOSSARY_TERM:
+        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
+
+        break;
+      case EntityType.GLOSSARY:
+        promise = getGlossariesByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.CONTAINER:
+        promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+
+        break;
+
+      case EntityType.DASHBOARD_DATA_MODEL:
+        promise = getDataModelDetailsByFQN(entityFQN, fields);
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+
+        break;
+      case EntityType.DOMAIN:
+        promise = getDomainByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.DATA_PRODUCT:
+        promise = getDataProductByName(entityFQN, 'owner,domain');
 
         break;
 
@@ -112,128 +145,71 @@ const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
     }
 
     if (promise) {
+      setLoading(true);
       promise
         .then((res) => {
           setEntityDetails(res);
-
           setEntityData(res);
         })
-        .catch((err: AxiosError) => showErrorToast(err));
+        .catch(() => {
+          // do nothing
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
     }
-  };
-
-  const PopoverTitle = () => {
-    return (
-      <Link data-testid="entitylink" to={getEntityLink(entityType, entityFQN)}>
-        <Button
-          className="p-0"
-          disabled={AppState.isTourOpen}
-          type="link"
-          onClick={(e) => e.stopPropagation()}>
-          <span>{entityFQN}</span>
-        </Button>
-      </Link>
-    );
-  };
+  }, [entityType, entityFQN]);
 
   const onMouseOver = () => {
-    const entitydetails = AppState.entityData[entityFQN];
-    if (entitydetails) {
-      setEntityData(entitydetails);
+    const entityData = AppState.entityData[entityFQN];
+    if (entityData) {
+      setEntityData(entityData);
+      setLoading(false);
     } else {
       getData();
     }
   };
 
-  const ownerName = useMemo(() => {
-    return get(entityData, 'owner');
-  }, [entityData]);
+  useEffect(() => {
+    onMouseOver();
+  }, [entityFQN]);
 
-  const PopoverContent = () => {
-    useEffect(() => {
-      onMouseOver();
-    }, []);
-
-    return (
-      <div className="w-500">
-        <Space align="center" size="small">
-          <div data-testid="owner">
-            {ownerName ? (
-              <Space align="center" size="small">
-                <ProfilePicture
-                  displayName={getEntityName(ownerName)}
-                  id={entityData.name}
-                  name={getEntityName(ownerName)}
-                  width="20"
-                />
-                <Typography.Text className="text-xs">
-                  {getEntityName(ownerName)}
-                </Typography.Text>
-              </Space>
-            ) : (
-              <Typography.Text className="text-xs text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.owner'),
-                })}
-              </Typography.Text>
-            )}
-          </div>
-          <span className="text-grey-muted">|</span>
-          <Typography.Text
-            className="text-xs text-grey-muted"
-            data-testid="tier">
-            {entityTier
-              ? entityTier
-              : t('label.no-entity', {
-                  entity: t('label.tier'),
-                })}
-          </Typography.Text>
-        </Space>
-
-        <div className="description-text m-t-sm" data-testid="description-text">
-          {entityData.description ? (
-            <RichTextEditorPreviewer
-              enableSeeMoreVariant={false}
-              markdown={entityData.description}
-            />
-          ) : (
-            <Typography.Text className="text-xs text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          )}
-        </div>
-
-        {entityTags.length ? (
-          <>
-            <Divider className="m-b-xs m-t-sm" />
-            <div className="d-flex flex-start">
-              <span className="w-5 m-r-xs">
-                <SVGIcons alt="icon-tag" icon="icon-tag-grey" width="14" />
-              </span>
-
-              <Space wrap align="center" size={[16, 0]}>
-                {entityTags.map((tag) => (
-                  <span className="text-xs font-medium" key={uniqueId()}>
-                    {tag}
-                  </span>
-                ))}
-              </Space>
-            </div>
-          </>
-        ) : null}
-      </div>
-    );
-  };
+  if (loading) {
+    return <Loader size="small" />;
+  }
 
   return (
+    <ExploreSearchCard
+      id="tabledatacard"
+      showTags={false}
+      source={{
+        ...entityData,
+        name: entityData.name,
+        displayName: getEntityName(entityData),
+        id: entityData.id ?? '',
+        description: entityData.description ?? '',
+        fullyQualifiedName: getDecodedFqn(entityFQN),
+        tags: (entityData as Table).tags,
+        entityType: entityType,
+        serviceType: (entityData as Table).serviceType,
+      }}
+    />
+  );
+};
+
+const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+  return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
-      content={<PopoverContent />}
-      overlayClassName="ant-popover-card"
-      title={<PopoverTitle />}
+      content={
+        <PopoverContent
+          entityFQN={getEncodedFqn(entityFQN)}
+          entityType={entityType}
+        />
+      }
+      overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>
       {children}

@@ -13,24 +13,37 @@ name: Publish Package to Maven Central Repository
 
 on:
   workflow_dispatch:
-
-  pull_request_target:
-    types:
-      - closed
+          
+  push:
+    branches:
+      - main
     paths:
       - "openmetadata-service/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-clients/**"
       - "pom.xml"
 
+  release:
+    types:
+      - published    
+
 permissions:
   contents: read
 
 jobs:
-  publish:
+  publish-maven-packages:
     runs-on: ubuntu-latest
     environment: publish
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: false
+            swap-storage: true
       - uses: actions/checkout@v3
 
       - name: Set up JDK 11

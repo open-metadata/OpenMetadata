@@ -9,10 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+"""
+snowflake unit tests
+"""
+
+# pylint: disable=line-too-long
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -63,8 +69,20 @@ EXPECTED_PARTITION_COLUMNS = [
     ["col"],
 ]
 
+MOCK_DB_NAME = "SNOWFLAKE_SAMPLE_DATA"
+MOCK_SCHEMA_NAME_1 = "INFORMATION_SCHEMA"
+MOCK_SCHEMA_NAME_2 = "TPCDS_SF10TCL"
+MOCK_VIEW_NAME = "COLUMNS"
+MOCK_TABLE_NAME = "CALL_CENTER"
+EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/us-west-2/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/us-west-2/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
+
 
 class SnowflakeUnitTest(TestCase):
+    """
+    Unit test for snowflake source
+    """
+
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
@@ -72,16 +90,68 @@ class SnowflakeUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_snowflake_config)
-        self.snowflake_source = SnowflakeSource.create(
+        self.snowflake_source: SnowflakeSource = SnowflakeSource.create(
             mock_snowflake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
     def test_partition_parse_columns(self):
-        for i in range(len(RAW_CLUSTER_KEY_EXPRS)):
+        for idx, expr in enumerate(RAW_CLUSTER_KEY_EXPRS):
             assert (
-                self.snowflake_source.parse_column_name_from_expr(
-                    RAW_CLUSTER_KEY_EXPRS[i]
-                )
-                == EXPECTED_PARTITION_COLUMNS[i]
+                self.snowflake_source.parse_column_name_from_expr(expr)
+                == EXPECTED_PARTITION_COLUMNS[idx]
             )
+
+    def _assert_urls(self):
+        self.assertEqual(
+            self.snowflake_source.get_source_url(
+                database_name=MOCK_DB_NAME,
+                schema_name=MOCK_SCHEMA_NAME_2,
+                table_name=MOCK_TABLE_NAME,
+                table_type=TableType.Regular,
+            ),
+            EXPECTED_SNOW_URL_TABLE,
+        )
+
+        self.assertEqual(
+            self.snowflake_source.get_source_url(
+                database_name=MOCK_DB_NAME,
+                schema_name=MOCK_SCHEMA_NAME_1,
+                table_name=MOCK_VIEW_NAME,
+                table_type=TableType.View,
+            ),
+            EXPECTED_SNOW_URL_VIEW,
+        )
+
+    def test_source_url(self):
+        """
+        method to test source url
+        """
+        with patch.object(
+            SnowflakeSource,
+            "account",
+            return_value="random_account",
+            new_callable=PropertyMock,
+        ):
+            with patch.object(
+                SnowflakeSource,
+                "region",
+                return_value="us-west-2",
+                new_callable=PropertyMock,
+            ):
+                self._assert_urls()
+
+            with patch.object(
+                SnowflakeSource,
+                "region",
+                new_callable=PropertyMock,
+                return_value=None,
+            ):
+                self.assertIsNone(
+                    self.snowflake_source.get_source_url(
+                        database_name=MOCK_DB_NAME,
+                        schema_name=MOCK_SCHEMA_NAME_1,
+                        table_name=MOCK_VIEW_NAME,
+                        table_type=TableType.View,
+                    )
+                )

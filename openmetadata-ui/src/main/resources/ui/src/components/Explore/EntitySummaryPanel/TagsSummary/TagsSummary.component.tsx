@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
 import { EntityUnion } from 'components/Explore/explore.interface';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
@@ -21,7 +20,6 @@ import { SearchIndex } from 'enums/search.enum';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
-import { showErrorToast } from 'utils/ToastUtils';
 import { TagsSummaryProps } from './TagsSummary.interface';
 
 function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
@@ -39,11 +37,13 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
         SearchIndex.GLOSSARY,
         SearchIndex.MLMODEL,
         SearchIndex.PIPELINE,
+        SearchIndex.STORED_PROCEDURE,
+        SearchIndex.DASHBOARD_DATA_MODEL,
       ]);
       const sources = res.data.hits.hits.map((hit) => hit._source);
       setSelectedData(sources);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      // Error
     }
   }, [entityDetails.fullyQualifiedName, setSelectedData]);
 
@@ -68,10 +68,10 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Row className="m-md" gutter={[0, 16]}>
+      <Row className="m-md m-t-0" gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
-            className="text-base text-grey-muted"
+            className="summary-panel-section-title"
             data-testid="usage-header">
             {t('label.usage')}
           </Typography.Text>
@@ -83,7 +83,9 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
             <Typography.Text
               className="text-grey-body"
               data-testid="no-reference-available">
-              {t('message.no-reference-available')}
+              {t('label.no-entity', {
+                entity: t('label.usage'),
+              })}
             </Typography.Text>
           )}
         </Col>

@@ -15,26 +15,27 @@ import RightPanel from 'components/AddDataQualityTest/components/RightPanel';
 import { INGESTION_DATA } from 'components/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from 'components/AddDataQualityTest/TestSuiteIngestion';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import PageLayout from 'components/containers/PageLayout';
 import Loader from 'components/Loader/Loader';
-import { isUndefined, startCase } from 'lodash';
+import { getTableTabPath } from 'constants/constants';
+import { EntityTabs } from 'enums/entity.enum';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getIngestionPipelineByFqn } from 'rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from 'rest/testAPI';
-import { ROUTES } from '../../constants/constants';
-import { PageLayoutType } from '../../enums/layout.enum';
+import { getEntityName } from 'utils/EntityUtils';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
-import { getTestSuitePath } from '../../utils/RouterUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
-  const { testSuiteFQN, ingestionFQN } = useParams<Record<string, string>>();
+  const { fqn: testSuiteFQN, ingestionFQN } =
+    useParams<{ fqn: string; ingestionFQN: string }>();
   const { t } = useTranslation();
 
   const history = useHistory();
@@ -73,11 +74,14 @@ const TestSuiteIngestionPage = () => {
       setSlashedBreadCrumb([
         {
           name: t('label.test-suite-plural'),
-          url: ROUTES.TEST_SUITES,
+          url: getDataQualityPagePath(),
         },
         {
-          name: startCase(response.displayName || response.name),
-          url: getTestSuitePath(response.fullyQualifiedName || ''),
+          name: getEntityName(response.executableEntityReference),
+          url: getTableTabPath(
+            response.executableEntityReference?.fullyQualifiedName ?? '',
+            EntityTabs.PROFILER
+          ),
         },
         {
           name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
@@ -105,7 +109,7 @@ const TestSuiteIngestionPage = () => {
   };
 
   const handleCancelBtn = () => {
-    history.push(getTestSuitePath(testSuiteFQN || ''));
+    history.goBack();
   };
 
   useEffect(() => {
@@ -121,22 +125,37 @@ const TestSuiteIngestionPage = () => {
   }
 
   return (
-    <PageContainerV1>
-      <div className="tw-self-center">
-        <PageLayout
-          classes="tw-max-w-full-hd tw-h-full tw-pt-4"
-          header={<TitleBreadcrumb titleLinks={slashedBreadCrumb} />}
-          layout={PageLayoutType['2ColRTL']}
-          pageTitle={t('label.test-suite-ingestion')}
-          rightPanel={<RightPanel data={INGESTION_DATA} />}>
-          <TestSuiteIngestion
-            ingestionPipeline={ingestionPipeline}
-            testSuite={testSuite}
-            onCancel={handleCancelBtn}
-          />
-        </PageLayout>
-      </div>
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div className="max-width-md w-9/10 service-form-container">
+            <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
+            <div className="m-t-md">
+              <TestSuiteIngestion
+                ingestionPipeline={ingestionPipeline}
+                testSuite={testSuite}
+                onCancel={handleCancelBtn}
+              />
+            </div>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.test-suite'),
+      })}
+      secondPanel={{
+        children: <RightPanel data={INGESTION_DATA} />,
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

@@ -15,6 +15,7 @@ Restore utility for the metadata CLI
 import traceback
 
 from sqlalchemy.engine import Engine
+from tqdm import tqdm
 
 from metadata.cli.utils import get_engine
 from metadata.utils.helpers import BackupRestoreArgs
@@ -37,7 +38,7 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
             message=f"Queries to process for restore: {len(all_queries)}",
         )
 
-        for query in all_queries:
+        for query in tqdm(all_queries):
             # `%` is a reserved syntax in SQLAlchemy to bind parameters. Escaping it with `%%`
             clean_query = query.replace("%", "%%")
 
@@ -49,7 +50,7 @@ def execute_sql_file(engine: Engine, sql_file: str) -> None:
                 failed_queries += 1
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error processing the following query while restoring - {err}"
+                    f"Error processing the following query while restoring [{clean_query}] - {err}"
                 )
 
         log_ansi_encoded_string(

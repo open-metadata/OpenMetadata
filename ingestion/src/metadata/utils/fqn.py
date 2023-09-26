@@ -13,15 +13,15 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+import hashlib
 import re
-from collections import namedtuple
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
@@ -34,6 +34,8 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
@@ -53,6 +55,15 @@ class FQNBuildingException(Exception):
     """
     Raise for inconsistencies when building the FQN
     """
+
+
+class SplitTestCaseFqn(BaseModel):
+    service: str
+    database: str
+    schema_: str = Field(alias="schema")
+    table: str
+    column: Optional[str]
+    test_case: Optional[str]
 
 
 def split(s: str) -> List[str]:  # pylint: disable=invalid-name
@@ -78,6 +89,10 @@ def _build(*args) -> str:
     return FQN_SEPARATOR.join(quoted)
 
 
+def unquote_name(name: str) -> str:
+    return name[1:-1] if name is not None and '"' in name else name
+
+
 def quote_name(name: str) -> str:
     """
     Equivalent of Java's FullyQualifiedName#quoteName
@@ -100,7 +115,9 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
-def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[str]:
+def build(
+    metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs
+) -> Optional[str]:
     """
     Given an Entity T, build the FQN of that Entity
     based on its required pieces. For example,
@@ -125,7 +142,7 @@ def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[st
 
 @fqn_build_registry.add(Table)
 def _(
-    metadata: OpenMetadata,
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
     database_name: Optional[str],
@@ -169,7 +186,7 @@ def _(
 
 @fqn_build_registry.add(DatabaseSchema)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for Schemas
+    _: Optional[OpenMetadata],  # ES Search not enabled for Schemas
     *,
     service_name: str,
     database_name: str,
@@ -184,7 +201,7 @@ def _(
 
 @fqn_build_registry.add(Database)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for Databases
+    _: Optional[OpenMetadata],  # ES Search not enabled for Databases
     *,
     service_name: str,
     database_name: str,
@@ -198,7 +215,7 @@ def _(
 
 @fqn_build_registry.add(Dashboard)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
     *,
     service_name: str,
     dashboard_name: str,
@@ -212,7 +229,7 @@ def _(
 
 @fqn_build_registry.add(Chart)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
     *,
     service_name: str,
     chart_name: str,
@@ -226,7 +243,7 @@ def _(
 
 @fqn_build_registry.add(MlModel)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for MlModel FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for MlModel FQN building
     *,
     service_name: str,
     mlmodel_name: str,
@@ -240,7 +257,7 @@ def _(
 
 @fqn_build_registry.add(Topic)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for Topic FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for Topic FQN building
     *,
     service_name: str,
     topic_name: str,
@@ -252,9 +269,23 @@ def _(
     return _build(service_name, topic_name)
 
 
+@fqn_build_registry.add(SearchIndex)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Search Index FQN building
+    *,
+    service_name: str,
+    search_index_name: str,
+) -> str:
+    if not service_name or not search_index_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, search_index=`{search_index_name}``"
+        )
+    return _build(service_name, search_index_name)
+
+
 @fqn_build_registry.add(Tag)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for Tag FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for Tag FQN building
     *,
     classification_name: str,
     tag_name: str,
@@ -268,7 +299,7 @@ def _(
 
 @fqn_build_registry.add(DataModel)
 def _(
-    _: OpenMetadata,
+    _: Optional[OpenMetadata],
     *,
     service_name: str,
     database_name: str,
@@ -280,7 +311,7 @@ def _(
 
 @fqn_build_registry.add(Pipeline)
 def _(
-    _: OpenMetadata,
+    _: Optional[OpenMetadata],
     *,
     service_name: str,
     pipeline_name: str,
@@ -290,7 +321,7 @@ def _(
 
 @fqn_build_registry.add(Column)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for Columns
+    _: Optional[OpenMetadata],  # ES Search not enabled for Columns
     *,
     service_name: str,
     database_name: str,
@@ -363,13 +394,13 @@ def _(
 
 @fqn_build_registry.add(TestCase)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for TestCase
+    _: Optional[OpenMetadata],  # ES Search not enabled for TestCase
     *,
     service_name: str,
     database_name: str,
     schema_name: str,
     table_name: str,
-    column_name: str,
+    column_name: Optional[str],
     test_case_name: str,
 ) -> str:
     if column_name:
@@ -392,7 +423,7 @@ def _(
 
 @fqn_build_registry.add(DashboardDataModel)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
     *,
     service_name: str,
     data_model_name: str,
@@ -402,6 +433,20 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, chart=`{data_model_name}``"
         )
     return _build(service_name, "model", data_model_name)
+
+
+@fqn_build_registry.add(Query)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    query_checksum: str,
+) -> str:
+    if not service_name or not query_checksum:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, query_checksum=`{query_checksum}``"
+        )
+    return _build(service_name, query_checksum)
 
 
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
@@ -421,7 +466,7 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     return {"database": database, "database_schema": database_schema, "table": table}
 
 
-def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
+def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
     """given a test case fqn split each element
 
     Args:
@@ -430,16 +475,13 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     Returns:
         Dict[str, Optional[str]]:
     """
-    SplitTestCaseFqn = namedtuple(
-        "SplitTestCaseFqn", "service database schema table column test_case"
-    )
     details = split(test_case_fqn)
     if len(details) < 5:
         raise ValueError(
             f"{test_case_fqn} does not appear to be a valid test_case fqn "
         )
     if len(details) != 6:
-        details.insert(4, None)
+        details.insert(4, None)  # type: ignore
 
     (  # pylint: disable=unbalanced-tuple-unpacking
         service,
@@ -450,7 +492,14 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
         test_case,
     ) = details
 
-    return SplitTestCaseFqn(service, database, schema, table, column, test_case)
+    return SplitTestCaseFqn(
+        service=service,
+        database=database,
+        schema=schema,
+        table=table,
+        column=column,
+        test_case=test_case,
+    )
 
 
 def build_es_fqn_search_string(
@@ -498,3 +547,11 @@ def search_table_from_es(
     return get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
     )
+
+
+def get_query_checksum(query: str) -> str:
+    """
+    Prepare the query checksum from its string representation.
+    The checksum is used as the query's name.
+    """
+    return hashlib.md5(query.encode()).hexdigest()

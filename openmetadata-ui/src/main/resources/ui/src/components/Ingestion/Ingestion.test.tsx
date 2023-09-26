@@ -307,7 +307,7 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const viewButton = await findByTestId(container, 'airflow-tree-view');
+    const viewButton = await findByTestId(container, 'ingestion-dag-link');
 
     expect(viewButton).toBeInTheDocument();
   });

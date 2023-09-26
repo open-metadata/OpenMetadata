@@ -12,7 +12,7 @@ You can choose one of the 5 sources to fetch the dbt files:
 2. **dbt HTTP Config**: Config to fetch dbt files from an HTTP or File Server.
 3. **dbt Cloud Config**: Config to fetch the dbt files from dbt cloud APIs
 4. **dbt S3 Config**: Config to fetch the dbt files from s3.
-5. **dbt GCS Config**: Config to fetch the dbt files from gcs.
+5. **dbt GCS Config**: Config to fetch the dbt files from gcp.
 $$
 
 $$section
@@ -321,7 +321,7 @@ By default, the classification name will be set to `dbtTags`.
 $$
 
 $$section
-### Enable Debug Logs $(id="loggerLevel")
+### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
@@ -342,4 +342,17 @@ $$section
 Option to include fetching the tags metadata from dbt. 
 
 When enabled, OpenMetadata will fetch tags associated with tables and columns from dbt `manifest.json` and attach them to the corresponding tables in OpenMetadata.
+$$
+
+
+$$section
+### Query Parsing Timeout Limit $(id="parsingTimeoutLimit")
+
+Specify the timeout limit for parsing the sql queries to perform the lineage analysis.
+$$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
 $$

@@ -134,6 +134,11 @@ public final class CsvUtil {
     return csvRecord;
   }
 
+  public static List<String> addUserOwner(List<String> csvRecord, EntityReference owner) {
+    csvRecord.add(nullOrEmpty(owner) ? null : owner.getName());
+    return csvRecord;
+  }
+
   private static String quoteCsvField(String str) {
     if (str.contains(SEPARATOR) || str.contains(FIELD_SEPARATOR)) {
       return quote(str);

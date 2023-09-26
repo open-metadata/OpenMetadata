@@ -55,7 +55,8 @@ public abstract class AbstractAlertPublisher implements EventPublisher {
     }
 
     // Evaluate ChangeEvent Alert Filtering
-    if (!AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
+    if (eventSubscription.getFilteringRules() != null
+        && !AlertUtil.evaluateAlertConditions(changeEvent, eventSubscription.getFilteringRules().getRules())) {
       return;
     }
 

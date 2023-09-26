@@ -22,7 +22,7 @@ type ChangePasswordForm = {
   visible: boolean;
   onCancel: () => void;
   onSave: (data: ChangePasswordRequest) => void;
-  isLoggedinUser: boolean;
+  isLoggedInUser: boolean;
   isLoading: boolean;
 };
 
@@ -30,7 +30,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
   visible,
   onCancel,
   onSave,
-  isLoggedinUser,
+  isLoggedInUser,
   isLoading,
 }) => {
   const { t } = useTranslation();
@@ -65,7 +65,7 @@ const ChangePasswordForm: React.FC<ChangePasswordForm> = ({
         name="change-password-form"
         validateMessages={VALIDATION_MESSAGES}
         onFinish={onSave}>
-        {isLoggedinUser && (
+        {isLoggedInUser && (
           <Form.Item
             label={t('label.old-password')}
             name="oldPassword"

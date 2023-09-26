@@ -43,9 +43,9 @@
       "default": "bigquery.googleapis.com"
     },
     "credentials": {
-      "title": "GCS Credentials",
-      "description": "GCS Credentials",
-      "$ref": "../../../../security/credentials/gcsCredentials.json"
+      "title": "GCP Credentials",
+      "description": "GCP Credentials",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
@@ -92,6 +92,10 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsDatabase": {
+      "title": "Supports Database",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
     },
     "supportsQueryComment": {
       "title": "Supports Query Comment",

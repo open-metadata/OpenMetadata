@@ -13,12 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Table;
@@ -41,21 +39,17 @@ public class LineageRepository {
     this.dao = dao;
   }
 
-  @Transaction
-  public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
+  public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceById(entityType, UUID.fromString(id), Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
-  public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
-      throws IOException {
+  public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth) {
     EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
-  @Transaction
-  public void addLineage(AddLineage addLineage) throws IOException {
+  public void addLineage(AddLineage addLineage) {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
     from = Entity.getEntityReferenceById(from.getType(), from.getId(), Include.NON_DELETED);
@@ -83,21 +77,19 @@ public class LineageRepository {
         .insert(from.getId(), to.getId(), from.getType(), to.getType(), Relationship.UPSTREAM.ordinal(), detailsJson);
   }
 
-  private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details)
-      throws IOException {
+  private String validateLineageDetails(EntityReference from, EntityReference to, LineageDetails details) {
     if (details == null) {
       return null;
     }
 
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
-    if (areValidEntities(from, to)) {
-      throw new IllegalArgumentException(
-          "Column level lineage is only allowed between two tables or from table to dashboard.");
-    }
-
-    Table fromTable = dao.tableDAO().findEntityById(from.getId());
-    ColumnsEntityInterface toTable = getToEntity(to);
-    if (columnsLineage != null) {
+    if (columnsLineage != null && !columnsLineage.isEmpty()) {
+      if (areValidEntities(from, to)) {
+        throw new IllegalArgumentException(
+            "Column level lineage is only allowed between two tables or from table to dashboard.");
+      }
+      Table fromTable = dao.tableDAO().findEntityById(from.getId());
+      ColumnsEntityInterface toTable = getToEntity(to);
       for (ColumnLineage columnLineage : columnsLineage) {
         for (String fromColumn : columnLineage.getFromColumns()) {
           // From column belongs to the fromNode
@@ -114,7 +106,7 @@ public class LineageRepository {
     return JsonUtils.pojoToJson(details);
   }
 
-  private ColumnsEntityInterface getToEntity(EntityReference from) throws IOException {
+  private ColumnsEntityInterface getToEntity(EntityReference from) {
     return from.getType().equals(Entity.TABLE)
         ? dao.tableDAO().findEntityById(from.getId())
         : dao.dashboardDataModelDAO().findEntityById(from.getId());
@@ -125,8 +117,7 @@ public class LineageRepository {
         || !(to.getType().equals(Entity.TABLE) || to.getType().equals(Entity.DASHBOARD_DATA_MODEL));
   }
 
-  @Transaction
-  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) throws IOException {
+  public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from = Entity.getEntityReferenceById(fromEntity, UUID.fromString(fromId), Include.NON_DELETED);
 
@@ -135,16 +126,11 @@ public class LineageRepository {
 
     // Finally, delete lineage relationship
     return dao.relationshipDAO()
-            .delete(
-                from.getId().toString(),
-                from.getType(),
-                to.getId().toString(),
-                to.getType(),
-                Relationship.UPSTREAM.ordinal())
+            .delete(from.getId(), from.getType(), to.getId(), to.getType(), Relationship.UPSTREAM.ordinal())
         > 0;
   }
 
-  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) throws IOException {
+  private EntityLineage getLineage(EntityReference primary, int upstreamDepth, int downstreamDepth) {
     List<EntityReference> entities = new ArrayList<>();
     EntityLineage lineage =
         new EntityLineage()
@@ -160,17 +146,16 @@ public class LineageRepository {
     return lineage;
   }
 
-  private void getUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth)
-      throws IOException {
+  private void getUpstreamLineage(UUID id, String entityType, EntityLineage lineage, int upstreamDepth) {
     if (upstreamDepth == 0) {
       return;
     }
     List<EntityRelationshipRecord> records;
     // pipeline information is not maintained
-    if (entityType.equals(Entity.PIPELINE)) {
-      records = dao.relationshipDAO().findFromPipleine(id.toString(), Relationship.UPSTREAM.ordinal());
+    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
+      records = dao.relationshipDAO().findFromPipleine(id, Relationship.UPSTREAM.ordinal());
     } else {
-      records = dao.relationshipDAO().findFrom(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findFrom(id, entityType, Relationship.UPSTREAM.ordinal());
     }
     final List<EntityReference> upstreamEntityReferences = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {
@@ -193,16 +178,15 @@ public class LineageRepository {
     }
   }
 
-  private void getDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth)
-      throws IOException {
+  private void getDownstreamLineage(UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
     if (downstreamDepth == 0) {
       return;
     }
     List<EntityRelationshipRecord> records;
-    if (entityType.equals(Entity.PIPELINE)) {
-      records = dao.relationshipDAO().findToPipeline(id.toString(), Relationship.UPSTREAM.ordinal());
+    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
+      records = dao.relationshipDAO().findToPipeline(id, Relationship.UPSTREAM.ordinal());
     } else {
-      records = dao.relationshipDAO().findTo(id.toString(), entityType, Relationship.UPSTREAM.ordinal());
+      records = dao.relationshipDAO().findTo(id, entityType, Relationship.UPSTREAM.ordinal());
     }
     final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
     for (EntityRelationshipRecord entityRelationshipRecord : records) {

@@ -15,6 +15,7 @@ Validator for table custom SQL Query test case
 
 import traceback
 from abc import abstractmethod
+from enum import Enum
 from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -28,6 +29,11 @@ from metadata.utils.logger import test_suite_logger
 logger = test_suite_logger()
 
 RESULT_ROW_COUNT = "resultRowCount"
+
+
+class Strategy(Enum):
+    COUNT = "COUNT"
+    ROWS = "ROWS"
 
 
 class BaseTableCustomSQLQueryValidator(BaseTestValidator):
@@ -44,10 +50,26 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             "sqlExpression",
             str,
         )
+
+        threshold = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "threshold",
+            int,
+            default=0,
+        )
+
+        strategy = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "strategy",
+            Strategy,
+        )
+
         sql_expression = cast(str, sql_expression)  # satisfy mypy
+        threshold = cast(int, threshold)  # satisfy mypy
+        strategy = cast(Strategy, strategy)  # satisfy mypy
 
         try:
-            rows = self._run_results(sql_expression)
+            rows = self._run_results(sql_expression, strategy)
         except Exception as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -59,9 +81,9 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
                 [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
             )
         len_rows = rows if isinstance(rows, int) else len(rows)
-        if len_rows == 0:
+        if len_rows <= threshold:
             status = TestCaseStatus.Success
-            result_value = 0
+            result_value = len_rows
         else:
             status = TestCaseStatus.Failed
             result_value = len_rows
@@ -74,5 +96,5 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _run_results(self, sql_expression: str):
+    def _run_results(self, sql_expression: str, strategy: Strategy = Strategy.ROWS):
         raise NotImplementedError

@@ -18,7 +18,9 @@
         "SupersetDataModel",
         "MetabaseDataModel",
         "LookMlView",
-        "LookMlExplore"
+        "LookMlExplore",
+        "PowerBIDataModel",
+        "QlikSenseDataModel"
       ],
       "javaEnums": [
         {
@@ -35,6 +37,12 @@
         },
         {
           "name": "LookMlExplore"
+        },
+        {
+          "name": "PowerBIDataModel"
+        },
+        {
+          "name": "QlikSenseDataModel"
         }
       ]
     }
@@ -100,7 +108,7 @@
     },
     "followers": {
       "description": "Followers of this dashboard.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to service where this data model is hosted in.",
@@ -126,12 +134,24 @@
       },
       "default": null
     },
-    "dataModels": {
-      "description": "List of data models used by this data model.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dataModel is contained",
+      "type": "string"
+    },
+    "domain" : {
+      "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": [
+    "id",
     "name",
     "dataModelType",
     "columns"

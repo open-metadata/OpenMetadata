@@ -17,16 +17,23 @@ from __future__ import annotations
 
 import itertools
 import re
+import shutil
 import sys
 from datetime import datetime, timedelta
 from functools import wraps
 from math import floor, log
+from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
+import sqlparse
+from sqlparse.sql import Statement
+
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -100,11 +107,12 @@ def calculate_execution_time(func):
     @wraps(func)
     def calculate_debug_time(*args, **kwargs):
         start = perf_counter()
-        func(*args, **kwargs)
+        result = func(*args, **kwargs)
         end = perf_counter()
         logger.debug(
             f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
         )
+        return result
 
     return calculate_debug_time
 
@@ -197,13 +205,15 @@ def replace_special_with(raw: str, replacement: str) -> str:
     return re.sub(r"[^a-zA-Z0-9]", replacement, raw)
 
 
-def get_standard_chart_type(raw_chart_type: str) -> str:
+def get_standard_chart_type(raw_chart_type: str) -> ChartType.Other:
     """
     Get standard chart type supported by OpenMetadata based on raw chart type input
     :param raw_chart_type: raw chart type to be standardize
     :return: standard chart type
     """
-    return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    if raw_chart_type is not None:
+        return om_chart_type_dict.get(raw_chart_type.lower(), ChartType.Other)
+    return ChartType.Other
 
 
 def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
@@ -387,3 +397,81 @@ def deep_size_of_dict(obj: dict) -> int:
         return size
 
     return sizeof(obj)
+
+
+def is_safe_sql_query(sql_query: str) -> bool:
+    """Validate SQL query
+    Args:
+        sql_query (str): SQL query
+    Returns:
+        bool
+    """
+
+    forbiden_token = {
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "TRUNCATE",
+        "COMMENT",
+        "RENAME",
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "MERGE",
+        "CALL",
+        "EXPLAIN PLAN",
+        "LOCK TABLE",
+        "UNLOCK TABLE",
+        "GRANT",
+        "REVOKE",
+        "COMMIT",
+        "ROLLBACK",
+        "SAVEPOINT",
+        "SET TRANSACTION",
+    }
+
+    parsed_queries: Tuple[Statement] = sqlparse.parse(sql_query)
+    for parsed_query in parsed_queries:
+        validation = [
+            token.normalized in forbiden_token for token in parsed_query.tokens
+        ]
+        if any(validation):
+            return False
+    return True
+
+
+def get_database_name_for_lineage(
+    db_service_entity: DatabaseService, default_db_name: Optional[str]
+) -> Optional[str]:
+    # If the database service supports multiple db or
+    # database service connection details are not available
+    # then pick the database name available from api response
+    if db_service_entity.connection is None or hasattr(
+        db_service_entity.connection.config, "supportsDatabase"
+    ):
+        return default_db_name
+
+    # otherwise if it is an single db source then use "databaseName"
+    # and if databaseName field is not available or is empty then use
+    # "default" as database name
+    return (
+        db_service_entity.connection.config.__dict__.get("databaseName")
+        or DEFAULT_DATABASE
+    )
+
+
+def delete_dir_content(directory: str) -> None:
+    location = Path(directory)
+    if location.is_dir():
+        logger.info("Location exists, cleaning it up")
+        shutil.rmtree(directory)
+
+
+def init_staging_dir(directory: str) -> None:
+    """
+    Prepare the the staging directory
+    """
+    delete_dir_content(directory=directory)
+    location = Path(directory)
+    logger.info(f"Creating the directory to store staging data in {location}")
+    location.mkdir(parents=True, exist_ok=True)

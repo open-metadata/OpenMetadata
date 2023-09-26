@@ -57,8 +57,12 @@ const CustomBarChart = ({
   };
 
   return (
-    <ResponsiveContainer debounce={200} id={`${name}_graph`} minHeight={300}>
-      <BarChart className="tw-w-full" data={data} margin={{ left: 16 }}>
+    <ResponsiveContainer
+      className="custom-legend"
+      debounce={200}
+      id={`${name}_graph`}
+      minHeight={300}>
+      <BarChart className="w-full" data={data} margin={{ left: 16 }}>
         <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
         <XAxis
           dataKey="name"

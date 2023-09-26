@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
+import KPIWidget from 'components/KPIWidget/KPIWidget.component';
+import { MyDataWidget } from 'components/MyData/MyDataWidget/MyDataWidget.component';
 import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
+import TotalDataAssetsWidget from 'components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
+import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
 import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from 'constants/constants';
 import { isEmpty, isNil } from 'lodash';
@@ -28,7 +32,7 @@ import AppState from '../../AppState';
 import { AssetsType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
-import './myData.less';
+import './my-data.less';
 
 const MyDataPageV1 = () => {
   const { t } = useTranslation();
@@ -38,7 +42,7 @@ const MyDataPageV1 = () => {
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const isMounted = useRef(false);
-  const [_, setShowWelcomeScreen] = useState(false);
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -112,10 +116,18 @@ const MyDataPageV1 = () => {
     }
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
+  if (showWelcomeScreen) {
+    return (
+      <div className="bg-white full-height">
+        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+      </div>
+    );
+  }
+
   return (
-    <PageContainerV1>
+    <ActivityFeedProvider>
       <PageLayoutV1
-        className="my-data-page p-0"
+        className="my-data-page p-0 bg-white"
         pageTitle={t('label.my-data')}
         rightPanel={
           <RightSidebar
@@ -125,13 +137,24 @@ const MyDataPageV1 = () => {
           />
         }
         rightPanelWidth={380}>
-        <div className="p-y-md p-x-xs">
-          <ActivityFeedProvider>
-            <FeedsWidget />
-          </ActivityFeedProvider>
+        <div className="p-t-xss p-b-md p-x-md">
+          <Row gutter={[16, 16]}>
+            <Col span={24}>
+              <FeedsWidget />
+            </Col>
+            <Col span={8}>
+              <MyDataWidget />
+            </Col>
+            <Col span={16}>
+              <KPIWidget />
+            </Col>
+            <Col span={24}>
+              <TotalDataAssetsWidget />
+            </Col>
+          </Row>
         </div>
       </PageLayoutV1>
-    </PageContainerV1>
+    </ActivityFeedProvider>
   );
 };
 

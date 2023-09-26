@@ -11,20 +11,35 @@
  *  limitations under the License.
  */
 
-.summary-list-collapse {
-  .ant-collapse-item {
-    .ant-collapse-header {
-      padding: 0px;
+@import url('../../../../styles/variables.less');
 
-      .ant-collapse-arrow {
-        margin-right: 8px;
+.summary-list-collapse {
+  &.ant-collapse {
+    background-color: @grey-1;
+    margin-bottom: 16px;
+    padding: 16px;
+    .ant-collapse-item {
+      .ant-collapse-header {
+        padding: 0;
+        .summary-list-item-container {
+          padding: 0;
+          margin-bottom: 0;
+        }
       }
-    }
-    .ant-collapse-content {
-      .ant-collapse-content-box {
-        padding: 0px;
-        padding-left: 20px;
+      .summary-list-item-container {
+        background-color: inherit;
+        margin-bottom: 0;
       }
     }
   }
+  .summary-list-collapse {
+    margin-bottom: 0;
+  }
+}
+
+.summary-list-item-container {
+  background-color: @grey-1;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 5px;
 }

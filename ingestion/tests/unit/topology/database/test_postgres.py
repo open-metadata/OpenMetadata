@@ -1,3 +1,18 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+"""
+Test Postgres using the topology
+"""
+
 import types
 from unittest import TestCase
 from unittest.mock import patch
@@ -22,10 +37,8 @@ from metadata.ingestion.source.database.postgres.metadata import (
     POLYGON,
     PostgresSource,
 )
-from metadata.ingestion.source.database.postgres.query_parser import (
-    PostgresQueryParserSource,
-)
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
+from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
 mock_postgres_config = {
     "source": {
@@ -35,7 +48,9 @@ mock_postgres_config = {
             "config": {
                 "type": "Postgres",
                 "username": "username",
-                "password": "password",
+                "authType": {
+                    "password": "password",
+                },
                 "hostPort": "localhost:5432",
                 "database": "postgres",
             }
@@ -69,7 +84,9 @@ mock_postgres_usage_config = {
             "config": {
                 "type": "Postgres",
                 "username": "username",
-                "password": "password",
+                "authType": {
+                    "password": "password",
+                },
                 "hostPort": "localhost:5432",
                 "database": "postgres",
             }
@@ -290,19 +307,19 @@ class PostgresUnitTest(TestCase):
         result, _, _ = self.postgres_source.get_columns_and_constraints(
             "public", "user", "postgres", inspector
         )
-        for i in range(len(EXPECTED_COLUMN_VALUE)):
+        for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
 
-    @patch("sqlalchemy.engine.base.Engine.execute")
-    def test_get_version_info(self, execute_fn):
-        execute_fn.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        self.assertEqual("15.3", self.postgres_usage_source.get_postgres_version())
+    @patch("sqlalchemy.engine.base.Engine")
+    def test_get_version_info(self, engine):
+        engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
+        self.assertEqual("15.3", get_postgres_version(engine))
 
-        execute_fn.return_value = [["11.16"]]
-        self.assertEqual("11.16", self.postgres_usage_source.get_postgres_version())
+        engine.execute.return_value = [["11.16"]]
+        self.assertEqual("11.16", get_postgres_version(engine))
 
-        execute_fn.return_value = [["9.6.24"]]
-        self.assertEqual("9.6.24", self.postgres_usage_source.get_postgres_version())
+        engine.execute.return_value = [["9.6.24"]]
+        self.assertEqual("9.6.24", get_postgres_version(engine))
 
-        execute_fn.return_value = [[]]
-        self.assertIsNone(self.postgres_usage_source.get_postgres_version())
+        engine.execute.return_value = [[]]
+        self.assertIsNone(get_postgres_version(engine))

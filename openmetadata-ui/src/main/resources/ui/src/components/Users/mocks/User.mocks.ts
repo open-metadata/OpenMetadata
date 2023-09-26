@@ -829,11 +829,11 @@ export const mockEntityData: {
         version: 0.2,
         updatedAt: 1681241412012,
         updatedBy: 'admin',
-        pipelineUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
+        sourceUrl: 'http://localhost:8080/tree?dag_id=dim_address_etl',
         tasks: [
           {
             taskType: 'PrestoOperator',
-            taskUrl:
+            sourceUrl:
               'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task',
             displayName: 'dim_address Task',
             downstreamTasks: ['assert_table_exists'],
@@ -845,7 +845,7 @@ export const mockEntityData: {
           },
           {
             taskType: 'HiveOperator',
-            taskUrl:
+            sourceUrl:
               'http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists',
             displayName: 'Assert Table Exists',
             downstreamTasks: [],
@@ -921,7 +921,7 @@ export const mockEntityData: {
         version: 0.2,
         updatedAt: 1681241402148,
         updatedBy: 'admin',
-        dashboardUrl: 'http://localhost:808/superset/dashboard/deck/',
+        sourceUrl: 'http://localhost:808/superset/dashboard/deck/',
         charts: [
           {
             deleted: false,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import AddIngestion from 'components/AddIngestion/AddIngestion.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -19,7 +18,6 @@ import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
 import Loader from 'components/Loader/Loader';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -56,8 +54,15 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionType, serviceFQN, serviceCategory } =
-    useParams<{ [key: string]: string }>();
+  const {
+    ingestionType,
+    fqn: serviceFQN,
+    serviceCategory,
+  } = useParams<{
+    fqn: string;
+    serviceCategory: string;
+    ingestionType: string;
+  }>();
   const { t } = useTranslation();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<DataObj>();
@@ -228,16 +233,10 @@ const AddIngestionPage = () => {
     setSlashedBreadcrumb(breadCrumbsArray);
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
-  useEffect(() => {
-    if (ingestionType === PipelineType.Dbt) {
-      setActiveIngestionStep(2);
-    }
-  }, [ingestionType]);
-
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <Card className="p-lg m-t-md">
+      <div className="m-t-md">
         <AddIngestion
           activeIngestionStep={activeIngestionStep}
           handleCancelClick={handleCancelClick}
@@ -260,7 +259,7 @@ const AddIngestionPage = () => {
           onFocus={handleFieldFocus}
           onIngestionDeploy={onIngestionDeploy}
         />
-      </Card>
+      </div>
     </div>
   );
 
@@ -293,22 +292,20 @@ const AddIngestionPage = () => {
   }
 
   return (
-    <PageContainerV1>
-      <ResizablePanels
-        firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
-        pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
-        secondPanel={{
-          children: secondPanelChildren,
-          className: 'service-doc-panel',
-          minWidth: 60,
-          overlay: {
-            displayThreshold: 200,
-            header: t('label.setup-guide'),
-            rotation: 'counter-clockwise',
-          },
-        }}
-      />
-    </PageContainerV1>
+    <ResizablePanels
+      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      secondPanel={{
+        children: secondPanelChildren,
+        className: 'service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

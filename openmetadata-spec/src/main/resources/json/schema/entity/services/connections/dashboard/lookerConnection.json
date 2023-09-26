@@ -12,7 +12,7 @@
       "enum": ["Looker"],
       "default": "Looker"
     },
-    "noGitHubCredentials": {
+    "noGitCredentials": {
       "title": "No GitHub Credentials",
       "description": "Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage.",
       "type": "object",
@@ -44,15 +44,18 @@
       "type": "string",
       "format": "uri"
     },
-    "githubCredentials": {
+    "gitCredentials": {
       "title": "GitHub Credentials",
       "description": "Credentials to extract the .lkml files from a repository. This is required to get all the lineage and definitions.",
       "oneOf": [
         {
-          "$ref": "#/definitions/noGitHubCredentials"
+          "$ref": "#/definitions/noGitCredentials"
         },
         {
           "$ref": "../../../../security/credentials/githubCredentials.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/bitbucketCredentials.json"
         }
       ]
     },

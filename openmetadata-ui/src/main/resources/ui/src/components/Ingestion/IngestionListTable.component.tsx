@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { Popover, Table, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
+import Table from 'components/common/Table/Table';
 import cronstrue from 'cronstrue';
-import { Paging } from 'generated/type/paging';
-import { isEmpty, isNil } from 'lodash';
+import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
 import { getErrorPlaceHolder } from 'utils/IngestionUtils';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogsViewerPath } from '../../utils/RouterUtils';
-import NextPrevious from '../common/next-previous/NextPrevious';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -36,7 +36,7 @@ function IngestionListTable({
   paging,
   handleEnableDisableIngestion,
   onIngestionWorkflowsUpdate,
-  servicePermission,
+  ingestionPipelinesPermission,
   serviceCategory,
   serviceName,
   handleDeleteSelection,
@@ -44,20 +44,22 @@ function IngestionListTable({
   ingestionData,
   deleteSelection,
   permissions,
-  pipelineNameColWidth,
   pipelineType,
+  isLoading = false,
 }: IngestionListTableProps) {
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${paging[cursorType as keyof Paging]}`;
+  const ingestionPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
-    onIngestionWorkflowsUpdate(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
+      onIngestionWorkflowsUpdate(pagingString);
+      setIngestionCurrentPage(currentPage);
+    }
   };
 
   const renderNameField = (text: string, record: IngestionPipeline) => {
@@ -71,8 +73,8 @@ function IngestionListTable({
             : t('message.no-permission-to-view')
         }>
         <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
-          data-testid="airflow-tree-view"
+          className="m-r-xs overflow-wrap-anywhere"
+          data-testid="ingestion-dag-link"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}
           rel="noopener noreferrer"
@@ -87,19 +89,14 @@ function IngestionListTable({
 
   const renderScheduleField = (_: string, record: IngestionPipeline) => {
     return record.airflowConfig?.scheduleInterval ? (
-      <Popover
-        content={
-          <div>
-            {cronstrue.toString(record.airflowConfig.scheduleInterval, {
-              use24HourTimeFormat: true,
-              verbose: true,
-            })}
-          </div>
-        }
+      <Tooltip
         placement="bottom"
-        trigger="hover">
-        <span>{record.airflowConfig.scheduleInterval}</span>
-      </Popover>
+        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
+          use24HourTimeFormat: true,
+          verbose: true,
+        })}>
+        {record.airflowConfig.scheduleInterval}
+      </Tooltip>
     ) : (
       <span>--</span>
     );
@@ -113,11 +110,11 @@ function IngestionListTable({
         handleDeleteSelection={handleDeleteSelection}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
         handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+        ingestionPipelinesPermission={ingestionPipelinesPermission}
         isRequiredDetailsAvailable={isRequiredDetailsAvailable}
         record={record}
         serviceCategory={serviceCategory}
         serviceName={serviceName}
-        servicePermission={servicePermission}
         triggerIngestion={triggerIngestion}
         onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
       />
@@ -130,7 +127,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: pipelineNameColWidth ?? 500,
+        width: 500,
         render: renderNameField,
       },
       {
@@ -167,11 +164,10 @@ function IngestionListTable({
       triggerIngestion,
       isRequiredDetailsAvailable,
       handleEnableDisableIngestion,
-      servicePermission,
+      ingestionPipelinesPermission,
       serviceName,
       deleteSelection,
       handleDeleteSelection,
-      getLogsViewerPath,
       serviceCategory,
       handleIsConfirmationModalOpen,
       onIngestionWorkflowsUpdate,
@@ -186,14 +182,25 @@ function IngestionListTable({
     [paging]
   );
 
-  return !isEmpty(ingestionData) ? (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+  return (
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
-        className="table-shadow"
         columns={tableColumn}
-        data-testid="schema-table"
+        data-testid="ingestion-list-table"
         dataSource={ingestionData}
+        loading={isLoading}
+        locale={{
+          emptyText: getErrorPlaceHolder(
+            isRequiredDetailsAvailable,
+            ingestionData.length,
+            pipelineType
+          ),
+        }}
         pagination={false}
         rowKey="name"
         size="small"
@@ -205,16 +212,9 @@ function IngestionListTable({
           pageSize={PAGE_SIZE}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          totalCount={paging.total}
         />
       )}
-    </div>
-  ) : (
-    getErrorPlaceHolder(
-      isRequiredDetailsAvailable,
-      ingestionData.length,
-      pipelineType
-    )
+    </Space>
   );
 }
 

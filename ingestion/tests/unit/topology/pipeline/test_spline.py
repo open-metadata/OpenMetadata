@@ -32,10 +32,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.pipeline.spline.metadata import SplineSource
 from metadata.ingestion.source.pipeline.spline.models import (
+    AttributesNames,
     ExecutionDetail,
     ExecutionEvent,
     ExecutionEvents,
     ExecutionPlan,
+    Extra,
     Inputs,
     Output,
 )
@@ -80,14 +82,12 @@ MOCK_PIPELINE_URL = f"{MOCK_SPLINE_UI_URL}/app/events/overview/{PIPELINE_ID}"
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     name=PIPELINE_ID,
     displayName="jdbc postgres ssl app",
-    description="",
-    pipelineUrl=MOCK_PIPELINE_URL,
+    sourceUrl=MOCK_PIPELINE_URL,
     tasks=[
         Task(
             name=PIPELINE_ID,
             displayName="jdbc postgres ssl app",
-            description="",
-            taskUrl=MOCK_PIPELINE_URL,
+            sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
     service=FullyQualifiedEntityName(__root__="spline_source"),
@@ -106,14 +106,12 @@ MOCK_PIPELINE = Pipeline(
     name=PIPELINE_ID,
     fullyQualifiedName=f"spline_source.{PIPELINE_ID}",
     displayName="MSSQL <> Postgres",
-    description="",
-    pipelineUrl=MOCK_PIPELINE_URL,
+    sourceUrl=MOCK_PIPELINE_URL,
     tasks=[
         Task(
             name=PIPELINE_ID,
             displayName="jdbc postgres ssl app",
-            description="",
-            taskUrl=MOCK_PIPELINE_URL,
+            sourceUrl=MOCK_PIPELINE_URL,
         )
     ],
     service=EntityReference(
@@ -153,6 +151,16 @@ EXPECTED_LINEAGE_DETAILS = ExecutionDetail(
         ],
         output=Output(
             source="jdbc:postgresql://localhost:5432/postgres?sslmode=disable:spline_test.filter"
+        ),
+        extra=Extra(
+            attributes=[
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-1"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-0"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-3"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-2"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-5"),
+                AttributesNames(id="3f784e72-5bf7-5704-8828-ae8464fe915b:attr-4"),
+            ]
         ),
     )
 )
@@ -260,7 +268,7 @@ class SplineUnitTest(TestCase):
     def test_pipelines(self):
         pipline = list(self.spline.yield_pipeline(EXPECTED_SPLINE_PIPELINES.items[0]))[
             0
-        ]
+        ].right
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_jdbc_parsing(self):

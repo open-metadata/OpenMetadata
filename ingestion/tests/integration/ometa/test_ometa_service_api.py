@@ -79,7 +79,7 @@ class OMetaServiceTest(TestCase):
                 "config": {
                     "type": "Mysql",
                     "username": "openmetadata_user",
-                    "password": "openmetadata_password",
+                    "authType": {"password": "openmetadata_password"},
                     "hostPort": "random:3306",
                 }
             },
@@ -95,7 +95,7 @@ class OMetaServiceTest(TestCase):
         assert service
         assert service.serviceType == DatabaseServiceType.Mysql
         assert (
-            service.connection.config.password.get_secret_value()
+            service.connection.config.authType.password.get_secret_value()
             == "openmetadata_password"
         )
 
@@ -120,6 +120,7 @@ class OMetaServiceTest(TestCase):
                     "username": "openmetadata_user",
                     "password": "openmetadata_password",
                     "hostPort": "random:1433",
+                    "database": "master",
                 }
             },
             "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -157,7 +158,7 @@ class OMetaServiceTest(TestCase):
                 "config": {
                     "type": "BigQuery",
                     "credentials": {
-                        "gcsConfig": {
+                        "gcpConfig": {
                             "type": "service_account",
                             "projectId": "projectID",
                             "privateKeyId": "privateKeyId",

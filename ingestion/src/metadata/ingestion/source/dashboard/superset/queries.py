@@ -12,11 +12,14 @@
 Queries to fetch data from superset
 """
 
+
 FETCH_ALL_CHARTS = """
 select 
 	s.id,
 	s.slice_name,
 	s.description,
+    s.datasource_id,
+    s.viz_type,
 	t.table_name,
 	t.schema,
 	db.database_name,
@@ -66,4 +69,21 @@ LEFT JOIN
 ON
 	d.created_by_fk = au.id
 LIMIT 1
+"""
+
+FETCH_COLUMN = """
+select 
+	tc.id, 
+    table_name ,
+    column_name, 
+    type,
+    tc.description 
+from 
+	table_columns  tc  
+inner join 
+	tables t 
+on 
+	t.id=tc.table_id  
+where 
+	table_name= '{table_name}'
 """

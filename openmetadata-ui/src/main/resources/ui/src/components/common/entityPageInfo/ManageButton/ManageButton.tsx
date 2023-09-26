@@ -13,19 +13,19 @@
 
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
-import React, { FC, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { FC, ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
@@ -34,7 +34,7 @@ import './ManageButton.less';
 
 interface Props {
   allowSoftDelete?: boolean;
-  afterDeleteAction?: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean) => void;
   buttonClassName?: string;
   entityName: string;
   entityId?: string;
@@ -52,6 +52,7 @@ interface Props {
   deleted?: boolean;
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
+  allowRename?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -73,9 +74,9 @@ const ManageButton: FC<Props> = ({
   deleted,
   editDisplayNamePermission,
   onEditDisplayName,
+  allowRename,
 }) => {
   const { t } = useTranslation();
-  const [showActions, setShowActions] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
@@ -97,176 +98,131 @@ const ManageButton: FC<Props> = ({
     }
   };
 
-  const items = [
+  const showAnnouncementOption = useMemo(
+    () =>
+      onAnnouncementClick &&
+      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
+      !deleted,
+    [onAnnouncementClick, entityType, deleted]
+  );
+
+  const showRenameOption = useMemo(
+    () => editDisplayNamePermission && onEditDisplayName && !deleted,
+    [editDisplayNamePermission, onEditDisplayName, deleted]
+  );
+
+  const items: ItemType[] = [
     ...(deleted
-      ? [
+      ? ([
           {
             label: (
               <Tooltip title={canDelete ? '' : NO_PERMISSION_FOR_ACTION}>
-                <Row
-                  className={classNames('cursor-pointer manage-button', {
-                    'cursor-not-allowed opacity-50': !canDelete,
+                <ManageButtonItemLabel
+                  description={t('message.restore-action-description', {
+                    entityType,
                   })}
-                  onClick={(e) => {
-                    if (canDelete) {
-                      e.stopPropagation();
-                      setShowActions(false);
-                      setShowReactiveModal(true);
-                    }
-                  }}>
-                  <Col span={3}>
+                  icon={
                     <IconRestore
                       className="m-t-xss"
                       name="Restore"
                       {...DROPDOWN_ICON_SIZE_PROPS}
                     />
-                  </Col>
-                  <Col span={21}>
-                    <Row data-testid="restore-button">
-                      <Col span={21}>
-                        <Typography.Text
-                          className="font-medium"
-                          data-testid="delete-button-title">
-                          {t('label.restore')}
-                        </Typography.Text>
-                      </Col>
-                      <Col className="p-t-xss">
-                        <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                          {t('message.restore-action-description', {
-                            entityType,
-                          })}
-                        </Typography.Paragraph>
-                      </Col>
-                    </Row>
-                  </Col>
-                </Row>
+                  }
+                  id="restore-button"
+                  name={t('label.restore')}
+                />
               </Tooltip>
             ),
+            onClick: (e) => {
+              if (canDelete) {
+                e.domEvent.stopPropagation();
+                setShowReactiveModal(true);
+              }
+            },
             key: 'restore-button',
           },
-        ]
+        ] as ItemType[])
       : []),
 
-    ...(onAnnouncementClick &&
-    ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType)
-      ? [
+    ...(showAnnouncementOption
+      ? ([
           {
             label: (
-              <Row
-                className="cursor-pointer manage-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowActions(false);
-                  onAnnouncementClick && onAnnouncementClick();
-                }}>
-                <Col span={3}>
+              <ManageButtonItemLabel
+                description={t('message.announcement-action-description')}
+                icon={
                   <IconAnnouncementsBlack
                     className="m-t-xss"
                     name="announcement"
                     {...DROPDOWN_ICON_SIZE_PROPS}
                   />
-                </Col>
-                <Col span={21}>
-                  <Row data-testid="announcement-button">
-                    <Col span={21}>
-                      <Typography.Text className="font-medium">
-                        {t('label.announcement-plural')}
-                      </Typography.Text>
-                    </Col>
-                    <Col className="p-t-xss">
-                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('message.announcement-action-description')}
-                      </Typography.Paragraph>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+                }
+                id="announcement-button"
+                name={t('label.announcement-plural')}
+              />
             ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              !isUndefined(onAnnouncementClick) && onAnnouncementClick();
+            },
             key: 'announcement-button',
           },
-        ]
+        ] as ItemType[])
       : []),
 
-    ...(editDisplayNamePermission && onEditDisplayName
-      ? [
+    ...(showRenameOption
+      ? ([
           {
             label: (
-              <Row
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowActions(false);
-                  setIsDisplayNameEditing(true);
-                }}>
-                <Col span={3}>
-                  <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
-                </Col>
-                <Col data-testid="rename-button" span={21}>
-                  <Row>
-                    <Col span={21}>
-                      <Typography.Text className="font-medium">
-                        {t('label.rename')}
-                      </Typography.Text>
-                    </Col>
-                    <Col className="p-t-xss">
-                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('message.update-displayName-entity', {
-                          entity: entityName,
-                        })}
-                      </Typography.Paragraph>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+              <ManageButtonItemLabel
+                description={t('message.update-displayName-entity', {
+                  entity: entityName,
+                })}
+                icon={<EditIcon width="18px" />}
+                id="rename-button"
+                name={t('label.rename')}
+              />
             ),
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDisplayNameEditing(true);
+            },
             key: 'rename-button',
           },
-        ]
+        ] as ItemType[])
       : []),
     ...(extraDropdownContent ? extraDropdownContent : []),
     ...(canDelete
-      ? [
+      ? ([
           {
             label: (
-              <Row
-                className="cursor-pointer manage-button"
-                onClick={(e) => {
-                  if (canDelete) {
-                    e.stopPropagation();
-                    setIsDelete(true);
-                    setShowActions(false);
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType,
                   }
-                }}>
-                <Col span={3}>
+                )}
+                icon={
                   <IconDelete
                     className="m-t-xss"
                     {...DROPDOWN_ICON_SIZE_PROPS}
                     name="Delete"
                   />
-                </Col>
-                <Col span={21}>
-                  <Row data-testid="delete-button">
-                    <Col span={21}>
-                      <Typography.Text
-                        className="font-medium"
-                        data-testid="delete-button-title">
-                        {t('label.delete')}
-                      </Typography.Text>
-                    </Col>
-                    <Col className="p-t-xss">
-                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('message.delete-entity-type-action-description', {
-                          entityType,
-                        })}
-                      </Typography.Paragraph>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+                }
+                id="delete-button"
+                name={t('label.delete')}
+              />
             ),
+            onClick: (e) => {
+              if (canDelete) {
+                e.domEvent.stopPropagation();
+                setIsDelete(true);
+              }
+            },
             key: 'delete-button',
           },
-        ]
+        ] as ItemType[])
       : []),
   ];
 
@@ -276,18 +232,15 @@ const ManageButton: FC<Props> = ({
         <Dropdown
           align={{ targetOffset: [-12, 0] }}
           menu={{ items }}
-          open={showActions}
           overlayClassName="manage-dropdown-list-container"
           overlayStyle={{ width: '350px' }}
           placement="bottomRight"
-          trigger={['click']}
-          onOpenChange={setShowActions}>
+          trigger={['click']}>
           <Button
             className={classNames('flex-center px-1.5', buttonClassName)}
             data-testid="manage-button"
             title="Manage"
-            type="default"
-            onClick={() => setShowActions(true)}>
+            type="default">
             <IconDropdown className="anticon self-center manage-dropdown-icon" />
           </Button>
         </Dropdown>
@@ -311,6 +264,7 @@ const ManageButton: FC<Props> = ({
       )}
       {onEditDisplayName && (
         <EntityNameModal
+          allowRename={allowRename}
           entity={{
             name: entityName,
             displayName,
@@ -352,3 +306,49 @@ const ManageButton: FC<Props> = ({
 };
 
 export default ManageButton;
+
+interface ManageButtonItemProps {
+  label: ReactNode;
+  icon: ReactNode;
+  description: string;
+  disabled: boolean;
+  onClick: () => void;
+}
+
+export const ManageButtonItem = ({
+  label,
+  icon,
+  description,
+  disabled,
+  onClick,
+}: ManageButtonItemProps) => {
+  return (
+    <Tooltip title={disabled && NO_PERMISSION_FOR_ACTION}>
+      <Row
+        className={classNames('cursor-pointer manage-button', {
+          'cursor-not-allowed opacity-50': disabled,
+        })}
+        onClick={onClick}>
+        <Col className="m-t-xss" span={3}>
+          {icon}
+        </Col>
+        <Col span={21}>
+          <Row data-testid="restore-button">
+            <Col span={21}>
+              <Typography.Text
+                className="font-medium"
+                data-testid="delete-button-title">
+                {label}
+              </Typography.Text>
+            </Col>
+            <Col className="p-t-xss">
+              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
+                {description}
+              </Typography.Paragraph>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    </Tooltip>
+  );
+};

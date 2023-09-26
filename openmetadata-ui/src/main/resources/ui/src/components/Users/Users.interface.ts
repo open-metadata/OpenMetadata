@@ -12,50 +12,26 @@
  */
 
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
 import { User } from '../../generated/entity/teams/user';
-import { Paging } from '../../generated/type/paging';
-import { ThreadUpdatedFunc } from '../../interface/feed.interface';
 
 export interface Props {
   userData: User;
   followingEntities: {
     data: SearchedDataProps['data'];
     total: number;
-    currPage: number;
   };
   ownedEntities: {
     data: SearchedDataProps['data'];
     total: number;
-    currPage: number;
   };
   username: string;
-  tab: string;
-  feedData: Thread[];
-  paging: Paging;
-  isFeedLoading: boolean;
   isUserEntitiesLoading: boolean;
-  isAdminUser: boolean;
-  isLoggedinUser: boolean;
-  isAuthDisabled: boolean;
+  handlePaginate: (page: string | number) => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
-  fetchFeedHandler: (
-    threadType: ThreadType,
-    after?: string,
-    feedFilter?: FeedFilter
-  ) => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler?: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
-  feedFilter: FeedFilter;
-  setFeedFilter: (value: FeedFilter) => void;
-  threadType: ThreadType.Task | ThreadType.Conversation;
-  onFollowingEntityPaginate: (page: string | number) => void;
-  onOwnedEntityPaginate: (page: string | number) => void;
-  onSwitchChange: (checked: boolean) => void;
+}
+
+export enum UserPageTabs {
+  ACTIVITY = 'activity_feed',
+  MY_DATA = 'mydata',
+  FOLLOWING = 'following',
 }

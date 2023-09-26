@@ -18,15 +18,13 @@ export const KeyHelp = ({ editorValue }: { editorValue: string }) => {
   const { t } = useTranslation();
 
   return editorValue.length > 2 ? (
-    <div className="absolute tw-right-8">
-      <p
-        className="text-grey-muted tw--mt-1"
-        data-testid="key-help"
-        style={{ fontSize: '10px' }}>
-        <kbd>{t('label.shift')}</kbd>
-        {t('label.plus-symbol')} <kbd>{t('label.return')}</kbd>{' '}
-        {t('message.to-add-new-line')}
-      </p>
-    </div>
+    <p
+      className="text-grey-muted m-t-xss absolute"
+      data-testid="key-help"
+      style={{ fontSize: '10px', right: 0 }}>
+      <kbd>{t('label.shift')}</kbd>
+      {t('label.plus-symbol')} <kbd>{t('label.return')}</kbd>{' '}
+      {t('message.to-add-new-line')}
+    </p>
   ) : null;
 };

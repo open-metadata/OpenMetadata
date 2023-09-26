@@ -10,26 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from 'constants/constants';
+import { TabSpecificField } from 'enums/entity.enum';
 import { Column, ContainerDataModel } from 'generated/entity/data/container';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
-
-export const getContainerDetailPath = (containerFQN: string, tab?: string) => {
-  let path = tab ? ROUTES.CONTAINER_DETAILS_WITH_TAB : ROUTES.CONTAINER_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_ENTITY_FQN, containerFQN);
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
 
 const getUpdatedContainerColumnTags = (
   containerColumn: Column,
@@ -64,11 +49,11 @@ const getUpdatedContainerColumnTags = (
 
 export const updateContainerColumnTags = (
   containerColumns: ContainerDataModel['columns'] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   newColumnTags: TagOption[] = []
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.tags = getUpdatedContainerColumnTags(
         containerColumn,
         newColumnTags
@@ -80,7 +65,7 @@ export const updateContainerColumnTags = (
       if (hasChildren) {
         updateContainerColumnTags(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           newColumnTags
         );
       }
@@ -90,11 +75,11 @@ export const updateContainerColumnTags = (
 
 export const updateContainerColumnDescription = (
   containerColumns: ContainerDataModel['columns'] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   description: string
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.description = description;
     } else {
       const hasChildren = !isEmpty(containerColumn.children);
@@ -103,10 +88,13 @@ export const updateContainerColumnDescription = (
       if (hasChildren) {
         updateContainerColumnDescription(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           description
         );
       }
     }
   });
 };
+
+export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
+${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAIN}`;

@@ -10,21 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Modal, Progress, Space } from 'antd';
+import {
+  Button,
+  Modal,
+  Progress,
+  ProgressProps,
+  Space,
+  Typography,
+} from 'antd';
+import { ReactComponent as IconTimeOut } from 'assets/svg/ic-time-out.svg';
+import { ReactComponent as IconTimeOutButton } from 'assets/svg/ic-timeout-button.svg';
 import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
 import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
-
+import './test-connection-modal.less';
 interface TestConnectionModalProps {
   isOpen: boolean;
   isTestingConnection: boolean;
   testConnectionStep: TestConnectionStep[];
   testConnectionStepResult: TestConnectionStepResult[];
   progress: number;
+  isConnectionTimeout: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  onTestConnection: () => void;
 }
 
 const TestConnectionModal: FC<TestConnectionModalProps> = ({
@@ -35,6 +46,8 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   testConnectionStepResult,
   onCancel,
   onConfirm,
+  isConnectionTimeout,
+  onTestConnection,
 }) => {
   const { t } = useTranslation();
 
@@ -42,6 +55,10 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
     return testConnectionStepResult.find(
       (resultStep) => resultStep.name === step.name
     );
+  };
+
+  const getProgressFormat: ProgressProps['format'] = (progress) => {
+    return <span data-testid="progress-bar-value">{`${progress}%`}</span>;
   };
 
   return (
@@ -59,24 +76,50 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       <Space className="p-x-md w-full" direction="vertical" size={16}>
         <Progress
           className="test-connection-progress-bar"
-          format={(per) => (
-            <span data-testid="progress-bar-value">{`${per}%`}</span>
-          )}
+          format={getProgressFormat}
           percent={progress}
           strokeColor="#B3D4F4"
         />
-        {testConnectionStep.map((step) => {
-          const currentStepResult = getConnectionStepResult(step);
+        {isConnectionTimeout ? (
+          <Space
+            align="center"
+            className="timeout-widget justify-center w-full"
+            data-testid="test-connection-timeout-widget"
+            direction="vertical"
+            size={20}>
+            <IconTimeOut height={100} width={100} />
+            <Typography.Title level={5}>
+              {t('label.connection-timeout')}
+            </Typography.Title>
+            <Typography.Text className="text-grey-muted">
+              {t('message.test-connection-taking-too-long')}
+            </Typography.Text>
+            <Button
+              ghost
+              className="try-again-button"
+              data-testid="try-again-button"
+              icon={<IconTimeOutButton height={14} width={14} />}
+              type="primary"
+              onClick={onTestConnection}>
+              {t('label.try-again')}
+            </Button>
+          </Space>
+        ) : (
+          <>
+            {testConnectionStep.map((step) => {
+              const currentStepResult = getConnectionStepResult(step);
 
-          return (
-            <ConnectionStepCard
-              isTestingConnection={isTestingConnection}
-              key={step.name}
-              testConnectionStep={step}
-              testConnectionStepResult={currentStepResult}
-            />
-          );
-        })}
+              return (
+                <ConnectionStepCard
+                  isTestingConnection={isTestingConnection}
+                  key={step.name}
+                  testConnectionStep={step}
+                  testConnectionStepResult={currentStepResult}
+                />
+              );
+            })}
+          </>
+        )}
       </Space>
     </Modal>
   );

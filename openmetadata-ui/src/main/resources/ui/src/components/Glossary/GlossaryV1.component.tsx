@@ -12,12 +12,13 @@
  */
 
 import { AxiosError } from 'axios';
-import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import Loader from 'components/Loader/Loader';
+import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
 } from 'constants/constants';
+import { EntityAction } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
@@ -30,24 +31,23 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
+import { getEncodedFqn } from 'utils/StringsUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import '../common/entityPageInfo/ManageButton/ManageButton.less';
-import GlossaryDetails from '../GlossaryDetails/GlossaryDetails.component';
-import GlossaryTermsV1 from '../GlossaryTerms/GlossaryTermsV1.component';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../PermissionProvider/PermissionProvider.interface';
-import ExportGlossaryModal from './ExportGlossaryModal/ExportGlossaryModal';
+import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
+import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
-import { GlossaryAction, GlossaryV1Props } from './GlossaryV1.interfaces';
+import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
+import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './GlossaryV1.style.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
 
@@ -57,6 +57,7 @@ const GlossaryV1 = ({
   selectedData,
   onGlossaryTermUpdate,
   updateGlossary,
+  updateVote,
   onGlossaryDelete,
   onGlossaryTermDelete,
   isVersionsView,
@@ -65,7 +66,7 @@ const GlossaryV1 = ({
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } =
-    useParams<{ action: GlossaryAction; glossaryName: string; tab: string }>();
+    useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
   const history = useHistory();
 
   const { getEntityPermission } = usePermissionProvider();
@@ -89,16 +90,8 @@ const GlossaryV1 = ({
   const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
   const { id } = selectedData ?? {};
 
-  const handleCancelGlossaryExport = () => {
-    history.push(getGlossaryPath(selectedData.name));
-  };
-
   const isImportAction = useMemo(
-    () => action === GlossaryAction.IMPORT,
-    [action]
-  );
-  const isExportAction = useMemo(
-    () => action === GlossaryAction.EXPORT,
+    () => action === EntityAction.IMPORT,
     [action]
   );
 
@@ -188,7 +181,24 @@ const GlossaryV1 = ({
       }
       onTermModalSuccess();
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.glossary-term'),
+            entityPlural: t('label.glossary-term-lowercase-plural'),
+            name: updatedData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.glossary-term-lowercase'),
+          })
+        );
+      }
     }
   };
 
@@ -197,7 +207,7 @@ const GlossaryV1 = ({
     if (!isGlossaryActive && tab !== 'terms') {
       history.push(
         getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
+          getEncodedFqn(selectedData.fullyQualifiedName || ''),
           'terms'
         )
       );
@@ -212,12 +222,31 @@ const GlossaryV1 = ({
         reviewers: formData.reviewers.map(
           (item) => item.fullyQualifiedName || ''
         ),
-        glossary: activeGlossaryTerm?.glossary?.name || selectedData.name,
+        glossary:
+          activeGlossaryTerm?.glossary?.name ||
+          (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
       onTermModalSuccess();
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+    } catch (error) {
+      if (
+        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
+      ) {
+        showErrorToast(
+          t('server.entity-already-exist', {
+            entity: t('label.glossary-term'),
+            entityPlural: t('label.glossary-term-lowercase-plural'),
+            name: formData.name,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          t('server.create-entity-error', {
+            entity: t('label.glossary-term-lowercase'),
+          })
+        );
+      }
     }
   };
 
@@ -274,7 +303,7 @@ const GlossaryV1 = ({
   }, [id, isGlossaryActive, isVersionsView, action]);
 
   return isImportAction ? (
-    <ImportGlossary glossaryName={selectedData.name} />
+    <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
     <>
       {isLoading && <Loader />}
@@ -285,10 +314,12 @@ const GlossaryV1 = ({
             glossary={selectedData as Glossary}
             glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
+            isVersionView={isVersionsView}
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateGlossary={updateGlossary}
+            updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term)
             }
@@ -303,9 +334,11 @@ const GlossaryV1 = ({
             handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
             isSummaryPanelOpen={isSummaryPanelOpen}
+            isVersionView={isVersionsView}
             permissions={glossaryTermPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
+            updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term)
             }
@@ -325,14 +358,6 @@ const GlossaryV1 = ({
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
-        />
-      )}
-      {isExportAction && (
-        <ExportGlossaryModal
-          glossaryName={selectedData.name}
-          isModalOpen={isExportAction}
-          onCancel={handleCancelGlossaryExport}
-          onOk={handleCancelGlossaryExport}
         />
       )}
 

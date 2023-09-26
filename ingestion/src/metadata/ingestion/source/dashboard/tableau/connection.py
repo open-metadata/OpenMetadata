@@ -55,6 +55,7 @@ def get_connection(connection: TableauConnection) -> TableauClient:
             config=tableau_server_config,
             env=connection.env,
             ssl_verify=get_verify_ssl(connection.sslConfig),
+            pagination_limit=connection.paginationLimit,
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -88,12 +89,13 @@ def test_connection(
             parameter_dict=TABLEAU_GET_VIEWS_PARAM_DICT,
         ),
         "GetOwners": client.get_owners,
+        "GetDataModels": client.test_get_datamodels,
     }
 
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
-        service_fqn=service_connection.type.value,
+        service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
 

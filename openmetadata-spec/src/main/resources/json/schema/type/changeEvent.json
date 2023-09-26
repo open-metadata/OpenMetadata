@@ -13,8 +13,10 @@
       "enum": [
         "entityCreated",
         "entityUpdated",
+        "entityNoChange",
         "entitySoftDeleted",
-        "entityDeleted"
+        "entityDeleted",
+        "entityRestored"
       ]
     },
     "entityTypes": {
@@ -183,7 +185,7 @@
     },
     "eventFilter": {
       "javaType": "org.openmetadata.schema.filter.EventFilter",
-      "description": "Represents a Filter attached to a entity.",
+      "description": "Represents a Filter attached to an entity.",
       "type": "object",
       "properties": {
         "entityType": {

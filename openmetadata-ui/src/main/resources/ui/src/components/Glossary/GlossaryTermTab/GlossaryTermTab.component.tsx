@@ -28,6 +28,7 @@ import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.s
 import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
@@ -35,7 +36,10 @@ import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import {
+  EntityReference,
+  GlossaryTerm,
+} from 'generated/entity/data/glossaryTerm';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
@@ -65,6 +69,7 @@ const GlossaryTermTab = ({
   termsLoading,
   onAddGlossaryTerm,
   onEditGlossaryTerm,
+  className,
 }: GlossaryTermTabProps) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
@@ -83,13 +88,13 @@ const GlossaryTermTab = ({
         title: t('label.term-plural'),
         dataIndex: 'name',
         key: 'name',
-        className: 'glossary-name-column',
+        className: 'glossary-name-column w-max-400 truncate',
         render: (_, record) => {
           const name = getEntityName(record);
 
           return (
             <Link
-              className="hover:tw-underline tw-cursor-pointer help-text"
+              className="cursor-pointer help-text"
               data-testid={name}
               to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
               {name}
@@ -112,11 +117,18 @@ const GlossaryTermTab = ({
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
+      {
+        title: t('label.owner'),
+        dataIndex: 'owner',
+        key: 'owner',
+        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+      },
     ];
     if (permissions.Create) {
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
+        width: 80,
         render: (_, record) => (
           <div className="d-flex items-center">
             <Tooltip
@@ -257,18 +269,22 @@ const GlossaryTermTab = ({
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary-term')}
         permission={permissions.Create}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        type={
+          permissions.Create
+            ? ERROR_PLACEHOLDER_TYPE.CREATE
+            : ERROR_PLACEHOLDER_TYPE.NO_DATA
+        }
         onClick={handleAddGlossaryTermClick}
       />
     );
   }
 
   return (
-    <Row gutter={[0, 16]}>
+    <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
         <div className="d-flex justify-end">
           <Button
-            className="tw-text-primary tw-rounded m-b-sm"
+            className="text-primary m-b-sm"
             size="small"
             type="text"
             onClick={toggleExpandAll}>

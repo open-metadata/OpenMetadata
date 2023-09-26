@@ -14,9 +14,11 @@ import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import Reactions from 'components/Reactions/Reactions';
 import { ReactionOperation } from 'enums/reactions.enum';
 import { compare } from 'fast-json-patch';
 import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
+import { noop } from 'lodash';
 import React, { useState } from 'react';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -31,6 +33,8 @@ interface ActivityFeedCardV1Props {
   className?: string;
   showThread?: boolean;
   isPost: boolean;
+  isActive?: boolean;
+  hidePopover: boolean;
 }
 
 const ActivityFeedCardV1 = ({
@@ -39,6 +43,8 @@ const ActivityFeedCardV1 = ({
   className = '',
   showThread = true,
   isPost = false,
+  isActive,
+  hidePopover = false,
 }: ActivityFeedCardV1Props) => {
   const postLength = feed?.postsCount ?? 0;
   const [isEditPost, setIsEditPost] = useState(false);
@@ -71,12 +77,18 @@ const ActivityFeedCardV1 = ({
 
   return (
     <>
-      <div className={classNames(className, 'activity-feed-card')}>
+      <div
+        className={classNames(
+          className,
+          'activity-feed-card activity-feed-card-v1',
+          { active: isActive }
+        )}>
         <Row>
           <Col span={24}>
             <FeedCardHeaderV1
               about={!isPost ? feed.about : undefined}
               createdBy={post.from}
+              isEntityFeed={isPost}
               timeStamp={post.postTs}
             />
           </Col>
@@ -87,51 +99,63 @@ const ActivityFeedCardV1 = ({
               announcement={!isPost ? feed.announcement : undefined}
               isEditPost={isEditPost}
               message={post.message}
-              reactions={post.reactions}
               onEditCancel={() => setIsEditPost(false)}
-              onReactionUpdate={onReactionUpdate}
               onUpdate={onUpdate}
             />
           </Col>
         </Row>
 
-        {!showThread && !isPost && postLength > 0 && (
+        {!showThread && !isPost && (
           <Row>
-            <Col className="p-t-sm" span={24}>
-              <div className="d-flex items-center">
-                <div
-                  className="d-flex items-center thread-count cursor-pointer"
-                  onClick={showReplies}>
-                  <ThreadIcon width={18} />{' '}
-                  <span className="text-xs p-l-xss">{postLength}</span>
-                </div>
-                <div className="p-l-sm thread-users-profile-pic">
-                  {repliedUniqueUsersList.map((user) => (
-                    <UserPopOverCard key={user} userName={user}>
-                      <span
-                        className="profile-image-span cursor-pointer"
-                        data-testid="authorAvatar">
-                        <ProfilePicture
-                          id=""
-                          name={user}
-                          type="circle"
-                          width="24"
-                        />
-                      </span>
-                    </UserPopOverCard>
-                  ))}
-                </div>
+            <Col className="p-t-xs" span={24}>
+              <div className="d-flex items-center gap-2 pl-8">
+                {postLength > 0 && (
+                  <>
+                    <div className="thread-users-profile-pic">
+                      {repliedUniqueUsersList.map((user) => (
+                        <UserPopOverCard key={user} userName={user}>
+                          <span
+                            className="profile-image-span cursor-pointer"
+                            data-testid="authorAvatar">
+                            <ProfilePicture
+                              id=""
+                              name={user}
+                              type="circle"
+                              width="22"
+                            />
+                          </span>
+                        </UserPopOverCard>
+                      ))}
+                    </div>
+                    <div
+                      className="d-flex items-center thread-count cursor-pointer"
+                      data-testid="thread-count"
+                      onClick={!hidePopover ? showReplies : noop}>
+                      <ThreadIcon width={18} />{' '}
+                      <span className="text-xs p-l-xss">{postLength}</span>
+                    </div>
+                  </>
+                )}
+
+                {Boolean(post.reactions?.length) && (
+                  <Reactions
+                    reactions={post.reactions ?? []}
+                    onReactionSelect={onReactionUpdate ?? noop}
+                  />
+                )}
               </div>
             </Col>
           </Row>
         )}
 
-        <ActivityFeedActions
-          feed={feed}
-          isPost={isPost}
-          post={post}
-          onEditPost={onEditPost}
-        />
+        {!hidePopover && (
+          <ActivityFeedActions
+            feed={feed}
+            isPost={isPost}
+            post={post}
+            onEditPost={onEditPost}
+          />
+        )}
       </div>
     </>
   );

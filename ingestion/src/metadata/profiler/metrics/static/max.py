@@ -15,13 +15,14 @@ Max Metric definition
 # pylint: disable=duplicate-code
 
 
-from sqlalchemy import column
+from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
 from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
+    Dialects,
     is_concatenable,
     is_date_time,
     is_quantifiable,
@@ -36,6 +37,18 @@ class MaxFn(GenericFunction):
 @compiles(MaxFn)
 def _(element, compiler, **kw):
     col = compiler.process(element.clauses, **kw)
+    return f"MAX({col})"
+
+
+@compiles(MaxFn, Dialects.MySQL)
+@compiles(MaxFn, Dialects.MariaDB)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)
+    col_type = element.clauses.clauses[0].type
+    if isinstance(col_type, TIME):
+        # Mysql Sqlalchemy returns timedelta which is not supported pydantic type
+        # hence we profile the time by modifying it in seconds
+        return f"MAX(TIME_TO_SEC({col}))"
     return f"MAX({col})"
 
 
@@ -54,10 +67,10 @@ class Max(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_concatenable(self.col.type):
-            return MaxFn(LenFn(column(self.col.name)))
+            return MaxFn(LenFn(column(self.col.name, self.col.type)))
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
-        return MaxFn(column(self.col.name))
+        return MaxFn(column(self.col.name, self.col.type))
 
     def df_fn(self, dfs=None):
         """pandas function"""

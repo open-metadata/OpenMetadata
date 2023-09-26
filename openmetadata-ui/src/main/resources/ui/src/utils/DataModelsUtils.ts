@@ -10,11 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  PLACEHOLDER_ROUTE_DATA_MODEL_FQN,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from 'constants/constants';
 import { TabSpecificField } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/dashboardDataModel';
 import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
@@ -22,26 +17,13 @@ import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const getDataModelsDetailPath = (dataModelFQN: string, tab?: string) => {
-  let path = tab
-    ? ROUTES.DATA_MODEL_DETAILS_WITH_TAB
-    : ROUTES.DATA_MODEL_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_DATA_MODEL_FQN, dataModelFQN);
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
 export const updateDataModelColumnDescription = (
   containerColumns: Column[] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   description: string
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.description = description;
     } else {
       const hasChildren = !isEmpty(containerColumn.children);
@@ -50,7 +32,7 @@ export const updateDataModelColumnDescription = (
       if (hasChildren) {
         updateDataModelColumnDescription(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           description
         );
       }
@@ -91,11 +73,11 @@ const getUpdatedDataModelColumnTags = (
 
 export const updateDataModelColumnTags = (
   containerColumns: Column[] = [],
-  changedColumnName: string,
+  changedColumnFQN: string,
   newColumnTags: TagOption[] = []
 ) => {
   containerColumns.forEach((containerColumn) => {
-    if (containerColumn.name === changedColumnName) {
+    if (containerColumn.fullyQualifiedName === changedColumnFQN) {
       containerColumn.tags = getUpdatedDataModelColumnTags(
         containerColumn,
         newColumnTags
@@ -107,7 +89,7 @@ export const updateDataModelColumnTags = (
       if (hasChildren) {
         updateDataModelColumnTags(
           containerColumn.children,
-          changedColumnName,
+          changedColumnFQN,
           newColumnTags
         );
       }
@@ -116,7 +98,7 @@ export const updateDataModelColumnTags = (
 };
 
 export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.FOLLOWERS}`;
+${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAIN}`;
 
 export const getSortedDataModelColumnTags = (column: Column[]): Column[] =>
   column.map((item) => ({

@@ -28,12 +28,12 @@ def get_long_description():
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.3.3",
+    "airflow": "apache-airflow==2.6.3",
     "avro": "avro~=1.11",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "great-expectations": "great-expectations~=0.16.0",
+    "great-expectations": "great-expectations~=0.17.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3.0",
@@ -44,6 +44,8 @@ VERSIONS = {
     "pyodbc": "pyodbc>=4.0.35,<5",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging==21.3",
+    "azure-storage-blob": "azure-storage-blob~=12.14",
+    "azure-identity": "azure-identity~=1.12",
 }
 
 COMMONS = {
@@ -91,10 +93,11 @@ base_requirements = {
     "google-auth>=1.33.0",
     VERSIONS["grpc-tools"],  # Used in sample data
     "idna<3,>=2.5",
-    "importlib-metadata~=4.12.0",  # From airflow constraints
+    "importlib-metadata>=4.13.0",  # From airflow constraints
     "Jinja2>=2.11.3",
     "jsonpatch==1.32",
     "jsonschema",
+    "memory-profiler",
     "mypy_extensions>=0.4.3",
     "pydantic~=1.10",
     VERSIONS["pymysql"],
@@ -103,9 +106,9 @@ base_requirements = {
     "PyYAML",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "setuptools~=65.6.3",
+    "setuptools~=66.0.0",
     "sqlalchemy>=1.4.0,<2",
-    "openmetadata-sqllineage>=1.0.4",
+    "collate-sqllineage>=1.0.4",
     "tabulate==0.9.0",
     "typing-compat~=0.1.0",  # compatibility requirements for 3.7
     "typing_extensions<=4.5.0",  # We need to have this fixed due to a yanked release 4.6.0
@@ -117,14 +120,14 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"PyAthena[SQLAlchemy]"},
+    "athena": {"pyathena==2.25.2"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], "azure-identity", "azure-storage-blob"},
     "bigquery": {
         "cachetools",
-        "google-cloud-datacatalog==3.6.2",
+        "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         "sqlalchemy-bigquery>=1.2.2",
@@ -141,12 +144,14 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "dbt-artifacts-parser",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
     },
     "db2": {"ibm-db-sa~=0.3"},
-    "databricks": {"sqlalchemy-databricks~=0.1"},
+    "databricks": {"sqlalchemy-databricks~=0.1", "databricks-sdk~=0.1"},
     "datalake-azure": {
-        "azure-storage-blob~=12.14",
-        "azure-identity~=1.12",
+        VERSIONS["azure-storage-blob"],
+        VERSIONS["azure-identity"],
         "adlfs>=2022.2.0",  # Python 3.7 does only support up to 2022.2.0
         *COMMONS["datalake"],
     },
@@ -163,13 +168,14 @@ plugins: Dict[str, Set[str]] = {
         "s3fs==0.4.2",
         *COMMONS["datalake"],
     },
-    "deltalake": {"delta-spark~=2.2"},
+    "deltalake": {"delta-spark<=2.3.0"},
     "docker": {"python_on_whales==0.55.0"},
     "domo": {VERSIONS["pydomo"]},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        "elasticsearch==7.13.1"
+        "elasticsearch==7.13.1",
+        "elasticsearch8~=8.9.0",
     },  # also requires requests-aws4auth which is in base
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -191,13 +197,16 @@ plugins: Dict[str, Set[str]] = {
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
-    "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
+    "mlflow": {"mlflow-skinny>=2.3.0", "alembic~=1.10.2"},
+    "mongo": {"pymongo~=4.3", VERSIONS["pandas"]},
+    "couchbase": {"couchbase~=4.1"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
     "mssql-odbc": {VERSIONS["pyodbc"]},
     "mysql": {VERSIONS["pymysql"]},
     "nifi": {},  # uses requests
     "okta": {"okta~=2.3"},
     "oracle": {"cx_Oracle>=8.3.0,<9", "oracledb~=1.2"},
+    "pgspider": {"psycopg2-binary", "sqlalchemy-pgspider"},
     "pinotdb": {"pinotdb~=0.3"},
     "postgres": {
         VERSIONS["pymysql"],
@@ -206,18 +215,21 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["packaging"],
     },
     "powerbi": {VERSIONS["msal"]},
+    "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
     "pymssql": {"pymssql==2.2.5"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
     "redshift": {
-        "sqlalchemy-redshift~=0.8",
+        # Going higher has memory and performance issues
+        "sqlalchemy-redshift==0.8.12",
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce==1.11.4"},
+    "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
     "snowflake": {"snowflake-sqlalchemy~=1.4"},
@@ -253,17 +265,23 @@ test = {
     "dbt-artifacts-parser",
 }
 
+e2e_test = {
+    # playwright dependencies
+    "pytest-playwright",
+    "pytest-base-url",
+}
+
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="1.1.0.0.dev0",
+    version="1.2.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
     description="Ingestion Framework for OpenMetadata",
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     options={"build_exe": build_options},
     package_dir={"": "src"},
     package_data={"metadata.examples": ["workflows/*.yaml"]},
@@ -286,6 +304,7 @@ setup(
         "base": list(base_requirements),
         "dev": list(dev),
         "test": list(test),
+        "e2e_test": list(e2e_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
@@ -298,6 +317,7 @@ setup(
                         "airflow",
                         "db2",
                         "great-expectations",
+                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
                     }
                 ]
             )

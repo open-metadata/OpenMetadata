@@ -71,7 +71,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
             data-testid="save"
             key="saveButton"
             type="primary"
-            onClick={() => handleSaveData()}>
+            onClick={handleSaveData}>
             {isLoading ? <Loader size="small" type="white" /> : t('label.save')}
           </Button>,
         ]}

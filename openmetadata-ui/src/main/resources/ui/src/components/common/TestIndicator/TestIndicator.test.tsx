@@ -30,11 +30,9 @@ describe('Test TestIndicator component', () => {
   it('should render without crashing', async () => {
     render(<TestIndicator {...mockProps} />);
 
-    const container = await screen.findByTestId('indicator-container');
     const testStatus = await screen.findByTestId('test-status');
     const testValue = await screen.findByTestId('test-value');
 
-    expect(container).toBeInTheDocument();
     expect(testStatus).toBeInTheDocument();
     expect(testValue).toBeInTheDocument();
   });

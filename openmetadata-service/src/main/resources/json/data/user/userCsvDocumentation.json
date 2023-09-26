@@ -22,7 +22,7 @@
     {
       "name": "description",
       "required": false,
-      "description": "Description for the user in markdown format.",
+      "description": "Description for the user in Markdown format.",
       "examples": [
         "`John` is a Data Scientist."
       ]

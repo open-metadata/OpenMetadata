@@ -74,10 +74,10 @@ class Mean(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_quantifiable(self.col.type):
-            return func.avg(column(self.col.name))
+            return func.avg(column(self.col.name, self.col.type))
 
         if is_concatenable(self.col.type):
-            return func.avg(LenFn(column(self.col.name)))
+            return func.avg(LenFn(column(self.col.name, self.col.type)))
 
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing MEAN"
@@ -105,9 +105,11 @@ class Mean(StaticMetric):
         if is_concatenable(self.col.type):
             length_vectorize_func = vectorize(len)
             for df in dfs:
-                mean = length_vectorize_func(
-                    df[self.col.name].dropna().astype(str)
-                ).mean()
+                mean = None
+                if any(df[self.col.name]):
+                    mean = length_vectorize_func(
+                        df[self.col.name].dropna().astype(str)
+                    ).mean()
                 if not pd.isnull(mean):
                     means.append(mean)
                     weights.append(df[self.col.name].dropna().count())

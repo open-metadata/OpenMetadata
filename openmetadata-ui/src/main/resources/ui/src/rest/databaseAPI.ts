@@ -12,7 +12,10 @@
  */
 
 import { AxiosResponse } from 'axios';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
+import { EntityHistory } from 'generated/type/entityHistory';
+import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
@@ -23,7 +26,8 @@ import APIClient from './index';
 export const getDatabases = async (
   service: string,
   fields: string,
-  paging?: PagingWithoutTotal
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
   const response = await APIClient.get<{
     data: Database[];
@@ -33,6 +37,7 @@ export const getDatabases = async (
       service,
       fields,
       ...paging,
+      include,
     },
   });
 
@@ -54,11 +59,16 @@ export const getDatabase = (
 
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[]
+  arrQueryFields: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const url = getURLWithQueryFields(`/databases/name/${fqn}`, arrQueryFields);
 
-  const response = await APIClient.get<Database>(url);
+  const response = await APIClient.get<Database>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -96,7 +106,8 @@ export const patchDatabaseSchemaDetails = async (
 export const getDatabaseSchemas = async (
   databaseName: string,
   paging?: string,
-  arrQueryFields?: string | string[]
+  arrQueryFields?: string | string[],
+  include: Include = Include.NonDeleted
 ) => {
   const url = `${getURLWithQueryFields(
     `/databaseSchemas`,
@@ -106,7 +117,11 @@ export const getDatabaseSchemas = async (
   const response = await APIClient.get<{
     data: DatabaseSchema[];
     paging: Paging;
-  }>(url);
+  }>(url, {
+    params: {
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -133,6 +148,73 @@ export const restoreDatabaseSchema = async (id: string) => {
   >('/databaseSchemas/restore', {
     id,
   });
+
+  return response.data;
+};
+
+export const restoreDatabase = async (id: string) => {
+  const response = await APIClient.put<
+    RestoreRequestType,
+    AxiosResponse<Database>
+  >('/databases/restore', {
+    id,
+  });
+
+  return response.data;
+};
+
+export const getDatabaseVersions = async (id: string) => {
+  const url = `/databases/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDatabaseVersionData = async (id: string, version: string) => {
+  const url = `/databases/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Database>(url);
+
+  return response.data;
+};
+
+export const getDatabaseSchemaVersions = async (id: string) => {
+  const url = `/databaseSchemas/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getDatabaseSchemaVersionData = async (
+  id: string,
+  version: string
+) => {
+  const url = `/databaseSchemas/${id}/versions/${version}`;
+
+  const response = await APIClient.get<DatabaseSchema>(url);
+
+  return response.data;
+};
+
+export const updateDatabaseSchemaVotes = async (
+  id: string,
+  data: QueryVote
+) => {
+  const response = await APIClient.put<
+    QueryVote,
+    AxiosResponse<DatabaseSchema>
+  >(`/databaseSchemas/${id}/vote`, data);
+
+  return response.data;
+};
+
+export const updateDatabaseVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Database>>(
+    `databases/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

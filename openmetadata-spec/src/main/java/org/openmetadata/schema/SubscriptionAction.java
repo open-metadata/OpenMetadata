@@ -13,6 +13,8 @@
 
 package org.openmetadata.schema;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public interface SubscriptionAction {
   default Boolean getSendToAdmins() {
     return false;
@@ -23,6 +25,11 @@ public interface SubscriptionAction {
   }
 
   default Boolean getSendToFollowers() {
+    return false;
+  }
+
+  @JsonIgnore
+  default Boolean getSendToTeams() {
     return false;
   }
 }

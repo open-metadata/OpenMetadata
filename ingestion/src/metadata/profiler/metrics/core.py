@@ -228,7 +228,7 @@ class SystemMetric(Metric, ABC):
     """Abstract class for system metrics"""
 
     @abstractmethod
-    def sql(self):
+    def sql(self, session: Session, **kwargs):
         """SQL query to get system Metric"""
 
 

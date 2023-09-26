@@ -1,10 +1,15 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -61,5 +66,16 @@ public final class ColumnUtil {
     if (!validColumn) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidColumnFQN(columnFQN));
     }
+  }
+
+  public static Set<String> getAllTags(Column column) {
+    Set<String> tags = new HashSet<>();
+    if (!listOrEmpty(column.getTags()).isEmpty()) {
+      tags.addAll(column.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet()));
+    }
+    for (Column c : listOrEmpty(column.getChildren())) {
+      tags.addAll(getAllTags(c));
+    }
+    return tags;
   }
 }

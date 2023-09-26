@@ -4,28 +4,38 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 
 import com.google.common.collect.Lists;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.StorageService;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ContainerFileFormat;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 
 public class ContainerRepository extends EntityRepository<Container> {
-
-  private static final String CONTAINER_UPDATE_FIELDS = "dataModel,owner,tags,extension";
-  private static final String CONTAINER_PATCH_FIELDS = "dataModel,owner,tags,extension";
+  private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
+  private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
   public ContainerRepository(CollectionDAO dao) {
     super(
@@ -35,21 +45,24 @@ public class ContainerRepository extends EntityRepository<Container> {
         dao.containerDAO(),
         dao,
         CONTAINER_PATCH_FIELDS,
-        CONTAINER_UPDATE_FIELDS,
-        null);
+        CONTAINER_UPDATE_FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Override
-  public Container setFields(Container container, EntityUtil.Fields fields) throws IOException {
+  public Container setFields(Container container, EntityUtil.Fields fields) {
     setDefaultFields(container);
-    container.setChildren(fields.contains("children") ? getChildrenContainers(container) : null);
-    container.setParent(fields.contains("parent") ? getParentContainer(container) : null);
-    container.setDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
+    container.setParent(fields.contains(FIELD_PARENT) ? getParent(container) : container.getParent());
     if (container.getDataModel() != null) {
       populateDataModelColumnTags(fields.contains(FIELD_TAGS), container.getDataModel().getColumns());
     }
-    container.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(container) : null);
     return container;
+  }
+
+  @Override
+  public Container clearFields(Container container, EntityUtil.Fields fields) {
+    container.setParent(fields.contains(FIELD_PARENT) ? container.getParent() : null);
+    return container.withDataModel(fields.contains("dataModel") ? container.getDataModel() : null);
   }
 
   private void populateDataModelColumnTags(boolean setTags, List<Column> columns) {
@@ -59,24 +72,10 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
   }
 
-  private EntityReference getParentContainer(Container container) throws IOException {
-    if (container == null) return null;
-    return getFromEntityRef(container.getId(), Relationship.CONTAINS, CONTAINER, false);
-  }
-
-  private void setDefaultFields(Container container) throws IOException {
+  private void setDefaultFields(Container container) {
     EntityReference parentServiceRef =
         getFromEntityRef(container.getId(), Relationship.CONTAINS, STORAGE_SERVICE, true);
     container.withService(parentServiceRef);
-  }
-
-  private List<EntityReference> getChildrenContainers(Container container) throws IOException {
-    if (container == null) {
-      return Collections.emptyList();
-    }
-    List<CollectionDAO.EntityRelationshipRecord> childContainerIds =
-        findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
-    return EntityUtil.populateEntityReferences(childContainerIds, CONTAINER);
   }
 
   @Override
@@ -105,7 +104,7 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void prepare(Container container) throws IOException {
+  public void prepare(Container container, boolean update) {
     // the storage service is not fully filled in terms of props - go to the db and get it in full and re-set it
     StorageService storageService = Entity.getEntity(container.getService(), "", Include.NON_DELETED);
     container.setService(storageService.getEntityReference());
@@ -123,14 +122,10 @@ public class ContainerRepository extends EntityRepository<Container> {
   }
 
   @Override
-  public void storeEntity(Container container, boolean update) throws IOException {
+  public void storeEntity(Container container, boolean update) {
     EntityReference storageService = container.getService();
     EntityReference parent = container.getParent();
-    List<EntityReference> children = container.getChildren();
-    EntityReference owner = container.getOwner();
-    List<TagLabel> tags = container.getTags();
-
-    container.withService(null).withParent(null).withChildren(null).withOwner(null).withHref(null).withTags(null);
+    container.withService(null).withParent(null);
 
     // Don't store datamodel column tags as JSON but build it on the fly based on relationships
     List<Column> columnWithTags = Lists.newArrayList();
@@ -143,7 +138,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     store(container, update);
 
     // Restore the relationships
-    container.withService(storageService).withParent(parent).withChildren(children).withOwner(owner).withTags(tags);
+    container.withService(storageService).withParent(parent);
     if (container.getDataModel() != null) {
       container.getDataModel().setColumns(columnWithTags);
     }
@@ -162,7 +157,6 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   @Override
   public void storeRelationships(Container container) {
-
     // store each relationship separately in the entity_relationship table
     EntityReference service = container.getService();
     addRelationship(service.getId(), container.getId(), service.getType(), CONTAINER, Relationship.CONTAINS);
@@ -172,8 +166,6 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (parentReference != null) {
       addRelationship(parentReference.getId(), container.getId(), CONTAINER, CONTAINER, Relationship.CONTAINS);
     }
-    storeOwner(container, container.getOwner());
-    applyTags(container);
   }
 
   @Override
@@ -188,6 +180,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       applyTags(container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Container entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private void applyTags(List<Column> columns) {
@@ -211,6 +208,60 @@ public class ContainerRepository extends EntityRepository<Container> {
       }
     }
     return allTags;
+  }
+
+  @Override
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
+    if (entityLink.getFieldName().equals("dataModel")) {
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new DataModelDescriptionTaskWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new DataModelTagTaskWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
+      }
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class DataModelDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+    private final Column column;
+
+    DataModelDescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      DashboardDataModel dataModel =
+          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel", ALL);
+      threadContext.setAboutEntity(dataModel);
+      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      column.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class DataModelTagTaskWorkflow extends TagTaskWorkflow {
+    private final Column column;
+
+    DataModelTagTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      DashboardDataModel dataModel =
+          Entity.getEntity(DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "dataModel,tags", ALL);
+      threadContext.setAboutEntity(dataModel);
+      column = EntityUtil.findColumn(dataModel.getColumns(), getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      column.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
   }
 
   private void addDerivedColumnTags(List<Column> columns) {
@@ -243,7 +294,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateDataModel(original, updated);
       recordChange("prefix", original.getPrefix(), updated.getPrefix());
       List<ContainerFileFormat> addedItems = new ArrayList<>();
@@ -265,9 +316,10 @@ public class ContainerRepository extends EntityRepository<Container> {
           EntityUtil.objectMatch,
           false);
       recordChange("size", original.getSize(), updated.getSize(), false, EntityUtil.objectMatch, false);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
 
-    private void updateDataModel(Container original, Container updated) throws IOException {
+    private void updateDataModel(Container original, Container updated) {
 
       if (original.getDataModel() == null || updated.getDataModel() == null) {
         recordChange("dataModel", original.getDataModel(), updated.getDataModel(), true);

@@ -16,8 +16,10 @@ import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { ArrayFieldTemplate } from 'components/JSONSchemaTemplate/ArrayFieldTemplate';
-import { customFields } from 'components/JSONSchemaTemplate/CustomFields';
+import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
+import PasswordWidget from 'components/JsonSchemaWidgets/PasswordWidget';
 import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
@@ -112,7 +114,6 @@ const FormBuilder: FunctionComponent<Props> = ({
       className={classNames('rjsf', props.className, {
         'no-header': !showFormHeader,
       })}
-      fields={customFields}
       formContext={{ handleFocus: onFocus }}
       formData={localFormData}
       idSeparator="/"
@@ -122,40 +123,45 @@ const FormBuilder: FunctionComponent<Props> = ({
       templates={{
         ArrayFieldTemplate: ArrayFieldTemplate,
         ObjectFieldTemplate: ObjectFieldTemplate,
+        DescriptionFieldTemplate: DescriptionFieldTemplate,
+        FieldErrorTemplate: FieldErrorTemplate,
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
+      widgets={{ PasswordWidget: PasswordWidget }}
       onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
       {...props}>
       {isEmpty(schema) && (
-        <div className="text-grey-muted tw-text-center">
+        <div className="text-grey-muted text-center">
           {t('message.no-config-available')}
         </div>
       )}
       {!isEmpty(schema) && isAirflowAvailable && hostIp && (
         <div
-          className="d-flex tw-justify-between tw-bg-white tw-border tw-border-main tw-shadow tw-rounded tw-p-3 tw-mt-4"
+          className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
           data-testid="ip-address">
-          <div className="tw-self-center">
+          <div className="self-center">
             {t('message.airflow-host-ip-address', { hostIp })}
           </div>
         </div>
       )}
-      {!isEmpty(schema) && !isUndefined(localFormData) && (
-        <TestConnection
-          connectionType={serviceType}
-          formData={localFormData}
-          isTestingDisabled={disableTestConnection}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          onValidateFormRequiredFields={handleRequiredFieldsValidation}
-        />
-      )}
-      <div className="tw-mt-6 d-flex tw-justify-between">
+      {!isEmpty(schema) &&
+        !isUndefined(localFormData) &&
+        isAirflowAvailable && (
+          <TestConnection
+            connectionType={serviceType}
+            formData={localFormData}
+            isTestingDisabled={disableTestConnection}
+            serviceCategory={serviceCategory}
+            serviceName={serviceName}
+            onValidateFormRequiredFields={handleRequiredFieldsValidation}
+          />
+        )}
+      <div className="m-t-lg d-flex justify-between">
         <div />
-        <div className="tw-text-right" data-testid="buttons">
+        <div className="text-right" data-testid="buttons">
           <Button type="link" onClick={handleCancel}>
             {cancelText}
           </Button>

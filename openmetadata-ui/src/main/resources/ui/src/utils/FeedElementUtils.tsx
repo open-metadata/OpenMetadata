@@ -11,122 +11,47 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
-import React, { Fragment } from 'react';
-import { ReactComponent as IconCommentPlus } from '../assets/svg/add-chat.svg';
+import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
-import { ReactComponent as IconTaskColor } from '../assets/svg/Task-ic.svg';
-import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
-import { EntityReference } from '../generated/entity/teams/user';
-import { EntityFieldThreads } from '../interface/feed.interface';
 import { getEntityFeedLink } from './EntityUtils';
-import { getThreadField } from './FeedUtils';
 
 const iconsProps = {
-  height: 16,
+  height: 14,
   name: 'comments',
-  width: 16,
+  width: 14,
+  style: { color: DE_ACTIVE_COLOR },
 };
 
 export const getFieldThreadElement = (
-  columnName: string,
-  columnField: string,
-  entityFieldThreads: EntityFieldThreads[],
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void,
+  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void,
   entityType?: string,
   entityFqn?: string,
-  entityField?: string,
-  flag = true,
-  threadType?: ThreadType
+  entityField?: string
 ) => {
-  let threadValue: EntityFieldThreads = {} as EntityFieldThreads;
+  const entityLink = getEntityFeedLink(entityType, entityFqn, entityField);
 
-  entityFieldThreads?.forEach((thread) => {
-    const threadField = getThreadField(thread.entityField);
-    if (threadField[0] === columnName && threadField[1] === columnField) {
-      threadValue = thread;
-    }
-  });
+  return (
+    <Tooltip
+      destroyTooltipOnHide
+      overlayClassName="ant-popover-request-description"
+      title={t('label.list-entity', {
+        entity: t('label.conversation'),
+      })}>
+      <IconComments
+        {...iconsProps}
+        className="hover-cell-icon cursor-pointer"
+        data-testid="field-thread"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
 
-  const isTaskType = isEqual(threadType, ThreadType.Task);
-
-  return !isEmpty(threadValue) ? (
-    <Button
-      className="link-text tw-self-start w-8 h-7 m-r-xss d-flex tw-items-center hover-cell-icon p-0"
-      data-testid="field-thread"
-      type="text"
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onThreadLinkSelect?.(
-          threadValue.entityLink,
-          isTaskType ? ThreadType.Task : ThreadType.Conversation
-        );
-      }}>
-      <Popover
-        destroyTooltipOnHide
-        content={t('label.list-entity', {
-          entity: isTaskType ? t('label.task') : t('label.conversation'),
-        })}
-        overlayClassName="ant-popover-request-description"
-        trigger="hover">
-        <Space align="center" className="w-full h-full" size={4}>
-          {isTaskType ? (
-            <IconTaskColor {...iconsProps} />
-          ) : (
-            <IconComments {...iconsProps} />
-          )}
-
-          <Typography.Text data-testid="field-thread-count">
-            {threadValue.count}
-          </Typography.Text>
-        </Space>
-      </Popover>
-    </Button>
-  ) : (
-    <Fragment>
-      {entityType && entityFqn && entityField && flag && !isTaskType ? (
-        <Button
-          className="link-text tw-self-start w-7 h-7 m-r-xss flex-none hover-cell-icon p-0"
-          data-testid="start-field-thread"
-          type="text"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onThreadLinkSelect?.(
-              getEntityFeedLink(entityType, entityFqn, entityField)
-            );
-          }}>
-          <Popover
-            destroyTooltipOnHide
-            content={t('label.start-entity', {
-              entity: t('label.conversation'),
-            })}
-            overlayClassName="ant-popover-request-description"
-            trigger="hover">
-            <IconCommentPlus {...iconsProps} />
-          </Popover>
-        </Button>
-      ) : null}
-    </Fragment>
+          onThreadLinkSelect(entityLink);
+        }}
+      />
+    </Tooltip>
   );
-};
-
-export const getDefaultValue = (owner: EntityReference) => {
-  const message = t('message.can-you-add-a-description');
-  if (isUndefined(owner)) {
-    return `${message}`;
-  } else {
-    const name = owner.name;
-    const displayName = owner.displayName;
-    const entityType = owner.type;
-    const mention = `<a href=${`/${
-      entityUrlMap[entityType as keyof typeof entityUrlMap]
-    }/${name}`}>@${displayName}</a>`;
-
-    return `${mention} ${message}`;
-  }
 };

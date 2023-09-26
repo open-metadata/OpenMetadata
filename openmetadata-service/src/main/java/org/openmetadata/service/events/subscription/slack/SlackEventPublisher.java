@@ -28,20 +28,22 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
+import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.formatter.decorators.SlackMessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.events.EventResource;
-import org.openmetadata.service.util.ChangeEventParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SlackEventPublisher extends SubscriptionPublisher {
+  private final MessageDecorator<SlackMessage> slackMessageFormatter = new SlackMessageDecorator();
   private final Webhook webhook;
   private Invocation.Builder target;
   private final Client client;
   private final CollectionDAO daoCollection;
 
   public SlackEventPublisher(EventSubscription eventSub, CollectionDAO dao) {
-    super(eventSub, dao);
+    super(eventSub);
     if (eventSub.getSubscriptionType() == SLACK_WEBHOOK) {
       this.daoCollection = dao;
       this.webhook = JsonUtils.convertValue(eventSub.getSubscriptionConfig(), Webhook.class);
@@ -77,7 +79,7 @@ public class SlackEventPublisher extends SubscriptionPublisher {
   public void sendAlert(EventResource.EventList list) {
     for (ChangeEvent event : list.getData()) {
       try {
-        SlackMessage slackMessage = ChangeEventParser.buildSlackMessage(event);
+        SlackMessage slackMessage = slackMessageFormatter.buildMessage(event);
         List<Invocation.Builder> targets = getTargetsForWebhook(webhook, SLACK_WEBHOOK, client, daoCollection, event);
         if (target != null) {
           targets.add(target);

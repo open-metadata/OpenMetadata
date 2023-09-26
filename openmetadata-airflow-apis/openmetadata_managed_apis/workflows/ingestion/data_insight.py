@@ -17,6 +17,7 @@ from airflow import DAG
 from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     ClientInitializationError,
+    GetServiceException,
     build_dag,
 )
 from openmetadata_managed_apis.workflows.ingestion.elasticsearch_sink import (
@@ -42,6 +43,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.workflow_output_handler import print_data_insight_status
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -62,7 +64,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_data_insight_status(workflow)
     workflow.stop()
 
 
@@ -83,9 +85,7 @@ def build_data_insight_workflow_config(
     )
 
     if not openmetadata_service:
-        raise ValueError(
-            "Could not retrieve the OpenMetadata service! This should not happen."
-        )
+        raise GetServiceException(service_type="metadata", service_name="OpenMetadata")
 
     sink = build_elasticsearch_sink(
         openmetadata_service.connection.config, ingestion_pipeline

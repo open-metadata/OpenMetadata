@@ -10,7 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -40,15 +40,14 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -60,13 +59,11 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
-
   static final String FIELDS = "owner,dataInsightChart,kpiResult";
 
   @Override
   public Kpi addHref(UriInfo uriInfo, Kpi kpi) {
-    kpi.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, kpi.getId()));
-    Entity.withHref(uriInfo, kpi.getOwner());
+    super.addHref(uriInfo, kpi);
     Entity.withHref(uriInfo, kpi.getDataInsightChart());
     return kpi;
   }
@@ -75,18 +72,18 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     super(Kpi.class, new KpiRepository(dao), authorizer);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("dataInsightChart,kpiResult", MetadataOperation.VIEW_BASIC);
+    return null;
+  }
+
   public static class KpiList extends ResultList<Kpi> {
-    @SuppressWarnings("unused")
-    public KpiList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class KpiResultList extends ResultList<KpiResult> {
-    @SuppressWarnings("unused")
-    public KpiResultList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET
@@ -128,8 +125,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -149,8 +145,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -180,8 +175,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -212,8 +206,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -240,8 +233,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
               description = "KPI version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -258,8 +250,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create) {
     Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
     // TODO fix this
     //    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
@@ -286,8 +277,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -303,18 +293,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create) {
     Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
-    // Check if this kpi exist
-    try {
-      // if a kpi exits it is an update call
-      dao.getByName(null, kpi.getName(), dao.getFields("id,name"));
-    } catch (EntityNotFoundException ex) {
-      // if the kpi doesn't exist , then it can get created so need to ensure one to one validation
-      // TODO fix this
-      // dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
-    }
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
 
@@ -335,8 +315,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -361,8 +340,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -379,8 +357,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Kpi.class)))
       })
   public Response restoreKpi(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -400,9 +377,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Valid KpiResult kpiResult)
-      throws IOException {
-    return dao.addKpiResult(uriInfo, name, kpiResult).toResponse();
+      @Valid KpiResult kpiResult) {
+    return repository.addKpiResult(uriInfo, name, kpiResult).toResponse();
   }
 
   @GET
@@ -438,9 +414,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @Valid
           @QueryParam("orderBy")
           @DefaultValue("DESC")
-          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
-      throws IOException {
-    return dao.getKpiResults(name, startTs, endTs, orderBy);
+          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+    return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
   @GET
@@ -460,9 +435,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       })
   public KpiResult listKpiResults(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
-    return dao.getKpiResult(name);
+      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    return repository.getKpiResult(name);
   }
 
   @DELETE
@@ -482,12 +456,11 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(description = "Timestamp of the KPI result", schema = @Schema(type = "long")) @PathParam("timestamp")
-          Long timestamp)
-      throws IOException {
-    return dao.deleteKpiResult(name, timestamp).toResponse();
+          Long timestamp) {
+    return repository.deleteKpiResult(name, timestamp).toResponse();
   }
 
-  private Kpi getKpi(CreateKpiRequest create, String user) throws IOException {
+  private Kpi getKpi(CreateKpiRequest create, String user) {
     return copy(new Kpi(), create, user)
         .withStartDate(create.getStartDate())
         .withEndDate(create.getEndDate())

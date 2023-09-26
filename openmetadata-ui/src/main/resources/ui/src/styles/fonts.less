@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-@import url('./variables.less');
+@import (reference) url('./variables.less');
+
+// font family
+pre {
+  font-family: 'Source Code Pro', sans-serif;
+}
 
 //font weight
 .font-thin {
@@ -31,11 +36,12 @@
 }
 
 // font size
+.text-xss {
+  font-size: 10px;
+}
 .text-xs {
   font-size: 12px;
-}
-.text-md {
-  font-size: 16px;
+  line-height: 1rem /* 16px */;
 }
 .text-lg {
   font-size: 18px;
@@ -60,7 +66,71 @@
   line-height: 2rem /* 32px */;
 }
 
+.text-3xl {
+  font-size: 1.875rem /* 24px */;
+  line-height: 2.5rem /* 32px */;
+}
+
+.text-5xl {
+  font-size: 3rem /* 48px */;
+  line-height: 3rem /* 48px */;
+}
+
 // font color
 .text-base-color {
   color: @text-color;
+}
+
+.text-primary {
+  color: @primary-color !important;
+  &:hover {
+    color: @primary-color;
+  }
+}
+.text-color-inherit {
+  color: inherit;
+}
+.error-text {
+  color: #ff4c3b;
+}
+.text-white {
+  color: @white;
+}
+.text-black {
+  color: @black;
+}
+.text-grey-muted {
+  color: @text-grey-muted;
+}
+.text-grey-body {
+  color: @text-color-secondary;
+}
+.text-link-color {
+  color: @link-color;
+}
+.text-gray-400 {
+  color: #9ca3af;
+}
+.text-body {
+  color: @text-color-secondary;
+}
+
+.text-success {
+  color: #008376;
+}
+
+.text-failure {
+  color: #cb2431;
+}
+
+a.ant-typography,
+.ant-typography a {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+// font style
+.font-italic {
+  font-style: italic;
 }

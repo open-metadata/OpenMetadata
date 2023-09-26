@@ -12,13 +12,13 @@
  */
 import {
   Button,
-  Card,
   Checkbox,
   Col,
   Form,
   Input,
   Row,
   Select,
+  Skeleton,
   Space,
   Typography,
 } from 'antd';
@@ -27,6 +27,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from 'constants/GlobalSettings.constants';
+import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import {
   AlertType,
   EventSubscription,
@@ -34,12 +35,14 @@ import {
   ScheduleInfo,
   TriggerType,
 } from 'generated/events/eventSubscription';
+import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isEmpty, map } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { createAlert, getAlertsFromId, updateAlert } from 'rest/alertsAPI';
 import { StyledCard } from 'utils/Alerts/AlertsUtil';
+import { getField } from 'utils/formUtils';
 import { getSettingPath } from 'utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import './add-data-insight-report-alert.less';
@@ -94,7 +97,7 @@ const AddDataInsightReportAlert = () => {
       });
       showSuccessToast(
         t(`server.${isEditMode ? 'update' : 'create'}-entity-success`, {
-          entity: t('label.alert-plural'),
+          entity: t('label.data-insight-report-alert'),
         })
       );
       history.push(
@@ -110,7 +113,7 @@ const AddDataInsightReportAlert = () => {
             isEditMode ? 'entity-updating-error' : 'entity-creation-error'
           }`,
           {
-            entity: t('label.alert-plural'),
+            entity: t('label.data-insight-report-alert'),
           }
         )
       );
@@ -124,6 +127,21 @@ const AddDataInsightReportAlert = () => {
       fetchDataInsightsAlert();
     }
   }, [alertId]);
+
+  const enabledField: FieldProp = {
+    label: t('label.enabled'),
+    id: 'root/enabled',
+    name: 'enabled',
+    required: false,
+    type: FieldTypes.SWITCH,
+    formItemLayout: 'horizontal',
+    props: {
+      'data-testid': 'enabled-switch',
+    },
+    formItemProps: {
+      labelCol: { span: 24 },
+    },
+  };
 
   return (
     <Row gutter={[16, 16]}>
@@ -145,134 +163,144 @@ const AddDataInsightReportAlert = () => {
           className="data-insight-report-alert-form"
           form={form}
           onFinish={handleSave}>
-          <Card loading={loading}>
-            <Form.Item
-              label={t('label.name')}
-              labelCol={{ span: 24 }}
-              name="name"
-              rules={[{ required: true }]}>
-              <Input data-testid="name" disabled={isEditMode} />
-            </Form.Item>
+          {loading ? (
+            <Skeleton title paragraph={{ rows: 8 }} />
+          ) : (
+            <>
+              <Form.Item
+                label={t('label.name')}
+                labelCol={{ span: 24 }}
+                name="name"
+                rules={[
+                  { required: true },
+                  {
+                    pattern: ENTITY_NAME_REGEX,
+                    message: t('message.entity-name-validation'),
+                  },
+                ]}>
+                <Input data-testid="name" disabled={isEditMode} />
+              </Form.Item>
 
-            <Form.Item
-              label={t('label.description')}
-              labelCol={{ span: 24 }}
-              name="description"
-              trigger="onTextChange"
-              valuePropName="initialValue">
-              <RichTextEditor
-                data-testid="description"
-                height="200px"
-                initialValue=""
-              />
-            </Form.Item>
+              <Form.Item
+                label={t('label.description')}
+                labelCol={{ span: 24 }}
+                name="description"
+                trigger="onTextChange"
+                valuePropName="initialValue">
+                <RichTextEditor
+                  data-testid="description"
+                  height="200px"
+                  initialValue=""
+                />
+              </Form.Item>
+              {getField(enabledField)}
+              <Form.Item>
+                <Row gutter={[16, 16]}>
+                  <Col span={12}>
+                    <Space className="w-full" direction="vertical" size={16}>
+                      <StyledCard
+                        heading={t('label.trigger')}
+                        subHeading={t(
+                          'message.data-insight-alert-trigger-description'
+                        )}
+                      />
 
-            <Form.Item>
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Space className="w-full" direction="vertical" size={16}>
-                    <StyledCard
-                      heading={t('label.trigger')}
-                      subHeading={t(
-                        'message.data-insight-alert-trigger-description'
-                      )}
-                    />
+                      <div>
+                        <Form.Item
+                          required
+                          initialValue={[TriggerType.Scheduled]}
+                          label={t('label.trigger-type')}
+                          labelCol={{ span: 24 }}
+                          name={['trigger', 'triggerType']}>
+                          <Select
+                            className="w-full"
+                            data-testid="triggerType"
+                            options={[
+                              {
+                                label: TriggerType.Scheduled,
+                                value: TriggerType.Scheduled,
+                              },
+                            ]}
+                          />
+                        </Form.Item>
 
-                    <div>
-                      <Form.Item
-                        required
-                        initialValue={[TriggerType.Scheduled]}
-                        label={t('label.trigger-type')}
-                        labelCol={{ span: 24 }}
-                        name={['trigger', 'triggerType']}>
-                        <Select
-                          className="w-full"
-                          data-testid="triggerType"
-                          options={[
+                        <Form.Item
+                          required
+                          label={t('label.schedule-info')}
+                          labelCol={{ span: 24 }}
+                          name={['trigger', 'scheduleInfo']}>
+                          <Select
+                            className="w-full"
+                            data-testid="scheduleInfo"
+                            options={scheduleInfoOptions}
+                          />
+                        </Form.Item>
+                      </div>
+                    </Space>
+                  </Col>
+                  <Col span={12}>
+                    <Space className="w-full" direction="vertical" size={16}>
+                      <StyledCard
+                        heading={t('label.destination')}
+                        subHeading={t(
+                          'message.data-insight-alert-destination-description'
+                        )}
+                      />
+
+                      <div>
+                        {/* Hidden field as we don't want user to change it, but required in payload */}
+                        <Form.Item
+                          hidden
+                          name="subscriptionType"
+                          rules={[
                             {
-                              label: TriggerType.Scheduled,
-                              value: TriggerType.Scheduled,
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.destination'),
+                              }),
                             },
-                          ]}
-                        />
-                      </Form.Item>
-
-                      <Form.Item
-                        required
-                        label={t('label.schedule-info')}
-                        labelCol={{ span: 24 }}
-                        name={['trigger', 'scheduleInfo']}>
-                        <Select
-                          className="w-full"
-                          data-testid="scheduleInfo"
-                          options={scheduleInfoOptions}
-                        />
-                      </Form.Item>
-                    </div>
-                  </Space>
-                </Col>
-                <Col span={12}>
-                  <Space className="w-full" direction="vertical" size={16}>
-                    <StyledCard
-                      heading={t('label.destination')}
-                      subHeading={t(
-                        'message.data-insight-alert-destination-description'
-                      )}
-                    />
-
-                    <div>
-                      {/* Hidden field as we don't want user to change it, but required in payload */}
-                      <Form.Item
-                        hidden
-                        name="subscriptionType"
-                        rules={[
-                          {
-                            required: true,
-                            message: t('label.field-required', {
-                              field: t('label.destination'),
-                            }),
-                          },
-                        ]}>
-                        <Input />
-                      </Form.Item>
-
-                      <Space align="baseline">
-                        <label>{t('label.send-to')}:</label>
-                        <Form.Item
-                          name={['subscriptionConfig', 'sendToAdmins']}
-                          valuePropName="checked">
-                          <Checkbox data-testid="sendToAdmins">
-                            {t('label.admin-plural')}
-                          </Checkbox>
+                          ]}>
+                          <Input />
                         </Form.Item>
-                        <Form.Item
-                          name={['subscriptionConfig', 'sendToTeams']}
-                          valuePropName="checked">
-                          <Checkbox data-testid="sendToTeams">
-                            {t('label.team-plural')}
-                          </Checkbox>
-                        </Form.Item>
-                      </Space>
-                    </div>
-                  </Space>
-                </Col>
-                <Col className="form-footer" span={24}>
-                  <Button
-                    data-testid="cancel-button"
-                    onClick={() => history.goBack()}>
-                    {t('label.cancel')}
-                  </Button>
-                  <Button
-                    data-testid="save-button"
-                    htmlType="submit"
-                    loading={isSaving}
-                    type="primary">
-                    {t('label.save')}
-                  </Button>
-                </Col>
-              </Row>
-            </Form.Item>
-          </Card>
+
+                        <Space align="baseline">
+                          <label>{t('label.send-to')}:</label>
+                          <Form.Item
+                            name={['subscriptionConfig', 'sendToAdmins']}
+                            valuePropName="checked">
+                            <Checkbox data-testid="sendToAdmins">
+                              {t('label.admin-plural')}
+                            </Checkbox>
+                          </Form.Item>
+                          <Form.Item
+                            name={['subscriptionConfig', 'sendToTeams']}
+                            valuePropName="checked">
+                            <Checkbox data-testid="sendToTeams">
+                              {t('label.team-plural')}
+                            </Checkbox>
+                          </Form.Item>
+                        </Space>
+                      </div>
+                    </Space>
+                  </Col>
+                  <Col className="form-footer" span={24}>
+                    <Button
+                      data-testid="cancel-button"
+                      onClick={() => history.goBack()}>
+                      {t('label.cancel')}
+                    </Button>
+                    <Button
+                      data-testid="save-button"
+                      htmlType="submit"
+                      loading={isSaving}
+                      type="primary">
+                      {t('label.save')}
+                    </Button>
+                  </Col>
+                </Row>
+              </Form.Item>
+            </>
+          )}
         </Form>
       </Col>
     </Row>

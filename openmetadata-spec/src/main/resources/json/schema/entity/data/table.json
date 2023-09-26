@@ -14,7 +14,7 @@
       "description": "Name of a table. Expected to be unique within a database.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
+      "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
     "profileSampleType": {
@@ -39,7 +39,8 @@
         "Iceberg",
         "Local",
         "Partitioned",
-        "Foreign"
+        "Foreign",
+        "Transient"
       ],
       "javaEnums": [
         {
@@ -68,6 +69,9 @@
         },
         {
           "name": "Foreign"
+        },
+        {
+          "name": "Transient"
         }
       ]
     },
@@ -142,7 +146,12 @@
         "POLYGON",
         "TUPLE",
         "SPATIAL",
-        "TABLE"
+        "TABLE",
+        "NTEXT",
+        "IMAGE",
+        "IPV4",
+        "IPV6",
+        "DATETIMERANGE"
       ]
     },
     "constraint": {
@@ -196,7 +205,7 @@
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
+      "maxLength": 256,
       "pattern": "^((?!::).)*$"
     },
     "tablePartition": {
@@ -851,6 +860,11 @@
         "sql"
       ],
       "additionalProperties": false
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "type": "string",
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
     }
   },
   "properties": {
@@ -957,7 +971,7 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",
@@ -977,6 +991,10 @@
       "description": "Latest Data profile for a table.",
       "$ref": "#/definitions/tableProfile",
       "default": null
+    },
+    "testSuite": {
+      "description": "Executable test suite associated with this table",
+      "$ref": "../../tests/testSuite.json"
     },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
@@ -998,6 +1016,29 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of table.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref" : "#/definitions/fileFormat"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": [

@@ -3,14 +3,11 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import static org.openmetadata.service.Entity.KPI;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.ChartParameterValues;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -25,9 +22,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -37,23 +32,30 @@ import org.openmetadata.service.util.ResultList;
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
   public static final String COLLECTION_PATH = "/v1/kpi";
-  private static final String UPDATE_FIELDS = "owner,targetDefinition,dataInsightChart,startDate,endDate,metricType";
+  private static final String UPDATE_FIELDS = "targetDefinition,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
-      "owner,targetDefinition,dataInsightChart,description,owner,startDate,endDate,metricType";
+      "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KpiRepository(CollectionDAO dao) {
-    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS, null);
+    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
-  public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) throws IOException {
-    kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : null);
-    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : null);
+  public Kpi setFields(Kpi kpi, EntityUtil.Fields fields) {
+    kpi.setDataInsightChart(fields.contains("dataInsightChart") ? getDataInsightChart(kpi) : kpi.getDataInsightChart());
+    return kpi.withKpiResult(
+        fields.contains(KPI_RESULT_FIELD) ? getKpiResult(kpi.getFullyQualifiedName()) : kpi.getKpiResult());
   }
 
   @Override
-  public void prepare(Kpi kpi) throws IOException {
+  public Kpi clearFields(Kpi kpi, EntityUtil.Fields fields) {
+    kpi.setDataInsightChart(fields.contains("dataInsightChart") ? kpi.getDataInsightChart() : null);
+    return kpi.withKpiResult(fields.contains(KPI_RESULT_FIELD) ? kpi.getKpiResult() : null);
+  }
+
+  @Override
+  public void prepare(Kpi kpi, boolean update) {
     // validate targetDefinition
     DataInsightChart chart = Entity.getEntity(kpi.getDataInsightChart(), "metrics", Include.NON_DELETED);
     kpi.setDataInsightChart(chart.getEntityReference());
@@ -82,7 +84,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public void storeEntity(Kpi kpi, boolean update) throws IOException {
+  public void storeEntity(Kpi kpi, boolean update) {
     EntityReference dataInsightChart = kpi.getDataInsightChart();
     KpiResult kpiResults = kpi.getKpiResult();
     kpi.withDataInsightChart(null).withKpiResult(null);
@@ -94,50 +96,30 @@ public class KpiRepository extends EntityRepository<Kpi> {
   public void storeRelationships(Kpi kpi) {
     // Add relationship from Kpi to dataInsightChart
     addRelationship(kpi.getId(), kpi.getDataInsightChart().getId(), KPI, DATA_INSIGHT_CHART, Relationship.USES);
-    // Add kpi owner relationship
-    storeOwner(kpi, kpi.getOwner());
   }
 
-  @Transaction
-  public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) throws IOException {
+  public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
-
-    KpiResult storedKpiResult =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp()),
-            KpiResult.class);
-    if (storedKpiResult != null) {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .update(
-              kpi.getFullyQualifiedName(),
-              KPI_RESULT_EXTENSION,
-              JsonUtils.pojoToJson(kpiResult),
-              kpiResult.getTimestamp());
-    } else {
-      daoCollection
-          .entityExtensionTimeSeriesDao()
-          .insert(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, KPI_RESULT_FIELD, JsonUtils.pojoToJson(kpiResult));
-    }
-    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
+    storeTimeSeries(
+        kpi.getFullyQualifiedName(),
+        KPI_RESULT_EXTENSION,
+        "kpiResult",
+        JsonUtils.pojoToJson(kpiResult),
+        kpiResult.getTimestamp());
+    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
-  public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) throws IOException {
+  public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
     KpiResult storedKpiResult =
-        JsonUtils.readValue(
-            daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp),
-            KpiResult.class);
+        JsonUtils.readValue(getExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp), KpiResult.class);
     if (storedKpiResult != null) {
-      daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp);
+      deleteExtensionAtTimestamp(fqn, KPI_RESULT_EXTENSION, timestamp);
       kpi.setKpiResult(storedKpiResult);
       ChangeDescription change = deleteKpiChangeDescription(kpi.getVersion(), storedKpiResult);
       ChangeEvent changeEvent = getChangeEvent(kpi, change, entityType, kpi.getVersion());
@@ -147,11 +129,10 @@ public class KpiRepository extends EntityRepository<Kpi> {
         String.format("Failed to find kpi result for %s at %s", kpi.getName(), timestamp));
   }
 
-  private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange =
-        new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
+  private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue) {
+    FieldChange fieldChange = new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsUpdated().add(fieldChange);
+    change.getFieldsAdded().add(fieldChange);
     return change;
   }
 
@@ -162,33 +143,20 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return change;
   }
 
-  private EntityReference getDataInsightChart(Kpi kpi) throws IOException {
+  private EntityReference getDataInsightChart(Kpi kpi) {
     return getToEntityRef(kpi.getId(), Relationship.USES, DATA_INSIGHT_CHART, true);
   }
 
-  public void validateDataInsightChartOneToOneMapping(UUID chartId) {
-    // Each Chart has one unique Kpi mapping
-    List<EntityRelationshipRecord> recordList = findTo(chartId, DATA_INSIGHT_CHART, Relationship.USES, KPI);
-    if (!recordList.isEmpty() && !chartId.equals(recordList.get(0).getId())) {
-      throw new CustomExceptionMessage(Response.Status.BAD_REQUEST, "Chart Already has a mapped Kpi.");
-    }
-  }
-
-  public KpiResult getKpiResult(String fqn) throws IOException {
-    return JsonUtils.readValue(
-        daoCollection.entityExtensionTimeSeriesDao().getLatestExtension(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
+  public KpiResult getKpiResult(String fqn) {
+    return JsonUtils.readValue(getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
   public ResultList<KpiResult> getKpiResults(
-      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy)
-      throws IOException {
+      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(
-            daoCollection
-                .entityExtensionTimeSeriesDao()
-                .listBetweenTimestampsByOrder(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy),
-            KpiResult.class);
+            getResultsFromAndToTimestamps(fqn, KPI_RESULT_EXTENSION, startTs, endTs, orderBy), KpiResult.class);
     return new ResultList<>(kpiResults, String.valueOf(startTs), String.valueOf(endTs), kpiResults.size());
   }
 
@@ -218,7 +186,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       updateToRelationship(
           "dataInsightChart",
           KPI,

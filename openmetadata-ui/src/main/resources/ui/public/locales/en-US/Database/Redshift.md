@@ -43,7 +43,9 @@ $$
 
 $$section
 ### Host Port $(id="hostPort")
-Host and port of the Redshift service.
+This parameter specifies the host and port of the Redshift instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5439`.
+
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:5439` as the value.
 $$
 
 $$section

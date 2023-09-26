@@ -10,23 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined } from '@ant-design/icons';
+import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import ButtonGroup from 'antd/lib/button/button-group';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
+import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as IconFlatDoc } from 'assets/svg/ic-flat-doc.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
+import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import VersionButton from 'components/VersionButton/VersionButton.component';
+import Voting from 'components/Voting/Voting.component';
+import { VotingDataProps } from 'components/Voting/voting.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
+import { EntityAction, EntityType } from 'enums/entity.enum';
 import { Glossary } from 'generated/entity/data/glossary';
 import {
   EntityReference,
@@ -36,7 +44,13 @@ import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDeleteMessage } from 'utils/CommonUtils';
+import {
+  exportGlossaryInCSVFormat,
+  getGlossariesById,
+  getGlossaryTermsById,
+} from 'rest/glossaryAPI';
+import { getCurrentUserId, getEntityDeleteMessage } from 'utils/CommonUtils';
+import { getEntityVoteStatus } from 'utils/EntityUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
@@ -44,10 +58,11 @@ import {
   getGlossaryVersionsPath,
 } from 'utils/RouterUtils';
 import SVGIcons, { Icons } from 'utils/SvgUtils';
-import ExportGlossaryModal from '../ExportGlossaryModal/ExportGlossaryModal';
-import { GlossaryAction } from '../GlossaryV1.interfaces';
+import { showErrorToast } from 'utils/ToastUtils';
+import Fqn from '../../../utils/Fqn';
 
 export interface GlossaryHeaderProps {
+  isVersionView?: boolean;
   supportAddOwner?: boolean;
   selectedData: Glossary | GlossaryTerm;
   permissions: OperationPermission;
@@ -55,6 +70,7 @@ export interface GlossaryHeaderProps {
   onUpdate: (data: GlossaryTerm | Glossary) => void;
   onDelete: (id: string) => void;
   onAssetAdd?: () => void;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
 }
 
@@ -66,62 +82,81 @@ const GlossaryHeader = ({
   isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
+  updateVote,
+  isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const {
-    action,
-    glossaryName: glossaryFqn,
-    version,
-  } = useParams<{
-    action: GlossaryAction;
-    glossaryName: string;
+  const USER_ID = getCurrentUserId();
+
+  const { fqn, version } = useParams<{
+    fqn: string;
     version: string;
   }>();
-
+  const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [latestGlossaryData, setLatestGlossaryData] = useState<
+    Glossary | GlossaryTerm
+  >();
+
+  // To fetch the latest glossary data
+  // necessary to handle back click functionality to work properly in version page
+  const fetchCurrentGlossaryInfo = async () => {
+    try {
+      const res = isGlossary
+        ? await getGlossariesById(fqn)
+        : await getGlossaryTermsById(fqn);
+
+      setLatestGlossaryData(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const editDisplayNamePermission = useMemo(() => {
     return permissions.EditAll || permissions.EditDisplayName;
   }, [permissions]);
 
-  const isExportAction = useMemo(
-    () => action === GlossaryAction.EXPORT,
-    [action]
+  const voteStatus = useMemo(
+    () => getEntityVoteStatus(USER_ID, selectedData.votes),
+    [selectedData.votes, USER_ID]
   );
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
-  }, [glossaryFqn]);
-
-  const handleGlossaryExport = () =>
-    history.push(
-      getGlossaryPathWithAction(selectedData.name, GlossaryAction.EXPORT)
-    );
+  }, [fqn]);
 
   const handleGlossaryImport = () =>
     history.push(
-      getGlossaryPathWithAction(selectedData.name, GlossaryAction.IMPORT)
+      getGlossaryPathWithAction(
+        encodeURIComponent(selectedData.fullyQualifiedName ?? ''),
+        EntityAction.IMPORT
+      )
     );
 
   const handleVersionClick = async () => {
-    const path = isGlossary
-      ? getGlossaryVersionsPath(selectedData.id, toString(selectedData.version))
-      : getGlossaryTermsVersionsPath(
-          selectedData.id,
-          toString(selectedData.version)
-        );
+    let path: string;
+    if (isVersionView) {
+      path = getGlossaryPath(latestGlossaryData?.fullyQualifiedName);
+    } else {
+      path = isGlossary
+        ? getGlossaryVersionsPath(
+            selectedData.id,
+            toString(selectedData.version)
+          )
+        : getGlossaryTermsVersionsPath(
+            selectedData.id,
+            toString(selectedData.version)
+          );
+    }
 
     history.push(path);
   };
-
-  const handleCancelGlossaryExport = () =>
-    history.push(getGlossaryPath(selectedData.name));
 
   const handleDelete = () => {
     const { id } = selectedData;
@@ -143,6 +178,8 @@ const GlossaryHeader = ({
     setIsNameEditing(false);
   };
 
+  const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
+
   const addButtonContent = [
     {
       label: t('label.glossary-term'),
@@ -156,140 +193,107 @@ const GlossaryHeader = ({
     },
   ];
 
-  const manageButtonContent = [
+  const handleGlossaryExportClick = useCallback(async () => {
+    if (selectedData) {
+      showModal({
+        name: selectedData?.fullyQualifiedName || '',
+        onExport: exportGlossaryInCSVFormat,
+      });
+    }
+  }, [selectedData]);
+
+  const manageButtonContent: ItemType[] = [
     ...(isGlossary
-      ? [
+      ? ([
           {
             label: (
-              <Row
-                className="tw-cursor-pointer manage-button"
-                data-testid="export-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleGlossaryExport();
-                  setShowActions(false);
-                }}>
-                <Col className="self-center" span={3}>
-                  <ExportIcon width="18px" />
-                </Col>
-                <Col span={21}>
-                  <Row>
-                    <Col span={21}>
-                      <Typography.Text
-                        className="font-medium"
-                        data-testid="export-button-title">
-                        {t('label.export')}
-                      </Typography.Text>
-                    </Col>
-                    <Col className="p-t-xss">
-                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('message.export-glossary-help')}
-                      </Typography.Paragraph>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+              <ManageButtonItemLabel
+                description={t('message.export-entity-help', {
+                  entity: t('label.glossary-term-lowercase-plural'),
+                })}
+                icon={<ExportIcon width="18px" />}
+                id="export-button"
+                name={t('label.export')}
+              />
             ),
             key: 'export-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryExportClick();
+              setShowActions(false);
+            },
           },
           {
             label: (
-              <Row
-                className="tw-cursor-pointer manage-button"
-                data-testid="import-button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleGlossaryImport();
-                  setShowActions(false);
-                }}>
-                <Col className="self-center" span={3}>
-                  <ImportIcon width="20px" />
-                </Col>
-                <Col span={21}>
-                  <Row>
-                    <Col span={21}>
-                      <Typography.Text
-                        className="font-medium"
-                        data-testid="import-button-title">
-                        {t('label.import')}
-                      </Typography.Text>
-                    </Col>
-                    <Col className="p-t-xss">
-                      <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                        {t('message.import-glossary-help')}
-                      </Typography.Paragraph>
-                    </Col>
-                  </Row>
-                </Col>
-              </Row>
+              <ManageButtonItemLabel
+                description={t('message.import-entity-help', {
+                  entity: t('label.glossary-term-lowercase'),
+                })}
+                icon={<ImportIcon width="20px" />}
+                id="import-button"
+                name={t('label.import')}
+              />
             ),
             key: 'import-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              handleGlossaryImport();
+              setShowActions(false);
+            },
           },
-        ]
+        ] as ItemType[])
       : []),
     ...(editDisplayNamePermission
-      ? [
+      ? ([
           {
             label: (
-              <Row
-                className="tw-cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsNameEditing(true);
-                  setShowActions(false);
-                }}>
-                <Col className="self-center" span={3}>
-                  <EditIcon color={DE_ACTIVE_COLOR} width="18px" />
-                </Col>
-                <Col
-                  className="tw-text-left"
-                  data-testid="edit-button"
-                  span={21}>
-                  <p className="tw-font-medium" data-testid="edit-button-title">
-                    {t('label.rename')}
-                  </p>
-                  <p className="text-grey-muted tw-text-xs">
-                    {t('message.rename-entity', {
-                      entity: isGlossary
-                        ? t('label.glossary')
-                        : t('label.glossary-term'),
-                    })}
-                  </p>
-                </Col>
-              </Row>
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: isGlossary
+                    ? t('label.glossary')
+                    : t('label.glossary-term'),
+                })}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="rename-button"
+                name={t('label.rename')}
+              />
             ),
             key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
           },
-        ]
+        ] as ItemType[])
       : []),
-    {
-      label: (
-        <Row
-          className="tw-cursor-pointer manage-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsDelete(true);
-            setShowActions(false);
-          }}>
-          <Col className="self-center" span={3}>
-            <SVGIcons alt="Delete" icon={Icons.DELETE} />
-          </Col>
-          <Col className="tw-text-left" data-testid="delete-button" span={21}>
-            <p className="tw-font-medium" data-testid="delete-button-title">
-              {t('label.delete')}
-            </p>
-            <p className="text-grey-muted tw-text-xs">
-              {t('message.delete-entity-type-action-description', {
-                entityType: isGlossary
-                  ? t('label.glossary')
-                  : t('label.glossary-term'),
-              })}
-            </p>
-          </Col>
-        </Row>
-      ),
-      key: 'delete-button',
-    },
+    ...(permissions.Delete
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t(
+                  'message.delete-entity-type-action-description',
+                  {
+                    entityType: isGlossary
+                      ? t('label.glossary')
+                      : t('label.glossary-term'),
+                  }
+                )}
+                icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
+                id="delete-button"
+                name={t('label.delete')}
+              />
+            ),
+            key: 'delete-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsDelete(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
   ];
 
   const createButtons = useMemo(() => {
@@ -333,7 +337,7 @@ const GlossaryHeader = ({
       return;
     }
 
-    const arr = fqn.split(FQN_SEPARATOR_CHAR);
+    const arr = !isGlossary ? Fqn.split(fqn) : [];
     const dataFQN: Array<string> = [];
     const newData = [
       {
@@ -360,6 +364,12 @@ const GlossaryHeader = ({
     handleBreadcrumb(fullyQualifiedName ? fullyQualifiedName : name);
   }, [selectedData]);
 
+  useEffect(() => {
+    if (isVersionView) {
+      fetchCurrentGlossaryInfo();
+    }
+  }, []);
+
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
@@ -370,14 +380,14 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={
               isGlossary ? (
-                <IconFolder
+                <GlossaryIcon
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="folder"
                   width={32}
                 />
               ) : (
-                <IconFlatDoc
+                <IconTerm
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="doc"
@@ -388,20 +398,37 @@ const GlossaryHeader = ({
             serviceName=""
           />
         </Col>
-        <Col flex="280px">
-          <div style={{ textAlign: 'right' }}>
-            <div>
-              {createButtons}
-              {selectedData && selectedData.version && (
-                <VersionButton
-                  className="m-l-xs tw-px-1.5"
-                  selected={Boolean(version)}
-                  version={toString(selectedData.version)}
-                  onClick={handleVersionClick}
+        <Col flex="360px">
+          <div className="d-flex gap-2 justify-end">
+            {createButtons}
+
+            <ButtonGroup className="p-l-xs" size="small">
+              {updateVote && (
+                <Voting
+                  voteStatus={voteStatus}
+                  votes={selectedData.votes}
+                  onUpdateVote={handleUpdateVote}
                 />
               )}
 
-              {permissions.Delete && (
+              {selectedData && selectedData.version && (
+                <Button
+                  className={classNames('', {
+                    'text-primary border-primary': version,
+                  })}
+                  data-testid="version-button"
+                  icon={<Icon component={VersionIcon} />}
+                  onClick={handleVersionClick}>
+                  <Typography.Text
+                    className={classNames('', {
+                      'text-primary': version,
+                    })}>
+                    {toString(selectedData.version)}
+                  </Typography.Text>
+                </Button>
+              )}
+
+              {!isVersionView && (
                 <Dropdown
                   align={{ targetOffset: [-12, 0] }}
                   className="m-l-xs"
@@ -424,7 +451,7 @@ const GlossaryHeader = ({
                   </Tooltip>
                 </Dropdown>
               )}
-            </div>
+            </ButtonGroup>
           </div>
         </Col>
       </Row>
@@ -437,14 +464,6 @@ const GlossaryHeader = ({
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
-        />
-      )}
-      {isExportAction && (
-        <ExportGlossaryModal
-          glossaryName={selectedData.name}
-          isModalOpen={isExportAction}
-          onCancel={handleCancelGlossaryExport}
-          onOk={handleCancelGlossaryExport}
         />
       )}
 

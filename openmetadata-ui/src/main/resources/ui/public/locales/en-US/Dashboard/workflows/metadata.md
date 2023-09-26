@@ -64,7 +64,7 @@ You can enter a list of Database Services that are hosting the tables used to cr
 $$
 
 $$section
-### Enable Debug Logs $(id="loggerLevel")
+### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
@@ -92,3 +92,10 @@ $$section
 
 Optional configuration to soft delete `dashboards` in OpenMetadata if the source `dashboards` are deleted. After deleting, all the associated entities like lineage, etc., with that `dashboard` will be deleted.
 $$
+
+$$section
+### Number of Retries $(id="retries")
+
+Times to retry the workflow in case it ends with a failure.
+$$
+

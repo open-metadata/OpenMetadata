@@ -34,11 +34,13 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.reflections.Reflections;
@@ -54,6 +56,7 @@ import org.reflections.util.ConfigurationBuilder;
 @Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
+  private static volatile boolean initialized = false;
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
@@ -64,12 +67,19 @@ public final class CollectionRegistry {
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
-  private CollectionRegistry() {}
+  public List<String> getAdditionalResources() {
+    return additionalResources;
+  }
+
+  private final List<String> additionalResources;
+
+  private CollectionRegistry(List<String> additionalResources) {
+    this.additionalResources = additionalResources;
+  }
 
   public static CollectionRegistry getInstance() {
-    if (instance == null) {
-      instance = new CollectionRegistry();
-      instance.initialize();
+    if (!initialized) {
+      initialize(null);
     }
     return instance;
   }
@@ -78,9 +88,15 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
-  private void initialize() {
-    loadCollectionDescriptors();
-    loadConditionFunctions();
+  public static void initialize(List<String> additionalResources) {
+    if (!initialized) {
+      instance = new CollectionRegistry(additionalResources);
+      initialized = true;
+      instance.loadCollectionDescriptors();
+      instance.loadConditionFunctions();
+    } else {
+      LOG.info("[Collection Registry] is already initialized.");
+    }
   }
 
   public Map<String, CollectionDetails> getCollectionMap() {
@@ -143,8 +159,10 @@ public final class CollectionRegistry {
   /** Register resources from CollectionRegistry */
   public void registerResources(
       Jdbi jdbi,
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
       Environment environment,
       OpenMetadataApplicationConfig config,
+      CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
@@ -152,9 +170,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-        Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, daoObject, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -197,9 +213,15 @@ public final class CollectionRegistry {
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.service.resources");
-
     // Get classes marked with @Collection annotation
     Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);
+    // Get classes marked in other
+    if (!CommonUtil.nullOrEmpty(instance.getAdditionalResources())) {
+      for (String packageName : instance.getAdditionalResources()) {
+        Reflections packageReflections = new Reflections(packageName);
+        collectionClasses.addAll(packageReflections.getTypesAnnotatedWith(Collection.class));
+      }
+    }
     List<CollectionDetails> collections = new ArrayList<>();
     for (Class<?> cl : collectionClasses) {
       CollectionDetails cd = getCollection(cl);
@@ -210,14 +232,19 @@ public final class CollectionRegistry {
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject,
+      Jdbi jdbi,
       String resourceClass,
+      CollectionDAO daoObject,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-    Object resource;
+
+    // Decorate Collection DAO
+    Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
+
+    Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
@@ -229,8 +256,14 @@ public final class CollectionRegistry {
             clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, AuthenticatorHandler.class)
                 .newInstance(daoObject, authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
-        resource = Class.forName(resourceClass).getConstructor().newInstance();
+        try {
+          resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
+        } catch (NoSuchMethodException exe) {
+          resource = Class.forName(resourceClass).getConstructor().newInstance();
+        }
       }
+    } catch (Exception ex) {
+      LOG.warn("Exception encountered", ex);
     }
 
     // Call initialize method, if it exists

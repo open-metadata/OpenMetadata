@@ -15,7 +15,7 @@ import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from 'components/EntityLineage/EntityLineage.interface';
+} from 'components/Entity/EntityLineage/EntityLineage.interface';
 import {
   getDashboardDetailsPath,
   getMlModelPath,
@@ -58,7 +58,6 @@ import {
   getEdgeStyle,
   getEdgeType,
   getEntityLineagePath,
-  getParamByEntityType,
   getRemovedNodeData,
   getUpdatedEdge,
   getUpdatedEdgeWithPipeline,
@@ -313,23 +312,6 @@ describe('Test EntityLineageUtils utility', () => {
     expect(isColumnTracedFalsy).toBeFalsy();
   });
 
-  it('returns the correct parameter for dataset and table entity types - getParamByEntityType', () => {
-    expect(getParamByEntityType(EntityType.DATASET)).toEqual('datasetFQN');
-    expect(getParamByEntityType(EntityType.TABLE)).toEqual('datasetFQN');
-  });
-
-  it('returns the correct parameter for other entity types - getParamByEntityType', () => {
-    expect(getParamByEntityType(EntityType.TOPIC)).toEqual('topicFQN');
-    expect(getParamByEntityType(EntityType.PIPELINE)).toEqual('pipelineFQN');
-    expect(getParamByEntityType(EntityType.MLMODEL)).toEqual('mlModelFqn');
-    expect(getParamByEntityType(EntityType.DASHBOARD)).toEqual('dashboardFQN');
-    expect(getParamByEntityType(EntityType.DATABASE)).toEqual('databaseFQN');
-    expect(getParamByEntityType(EntityType.DATABASE_SCHEMA)).toEqual(
-      'databaseSchemaFQN'
-    );
-    expect(getParamByEntityType(EntityType.ALERT)).toEqual('entityFQN');
-  });
-
   it('should return the correct lineage path for the given entity type and FQN', () => {
     expect(getEntityLineagePath(EntityType.TABLE, 'myTable')).toEqual(
       getTableTabPath('myTable', 'lineage')
@@ -346,7 +328,6 @@ describe('Test EntityLineageUtils utility', () => {
     expect(getEntityLineagePath(EntityType.MLMODEL, 'myModel')).toEqual(
       getMlModelPath('myModel', 'lineage')
     );
-    expect(getEntityLineagePath(EntityType.DATASET, 'myDataset')).toEqual('');
   });
 
   it('getChildMap should return valid map object', () => {
@@ -357,7 +338,7 @@ describe('Test EntityLineageUtils utility', () => {
     const expectedStyle = {
       opacity: 1,
       strokeWidth: 2,
-      stroke: '#B02AAC',
+      stroke: '#2196f3',
     };
 
     expect(getEdgeStyle(true)).toEqual(expectedStyle);

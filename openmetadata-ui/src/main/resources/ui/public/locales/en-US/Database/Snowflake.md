@@ -44,7 +44,7 @@ While running the usage workflow, Openmetadata fetches the query logs by queryin
 GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
-You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage.html).
+You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
 
 ### Tags
 
@@ -145,11 +145,16 @@ If you have configured the encrypted key pair authentication for the given user 
 $$
 
 $$section
-### Include Temporary and Transient Tables $(id="includeTempTables")
+### Include Transient Tables $(id="includeTransientTables")
 
-In Snowflake, we also have `TRANSIENT` and `TEMPORARY` tables, which will be ignored during the ingestion by default.
-
+In Snowflake, we have `TRANSIENT` tables, which will be ignored during the ingestion by default. Based on a flag only Transient Tables will be extracted, Temporary tables are not supported.
 Enable this setting to ingest them during the metadata workflow.
+$$
+
+$$section
+### Client Session Keep Alive $(id="clientSessionKeepAlive")
+
+Optional Configuration to keep the session active in case the ingestion job runs for longer duration. 
 $$
 
 $$section

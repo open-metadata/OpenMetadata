@@ -14,12 +14,11 @@ import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Reactions from 'components/Reactions/Reactions';
-import { isUndefined, noop } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from 'utils/date-time/DateTimeUtils';
 import { getFrontEndFormat, MarkdownToHTMLConverter } from 'utils/FeedUtils';
-import { getDateTimeByTimeStamp } from 'utils/TimeUtils';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({
@@ -28,10 +27,8 @@ const FeedCardBodyV1 = ({
   showSchedule = true,
   message,
   announcement,
-  reactions = [],
   onUpdate,
   onEditCancel,
-  onReactionUpdate,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -86,7 +83,7 @@ const FeedCardBodyV1 = ({
 
   return (
     <div className={classNames('feed-card-body', isEditPost ? '' : className)}>
-      <div className="feed-meesage">
+      <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>
             <Row>
@@ -94,9 +91,9 @@ const FeedCardBodyV1 = ({
                 {showSchedule && (
                   <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
                     {t('label.schedule')}{' '}
-                    {getDateTimeByTimeStamp(announcement.startTime * 1000)}{' '}
+                    {formatDateTime(announcement.startTime * 1000)}{' '}
                     {t('label.to-lowercase')}{' '}
-                    {getDateTimeByTimeStamp(announcement.endTime * 1000)}
+                    {formatDateTime(announcement.endTime * 1000)}
                   </Typography.Text>
                 )}
               </Col>
@@ -121,12 +118,6 @@ const FeedCardBodyV1 = ({
           feedBody
         )}
       </div>
-      {Boolean(reactions?.length) && (
-        <Reactions
-          reactions={reactions ?? []}
-          onReactionSelect={onReactionUpdate ?? noop}
-        />
-      )}
     </div>
   );
 };

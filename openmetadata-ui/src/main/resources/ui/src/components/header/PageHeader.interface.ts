@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
+
 export interface HeaderProps {
   data: {
-    header: string;
+    header: ReactNode;
     subHeader: string;
   };
 }

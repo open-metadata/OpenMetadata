@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+// / <reference types="Cypress" />
 import {
   checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   handleIngestionRetry,
   interceptURL,
@@ -53,7 +52,7 @@ describe('Postgres Ingestion', () => {
         .scrollIntoView()
         .type(Cypress.env('postgresUsername'));
       checkServiceFieldSectionHighlighting('username');
-      cy.get('#root\\/password')
+      cy.get('#root\\/authType\\/password')
         .scrollIntoView()
         .type(Cypress.env('postgresPassword'));
       checkServiceFieldSectionHighlighting('password');
@@ -68,14 +67,9 @@ describe('Postgres Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
     testServiceCreationAndIngestion({
@@ -108,7 +102,7 @@ describe('Postgres Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getSettingsPage', 200);
@@ -150,7 +144,7 @@ describe('Postgres Ingestion', () => {
     verifyResponseStatusCode('@database', 200);
 
     cy.get('[data-testid="tabs"]').should('exist');
-    cy.get('[data-testid="Ingestions"]')
+    cy.get('[data-testid="ingestions"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -163,7 +157,7 @@ describe('Postgres Ingestion', () => {
       .scrollIntoView()
       .contains('Usage Ingestion')
       .click();
-    cy.get('[data-testid="next-button"]')
+    cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -203,28 +197,22 @@ describe('Postgres Ingestion', () => {
     visitEntityDetailsPage(tableName, serviceName, 'tables');
     verifyResponseStatusCode('@entityDetailsPage', 200);
     interceptURL('GET', '/api/v1/queries?*', 'queriesTab');
-    cy.get('[data-testid="Queries"]').should('be.visible').trigger('click');
+    cy.get('[data-testid="table_queries"]')
+      .should('be.visible')
+      .trigger('click');
     verifyResponseStatusCode('@queriesTab', 200);
     // Validate that the triggered query is visible in the queries container
     cy.get('[data-testid="queries-container"]')
       .should('be.visible')
       .should('contain', selectQuery);
     // Validate queries count is greater than 1
-    cy.get('[data-testid="entity-summary-details"]')
+    cy.get('[data-testid="table_queries"] [data-testid="filter-count"]')
       .invoke('text')
-      .should('not.contain', '0 Queries');
+      .should('equal', '1');
     // Validate schema contains frequently joined tables and columns
-    cy.get('[data-testid="Schema"]').should('be.visible').click();
+    cy.get('[data-testid="schema"]').should('be.visible').click();
     cy.get('[data-testid="related-tables-data"]').should('be.visible');
     cy.get('[data-testid="frequently-joined-columns"]').should('be.visible');
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
-    );
   });
 
   it('delete created service', () => {

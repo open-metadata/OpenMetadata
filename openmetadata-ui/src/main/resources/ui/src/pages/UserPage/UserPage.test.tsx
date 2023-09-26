@@ -104,6 +104,7 @@ jest.mock('components/authentication/auth-provider/AuthProvider', () => {
 });
 
 jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => ({ username: 'xyz' })),
   useLocation: jest.fn().mockImplementation(() => new URLSearchParams()),
 }));

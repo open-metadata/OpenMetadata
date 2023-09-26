@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/domains/createDomain.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "createDomain",
+  "description": "Create Domain API request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.domains.CreateDomain",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "domainType": {
+      "description": "Domain type",
+      "$ref": "../../entity/domains/domain.json#/definitions/domainType"
+    },
+    "name": {
+      "description": "A unique name of the Domain",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Marketing', 'Payments', etc.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Domain.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
+    "parent": {
+      "description": "Fully qualified name of parent domain.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this Domain.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "experts": {
+      "description": "List of user/login names of users who are experts in this Domain.",
+      "type" : "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "domainType"
+  ],
+  "additionalProperties": false
+}

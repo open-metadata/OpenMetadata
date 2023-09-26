@@ -15,6 +15,7 @@ import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.databases.TableResourceTest.assertColumns;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -43,11 +44,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
+import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.entity.data.Container;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.ContainerFileFormat;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -72,6 +81,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   public ContainerResourceTest() {
     super(Entity.CONTAINER, Container.class, ContainerList.class, "containers", ContainerResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test
@@ -276,7 +286,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
   @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
-  void get_ContainerListWithDifferentFields_200(TestInfo testInfo) throws IOException {
+  void get_ContainerListWithDifferentFields_200() throws IOException {
     /*
      *                 root_container
      *                       |
@@ -294,7 +304,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("0_root")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
 
@@ -389,14 +399,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void test_mutuallyExclusiveTags(TestInfo testInfo) {
+  void test_mutuallyExclusiveTags() {
     // Apply mutually exclusive tags to a Container
     CreateContainer create =
         new CreateContainer()
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     // Apply mutually exclusive tags to a table
@@ -414,7 +424,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel);
 
@@ -432,7 +442,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel1);
     assertResponse(
@@ -442,7 +452,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   }
 
   @Test
-  void post_put_patch_complexDataModelColumnTypes(TestInfo test) throws IOException {
+  void post_put_patch_complexDataModelColumnTypes() throws IOException {
     Column c1 = getColumn(C1, ARRAY, USER_ADDRESS_TAG_LABEL).withArrayDataType(INT).withDataTypeDisplay("array<int>");
     Column c2_a = getColumn("a", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
@@ -471,7 +481,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel);
     Container container1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
@@ -482,7 +492,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("put_complexColumnType")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel);
     Container container2 =
@@ -579,6 +589,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             ? FullyQualifiedName.add(createdEntity.getParent().getFullyQualifiedName(), createdEntity.getName())
             : FullyQualifiedName.add(createdEntity.getService().getFullyQualifiedName(), createdEntity.getName()),
         createdEntity.getFullyQualifiedName());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a storage service with owner data consumer
+    StorageServiceResourceTest serviceTest = new StorageServiceResourceTest();
+    CreateStorageService createStorageService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    StorageService service = serviceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create container under it
+    createEntity(
+        createRequest("container").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override

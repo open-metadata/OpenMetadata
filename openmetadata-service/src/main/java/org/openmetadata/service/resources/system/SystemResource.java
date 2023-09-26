@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -62,15 +61,12 @@ public class SystemResource {
   }
 
   @SuppressWarnings("unused") // Method used for reflection
-  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     this.applicationConfig = config;
   }
 
   public static class SettingsList extends ResultList<Settings> {
-    @SuppressWarnings("unused")
-    public SettingsList() {
-      /* Required for serde */
-    }
+    /* Required for serde */
   }
 
   @GET

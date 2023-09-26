@@ -27,6 +27,7 @@ import { ConfigData } from 'interface/service.interface';
 import React from 'react';
 import {
   addWorkflow,
+  deleteWorkflowById,
   getTestConnectionDefinitionByName,
   getWorkflowById,
   triggerWorkflowById,
@@ -131,7 +132,9 @@ describe('Test Connection Component', () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith(
+      'Mysql.testConnectionDefinition'
+    );
   });
 
   it('Should show the connection modal on test connection click', async () => {
@@ -330,7 +333,9 @@ describe('Test Connection Component', () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith('Mysql');
+    expect(getTestConnectionDefinitionByName).toHaveBeenCalledWith(
+      'Mysql.testConnectionDefinition'
+    );
 
     expect(
       screen.queryByTestId('test-connection-modal')
@@ -471,5 +476,30 @@ describe('Test Connection Component', () => {
     });
 
     expect(addWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('Should delete the workflow if workflow failed to trigger', async () => {
+    (triggerWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(204)
+    );
+    jest.useFakeTimers();
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      userEvent.click(testConnectionButton);
+    });
+
+    expect(addWorkflow).toHaveBeenCalledWith(CREATE_WORKFLOW_PAYLOAD);
+
+    expect(triggerWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+
+    jest.advanceTimersByTime(2000);
+
+    // delete api should be called
+    expect(deleteWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id, true);
   });
 });

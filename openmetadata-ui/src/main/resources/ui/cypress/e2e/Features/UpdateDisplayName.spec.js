@@ -63,7 +63,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
 
   Object.entries(SERVICES).map(([serviceType, service]) => {
     it(`${service.type}`, () => {
-      visitServiceDetailsPage(service);
+      visitServiceDetailsPage(service, false);
       updateDisplayName(
         service.displayName,
         `/api/v1/services/${serviceType}/*`
@@ -85,12 +85,12 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
     visitServiceDetailsPage(
       {
         type: DASHBOARD_DATA_MODEL.service.type,
-        name: DASHBOARD_DATA_MODEL.service.displayName,
+        name: DASHBOARD_DATA_MODEL.service.name,
       },
       false
     );
     verifyResponseStatusCode('@dashboardDataModel', 200);
-    cy.get('[data-testid="Data Model"]').should('be.visible').click();
+    cy.get('[data-testid="data-model"]').should('be.visible').click();
     cy.get('[data-testid="data-models-table"]')
       .contains(DASHBOARD_DATA_MODEL.name)
       .click();
@@ -111,6 +111,7 @@ describe('Edit displayName for all the entities, services and verify breadcrumb'
       SCHEMA_AND_DATABASE_DISPLAY_NAME.serviceName,
       SCHEMA_AND_DATABASE_DISPLAY_NAME.entity
     );
+    cy.log(SCHEMA_AND_DATABASE_DISPLAY_NAME.database);
     cy.get('[data-testid="breadcrumb"]')
       .contains(SCHEMA_AND_DATABASE_DISPLAY_NAME.database)
       .click();
@@ -223,12 +224,12 @@ describe('Cleanup', () => {
     visitServiceDetailsPage(
       {
         type: DASHBOARD_DATA_MODEL.service.type,
-        name: DASHBOARD_DATA_MODEL.service.displayName,
+        name: DASHBOARD_DATA_MODEL.service.name,
       },
       false
     );
     verifyResponseStatusCode('@dashboardDataModel', 200);
-    cy.get('[data-testid="Data Model"]').should('be.visible').click();
+    cy.get('[data-testid="data-model"]').should('be.visible').click();
     cy.get('[data-testid="data-models-table"]')
       .contains(DASHBOARD_DATA_MODEL.name)
       .click();
@@ -244,7 +245,7 @@ describe('Cleanup', () => {
       visitServiceDetailsPage(
         {
           type: service.type,
-          name: service.displayName,
+          name: service.name,
         },
         false
       );

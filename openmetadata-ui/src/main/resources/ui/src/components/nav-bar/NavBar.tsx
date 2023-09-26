@@ -13,21 +13,30 @@
 
 import {
   Badge,
+  Button,
+  Col,
   Dropdown,
-  Image,
   Input,
   InputRef,
+  Popover,
+  Row,
   Select,
   Space,
-  Tooltip,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
+import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
+import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import SearchOptions from 'components/AppBar/SearchOptions';
+import Suggestions from 'components/AppBar/Suggestions';
 import BrandImage from 'components/common/BrandImage/BrandImage';
+import { useDomainProvider } from 'components/Domain/DomainProvider/DomainProvider';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
-import { debounce, toString, upperCase } from 'lodash';
+import { debounce, upperCase } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -37,7 +46,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { refreshPage } from 'utils/CommonUtils';
+import { getEntityDetailLink, refreshPage } from 'utils/CommonUtils';
 import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
 import Logo from '../../assets/svg/logo-monogram.svg';
@@ -64,15 +73,12 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTaskDetailPath } from '../../utils/TasksUtils';
-import SearchOptions from '../app-bar/SearchOptions';
-import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import LegacyDropDown from '../dropdown/DropDown';
-import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
+import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
 
 const cookieStorage = new CookieStorage();
@@ -94,13 +100,15 @@ const NavBar = ({
   handleClear,
 }: NavBarProps) => {
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
-
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
+  const { domainOptions, activeDomain, updateActiveDomain } =
+    useDomainProvider();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -121,12 +129,16 @@ const NavBar = ({
       <Select
         defaultActiveFirstOption
         className="global-search-select"
+        data-testid="global-search-selector"
         listHeight={300}
         popupClassName="global-search-select-menu"
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {globalSearchOptions.map(({ value, label }) => (
-          <Option key={value} value={value}>
+          <Option
+            data-testid={`global-search-select-option-${label}`}
+            key={value}
+            value={value}>
             {label}
           </Option>
         ))}
@@ -200,14 +212,13 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    type: string,
-    id?: string
+    type: string
   ) => {
     if (!hasNotificationPermission()) {
       return;
     }
     const entityType = getEntityType(about);
-    const entityFQN = getEntityFQN(about);
+    const entityFQN = getEntityFQN(about) ?? '';
     let body;
     let path: string;
     switch (type) {
@@ -215,7 +226,13 @@ const NavBar = ({
         body = t('message.user-assign-new-task', {
           user: createdBy,
         });
-        path = getTaskDetailPath(toString(id)).pathname;
+
+        path = getEntityDetailLink(
+          entityType as EntityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        );
 
         break;
       case 'Conversation':
@@ -262,8 +279,7 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.type,
-            activity.task?.id
+            activity.type
           );
         }
       });
@@ -275,8 +291,7 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.type,
-            activity.task?.id
+            activity.type
           );
         }
       });
@@ -301,6 +316,11 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
+  const handleDomainChange = useCallback(({ key }) => {
+    updateActiveDomain(key);
+    refreshPage();
+  }, []);
+
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
     refreshPage();
@@ -321,33 +341,63 @@ const NavBar = ({
 
   return (
     <>
-      <div className="tw-h-16 p-y-sm tw-border-b-2 tw-border-separator bg-white">
-        <div className="d-flex items-center justify-between flex-nowrap tw-px-7">
-          <div className="d-flex items-center justify-between flex-nowrap">
-            <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-              <BrandImage
-                isMonoGram
-                alt="OpenMetadata Logo"
-                className="vertical-middle"
-                dataTestId="image"
-                height={30}
-                width={30}
-              />
-            </Link>
-          </div>
-          <div
-            className="flex-none relative justify-center m-l-auto appbar-search"
-            data-testid="appbar-item">
+      <div className="navbar-container bg-white flex-nowrap w-full">
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            isMonoGram
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={30}
+            width={30}
+          />
+        </Link>
+        <div
+          className="m-auto relative"
+          data-testid="navbar-search-container"
+          ref={searchContainerRef}>
+          <Popover
+            content={
+              !isTourRoute &&
+              searchValue &&
+              (isInPageSearchAllowed(pathname) ? (
+                <SearchOptions
+                  isOpen={isSearchBoxOpen}
+                  options={inPageSearchOptions(pathname)}
+                  searchText={searchValue}
+                  selectOption={handleSelectOption}
+                  setIsOpen={handleSearchBoxOpen}
+                />
+              ) : (
+                <Suggestions
+                  isOpen={isSearchBoxOpen}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
+                  searchText={suggestionSearch}
+                  setIsOpen={handleSearchBoxOpen}
+                />
+              ))
+            }
+            getPopupContainer={() =>
+              searchContainerRef.current || document.body
+            }
+            open={isSearchBoxOpen}
+            overlayClassName="global-search-overlay"
+            overlayStyle={{ width: '100%', paddingTop: 0 }}
+            placement="bottomRight"
+            showArrow={false}
+            trigger={['click']}
+            onOpenChange={handleSearchBoxOpen}>
             <Input
               addonBefore={entitiesSelect}
               autoComplete="off"
-              className="search-grey rounded-4"
+              className="rounded-4  appbar-search"
               data-testid="searchBox"
               id="searchBox"
               placeholder={t('message.search-for-entity-types')}
               ref={searchRef}
               style={{
-                boxShadow: 'none',
                 height: '37px',
               }}
               suffix={
@@ -391,129 +441,124 @@ const NavBar = ({
               }}
               onKeyDown={handleKeyDown}
             />
-            {!isTourRoute &&
-              searchValue &&
-              (isInPageSearchAllowed(pathname) ? (
-                <SearchOptions
-                  isOpen={isSearchBoxOpen}
-                  options={inPageSearchOptions(pathname)}
-                  searchText={searchValue}
-                  selectOption={handleSelectOption}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ) : (
-                <Suggestions
-                  isOpen={isSearchBoxOpen}
-                  searchCriteria={
-                    searchCriteria === '' ? undefined : searchCriteria
-                  }
-                  searchText={suggestionSearch}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ))}
-          </div>
-          <Space className="tw-ml-auto" size={16}>
-            <Dropdown
-              className="cursor-pointer"
-              menu={{ items: supportDropdown }}
-              overlayStyle={{ width: 175 }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Space size={2}>
-                <span>{t('label.help')}</span>
-                <DropDownIcon
-                  className="m-y-xs m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              </Space>
-            </Dropdown>
+          </Popover>
+        </div>
 
-            <Dropdown
-              className="cursor-pointer"
-              menu={{
-                items: languageSelectOptions,
-                onClick: handleLanguageChange,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Space size={2}>
+        <Space align="center" size={24}>
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: domainOptions,
+              onClick: handleDomainChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={6}>
+              <Col className="flex-center">
+                <DomainIcon
+                  className="d-flex text-base-color"
+                  height={18}
+                  name="folder"
+                  width={18}
+                />
+              </Col>
+              <Col>{activeDomain}</Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
+
+          <Dropdown
+            destroyPopupOnHide
+            className="cursor-pointer"
+            dropdownRender={() => (
+              <NotificationBox
+                hasMentionNotification={hasMentionNotification}
+                hasTaskNotification={hasTaskNotification}
+                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
+                onMarkTaskNotificationRead={handleTaskNotificationRead}
+                onTabChange={handleActiveTab}
+              />
+            )}
+            overlayStyle={{
+              zIndex: 9999,
+              width: '425px',
+              minHeight: '375px',
+            }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={handleBellClick}>
+            <Badge dot={hasTaskNotification || hasMentionNotification}>
+              <SVGIcons
+                alt="Alert bell icon"
+                icon={Icons.ALERT_BELL}
+                width="18"
+              />
+            </Badge>
+          </Dropdown>
+
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: languageSelectOptions,
+              onClick: handleLanguageChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={2}>
+              <Col>
                 {upperCase(
                   (language || SupportedLocales.English).split('-')[0]
                 )}
-                <DropDownIcon
-                  className="m-y-xs m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              </Space>
-            </Dropdown>
+              </Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
 
-            <button className="focus:tw-no-underline hover:tw-underline flex-shrink ">
-              <Dropdown
-                destroyPopupOnHide
-                dropdownRender={() => (
-                  <NotificationBox
-                    hasMentionNotification={hasMentionNotification}
-                    hasTaskNotification={hasTaskNotification}
-                    onMarkMentionsNotificationRead={
-                      handleMentionsNotificationRead
-                    }
-                    onMarkTaskNotificationRead={handleTaskNotificationRead}
-                    onTabChange={handleActiveTab}
-                  />
-                )}
-                overlayStyle={{
-                  zIndex: 9999,
-                  width: '425px',
-                  minHeight: '375px',
-                }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={handleBellClick}>
-                <Badge dot={hasTaskNotification || hasMentionNotification}>
-                  <SVGIcons
-                    alt="Alert bell icon"
-                    icon={Icons.ALERT_BELL}
-                    width="18"
-                  />
-                </Badge>
-              </Dropdown>
-            </button>
-            <div className="profile-dropdown" data-testid="dropdown-profile">
-              <LegacyDropDown
-                dropDownList={profileDropdown}
+          <Dropdown
+            className="cursor-pointer m-t-xss"
+            menu={{ items: supportDropdown }}
+            overlayStyle={{ width: 175 }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Help height={20} width={20} />
+          </Dropdown>
+          <div className="profile-dropdown" data-testid="dropdown-profile">
+            <Dropdown
+              menu={{
+                items: profileDropdown,
+              }}
+              trigger={['click']}>
+              <Button
                 icon={
-                  <Tooltip placement="bottom" title="Profile" trigger="hover">
-                    {isImgUrlValid ? (
-                      <div className="profile-image circle tw--mr-2">
-                        <Image
-                          alt="user"
-                          preview={false}
-                          referrerPolicy="no-referrer"
-                          src={profilePicture || ''}
-                          onError={handleOnImageError}
-                        />
-                      </div>
-                    ) : (
-                      <Avatar name={username} type="circle" width="30" />
-                    )}
-                  </Tooltip>
+                  isImgUrlValid ? (
+                    <img
+                      alt="user"
+                      className="profile-image circle"
+                      referrerPolicy="no-referrer"
+                      src={profilePicture || ''}
+                      width={24}
+                      onError={handleOnImageError}
+                    />
+                  ) : (
+                    <Avatar name={username} type="circle" width="24" />
+                  )
                 }
-                isDropDownIconVisible={false}
-                type="link"
+                type="text"
               />
-            </div>
-          </Space>
-        </div>
-        <WhatsNewModal
-          header={`${t('label.whats-new')}!`}
-          visible={isFeatureModalOpen}
-          onCancel={handleModalCancel}
-        />
-
-        <WhatsNewAlert />
+            </Dropdown>
+          </div>
+        </Space>
       </div>
+      <WhatsNewModal
+        header={`${t('label.whats-new')}!`}
+        visible={isFeatureModalOpen}
+        onCancel={handleModalCancel}
+      />
+      <WhatsNewAlert />
     </>
   );
 };
