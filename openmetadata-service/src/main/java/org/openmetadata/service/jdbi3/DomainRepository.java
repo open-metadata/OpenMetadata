@@ -18,8 +18,10 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
@@ -37,7 +39,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public Domain setFields(Domain entity, Fields fields) {
-    return entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
+    return entity.withParent(getParent(entity));
   }
 
   @Override
@@ -101,6 +103,11 @@ public class DomainRepository extends EntityRepository<Domain> {
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Domain entity, String fields) {
+    return entity.getParent() != null ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED) : null;
   }
 
   public class DomainUpdater extends EntityUpdater {

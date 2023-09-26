@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
@@ -146,8 +147,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     TopicSampleData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(topic.getId().toString(), "topic.sampleData"),
-            TopicSampleData.class);
+            daoCollection.entityExtensionDAO().getExtension(topic.getId(), "topic.sampleData"), TopicSampleData.class);
     topic.setSampleData(sampleData);
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
 
@@ -167,7 +167,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     daoCollection
         .entityExtensionDAO()
-        .insert(topicId.toString(), "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
+        .insert(topicId, "topic.sampleData", "topicSampleData", JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic.withSampleData(sampleData);
   }
@@ -253,6 +253,11 @@ public class TopicRepository extends EntityRepository<Topic> {
     if (topic.getMessageSchema() != null) {
       applyTags(topic.getMessageSchema().getSchemaFields());
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Topic entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   @Override
@@ -383,7 +388,10 @@ public class TopicRepository extends EntityRepository<Topic> {
     public void entitySpecificUpdate() {
       recordChange("maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
       recordChange("minimumInSyncReplicas", original.getMinimumInSyncReplicas(), updated.getMinimumInSyncReplicas());
-      recordChange("partitions", original.getPartitions(), updated.getPartitions());
+      // Partitions is a required field. Cannot be null.
+      if (updated.getPartitions() != null) {
+        recordChange("partitions", original.getPartitions(), updated.getPartitions());
+      }
       recordChange("replicationFactor", original.getReplicationFactor(), updated.getReplicationFactor());
       recordChange("retentionTime", original.getRetentionTime(), updated.getRetentionTime());
       recordChange("retentionSize", original.getRetentionSize(), updated.getRetentionSize());

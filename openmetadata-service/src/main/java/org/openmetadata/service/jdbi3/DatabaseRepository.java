@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
@@ -71,6 +72,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database == null
         ? null
         : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Database entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   public Database setFields(Database database, Fields fields) {

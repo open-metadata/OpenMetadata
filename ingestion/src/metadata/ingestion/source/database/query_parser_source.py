@@ -108,6 +108,9 @@ class QueryParserSource(Source, ABC):
             return f"{self.filters} AND {self.source_config.filterCondition}"
         return self.filters
 
+    def get_engine(self):
+        yield self.engine
+
     def close(self):
         """By default, there is nothing to close"""
 

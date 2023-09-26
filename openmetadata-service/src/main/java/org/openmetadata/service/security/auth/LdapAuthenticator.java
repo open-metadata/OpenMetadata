@@ -225,7 +225,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
+    tokenRepository.deleteTokenByUserAndType(currentUserId, REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
     tokenRepository.insertToken(newRefreshToken);

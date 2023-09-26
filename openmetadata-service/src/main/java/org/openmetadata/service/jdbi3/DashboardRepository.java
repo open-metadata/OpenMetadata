@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -186,6 +187,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Dashboard entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {
