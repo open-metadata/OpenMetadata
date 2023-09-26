@@ -274,29 +274,6 @@ class LookerSource(DashboardServiceSource):
         if self.repository_credentials:
             all_projects: Set[str] = {model.project_name for model in all_lookml_models}
             self._project_parsers: Dict[str, LkmlParser] = {
-                # project_name: LkmlParser(
-                #     # reader=self.reader(
-                #     #     credentials=self.get_lookml_project_credentials(
-                #     #         project_name=project_name
-                #     #     )
-                #     # )
-                #     reader=self.reader(Path(self._main_lookml_repo.path)),
-                #     remote_readers={
-                #         "central-models": self.reader(
-                #             Path(
-                #                 Includes(
-                #                     self._main_lookml_repo.path
-                #                     + "/"
-                #                     + IMPORTED_PROJECTS_DIR
-                #                     + "/"
-                #                     + self._main__lookml_manifest.remote_dependency[
-                #                         "name"
-                #                     ]
-                #                 )
-                #             )
-                #         )
-                #     },
-                # )
                 project_name: BulkLkmlParser(
                     reader=self.reader(Path(self._main_lookml_repo.path))
                 )

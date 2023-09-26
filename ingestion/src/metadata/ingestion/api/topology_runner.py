@@ -187,11 +187,12 @@ class TopologyRunnerMixin(Generic[C]):
         """
 
         # Either use the received request or the acknowledged Entity
+        if not entity_request:
+            raise ValueError("entity_request unexpectedly None")
         entity = entity_request.right
 
-        # if not stage.nullable and entity is None:
-        #     logger.error(f"TopologyRunnerMixin::sink_request: {entity_request.left}")
-        #     raise ValueError("Value unexpectedly None")
+        if not stage.nullable and entity is None:
+            raise ValueError("Value unexpectedly None")
 
         # Check that we properly received a Right response to process
         if entity_request.right is not None:

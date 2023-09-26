@@ -39,9 +39,6 @@ class LocalReader(Reader):
         to let the client use this data as needed.
         """
         try:
-            logger.info(f"LocalReader::read: path = {path}")
-            if path == "data_engineering/data_engineering.explore.lkml":
-                logger.info(f"LocalReader::read: start debug")
             with open(self.base_path / path, encoding=UTF_8) as file:
                 return file.read()
 
