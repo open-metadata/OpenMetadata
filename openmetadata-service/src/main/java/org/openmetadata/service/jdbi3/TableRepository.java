@@ -671,6 +671,11 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public EntityInterface getParentEntity(Table entity, String fields) {
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+  }
+
+  @Override
   public List<TagLabel> getAllTags(EntityInterface entity) {
     List<TagLabel> allTags = new ArrayList<>();
     Table table = (Table) entity;

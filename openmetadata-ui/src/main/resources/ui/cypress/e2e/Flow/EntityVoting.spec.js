@@ -16,7 +16,7 @@ import {
   verifyResponseStatusCode,
   visitEntityDetailsPage,
 } from '../../common/common';
-import { VOTING_ENTITIES } from '../../constants/version.constant';
+import { VOTING_ENTITIES } from '../../constants/voting.constant';
 
 describe('Check if voting work properly in entities', () => {
   beforeEach(() => {
@@ -24,15 +24,20 @@ describe('Check if voting work properly in entities', () => {
   });
 
   VOTING_ENTITIES.map((entityDetails) => {
+    const apiEntity =
+      entityDetails.entity === 'dashboardDataModel'
+        ? 'dashboard/datamodels'
+        : entityDetails.entity;
+
     it(`UpVote the ${entityDetails.entity} entity`, () => {
       interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
 
       interceptURL(
         'GET',
-        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        `/api/v1/${apiEntity}/name/*?fields=*`,
         'getEntityDetail'
       );
-      interceptURL('PUT', `/api/v1/${entityDetails.entity}/*/vote`, 'upVoting');
+      interceptURL('PUT', `/api/v1/${apiEntity}/*/vote`, 'upVoting');
 
       visitEntityDetailsPage(
         entityDetails.term,
@@ -55,19 +60,20 @@ describe('Check if voting work properly in entities', () => {
   });
 
   VOTING_ENTITIES.map((entityDetails) => {
+    const apiEntity =
+      entityDetails.entity === 'dashboardDataModel'
+        ? 'dashboard/datamodels'
+        : entityDetails.entity;
+
     it(`DownVote the ${entityDetails.entity} entity`, () => {
       interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
 
       interceptURL(
         'GET',
-        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        `/api/v1/${apiEntity}/name/*?fields=*`,
         'getEntityDetail'
       );
-      interceptURL(
-        'PUT',
-        `/api/v1/${entityDetails.entity}/*/vote`,
-        'downVoting'
-      );
+      interceptURL('PUT', `/api/v1/${apiEntity}/*/vote`, 'downVoting');
 
       visitEntityDetailsPage(
         entityDetails.term,
@@ -93,15 +99,20 @@ describe('Check if voting work properly in entities', () => {
   });
 
   VOTING_ENTITIES.map((entityDetails) => {
+    const apiEntity =
+      entityDetails.entity === 'dashboardDataModel'
+        ? 'dashboard/datamodels'
+        : entityDetails.entity;
+
     it(`UnVote the ${entityDetails.entity} entity`, () => {
       interceptURL('GET', entityDetails.permissionApi, 'getEntityPermission');
 
       interceptURL(
         'GET',
-        `/api/v1/${entityDetails.entity}/name/*?fields=*`,
+        `/api/v1/${apiEntity}/name/*?fields=*`,
         'getEntityDetail'
       );
-      interceptURL('PUT', `/api/v1/${entityDetails.entity}/*/vote`, 'unVoting');
+      interceptURL('PUT', `/api/v1/${apiEntity}/*/vote`, 'unVoting');
 
       visitEntityDetailsPage(
         entityDetails.term,
