@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -54,15 +55,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
 
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
-  public static URI SCHEMA_REGISTRY_URL;
-
-  static {
-    try {
-      SCHEMA_REGISTRY_URL = new URI("http://localhost:0");
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
-    }
-  }
+  public static URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
   public MessagingServiceResourceTest() {
     super(
@@ -103,7 +96,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         BAD_REQUEST,
         "[serviceType must not be null]");
 
-    // Create messaging with mandatory brokers field empty
+    // Create messaging with mandatory "brokers" field empty
     assertResponse(
         () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,

@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
@@ -183,21 +184,16 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Override
   public CreateDashboardService createRequest(String name) {
-    try {
-      return new CreateDashboardService()
-          .withName(name)
-          .withServiceType(DashboardServiceType.Metabase)
-          .withConnection(
-              new DashboardConnection()
-                  .withConfig(
-                      new MetabaseConnection()
-                          .withHostPort(new URI("http://localhost:8080"))
-                          .withUsername("admin")
-                          .withPassword("admin")));
-    } catch (URISyntaxException e) {
-      LOG.error("Failed to create CreateDashboardService request", e);
-    }
-    return null;
+    return new CreateDashboardService()
+        .withName(name)
+        .withServiceType(DashboardServiceType.Metabase)
+        .withConnection(
+            new DashboardConnection()
+                .withConfig(
+                    new MetabaseConnection()
+                        .withHostPort(CommonUtil.getUri("http://localhost:8080"))
+                        .withUsername("admin")
+                        .withPassword("admin")));
   }
 
   @Override

@@ -40,8 +40,6 @@ import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
   className,
-  workflowName,
-  enableDebugLog,
   okText,
   cancelText,
   serviceCategory,
@@ -50,12 +48,10 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onCancel,
   onFocus,
   onSubmit,
+  onChange,
 }) => {
-  const [internalData, setInternalData] = useState<IngestionWorkflowData>({
-    ...workflowData,
-    name: workflowName,
-    enableDebugLog,
-  });
+  const [internalData, setInternalData] =
+    useState<IngestionWorkflowData>(workflowData);
   const { t } = useTranslation();
 
   const schema = useMemo(
@@ -88,6 +84,29 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
       setInternalData(e.formData);
+
+      let formData = { ...e.formData };
+      if (isElasticSearchPipeline) {
+        formData = {
+          ...omit(formData, [
+            'useSSL',
+            'verifyCerts',
+            'timeout',
+            'caCerts',
+            'useAwsCredentials',
+            'regionName',
+          ]),
+        };
+      }
+      if (isDbtPipeline) {
+        formData = {
+          ...formData,
+          dbtConfigSource: {
+            ...omitBy(formData.dbtConfigSource ?? {}, isUndefined),
+          },
+        };
+      }
+      onChange?.(formData);
     }
   };
 
