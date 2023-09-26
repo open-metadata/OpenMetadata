@@ -43,6 +43,7 @@ jobs:
       matrix:
         job: [0]
     environment: test
+    timeout-minutes: 120
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
