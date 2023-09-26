@@ -28,9 +28,6 @@ public class UserIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (user.getIsBot() == null) {
-      user.setIsBot(false);
-    }
     Map<String, Object> doc = JsonUtils.getMap(user);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -43,6 +40,9 @@ public class UserIndex implements ElasticSearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
     doc.put("displayName", CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());
+    if (user.getIsBot() == null) {
+      doc.put("isBot", false);
+    }
     return doc;
   }
 
