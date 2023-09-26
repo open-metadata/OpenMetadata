@@ -18,9 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -76,15 +74,10 @@ public class TopicIndex implements ElasticSearchIndex {
         getFQNParts(
             topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     if (topic.getOwner() != null) {
-      EntityReference owner = topic.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(topic.getOwner()));
     }
     if (topic.getDomain() != null) {
-      EntityReference domain = topic.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      doc.put("domain", domain);
+      doc.put("domain", getDomainWithDisplayName(topic.getDomain()));
     }
     return doc;
   }

@@ -14,9 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.MlModel;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -52,15 +50,10 @@ public class MlModelIndex implements ElasticSearchIndex {
             mlModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     if (mlModel.getOwner() != null) {
-      EntityReference owner = mlModel.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(mlModel.getOwner()));
     }
     if (mlModel.getDomain() != null) {
-      EntityReference domain = mlModel.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      doc.put("domain", domain);
+      doc.put("domain", getDomainWithDisplayName(mlModel.getDomain()));
     }
     return doc;
   }

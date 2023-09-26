@@ -39,7 +39,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPEC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,7 +73,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -223,26 +221,6 @@ public class TeamRepository extends EntityRepository<Team> {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
-  }
-
-  @Override
-  public void deleteFromSearch(Team entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Team.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "parents.id");
-      } else {
-        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, Team.class), "", "parents.id");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Team entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Team.class), false, "parents.fullyQualifiedName");
-    }
   }
 
   private List<EntityReference> getInheritedRoles(Team team) {

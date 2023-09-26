@@ -14,9 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
@@ -63,15 +61,10 @@ public class PipelineIndex implements ElasticSearchIndex {
             pipeline.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     if (pipeline.getOwner() != null) {
-      EntityReference owner = pipeline.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(pipeline.getOwner()));
     }
     if (pipeline.getDomain() != null) {
-      EntityReference domain = pipeline.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      doc.put("domain", domain);
+      doc.put("domain", getDomainWithDisplayName(pipeline.getDomain()));
     }
     return doc;
   }

@@ -13,16 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DashboardServiceRepository extends ServiceEntityRepository<DashboardService, DashboardConnection> {
@@ -36,28 +32,5 @@ public class DashboardServiceRepository extends ServiceEntityRepository<Dashboar
         DashboardConnection.class,
         ServiceType.DASHBOARD);
     supportsSearch = true;
-  }
-
-  @Override
-  public void deleteFromSearch(DashboardService entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, DashboardService.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "service.id");
-      } else {
-        searchRepository.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, DashboardService.class), "", "service.id");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(DashboardService entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, DashboardService.class), false, "service.fullyQualifiedName");
-    }
   }
 }

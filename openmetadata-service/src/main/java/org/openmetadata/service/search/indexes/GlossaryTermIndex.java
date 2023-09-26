@@ -13,9 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
@@ -43,15 +41,10 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY_TERM);
     if (glossaryTerm.getOwner() != null) {
-      EntityReference owner = glossaryTerm.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(glossaryTerm.getOwner()));
     }
     if (glossaryTerm.getDomain() != null) {
-      EntityReference domain = glossaryTerm.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      doc.put("domain", domain);
+      doc.put("domain", getDomainWithDisplayName(glossaryTerm.getDomain()));
     }
     return doc;
   }

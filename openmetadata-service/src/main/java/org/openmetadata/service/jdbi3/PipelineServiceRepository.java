@@ -13,16 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class PipelineServiceRepository extends ServiceEntityRepository<PipelineService, PipelineConnection> {
@@ -35,27 +31,5 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
         dao.pipelineServiceDAO(),
         PipelineConnection.class,
         ServiceType.PIPELINE);
-  }
-
-  @Override
-  public void deleteFromSearch(PipelineService entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, PipelineService.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "service.id");
-      } else {
-        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, PipelineService.class), "", "service.id");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(PipelineService entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, PipelineService.class), false, "service.fullyQualifiedName");
-    }
   }
 }

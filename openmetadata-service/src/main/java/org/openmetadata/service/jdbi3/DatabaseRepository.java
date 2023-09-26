@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -29,8 +28,6 @@ import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
@@ -74,26 +71,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database == null
         ? null
         : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
-  }
-
-  @Override
-  public void deleteFromSearch(Database entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Database.class), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "database.id");
-      } else {
-        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, Database.class), "", "database.id");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Database entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
-    }
   }
 
   public Database setFields(Database database, Fields fields) {

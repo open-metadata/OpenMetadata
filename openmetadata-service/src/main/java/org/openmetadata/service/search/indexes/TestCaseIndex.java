@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
@@ -53,9 +52,7 @@ public class TestCaseIndex implements ElasticSearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
     if (testCase.getOwner() != null) {
-      EntityReference owner = testCase.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(testCase.getOwner()));
     }
     return doc;
   }

@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,8 +34,6 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -102,29 +99,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
           .withState(TagLabel.State.values()[r.getInt("state")])
           .withTagFQN(r.getString("tagFQN"));
-    }
-  }
-
-  @Override
-  public void deleteFromSearch(Classification entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Classification.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "classification.id");
-      } else {
-        searchRepository.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Classification.class), "", "classification.id");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Classification entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Classification.class), false, "classification.fullyQualifiedName");
     }
   }
 

@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -66,15 +65,10 @@ public class DashboardIndex implements ElasticSearchIndex {
     doc.put("serviceType", dashboard.getServiceType());
     doc.put("fqnParts", suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList()));
     if (dashboard.getOwner() != null) {
-      EntityReference owner = dashboard.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(dashboard.getOwner()));
     }
     if (dashboard.getDomain() != null) {
-      EntityReference domain = dashboard.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      doc.put("domain", domain);
+      doc.put("domain", getDomainWithDisplayName(dashboard.getDomain()));
     }
     return doc;
   }

@@ -1004,7 +1004,7 @@ public class OpenSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field) {
+  public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field, String alias) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -1014,7 +1014,7 @@ public class OpenSearchClientImpl implements SearchRepository {
         deleteEntityFromElasticSearch(deleteRequest);
         if (!CommonUtil.nullOrEmpty(field)) {
           BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-          DeleteByQueryRequest request = new DeleteByQueryRequest(GLOBAL_SEARCH_ALIAS);
+          DeleteByQueryRequest request = new DeleteByQueryRequest(alias);
           request.setRefresh(true);
           queryBuilder.must(new TermQueryBuilder(field, entity.getId().toString()));
           request.setQuery(queryBuilder);
@@ -1030,27 +1030,17 @@ public class OpenSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void deleteEntityAndRemoveRelationships(EntityInterface entity, String scriptTxt, String field) {
+  public void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-      DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      String scriptTxt = "ctx._source.deleted=" + delete;
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateRequest.script(script);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       try {
-        deleteEntityFromElasticSearch(deleteRequest);
-        if (!CommonUtil.nullOrEmpty(scriptTxt) && !CommonUtil.nullOrEmpty(field)) {
-          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
-          updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getFullyQualifiedName()));
-          Script script =
-              new Script(
-                  ScriptType.INLINE,
-                  Script.DEFAULT_SCRIPT_LANG,
-                  String.format(scriptTxt, entity.getFullyQualifiedName()),
-                  new HashMap<>());
-          updateByQueryRequest.setScript(script);
-          updateByQueryRequest.setRefresh(true);
-          updateElasticSearchByQuery(updateByQueryRequest);
-        }
+        updateElasticSearch(updateRequest);
       } catch (DocumentMissingException ex) {
         handleDocumentMissingException(entity, ex);
       } catch (OpenSearchException e) {
@@ -1062,23 +1052,16 @@ public class OpenSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field) {
+  public void softDeleteOrRestoreChildrenFromSearch(
+      EntityInterface entity, boolean delete, String field, String alias) {
     if (entity != null) {
-      String entityType = entity.getEntityReference().getType();
-      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
+      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
       String scriptTxt = "ctx._source.deleted=" + delete;
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateRequest.script(script);
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      updateByQueryRequest.setScript(script);
       try {
-        updateElasticSearch(updateRequest);
-        if (!CommonUtil.nullOrEmpty(field)) {
-          UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(GLOBAL_SEARCH_ALIAS);
-          updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
-          updateByQueryRequest.setScript(script);
-          updateElasticSearchByQuery(updateByQueryRequest);
-        }
+        updateElasticSearchByQuery(updateByQueryRequest);
       } catch (DocumentMissingException ex) {
         handleDocumentMissingException(entity, ex);
       } catch (OpenSearchException e) {
@@ -1119,10 +1102,10 @@ public class OpenSearchClientImpl implements SearchRepository {
 
   @Override
   public void updateSearchChildrenUpdated(
-      EntityInterface entity, String scriptTxt, String field, String alias, Object data) {
+      EntityInterface entity, String scriptTxt, String field, String value, String alias, Object data) {
     if (entity != null) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
-      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
+      updateByQueryRequest.setQuery(new MatchQueryBuilder(field, value));
       updateByQueryRequest.setRefresh(true);
       Script script =
           new Script(

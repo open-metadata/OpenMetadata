@@ -16,9 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -78,15 +76,10 @@ public class TableIndex implements ColumnIndex {
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
     if (table.getOwner() != null) {
-      EntityReference owner = table.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+      doc.put("owner", getOwnerWithDisplayName(table.getOwner()));
     }
     if (table.getDomain() != null) {
-      EntityReference domain = table.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      doc.put("domain", domain);
+      doc.put("domain", getDomainWithDisplayName(table.getDomain()));
     }
     return doc;
   }

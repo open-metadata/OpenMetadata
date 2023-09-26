@@ -31,9 +31,11 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType;
@@ -46,10 +48,22 @@ import org.opensearch.client.RequestOptions;
 public interface SearchRepository {
   String GLOBAL_SEARCH_ALIAS = "AllEntities";
   String DATABASE_ALIAS = "databaseAlias";
+  String CLASSIFICATION_ALIAS = "classificationAlias";
   String DATABASE_SCHEMA_ALIAS = "databaseSchemaAlias";
+  String DASHBOARD_SERVICE_ALIAS = "dashboardServiceAlias";
+  String MESSAGING_SERVICE_ALIAS = "messagingServiceAlias";
+  String PIPELINE_SERVICE_ALIAS = "pipelineServiceAlias";
+  String MLMODEL_SERVICE_ALIAS = "mlModelServiceAlias";
+  String STORAGE_SERVICE_ALIAS = "storageServiceAlias";
+  String TEST_SUITE_ALIAS = "testSuiteAlias";
 
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
+  String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String REMOVE_TAGS_CHILDREN_SCRIPT =
+      "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
+  String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
+      "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   default void handleOwnerUpdates(EntityInterface original, EntityInterface updated, String eventType) {
     if (eventType.equalsIgnoreCase("added")) {
@@ -57,6 +71,7 @@ public interface SearchRepository {
           updated,
           getOwnerChangeScript(eventType, ""),
           updated.getEntityReference().getType() + ".id",
+          updated.getId().toString(),
           ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
           updated.getOwner());
     } else if (eventType.equalsIgnoreCase("updated")) {
@@ -64,6 +79,7 @@ public interface SearchRepository {
           updated,
           getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
           updated.getEntityReference().getType() + ".id",
+          updated.getId().toString(),
           ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
           updated.getOwner());
     }
@@ -72,6 +88,7 @@ public interface SearchRepository {
           updated,
           getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
           updated.getEntityReference().getType() + ".id",
+          updated.getId().toString(),
           ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
           updated.getOwner());
     }
@@ -84,12 +101,14 @@ public interface SearchRepository {
           getDomainChangeScript(eventType, ""),
           updated.getEntityReference().getType() + ".id",
           ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+          updated.getId().toString(),
           updated.getDomain());
     } else if (eventType.equalsIgnoreCase("updated")) {
       this.updateSearchChildrenUpdated(
           updated,
           getDomainChangeScript(eventType, original.getDomain().getId().toString()),
           updated.getEntityReference().getType() + ".id",
+          updated.getId().toString(),
           ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
           updated.getDomain());
     }
@@ -98,6 +117,7 @@ public interface SearchRepository {
           updated,
           getDomainChangeScript(eventType, original.getDomain().getId().toString()),
           updated.getEntityReference().getType() + ".id",
+          updated.getId().toString(),
           ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
           updated.getDomain());
     }
@@ -129,6 +149,79 @@ public interface SearchRepository {
       scriptTxt = String.format("if(ctx._source.domain.id == '%s'){ ctx._source.put('domain', params)}", domainId);
     }
     return scriptTxt;
+  }
+
+  default void handleEntityDeleted(EntityInterface entity) {
+    switch (entity.getEntityReference().getType()) {
+      case Entity.DOMAIN:
+        this.updateSearchChildrenUpdated(
+            entity,
+            REMOVE_DOMAINS_CHILDREN_SCRIPT,
+            entity.getEntityReference().getType() + ".id",
+            entity.getId().toString(),
+            GLOBAL_SEARCH_ALIAS,
+            null);
+        break;
+      case Entity.TAG:
+      case Entity.GLOSSARY_TERM:
+        this.updateSearchChildrenUpdated(
+            entity,
+            REMOVE_TAGS_CHILDREN_SCRIPT,
+            "tags.tagFQN",
+            entity.getFullyQualifiedName(),
+            GLOBAL_SEARCH_ALIAS,
+            null);
+        break;
+      case Entity.TEST_SUITE:
+        TestSuite testSuite = (TestSuite) entity;
+        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+          this.updateSearchEntityDeleted(
+              entity,
+              "",
+              "testSuites.id",
+              ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
+        } else {
+          this.updateSearchChildrenUpdated(
+              entity,
+              REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
+              "testSuites.id",
+              testSuite.getId().toString(),
+              ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString(),
+              null);
+        }
+        break;
+      case Entity.DASHBOARD_SERVICE:
+      case Entity.DATABASE_SERVICE:
+      case Entity.MESSAGING_SERVICE:
+      case Entity.PIPELINE_SERVICE:
+      case Entity.MLMODEL_SERVICE:
+      case Entity.STORAGE_SERVICE:
+        this.updateSearchEntityDeleted(
+            entity, "", "service.id", ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
+        break;
+      default:
+        this.updateSearchEntityDeleted(
+            entity,
+            "",
+            entity.getEntityReference().getType() + ".id",
+            ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
+    }
+  }
+
+  default void handleSoftDeletedAndRestoredEntity(EntityInterface entity, boolean delete) {
+    if (entity.getEntityReference().getType().equals(Entity.DATABASE_SERVICE)) {
+      this.softDeleteOrRestoreChildrenFromSearch(
+          entity,
+          delete,
+          "service.id",
+          ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
+    } else {
+      this.softDeleteOrRestoreChildrenFromSearch(
+          entity,
+          delete,
+          entity.getEntityReference().getType() + ".id",
+          ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
+    }
   }
 
   boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
@@ -163,15 +256,16 @@ public interface SearchRepository {
 
   void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params);
 
-  void updateSearchEntityDeleted(EntityInterface entity, String script, String field);
+  void updateSearchEntityDeleted(EntityInterface entity, String script, String field, String alias);
 
-  void deleteEntityAndRemoveRelationships(EntityInterface entity, String script, String field);
+  void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete);
 
-  void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete, String field);
+  void softDeleteOrRestoreChildrenFromSearch(EntityInterface entity, boolean delete, String field, String alias);
 
   void updateSearchEntityUpdated(EntityInterface entity, String script, String field);
 
-  void updateSearchChildrenUpdated(EntityInterface entity, String scriptTxt, String field, String alias, Object data);
+  void updateSearchChildrenUpdated(
+      EntityInterface entity, String scriptTxt, String field, String value, String alias, Object data);
 
   void close();
 

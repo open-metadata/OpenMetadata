@@ -899,18 +899,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void deleteFromSearch(T entity, String changeType) {
     if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            entity, changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
+        searchRepository.softDeleteOrRestoreEntityFromSearch(entity, true);
+        if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
+          searchRepository.handleSoftDeletedAndRestoredEntity(entity, true);
+        }
       } else {
-        searchRepository.updateSearchEntityDeleted(entity, "", "");
+        searchRepository.updateSearchEntityDeleted(entity, "", "", "");
+        if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
+          searchRepository.handleEntityDeleted(entity);
+        }
       }
     }
   }
 
   public void restoreFromSearch(T entity) {
     if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(entity, false, "");
+      searchRepository.softDeleteOrRestoreEntityFromSearch(entity, false);
+      if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
+        searchRepository.handleSoftDeletedAndRestoredEntity(entity, false);
+      }
     }
   }
 

@@ -13,16 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
-
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
@@ -38,27 +34,5 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);
     supportsSearch = true;
-  }
-
-  @Override
-  public void deleteFromSearch(MlModelService entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, MlModelService.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "service.id");
-      } else {
-        searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, MlModelService.class), "", "service.id");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(MlModelService entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, MlModelService.class), false, "service.fullyQualifiedName");
-    }
   }
 }

@@ -3,7 +3,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.util.HashMap;
@@ -157,35 +156,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void storeRelationships(TestSuite entity) {
     if (Boolean.TRUE.equals(entity.getExecutable())) {
       storeExecutableRelationship(entity);
-    }
-  }
-
-  @Override
-  public void deleteFromSearch(TestSuite entity, String changeType) {
-    if (supportsSearch) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, TestSuite.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "testSuites.id");
-      } else {
-        if (Boolean.TRUE.equals(entity.getExecutable())) {
-          searchRepository.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, TestSuite.class), "", "testSuites.id");
-        } else {
-          String scriptTxt =
-              "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].fullyQualifiedName == '%s') { ctx._source.testSuites.remove(i) }}";
-          searchRepository.deleteEntityAndRemoveRelationships(
-              JsonUtils.deepCopy(entity, TestSuite.class), scriptTxt, "testSuites.fullyQualifiedName");
-        }
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(TestSuite entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, TestSuite.class), false, "testSuites.fullyQualifiedName");
     }
   }
 

@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -35,7 +34,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -95,23 +93,6 @@ public class TagRepository extends EntityRepository<Tag> {
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
     daoCollection.tagUsageDAO().deleteTagLabels(TagSource.CLASSIFICATION.ordinal(), entity.getFullyQualifiedName());
-  }
-
-  @Override
-  public void deleteFromSearch(Tag entity, String changeType) {
-    if (supportsSearch) {
-      String scriptTxt =
-          "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
-      searchRepository.deleteEntityAndRemoveRelationships(
-          JsonUtils.deepCopy(entity, Tag.class), scriptTxt, "tags.tagFQN");
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Tag entity) {
-    if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, Tag.class), false, "tags.tagFQN");
-    }
   }
 
   @Override
