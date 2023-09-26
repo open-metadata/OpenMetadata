@@ -42,6 +42,7 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
+    SNOWFLAKE_GET_SCHEMAS,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
     SNOWFLAKE_TEST_GET_TABLES,
@@ -168,7 +169,7 @@ def test_connection(
             test_query, statement=SNOWFLAKE_GET_DATABASES, engine=engine
         ),
         "GetSchemas": partial(
-            execute_inspector_func, engine_wrapper, "get_schema_names"
+            test_query, statement=SNOWFLAKE_GET_SCHEMAS, engine=engine
         ),
         "GetTables": partial(
             test_query, statement=SNOWFLAKE_TEST_GET_TABLES, engine=engine

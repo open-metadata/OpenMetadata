@@ -31,6 +31,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
@@ -81,7 +82,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_CURRENT_ACCOUNT,
     SNOWFLAKE_GET_CURRENT_REGION,
     SNOWFLAKE_GET_DATABASE_COMMENTS,
-    SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_FILTER_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
@@ -92,9 +92,12 @@ from metadata.ingestion.source.database.snowflake.queries import (
 from metadata.ingestion.source.database.snowflake.utils import (
     _current_database_schema,
     get_columns,
+    get_filter_pattern_tuple,
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
+    get_schema_names,
+    get_schema_names_reflection,
     get_table_comment,
     get_table_names,
     get_table_names_reflection,
@@ -104,7 +107,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_table
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
@@ -131,7 +134,10 @@ SnowflakeDialect.get_unique_constraints = get_unique_constraints
 SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
     get_schema_columns
 )
+SnowflakeDialect.get_schema_names = get_schema_names
+
 Inspector.get_table_names = get_table_names_reflection
+Inspector.get_schema_names = get_schema_names_reflection
 SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
     _current_database_schema
 )
@@ -249,36 +255,35 @@ class SnowflakeSource(CommonDbSourceService):
             self.set_database_description_map()
             yield configured_db
         else:
-            results = []
-            if self.source_config.pushFilterDown:
-                for filter_db_name in self.source_config.databaseFilterPattern.includes:
-                    result = self.connection.execute(
-                        SNOWFLAKE_GET_FILTER_DATABASES.format(
-                            filter_database_name=filter_db_name
-                        )
-                    )
-                    results.append(result)
-            else:
-                results.append(self.connection.execute(SNOWFLAKE_GET_DATABASES))
-            for fil_res in results:
-                for res in fil_res:
-                    row = list(res)
-                    new_database = row[1]
-                    database_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=new_database,
-                    )
-                    if not self.source_config.pushFilterDown:
-                        if filter_by_database(
-                            self.source_config.databaseFilterPattern,
-                            database_fqn
-                            if self.source_config.useFqnForFiltering
-                            else new_database,
-                        ):
-                            self.status.filter(database_fqn, "Database Filtered Out")
-                            continue
+            format_pattern = "WHERE DATABASE_NAME LIKE ANY " + get_filter_pattern_tuple(
+                self.source_config.databaseFilterPattern.includes
+            )  # pylint: disable=line-too-long
+            filter_query = SNOWFLAKE_GET_FILTER_DATABASES.format(format_pattern)
+            query = SNOWFLAKE_GET_FILTER_DATABASES.format("")
+            results = self.connection.execute(
+                filter_query
+                if self.source_config.pushFilterDown
+                and self.source_config.databaseFilterPattern
+                else query
+            )
+            for res in results:
+                row = list(res)
+                new_database = row[1]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
+                if not self.source_config.pushFilterDown:
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database,
+                    ):
+                        self.status.filter(database_fqn, "Database Filtered Out")
+                        continue
 
             try:
                 self.set_inspector(database_name=new_database)
@@ -292,6 +297,41 @@ class SnowflakeSource(CommonDbSourceService):
                 logger.warning(
                     f"Error trying to connect to database {new_database}: {exc}"
                 )
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names(
+                pushFilterDown=self.source_config.pushFilterDown,
+                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                if self.source_config.schemaFilterPattern
+                else None,
+            ):
+                yield schema_name
+
+    def _get_filtered_schema_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
+        for schema_name in self.get_raw_database_schema_names():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            )
+            if not self.source_config.pushFilterDown:
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    schema_fqn
+                    if self.source_config.useFqnForFiltering
+                    else schema_name,
+                ):
+                    if add_to_status:
+                        self.status.filter(schema_fqn, "Schema Filtered Out")
+                    continue
+            yield schema_fqn if return_fqn else schema_name
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
@@ -490,7 +530,7 @@ class SnowflakeSource(CommonDbSourceService):
                 pushFilterDown=self.source_config.pushFilterDown,
                 filter_table_name=self.source_config.tableFilterPattern.includes
                 if self.source_config.tableFilterPattern
-                else None,  # pylint: disable=line-too-long
+                else None,
             )
         ]
 
@@ -503,7 +543,7 @@ class SnowflakeSource(CommonDbSourceService):
                     pushFilterDown=self.source_config.pushFilterDown,
                     filter_table_name=self.source_config.tableFilterPattern.includes
                     if self.source_config.tableFilterPattern
-                    else None,  # pylint: disable=line-too-long
+                    else None,
                 )
             ]
         )
@@ -518,7 +558,7 @@ class SnowflakeSource(CommonDbSourceService):
                         pushFilterDown=self.source_config.pushFilterDown,
                         filter_table_name=self.source_config.tableFilterPattern.includes
                         if self.source_config.tableFilterPattern
-                        else None,  # pylint: disable=line-too-long
+                        else None,
                     )
                 ]
             )

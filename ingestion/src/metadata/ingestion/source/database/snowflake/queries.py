@@ -124,9 +124,14 @@ SNOWFLAKE_TEST_GET_TABLES = """
 SELECT TABLE_NAME FROM information_schema.tables LIMIT 1 
 """
 
+SNOWFLAKE_GET_FILTER_DATABASES = (
+    """select DATABASE_NAME from information_schema.databases {};"""
+)
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
-SNOWFLAKE_GET_FILTER_DATABASES = "SHOW DATABASES LIKE '{filter_database_name}'"
-SNOWFLAKE_GET_FILTERSCHEMA = "SHOW DATABASES LIKE '{filter_schema_name}'"
+SNOWFLAKE_GET_SCHEMAS = "SHOW SCHEMAS"
+SNOWFLAKE_GET_FILTER_SCHEMA = (
+    """select SCHEMA_NAME from information_schema.schemata {};"""
+)
 
 
 SNOWFLAKE_GET_SCHEMA_COLUMNS = """

@@ -25,6 +25,7 @@ from sqlalchemy.types import FLOAT
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
+    SNOWFLAKE_GET_FILTER_SCHEMA,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
@@ -74,17 +75,42 @@ def get_table_names_reflection(self, schema=None, **kw):
         )
 
 
-def get_filter_table_name(filter_table_name):
-    table_filter_pattern = (
-        str(tuple(filter_table_name))
-        if len(filter_table_name) > 1
-        else str(tuple(filter_table_name)).replace(",)", ")")
-    )  # pylint: disable=line-too-long
-    format_pattern = "AND TABLE_NAME LIKE ANY " + table_filter_pattern
-    return format_pattern
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_filter_pattern_tuple(filter_pattern_name):
+    filter_pattern = (
+        str(tuple(filter_pattern_name))
+        if len(filter_pattern_name) > 1
+        else str(tuple(filter_pattern_name)).replace(",)", ")")
+    )
+    return filter_pattern
+
+
+def get_schema_names(self, connection, **kw):
+    format_pattern = "WHERE SCHEMA_NAME LIKE ANY " + get_filter_pattern_tuple(
+        kw["filter_schema_name"]
+    )
+    query = SNOWFLAKE_GET_FILTER_SCHEMA
+    cursor = connection.execute(
+        query.format(format_pattern)
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else query.format("")
+    )
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result
 
 
 def get_table_names(self, connection, schema, **kw):
+    format_pattern = "AND TABLE_NAME LIKE ANY " + get_filter_pattern_tuple(
+        kw["filter_table_name"]
+    )
     query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
     if kw.get("include_transient_tables"):
         query = SNOWFLAKE_GET_TRANSIENT_NAMES
@@ -92,9 +118,7 @@ def get_table_names(self, connection, schema, **kw):
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
     cursor = connection.execute(
-        query.format(
-            fqn.unquote_name(schema), get_filter_table_name(kw["filter_table_name"])
-        )
+        query.format(fqn.unquote_name(schema), format_pattern)
         if kw.get("pushFilterDown") and kw["filter_table_name"] is not None
         else query.format(fqn.unquote_name(schema), "")
     )
