@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { User } from 'generated/entity/teams/user';
 import { MessagingProvider } from 'generated/type/profile';
 import { Team } from '../../../generated/entity/teams/team';
 
@@ -62,19 +61,16 @@ export enum TeamsPageTab {
 export interface TeamsInfoProps {
   parentTeams: Team[];
   isGroupType: boolean;
-  isOrganization: boolean;
   childTeamsCount: number;
   currentTeam: Team;
-  currentUser?: User;
   entityPermissions: OperationPermission;
-  joinTeam: () => void;
   updateTeamHandler: (data: Team) => Promise<void>;
-  deleteUserHandler: (id: string, leave?: boolean) => void;
 }
 
 export interface TeamsSubscriptionProps {
+  hasEditPermission: boolean;
   subscription?: MessagingProvider;
-  updateTeamSubscription: (value: SubscriptionWebhook[]) => Promise<void>;
+  updateTeamSubscription: (value: SubscriptionWebhook) => Promise<void>;
 }
 
 export interface SubscriptionWebhook {

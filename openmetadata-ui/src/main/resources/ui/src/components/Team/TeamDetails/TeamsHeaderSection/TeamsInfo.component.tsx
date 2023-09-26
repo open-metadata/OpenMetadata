@@ -13,6 +13,7 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   Button,
+  Divider,
   Form,
   FormProps,
   Input,
@@ -27,28 +28,25 @@ import { useAuthContext } from 'components/authentication/auth-provider/AuthProv
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import { EMAIL_REG_EX } from 'constants/regex.constants';
 import { useAuth } from 'hooks/authHooks';
-import { isEmpty, isUndefined, last } from 'lodash';
+import { isEmpty, last } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { hasEditAccess } from 'utils/CommonUtils';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 
 import classNames from 'classnames';
 import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
+import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { Team, TeamType } from 'generated/entity/teams/team';
 import { EntityReference } from 'generated/entity/type';
 import { TeamsInfoProps } from '../team.interface';
 
 const TeamsInfo = ({
   parentTeams,
-  isOrganization,
   isGroupType,
   childTeamsCount,
   entityPermissions,
   currentTeam,
-  currentUser,
-  joinTeam,
   updateTeamHandler,
-  deleteUserHandler,
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
 
@@ -62,10 +60,7 @@ const TeamsInfo = ({
     currentTeam ? currentTeam.displayName : ''
   );
 
-  const { id, email, owner, isJoinable, teamType } = useMemo(
-    () => currentTeam,
-    [currentTeam]
-  );
+  const { email, owner, teamType } = useMemo(() => currentTeam, [currentTeam]);
 
   const { hasEditPermission, hasEditDisplayNamePermission, hasAccess } =
     useMemo(
@@ -78,11 +73,6 @@ const TeamsInfo = ({
 
       [entityPermissions]
     );
-
-  const isAlreadyJoinedTeam = useMemo(
-    () => currentUser?.teams?.find((team) => team.id === id),
-    [id, currentUser]
-  );
 
   /**
    * Check if current team is the owner or not
@@ -149,9 +139,9 @@ const TeamsInfo = ({
   const teamHeadingRender = useMemo(
     () =>
       isHeadingEditing ? (
-        <Space size="middle">
+        <Space>
           <Input
-            className="w-64"
+            className="w-48"
             data-testid="team-name-input"
             placeholder={t('message.enter-comma-separated-field', {
               field: t('label.term-lowercase'),
@@ -160,7 +150,7 @@ const TeamsInfo = ({
             value={heading}
             onChange={(e) => setHeading(e.target.value)}
           />
-          <Space data-testid="buttons">
+          <Space data-testid="buttons" size={4}>
             <Button
               className="rounded-4 text-sm p-xss"
               data-testid="cancelAssociatedTag"
@@ -197,8 +187,9 @@ const TeamsInfo = ({
                   : t('message.no-permission-for-action')
               }>
               <Icon
+                className="align-middle"
                 component={EditIcon}
-                data-testid="edit-team-name"
+                data-testid="edit-team-name "
                 disabled={!hasEditDisplayNamePermission}
                 style={{ fontSize: '16px' }}
                 onClick={() => setIsHeadingEditing(true)}
@@ -211,104 +202,83 @@ const TeamsInfo = ({
   );
 
   const emailRender = useMemo(
-    () =>
-      isEmailEdit ? (
-        <Form initialValues={{ email }} onFinish={onEmailSave}>
-          <Space align="baseline" size="middle">
-            <Form.Item
-              className="m-b-0"
-              name="email"
-              rules={[
-                {
-                  pattern: EMAIL_REG_EX,
-                  type: 'email',
-                  message: t('message.field-text-is-invalid', {
-                    fieldText: t('label.email'),
-                  }),
-                },
-              ]}>
-              <Input
-                className="w-64"
-                data-testid="email-input"
-                placeholder={t('label.enter-entity', {
-                  entity: t('label.email-lowercase'),
-                })}
-              />
-            </Form.Item>
-            <Space>
-              <Button
-                className="h-8 p-x-xss"
-                data-testid="cancel-edit-email"
-                size="small"
-                type="primary"
-                onClick={() => setIsEmailEdit(false)}>
-                <CloseOutlined />
-              </Button>
-              <Button
-                className="h-8 p-x-xss"
-                data-testid="save-edit-email"
-                htmlType="submit"
-                size="small"
-                type="primary">
-                <CheckOutlined />
-              </Button>
+    () => (
+      <Space align="center" size={4}>
+        <Typography.Text className="text-grey-muted">{`${t(
+          'label.email'
+        )} :`}</Typography.Text>
+        {isEmailEdit ? (
+          <Form initialValues={{ email }} onFinish={onEmailSave}>
+            <Space align="baseline">
+              <Form.Item
+                className="m-b-0"
+                name="email"
+                rules={[
+                  {
+                    pattern: EMAIL_REG_EX,
+                    type: 'email',
+                    message: t('message.field-text-is-invalid', {
+                      fieldText: t('label.email'),
+                    }),
+                  },
+                ]}>
+                <Input
+                  className="w-48"
+                  data-testid="email-input"
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.email-lowercase'),
+                  })}
+                />
+              </Form.Item>
+              <Space size={4}>
+                <Button
+                  className="h-8 p-x-xss"
+                  data-testid="cancel-edit-email"
+                  size="small"
+                  type="primary"
+                  onClick={() => setIsEmailEdit(false)}>
+                  <CloseOutlined />
+                </Button>
+                <Button
+                  className="h-8 p-x-xss"
+                  data-testid="save-edit-email"
+                  htmlType="submit"
+                  size="small"
+                  type="primary">
+                  <CheckOutlined />
+                </Button>
+              </Space>
             </Space>
+          </Form>
+        ) : (
+          <Space align="center">
+            <Typography.Text className="font-medium" data-testid="email-value">
+              {email ?? NO_DATA_PLACEHOLDER}
+            </Typography.Text>
+            {hasEditPermission && (
+              <Tooltip
+                placement="right"
+                title={
+                  hasEditPermission
+                    ? t('label.edit-entity', {
+                        entity: t('label.email'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <Icon
+                  className="toolbar-button align-middle"
+                  component={EditIcon}
+                  data-testid="edit-email"
+                  style={{ fontSize: '16px' }}
+                  onClick={() => setIsEmailEdit(true)}
+                />
+              </Tooltip>
+            )}
           </Space>
-        </Form>
-      ) : (
-        <Space align="baseline">
-          <Typography.Text data-testid="email-value">
-            {email ?? t('label.no-entity', { entity: t('label.email') })}
-          </Typography.Text>
-          <Tooltip
-            placement="right"
-            title={
-              hasEditPermission
-                ? t('label.edit-entity', {
-                    entity: t('label.email'),
-                  })
-                : t('message.no-permission-for-action')
-            }>
-            <Icon
-              className="toolbar-button"
-              component={EditIcon}
-              data-testid="edit-email"
-              disabled={!hasEditPermission}
-              style={{ fontSize: '16px' }}
-              onClick={() => setIsEmailEdit(true)}
-            />
-          </Tooltip>
-        </Space>
-      ),
+        )}
+      </Space>
+    ),
     [email, isEmailEdit, hasEditPermission]
-  );
-
-  const teamActionButton = useMemo(
-    () =>
-      !isOrganization &&
-      !isUndefined(currentUser) &&
-      (isAlreadyJoinedTeam ? (
-        <Button
-          ghost
-          className="m-t-xs"
-          data-testid="leave-team-button"
-          type="primary"
-          onClick={() => deleteUserHandler(currentUser.id, true)}>
-          {t('label.leave-team')}
-        </Button>
-      ) : (
-        (Boolean(isJoinable) || hasAccess) && (
-          <Button
-            className="m-t-xs"
-            data-testid="join-teams"
-            type="primary"
-            onClick={joinTeam}>
-            {t('label.join-team')}
-          </Button>
-        )
-      )),
-
-    [currentUser, isAlreadyJoinedTeam, isJoinable, hasAccess]
   );
 
   const teamTypeElement = useMemo(() => {
@@ -318,7 +288,11 @@ const TeamsInfo = ({
 
     return (
       <Space size={4}>
-        {t('label.type') + ' - '}
+        <Divider type="vertical" />
+        <Typography.Text className="text-grey-muted">
+          {`${t('label.type')} :`}
+        </Typography.Text>
+
         {teamType ? (
           showTypeSelector ? (
             <TeamTypeSelect
@@ -332,7 +306,10 @@ const TeamsInfo = ({
             />
           ) : (
             <>
-              {teamType}
+              <Typography.Text className="font-medium">
+                {teamType}
+              </Typography.Text>
+
               {hasEditPermission && (
                 <Icon
                   className={classNames('vertical-middle m-l-xs', {
@@ -377,17 +354,18 @@ const TeamsInfo = ({
   }, [currentTeam]);
 
   return (
-    <Space className="p-x-sm" direction="vertical">
+    <Space size={4}>
       {teamHeadingRender}
+      <Divider type="vertical" />
       {emailRender}
+      {teamTypeElement}
+      <Divider type="vertical" />
       <OwnerLabel
         className="text-sm"
         hasPermission={hasAccess}
         owner={owner}
         onUpdate={updateOwner}
       />
-      {teamTypeElement}
-      {teamActionButton}
     </Space>
   );
 };

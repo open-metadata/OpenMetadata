@@ -10,33 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Form,
-  FormProps,
-  Input,
-  Modal,
-  Row,
-  Select,
-  Space,
-  Typography,
-} from 'antd';
+import { Form, FormProps, Input, Modal, Select, Space, Typography } from 'antd';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
 import {
   SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_LABEL,
   SUBSCRIPTION_WEBHOOK_OPTIONS,
 } from 'constants/Teams.constants';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 
-import { PlusOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { useForm } from 'antd/lib/form/Form';
 import TagsV1 from 'components/Tag/TagsV1/TagsV1.component';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
@@ -47,6 +30,7 @@ import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 
 const TeamsSubscription = ({
   subscription,
+  hasEditPermission,
   updateTeamSubscription,
 }: TeamsSubscriptionProps) => {
   const [form] = useForm();
@@ -57,14 +41,7 @@ const TeamsSubscription = ({
   const getWebhookIconByKey = useCallback((item: SUBSCRIPTION_WEBHOOK) => {
     const Icon = getWebhookIcon(item);
 
-    return (
-      <Icon
-        className="flex-shrink m-r-xss"
-        data-testid={`${item}-icon`}
-        height={24}
-        width={24}
-      />
-    );
+    return <Icon data-testid={`${item}-icon`} height={20} width={20} />;
   }, []);
 
   // Watchers
@@ -86,48 +63,33 @@ const TeamsSubscription = ({
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
-      <div className="d-flex items-center w-full w-max-95">
+      <Space align="start">
         {getWebhookIconByKey(key as SUBSCRIPTION_WEBHOOK)}
-        <Space className="w-full p-l-sm" direction="vertical" size={0}>
-          <Typography.Text className="text-sm">
-            {SUBSCRIPTION_WEBHOOK_LABEL[key as SUBSCRIPTION_WEBHOOK]}
-          </Typography.Text>
-          <Typography.Text
-            className="text-xs text-grey-muted"
-            ellipsis={{
-              tooltip: true,
-            }}>
-            {value.endpoint}
-          </Typography.Text>
-        </Space>
-      </div>
+        <Typography.Text className="text-xs text-grey-muted">
+          {value.endpoint}
+        </Typography.Text>
+      </Space>
     ),
     []
   );
 
-  const subscriptionRenderElement = useMemo(
-    () =>
-      isEmpty(subscription) ? (
-        <Space onClick={() => setEditSubscription(true)}>
-          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-        </Space>
-      ) : (
-        <Space className="w-full" direction="vertical" size={12}>
-          {Object.entries(subscription ?? {}).map((item) =>
-            cellItem(item[0], item[1])
-          )}
-        </Space>
-      ),
-    [subscription]
-  );
+  const subscriptionRenderElement = useMemo(() => {
+    const webhook = Object.entries(subscription ?? {})?.[0];
+
+    return isEmpty(subscription) && hasEditPermission ? (
+      <div onClick={() => setEditSubscription(true)}>
+        <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+      </div>
+    ) : (
+      cellItem(webhook[0], webhook[1])
+    );
+  }, [subscription]);
 
   const handleSave: FormProps['onFinish'] = async (values) => {
     setIsLoading(true);
 
     try {
-      await updateTeamSubscription(
-        values.subscriptions as SubscriptionWebhook[]
-      );
+      await updateTeamSubscription(values as SubscriptionWebhook);
     } catch {
       // parent block will throw error
     } finally {
@@ -138,37 +100,30 @@ const TeamsSubscription = ({
 
   useEffect(() => {
     if (subscription) {
+      const data = Object.entries(subscription)[0];
       form.setFieldsValue({
-        subscriptions: Object.entries(subscription).map((item) => ({
-          webhook: item[0],
-          endpoint: item[1].endpoint,
-        })),
+        webhook: data[0],
+        endpoint: data[1].endpoint,
       });
     }
   }, [subscription, editSubscription]);
 
   return (
-    <Card
-      className="ant-card-feed relative card-body-border-none card-padding-y-0"
-      data-testid="teams-subscription"
-      key="teams-subscription-card"
-      title={
-        <Space align="center">
-          <Typography.Text className="right-panel-label">
-            {t('label.subscription')}
-          </Typography.Text>
-          {!editSubscription && !isEmpty(subscription) && (
-            <EditIcon
-              className="cursor-pointer"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-roles"
-              {...ICON_DIMENSION}
-              onClick={() => setEditSubscription(true)}
-            />
-          )}
-        </Space>
-      }>
+    <Space align="start" data-testid="teams-subscription">
+      <Typography.Text className="right-panel-label font-normal">
+        {`${t('label.subscription')} :`}
+      </Typography.Text>
       {subscriptionRenderElement}
+
+      {!editSubscription && !isEmpty(subscription) && hasEditPermission && (
+        <EditIcon
+          className="cursor-pointer align-middle"
+          color={DE_ACTIVE_COLOR}
+          data-testid="edit-roles"
+          {...ICON_DIMENSION}
+          onClick={() => setEditSubscription(true)}
+        />
+      )}
 
       {editSubscription && (
         <Modal
@@ -191,90 +146,41 @@ const TeamsSubscription = ({
             data-testid="subscription-modal"
             form={form}
             id="subscription-form"
+            layout="vertical"
             onFinish={handleSave}>
-            <Form.List name={['subscriptions']}>
-              {(fields, { add, remove }) => (
-                <>
-                  {fields.map(({ key, name }) => {
-                    return (
-                      <div key={`subscriptions-${key}`}>
-                        {name > 0 && (
-                          <Divider
-                            style={{
-                              margin: 0,
-                              marginBottom: '16px',
-                            }}
-                          />
-                        )}
-                        <Row>
-                          <Col span={22}>
-                            <div className="flex-1">
-                              <Form.Item key={key} name={[name, 'webhook']}>
-                                <Select
-                                  options={subscriptionOptions}
-                                  placeholder={t('label.select-field', {
-                                    field: t('label.condition'),
-                                  })}
-                                />
-                              </Form.Item>
-                              <Form.Item
-                                key={key}
-                                name={[name, 'endpoint']}
-                                rules={[
-                                  {
-                                    required: true,
-                                    message: t('label.field-required-plural', {
-                                      field: t('label.endpoint'),
-                                    }),
-                                  },
-                                  {
-                                    type: 'url',
-                                    message: t(
-                                      'message.endpoint-should-be-valid'
-                                    ),
-                                  },
-                                ]}>
-                                <Input
-                                  placeholder={t('label.enter-entity-value', {
-                                    entity: t('label.endpoint'),
-                                  })}
-                                />
-                              </Form.Item>
-                            </div>
-                          </Col>
-                          <Col span={2}>
-                            <Icon
-                              className="m-l-sm"
-                              component={DeleteIcon}
-                              data-testid={`remove-filter-rule-${name}`}
-                              style={{ fontSize: '16px' }}
-                              onClick={() => remove(name)}
-                            />
-                          </Col>
-                        </Row>
-                      </div>
-                    );
-                  })}
-                  {webhooks?.length !== SUBSCRIPTION_WEBHOOK_OPTIONS.length && (
-                    <Form.Item>
-                      <Button
-                        block
-                        icon={<PlusOutlined />}
-                        type="dashed"
-                        onClick={() => add()}>
-                        {t('label.add-entity', {
-                          entity: t('label.webhook'),
-                        })}
-                      </Button>
-                    </Form.Item>
-                  )}
-                </>
-              )}
-            </Form.List>
+            <Form.Item label={t('label.webhook')} name="webhook">
+              <Select
+                options={subscriptionOptions}
+                placeholder={t('label.select-field', {
+                  field: t('label.condition'),
+                })}
+              />
+            </Form.Item>
+            <Form.Item
+              label={t('label.endpoint')}
+              name="endpoint"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required-plural', {
+                    field: t('label.endpoint'),
+                  }),
+                },
+                {
+                  type: 'url',
+                  message: t('message.endpoint-should-be-valid'),
+                },
+              ]}>
+              <Input
+                placeholder={t('label.enter-entity-value', {
+                  entity: t('label.endpoint'),
+                })}
+              />
+            </Form.Item>
           </Form>
         </Modal>
       )}
-    </Card>
+    </Space>
   );
 };
 
