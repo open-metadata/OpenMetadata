@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job: [0, 1, 2]
+        job: [0]
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)

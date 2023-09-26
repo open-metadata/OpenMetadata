@@ -65,7 +65,7 @@ import ReactFlow, {
   useNodesState,
 } from 'reactflow';
 import { getDataModelDetails } from 'rest/dataModelsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
+import { getLineageByFQN, updateLineageEdge } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
 import {
@@ -106,6 +106,7 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
   removeLineageHandler,
+  updateEdgesWithLineageDetails,
 } from 'utils/EntityLineageUtils';
 import {
   getEntityBreadcrumbs,
@@ -1482,6 +1483,56 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
     }
   };
 
+  const onEdgeDescriptionUpdate = useCallback(
+    async (updatedEdgeDetails: AddLineage) => {
+      try {
+        await updateLineageEdge(updatedEdgeDetails);
+        if (selectedEdgeInfo) {
+          const updatedSelectedEdgeInfo = {
+            ...selectedEdgeInfo,
+            data: {
+              ...selectedEdgeInfo.data,
+              edge: {
+                ...selectedEdgeInfo.data.edge,
+                lineageDetails: updatedEdgeDetails.edge.lineageDetails,
+              },
+            },
+          };
+
+          const updatedEdges = edges.map((edge) =>
+            edge.id === selectedEdgeInfo.id ? updatedSelectedEdgeInfo : edge
+          );
+
+          setEdges(updatedEdges);
+          setSelectedEdgeInfo(updatedSelectedEdgeInfo);
+
+          setUpdatedLineageData((pre) => {
+            if (!pre) {
+              return;
+            }
+
+            const newData = {
+              ...pre,
+              downstreamEdges: updateEdgesWithLineageDetails(
+                pre.downstreamEdges ?? [],
+                updatedEdgeDetails
+              ),
+              upstreamEdges: updateEdgesWithLineageDetails(
+                pre.upstreamEdges ?? [],
+                updatedEdgeDetails
+              ),
+            };
+
+            return newData;
+          });
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [edges, selectedEdgeInfo, updatedLineageData, setUpdatedLineageData]
+  );
+
   /**
    * Handle updated lineage nodes
    * Change newly added node label based on entity:EntityReference
@@ -1681,12 +1732,14 @@ const EntityLineageComponent: FunctionComponent<EntityLineageProp> = ({
           (selectedEdgeInfo ? (
             <EdgeInfoDrawer
               edge={selectedEdgeInfo}
+              hasEditAccess={hasEditAccess}
               nodes={nodes}
               visible={isDrawerOpen}
               onClose={() => {
                 setIsDrawerOpen(false);
                 setSelectedEdgeInfo(undefined);
               }}
+              onEdgeDescriptionUpdate={onEdgeDescriptionUpdate}
             />
           ) : (
             <EntityInfoDrawer

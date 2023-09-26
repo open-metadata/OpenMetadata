@@ -110,7 +110,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   @Override
-  protected void upgrade() {
+  public void upgrade() {
     // This should be deleted once 0.13 is deprecated
     // For all the existing bots, add ingestion bot role
     ResultList<Bot> bots =

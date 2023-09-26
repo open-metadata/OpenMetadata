@@ -94,42 +94,43 @@ class UsageSource(QueryParserSource, ABC):
                 f"{(self.start + timedelta(days=days + 1)).date()}"
             )
             try:
-                with self.engine.connect() as conn:
-                    rows = conn.execute(
-                        self.get_sql_statement(
-                            start_time=self.start + timedelta(days=days),
-                            end_time=self.start + timedelta(days=days + 1),
+                for engine in self.get_engine():
+                    with engine.connect() as conn:
+                        rows = conn.execute(
+                            self.get_sql_statement(
+                                start_time=self.start + timedelta(days=days),
+                                end_time=self.start + timedelta(days=days + 1),
+                            )
                         )
-                    )
-                    queries = []
-                    for row in rows:
-                        row = dict(row)
-                        try:
-                            query_type = row.get("query_type")
-                            queries.append(
-                                TableQuery(
-                                    query=self.format_query(row["query_text"]),
-                                    query_type=query_type,
-                                    exclude_usage=self.check_life_cycle_query(
-                                        query_type=query_type
-                                    ),
-                                    userName=row["user_name"],
-                                    startTime=str(row["start_time"]),
-                                    endTime=str(row["end_time"]),
-                                    analysisDate=row["start_time"],
-                                    aborted=self.get_aborted_status(row),
-                                    databaseName=self.get_database_name(row),
-                                    duration=row.get("duration"),
-                                    serviceName=self.config.serviceName,
-                                    databaseSchema=self.get_schema_name(row),
+                        queries = []
+                        for row in rows:
+                            row = dict(row)
+                            try:
+                                query_type = row.get("query_type")
+                                queries.append(
+                                    TableQuery(
+                                        query=self.format_query(row["query_text"]),
+                                        query_type=query_type,
+                                        exclude_usage=self.check_life_cycle_query(
+                                            query_type=query_type
+                                        ),
+                                        userName=row["user_name"],
+                                        startTime=str(row["start_time"]),
+                                        endTime=str(row["end_time"]),
+                                        analysisDate=row["start_time"],
+                                        aborted=self.get_aborted_status(row),
+                                        databaseName=self.get_database_name(row),
+                                        duration=row.get("duration"),
+                                        serviceName=self.config.serviceName,
+                                        databaseSchema=self.get_schema_name(row),
+                                    )
                                 )
-                            )
-                        except Exception as exc:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Unexpected exception processing row [{row}]: {exc}"
-                            )
-                yield TableQueries(queries=queries)
+                            except Exception as exc:
+                                logger.debug(traceback.format_exc())
+                                logger.warning(
+                                    f"Unexpected exception processing row [{row}]: {exc}"
+                                )
+                    yield TableQueries(queries=queries)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")
