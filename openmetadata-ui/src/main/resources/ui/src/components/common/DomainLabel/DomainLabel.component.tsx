@@ -101,7 +101,7 @@ export const DomainLabel = ({
         ) : (
           <Typography.Text
             className="font-medium text-xs"
-            data-testid="domain-link">
+            data-testid="no-domain-text">
             {t('label.no-entity', { entity: t('label.domain') })}
           </Typography.Text>
         )}
