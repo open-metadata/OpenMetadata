@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -33,7 +32,7 @@ import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import StatusBadge from 'components/common/StatusBadge/StatusBadge.component';
 import Loader from 'components/Loader/Loader';
-import { DE_ACTIVE_COLOR, PRIMERY_COLOR } from 'constants/constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { TABLE_CONSTANTS } from 'constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -54,7 +53,7 @@ import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { buildTree, StatusClass, StatusFilters } from 'utils/GlossaryUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+import { FilterIcon, getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
   DraggableBodyRowProps,
@@ -131,12 +130,7 @@ const GlossaryTermTab = ({
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            data-testid="status-filter"
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: FilterIcon,
         filters: StatusFilters,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
