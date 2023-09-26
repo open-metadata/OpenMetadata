@@ -1595,22 +1595,27 @@ public interface CollectionDAO {
 
     @Override
     default int listCount(ListFilter filter) {
-      String serviceType = filter.getQueryParam("serviceType");
-      String service = filter.getQueryParam("service");
       String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-      String pipelineTypeCondition;
+
+      if (filter.getQueryParam("pipelineType") != null) {
+        String pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+        condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("service") != null) {
+        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
+        condition += serviceCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
+      String serviceType = filter.getQueryParam("serviceType");
       if (!CommonUtil.nullOrEmpty(serviceType)) {
-        if (filter.getQueryParam("pipelineType") != null) {
-          pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
-          condition += pipelineTypeCondition;
-        }
+
         condition =
             String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service",
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation",
                 condition);
         bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("service", service + ".%");
         bindMap.put("serviceType", serviceType);
         return listIngestionPipelineCount(condition, bindMap);
       }
@@ -1619,26 +1624,28 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
-      String serviceType = filter.getQueryParam("serviceType");
-      String service = filter.getQueryParam("service");
       String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-      String pipelineTypeCondition;
+
+      if (filter.getQueryParam("pipelineType") != null) {
+        String pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+        condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("service") != null) {
+        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
+        condition += serviceCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
+      String serviceType = filter.getQueryParam("serviceType");
       if (!CommonUtil.nullOrEmpty(serviceType)) {
-        if (filter.getQueryParam("pipelineType") != null) {
-          pipelineTypeCondition = filter.getPipelineTypeCondition(null);
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName > :after and %s order by ingestion_pipeline_entity.fullyQualifiedName ASC LIMIT :limit",
-                  condition, pipelineTypeCondition);
-        } else {
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName > :after order by ingestion_pipeline_entity.fullyQualifiedName ASC LIMIT :limit",
-                  condition);
-        }
+
+        condition =
+            String.format(
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name > :after order by ingestion_pipeline_entity.name ASC LIMIT :limit",
+                condition);
+
         bindMap.put("serviceType", serviceType);
-        bindMap.put("service", service + ".%");
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("after", after);
         bindMap.put("limit", limit);
@@ -1649,26 +1656,27 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
-      String service = filter.getQueryParam("service");
-      String serviceType = filter.getQueryParam("serviceType");
       String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-      String pipelineTypeCondition;
+
+      if (filter.getQueryParam("pipelineType") != null) {
+        String pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+        condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("service") != null) {
+        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
+        condition += serviceCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
+      String serviceType = filter.getQueryParam("serviceType");
       if (!CommonUtil.nullOrEmpty(serviceType)) {
-        if (filter.getQueryParam("pipelineType") != null) {
-          pipelineTypeCondition = filter.getPipelineTypeCondition(null);
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName < :before and %s order by ingestion_pipeline_entity.fullyQualifiedName DESC LIMIT :limit",
-                  condition, pipelineTypeCondition);
-        } else {
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName < :before order by ingestion_pipeline_entity.fullyQualifiedName DESC LIMIT :limit",
-                  condition);
-        }
+        condition =
+            String.format(
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name < :before order by ingestion_pipeline_entity.name DESC LIMIT :limit",
+                condition);
+
         bindMap.put("serviceType", serviceType);
-        bindMap.put("service", service + ".%");
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("before", before);
         bindMap.put("limit", limit);
@@ -1682,7 +1690,7 @@ public interface CollectionDAO {
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery(
-        "SELECT json FROM (SELECT ingestion_pipeline_entity.fullyQualifiedName, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
+        "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
     List<String> listBeforeIngestionPipelineByserviceType(
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 

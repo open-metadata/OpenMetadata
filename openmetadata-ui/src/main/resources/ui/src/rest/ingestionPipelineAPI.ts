@@ -100,7 +100,7 @@ export const getIngestionPipelines = async (data: {
     service: serviceFilter,
     testSuite,
     pipelineType: pipelineType?.length ? pipelineType.join(',') : undefined,
-    type: serviceType,
+    serviceType,
     limit,
   });
 
