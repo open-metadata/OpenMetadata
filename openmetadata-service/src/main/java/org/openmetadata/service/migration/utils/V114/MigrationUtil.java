@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
@@ -17,6 +18,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.util.EntityUtil;
 
+@Slf4j
 public class MigrationUtil {
   private MigrationUtil() {
     /* Cannot create object  util class*/
@@ -54,56 +56,61 @@ public class MigrationUtil {
     // TestSuite
     Map<String, ArrayList<TestCase>> testCasesGroupByTable = groupTestCasesByTable(collectionDAO);
     for (String tableFQN : testCasesGroupByTable.keySet()) {
-      List<TestCase> testCases = testCasesGroupByTable.get(tableFQN);
-      String executableTestSuiteFQN = tableFQN + ".testSuite";
-      TestSuite executableTestSuite =
-          testSuiteRepository.getDao().findEntityByName(executableTestSuiteFQN, "fqnHash", Include.ALL);
-      for (TestCase testCase : testCases) {
-        // we are setting mustHaveRelationship to "false" to not throw any error.
-        List<CollectionDAO.EntityRelationshipRecord> existingRelations =
-            testSuiteRepository.findFromRecords(testCase.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE);
-        boolean relationWithExecutableTestSuiteExists = false;
-        if (existingRelations != null) {
-          for (CollectionDAO.EntityRelationshipRecord existingTestSuiteRel : existingRelations) {
-            try {
-              TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(existingTestSuiteRel.getId());
-              if (existingTestSuite.getExecutable()
-                  && existingTestSuite.getFullyQualifiedName().equals(executableTestSuiteFQN)) {
-                // There is a native test suite associated with this testCase.
-                relationWithExecutableTestSuiteExists = true;
+      try {
+        List<TestCase> testCases = testCasesGroupByTable.get(tableFQN);
+        String executableTestSuiteFQN = tableFQN + ".testSuite";
+        TestSuite executableTestSuite =
+            testSuiteRepository.getDao().findEntityByName(executableTestSuiteFQN, "fqnHash", Include.ALL);
+        for (TestCase testCase : testCases) {
+          // we are setting mustHaveRelationship to "false" to not throw any error.
+          List<CollectionDAO.EntityRelationshipRecord> existingRelations =
+              testSuiteRepository.findFromRecords(testCase.getId(), TEST_CASE, Relationship.CONTAINS, TEST_SUITE);
+          boolean relationWithExecutableTestSuiteExists = false;
+          if (existingRelations != null) {
+            for (CollectionDAO.EntityRelationshipRecord existingTestSuiteRel : existingRelations) {
+              try {
+                TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(existingTestSuiteRel.getId());
+                if (existingTestSuite.getExecutable()
+                    && existingTestSuite.getFullyQualifiedName().equals(executableTestSuiteFQN)) {
+                  // There is a native test suite associated with this testCase.
+                  relationWithExecutableTestSuiteExists = true;
+                }
+              } catch (EntityNotFoundException ex) {
+                // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
+                // delete the relation
+                testSuiteRepository.deleteRelationship(
+                    existingTestSuiteRel.getId(), TEST_SUITE, testCase.getId(), TEST_CASE, Relationship.CONTAINS);
               }
-            } catch (EntityNotFoundException ex) {
-              // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
-              // delete the relation
-              testSuiteRepository.deleteRelationship(
-                  existingTestSuiteRel.getId(), TEST_SUITE, testCase.getId(), TEST_CASE, Relationship.CONTAINS);
             }
           }
+          // if we can't find any executable testSuite relationship add one
+          if (!relationWithExecutableTestSuiteExists) {
+            testSuiteRepository.addRelationship(
+                executableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+          }
         }
-        // if we can't find any executable testSuite relationship add one
-        if (!relationWithExecutableTestSuiteExists) {
-          testSuiteRepository.addRelationship(
-              executableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
-        }
-      }
 
-      // check from table -> nativeTestSuite there should only one relation
-      List<CollectionDAO.EntityRelationshipRecord> testSuiteRels =
-          testSuiteRepository.findToRecords(
-              executableTestSuite.getExecutableEntityReference().getId(), TABLE, Relationship.CONTAINS, TEST_SUITE);
-      for (CollectionDAO.EntityRelationshipRecord testSuiteRel : testSuiteRels) {
-        try {
-          TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
-        } catch (EntityNotFoundException ex) {
-          // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
-          // delete the relation
-          testSuiteRepository.deleteRelationship(
-              executableTestSuite.getExecutableEntityReference().getId(),
-              TABLE,
-              testSuiteRel.getId(),
-              TEST_SUITE,
-              Relationship.CONTAINS);
+        // check from table -> nativeTestSuite there should only one relation
+        List<CollectionDAO.EntityRelationshipRecord> testSuiteRels =
+            testSuiteRepository.findToRecords(
+                executableTestSuite.getExecutableEntityReference().getId(), TABLE, Relationship.CONTAINS, TEST_SUITE);
+        for (CollectionDAO.EntityRelationshipRecord testSuiteRel : testSuiteRels) {
+          try {
+            TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
+          } catch (EntityNotFoundException ex) {
+            // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
+            // delete the relation
+            testSuiteRepository.deleteRelationship(
+                executableTestSuite.getExecutableEntityReference().getId(),
+                TABLE,
+                testSuiteRel.getId(),
+                TEST_SUITE,
+                Relationship.CONTAINS);
+          }
         }
+      } catch (Exception exc) {
+        LOG.error(
+            String.format("Error trying to migrate tests from Table [%s] due to [%s]", tableFQN, exc.getMessage()));
       }
     }
   }

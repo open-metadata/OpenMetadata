@@ -344,7 +344,7 @@ public final class Entity {
   public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
     EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityRepositoryNotFound(entityType));
     }
     return entityRepository;
   }
