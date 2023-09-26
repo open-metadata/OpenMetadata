@@ -5,9 +5,11 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.StoredProcedureResource;
@@ -95,6 +97,11 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   @Override
   public StoredProcedureUpdater getUpdater(StoredProcedure original, StoredProcedure updated, Operation operation) {
     return new StoredProcedureUpdater(original, updated, operation);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(StoredProcedure entity, String fields) {
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
   }
 
   public void setService(StoredProcedure storedProcedure, EntityReference service) {

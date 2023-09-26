@@ -94,7 +94,7 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
+        ResourceEntity.DASHBOARD_DATA_MODEL,
         dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);

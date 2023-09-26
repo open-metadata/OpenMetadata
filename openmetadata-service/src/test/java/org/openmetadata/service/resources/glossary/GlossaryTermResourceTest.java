@@ -369,10 +369,21 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertApprovalTask(g2t4, TaskStatus.Closed); // The Request Approval task is closed
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Glossary g has owner dataConsumer
+    Glossary g = createGlossary(getEntityName(test), null, DATA_CONSUMER.getEntityReference());
+    // dataConsumer as owner of g can create glossary term t1 under it
+    GlossaryTerm t1 =
+        createTerm(g, null, "t1", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_CONSUMER.getName()));
+    // dataSteward who is owner of term t1 can create term t11 under it
+    createTerm(g, t1, "t11", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_STEWARD.getName()));
+  }
+
   private Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus) throws HttpResponseException {
     String entityLink = new EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName()).getLinkString();
     ThreadList threads = taskTest.listTasks(entityLink, null, null, expectedTaskStatus, 100, ADMIN_AUTH_HEADERS);
-    assertEquals(threads.getData().size(), 1);
+    assertEquals(1, threads.getData().size());
     Thread taskThread = threads.getData().get(0);
     TaskDetails taskDetails = taskThread.getTask();
     assertNotNull(taskDetails);
@@ -536,13 +547,25 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   public GlossaryTerm createTerm(
       Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers) throws IOException {
+    return createTerm(glossary, parent, termName, reviewers, null, ADMIN_AUTH_HEADERS);
+  }
+
+  public GlossaryTerm createTerm(
+      Glossary glossary,
+      GlossaryTerm parent,
+      String termName,
+      List<EntityReference> reviewers,
+      EntityReference owner,
+      Map<String, String> createdBy)
+      throws IOException {
     CreateGlossaryTerm createGlossaryTerm =
         createRequest(termName, "", "", null)
             .withGlossary(getFqn(glossary))
             .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
             .withParent(getFqn(parent))
+            .withOwner(owner)
             .withReviewers(getFqns(reviewers));
-    return createAndCheckEntity(createGlossaryTerm, ADMIN_AUTH_HEADERS);
+    return createAndCheckEntity(createGlossaryTerm, createdBy);
   }
 
   public void assertContains(List<GlossaryTerm> expectedTerms, List<GlossaryTerm> actualTerms)

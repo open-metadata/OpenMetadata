@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -94,7 +93,7 @@ import org.openmetadata.service.util.ResultList;
 public class TagResource extends EntityResource<Tag, TagRepository> {
   private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  static final String FIELDS = "parent,children,usageCount";
+  static final String FIELDS = "children,usageCount";
 
   static class TagList extends ResultList<Tag> {
     /* Required for serde */
@@ -168,9 +167,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
-          InstantiationException, IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
     // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
     migrateTags();

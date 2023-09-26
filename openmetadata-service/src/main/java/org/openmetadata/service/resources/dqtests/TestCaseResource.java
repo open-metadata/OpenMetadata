@@ -239,7 +239,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // TODO fix hardcoded entity type
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
@@ -277,7 +276,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // TODO fix hardcoded entity type
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);

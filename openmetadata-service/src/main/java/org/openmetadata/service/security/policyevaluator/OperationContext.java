@@ -60,10 +60,6 @@ public class OperationContext {
     return getOperations("View", exclude);
   }
 
-  public static List<MetadataOperation> getEditOperations(MetadataOperation... exclude) {
-    return getOperations("Edit", exclude);
-  }
-
   private static List<MetadataOperation> getOperations(String startsWith, MetadataOperation... exclude) {
     List<MetadataOperation> list = CommonUtil.listOf(MetadataOperation.values());
     return getOperations(list, startsWith, exclude);
