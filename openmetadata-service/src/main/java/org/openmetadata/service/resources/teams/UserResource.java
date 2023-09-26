@@ -160,13 +160,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain,persona";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     super.addHref(uriInfo, user);
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
+    Entity.withHref(uriInfo, user.getPersonas());
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
@@ -1218,7 +1219,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withIsBot(create.getIsBot())
         .withIsAdmin(create.getIsAdmin())
         .withProfile(create.getProfile())
-        .withPersona(create.getPersona())
+        .withPersonas(create.getPersonas())
+        .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())

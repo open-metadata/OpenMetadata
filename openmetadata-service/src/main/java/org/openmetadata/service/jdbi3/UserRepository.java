@@ -71,8 +71,10 @@ public class UserRepository extends EntityRepository<User> {
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
-  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified,persona";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified,persona";
+  static final String USER_PATCH_FIELDS =
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+  static final String USER_UPDATE_FIELDS =
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   private final EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
@@ -159,7 +161,8 @@ public class UserRepository extends EntityRepository<User> {
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
-    assignPersona(user, user.getPersona());
+    assignDefaultPersona(user, user.getDefaultPersona());
+    assignPersonas(user, user.getPersonas());
     user.setInheritedRoles(getInheritedRoles(user));
   }
 
@@ -188,7 +191,8 @@ public class UserRepository extends EntityRepository<User> {
     user.setOwns(fields.contains("owns") ? getOwns(user) : user.getOwns());
     user.setFollows(fields.contains("follows") ? getFollows(user) : user.getFollows());
     user.setRoles(fields.contains(ROLES_FIELD) ? getRoles(user) : user.getRoles());
-    user.setPersona(fields.contains("persona") ? getPersona(user) : user.getPersona());
+    user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
+    user.setDefaultPersona(fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
     return user.withInheritedRoles(fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
   }
 
@@ -328,8 +332,12 @@ public class UserRepository extends EntityRepository<User> {
     return teams;
   }
 
-  public EntityReference getPersona(User user) {
-    return getFromEntityRef(user.getId(), Relationship.HAS, Entity.PERSONA, false);
+  public List<EntityReference> getPersonas(User user) {
+    return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+  }
+
+  public EntityReference getDefaultPersona(User user) {
+    return getToEntityRef(user.getId(), Relationship.DEFAULTS_TO, Entity.PERSONA, false);
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -354,9 +362,15 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
-  private void assignPersona(User user, EntityReference persona) {
+  private void assignPersonas(User user, List<EntityReference> personas) {
+    for (EntityReference persona : listOrEmpty(personas)) {
+      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.APPLIED_TO);
+    }
+  }
+
+  private void assignDefaultPersona(User user, EntityReference persona) {
     if (persona != null) {
-      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.HAS);
+      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO);
     }
   }
 
@@ -476,7 +490,8 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate() {
       updateRoles(original, updated);
       updateTeams(original, updated);
-      updatePersona(original, updated);
+      updatePersonas(original, updated);
+      recordChange("defaultPersona", original.getDefaultPersona(), updated.getDefaultPersona(), true);
       recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
@@ -518,10 +533,20 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
-    private void updatePersona(User original, User updated) {
-      deleteTo(original.getId(), USER, Relationship.HAS, Entity.PERSONA);
-      assignPersona(updated, updated.getPersona());
-      recordChange("persona", original.getPersona(), updated.getPersona(), true);
+    private void updatePersonas(User original, User updated) {
+      deleteTo(original.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+      assignPersonas(updated, updated.getPersonas());
+
+      List<EntityReference> origPersonas = listOrEmpty(original.getPersonas());
+      List<EntityReference> updatedPersonas = listOrEmpty(updated.getPersonas());
+
+      origPersonas.sort(EntityUtil.compareEntityReference);
+      updatedPersonas.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+
+      recordListChange("personas", origPersonas, updatedPersonas, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
     private void updateAuthenticationMechanism(User original, User updated) {
