@@ -24,10 +24,8 @@ import static org.openmetadata.service.Entity.SEARCH_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -152,7 +150,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     SearchIndexSampleData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(searchIndex.getId().toString(), "searchIndex.sampleData"),
+            daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
             SearchIndexSampleData.class);
     searchIndex.setSampleData(sampleData);
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
@@ -173,11 +171,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     daoCollection
         .entityExtensionDAO()
-        .insert(
-            searchIndexId.toString(),
-            "searchIndex.sampleData",
-            "searchIndexSampleData",
-            JsonUtils.pojoToJson(sampleData));
+        .insert(searchIndexId, "searchIndex.sampleData", "searchIndexSampleData", JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
     return searchIndex.withSampleData(sampleData);
   }
@@ -369,17 +363,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       }
     }
     return childrenSchemaField;
-  }
-
-  public static Set<TagLabel> getAllFieldTags(SearchIndexField field) {
-    Set<TagLabel> tags = new HashSet<>();
-    if (!listOrEmpty(field.getTags()).isEmpty()) {
-      tags.addAll(field.getTags());
-    }
-    for (SearchIndexField c : listOrEmpty(field.getChildren())) {
-      tags.addAll(getAllFieldTags(c));
-    }
-    return tags;
   }
 
   public class SearchIndexUpdater extends EntityUpdater {

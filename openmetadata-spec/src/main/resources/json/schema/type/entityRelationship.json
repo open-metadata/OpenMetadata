@@ -31,7 +31,8 @@
         "reviews",
         "reactedTo",
         "voted",
-        "expert"
+        "expert",
+        "editedBy"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -53,7 +54,8 @@
         { "name": "REVIEWS" },
         { "name": "REACTED_TO" },
         { "name": "VOTED" },
-        { "name": "EXPERT" }
+        { "name": "EXPERT" },
+        { "name": "EDITED_BY" }
       ]
     }
   },

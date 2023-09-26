@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
@@ -85,9 +84,7 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
-          InstantiationException, IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // instantiate an elasticsearch client
     if (config.getElasticSearchConfiguration() != null) {
       searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), collectionDao);

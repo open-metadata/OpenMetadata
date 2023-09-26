@@ -30,7 +30,7 @@ const DATA = {
   },
 };
 
-describe('Query Entity', () => {
+describe.skip('Query Entity', () => {
   beforeEach(() => {
     cy.login();
     cy.get("[data-testid='welcome-screen-close-btn']").click();

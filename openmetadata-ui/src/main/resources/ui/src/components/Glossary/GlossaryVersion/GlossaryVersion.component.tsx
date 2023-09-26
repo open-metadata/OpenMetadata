@@ -40,8 +40,11 @@ interface GlossaryVersionProps {
 
 const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   const history = useHistory();
-  const { glossaryName, version } =
-    useParams<{ glossaryName: string; version: string }>();
+  const {
+    fqn: glossaryName,
+    version,
+    tab = 'overview',
+  } = useParams<{ fqn: string; version: string; tab: string }>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
@@ -74,7 +77,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   const onVersionChange = (selectedVersion: string) => {
     const path = isGlossary
       ? getGlossaryVersionsPath(glossaryName, selectedVersion)
-      : getGlossaryTermsVersionsPath(glossaryName, selectedVersion);
+      : getGlossaryTermsVersionsPath(glossaryName, selectedVersion, tab);
     history.push(path);
   };
 
@@ -90,7 +93,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   return (
     <PageLayoutV1 pageTitle="Glossary version">
-      <div className="version-data page-container">
+      <div className="version-data">
         {/* TODO: Need to implement version component for Glossary */}
         <GlossaryV1
           isVersionsView

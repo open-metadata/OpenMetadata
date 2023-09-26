@@ -27,6 +27,8 @@ const PIPELINE_NAME = `cypress_version_pipeline-${uuid()}`;
 const ML_MODEL_NAME = `cypress_version_ml_model-${uuid()}`;
 const CONTAINER_NAME = `cypress_version_container-${uuid()}`;
 const SEARCH_INDEX_NAME = `cypress_version_search_index-${uuid()}`;
+const STORED_PROCEDURE_NAME = `cypress_version_stored_procedure-${uuid()}`;
+const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
 
 export const DOMAIN_CREATION_DETAILS = {
   name: DOMAIN_NAME,
@@ -623,6 +625,119 @@ const SEARCH_INDEX_PATCH_PAYLOAD = [
   },
 ];
 
+const STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST = {
+  name: STORED_PROCEDURE_NAME,
+  databaseSchema: 'sample_data.ecommerce_db.shopify',
+  storedProcedureCode: {
+    langauge: 'SQL',
+    code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
+  },
+  tags: [],
+};
+
+const STORED_PROCEDURE_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/description',
+    value: `Description for ${STORED_PROCEDURE_NAME}`,
+  },
+];
+
+export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
+  name: DATA_MODEL_NAME,
+  service: 'sample_looker',
+  dataModelType: 'LookMlExplore',
+  tags: [],
+  columns: [
+    {
+      name: 'column_1',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      fullyQualifiedName:
+        'sample_looker.model.cypress_version_test_data_model.column_1',
+      tags: [],
+      ordinalPosition: 1,
+    },
+    {
+      name: 'column_2',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description: 'Description for column column_2',
+      fullyQualifiedName:
+        'sample_looker.model.cypress_version_test_data_model.column_2',
+      tags: [],
+      ordinalPosition: 2,
+    },
+    {
+      name: 'column_3',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      fullyQualifiedName:
+        'sample_looker.model.cypress_version_test_data_model.column_3',
+      tags: [],
+      ordinalPosition: 3,
+    },
+  ],
+};
+
+export const DATA_MODEL_PATCH_PAYLOAD = [
+  {
+    op: 'add',
+    path: '/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.SpecialCategory',
+    },
+  },
+  {
+    op: 'add',
+    path: '/columns/2/description',
+    value: 'Description for column column_3',
+  },
+  {
+    op: 'remove',
+    path: '/columns/1/description',
+  },
+  {
+    op: 'add',
+    path: '/columns/0/tags/0',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PersonalData.Personal',
+    },
+  },
+  {
+    op: 'add',
+    path: '/columns/0/tags/1',
+    value: {
+      labelType: 'Manual',
+      state: 'Confirmed',
+      source: 'Classification',
+      tagFQN: 'PII.Sensitive',
+    },
+  },
+  {
+    op: 'add',
+    path: '/description',
+    value: `Description for ${DATA_MODEL_NAME}`,
+  },
+];
+
 export const ENTITY_DETAILS_FOR_VERSION_TEST = {
   Table: {
     name: TABLE_NAME,
@@ -712,93 +827,20 @@ export const ENTITY_DETAILS_FOR_VERSION_TEST = {
     entityChildRemovedDescription: 'Description for field displayName',
     entityChildAddedDescription: 'Description for field description',
   },
+  'Stored Procedure': {
+    name: STORED_PROCEDURE_NAME,
+    serviceName: 'sample_data',
+    entity: 'storedProcedures',
+    entityCreationDetails: STORED_PROCEDURE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: STORED_PROCEDURE_PATCH_PAYLOAD,
+    isChildrenExist: false,
+    childSelector: 'data-row-key',
+    entityAddedDescription: `Description for ${STORED_PROCEDURE_NAME}`,
+    updatedTagEntityChildName: '',
+    entityChildRemovedDescription: '',
+    entityChildAddedDescription: '',
+  },
 };
-
-export const DATA_MODEL_NAME = `cypress_version_data_model_${uuid()}`;
-
-export const DATA_MODEL_DETAILS_FOR_VERSION_TEST = {
-  name: DATA_MODEL_NAME,
-  service: 'sample_looker',
-  dataModelType: 'LookMlExplore',
-  columns: [
-    {
-      name: 'column_1',
-      dataType: 'VARCHAR',
-      dataLength: 256,
-      dataTypeDisplay: 'varchar',
-      fullyQualifiedName:
-        'sample_looker.model.cypress_version_test_data_model.column_1',
-      tags: [],
-      ordinalPosition: 1,
-    },
-    {
-      name: 'column_2',
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
-      description: 'Description for column column_2',
-      fullyQualifiedName:
-        'sample_looker.model.cypress_version_test_data_model.column_2',
-      tags: [],
-      ordinalPosition: 2,
-    },
-    {
-      name: 'column_3',
-      dataType: 'NUMERIC',
-      dataTypeDisplay: 'numeric',
-      fullyQualifiedName:
-        'sample_looker.model.cypress_version_test_data_model.column_3',
-      tags: [],
-      ordinalPosition: 3,
-    },
-  ],
-};
-
-export const DATA_MODEL_PATCH_PAYLOAD = [
-  {
-    op: 'add',
-    path: '/tags/0',
-    value: {
-      labelType: 'Manual',
-      state: 'Confirmed',
-      source: 'Classification',
-      tagFQN: 'PersonalData.SpecialCategory',
-    },
-  },
-  {
-    op: 'add',
-    path: '/columns/2/description',
-    value: 'Description for column column_3',
-  },
-  {
-    op: 'remove',
-    path: '/columns/1/description',
-  },
-  {
-    op: 'add',
-    path: '/columns/0/tags/0',
-    value: {
-      labelType: 'Manual',
-      state: 'Confirmed',
-      source: 'Classification',
-      tagFQN: 'PersonalData.Personal',
-    },
-  },
-  {
-    op: 'add',
-    path: '/columns/0/tags/1',
-    value: {
-      labelType: 'Manual',
-      state: 'Confirmed',
-      source: 'Classification',
-      tagFQN: 'PII.Sensitive',
-    },
-  },
-  {
-    op: 'add',
-    path: '/description',
-    value: `Description for ${DATA_MODEL_NAME}`,
-  },
-];
 
 export const DATA_MODEL_DETAILS = {
   name: DATA_MODEL_NAME,

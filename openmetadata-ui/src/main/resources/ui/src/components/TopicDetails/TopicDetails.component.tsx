@@ -48,7 +48,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
@@ -67,8 +66,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ topicFQN: string; tab: EntityTabs }>();
+  const { fqn: topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -113,7 +112,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     await onTopicUpdate(updatedData, 'displayName');
   };
   const onExtensionUpdate = async (updatedData: Topic) => {
-    await onTopicUpdate(updatedData, 'extension');
+    await onTopicUpdate(
+      { ...topicDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -430,7 +432,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TOPIC}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={

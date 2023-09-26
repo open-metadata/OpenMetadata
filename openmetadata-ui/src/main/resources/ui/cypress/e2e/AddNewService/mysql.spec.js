@@ -44,12 +44,19 @@ describe('MySQL Ingestion', () => {
         .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
+    const viewIngestionInput = () => {
+      cy.get('.ant-select-selection-item-content')
+        .scrollIntoView()
+        .contains(`${Cypress.env('mysqlDatabaseSchema')}`);
+    };
+
     testServiceCreationAndIngestion({
       serviceType,
       connectionInput: mySqlConnectionInput,
       addIngestionInput,
       serviceName,
       serviceCategory: SERVICE_TYPE.Database,
+      viewIngestionInput,
     });
   });
 

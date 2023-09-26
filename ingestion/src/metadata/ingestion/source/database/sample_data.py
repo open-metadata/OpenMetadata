@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
+from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -95,6 +96,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.tests.basic import TestCaseResult, TestResultValue
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
@@ -102,6 +104,7 @@ from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.profile_data import OMetaTableProfileSampleData
@@ -514,6 +517,14 @@ class SampleDataSource(
             )
         )
 
+        self.data_insight_data = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/data_insights/data_insights.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
     @classmethod
     def create(cls, config_dict, metadata_config: OpenMetadataConnection):
         """Create class instance"""
@@ -550,6 +561,7 @@ class SampleDataSource(
         yield from self.ingest_test_case()
         yield from self.ingest_test_case_results()
         yield from self.ingest_logical_test_suite()
+        yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
@@ -1372,6 +1384,28 @@ class SampleDataSource(
                         test_case_name=case.fullyQualifiedName.__root__,
                     )
                     yield Either(right=test_case_result_req)
+
+    def ingest_data_insights(self) -> Iterable[Either[OMetaDataInsightSample]]:
+        """Iterate over all the data insights and ingest them"""
+        data: Dict[str, List] = self.data_insight_data["reports"]
+
+        for _, report_data in data.items():
+            i = 0
+            for report_datum in report_data:
+                record = OMetaDataInsightSample(
+                    record=ReportData(
+                        id=report_datum["id"],
+                        reportDataType=report_datum["reportDataType"],
+                        timestamp=Timestamp(
+                            __root__=int(
+                                (datetime.now() - timedelta(days=i)).timestamp() * 1000
+                            )
+                        ),
+                        data=report_datum["data"],
+                    )
+                )
+                i += 1
+                yield Either(left=None, right=record)
 
     def ingest_life_cycle(self) -> Iterable[Either[OMetaLifeCycleData]]:
         """Iterate over all the life cycle data and ingest them"""

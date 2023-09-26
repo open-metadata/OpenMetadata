@@ -19,6 +19,7 @@ import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
@@ -97,6 +98,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       searchClient.softDeleteOrRestoreEntityFromSearch(
           JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Database entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   public Database setFields(Database database, Fields fields) {

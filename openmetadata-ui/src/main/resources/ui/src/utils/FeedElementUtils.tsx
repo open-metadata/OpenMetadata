@@ -14,12 +14,9 @@
 import { Tooltip } from 'antd';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
-import { entityUrlMap } from '../constants/Feeds.constants';
 import { ThreadType } from '../generated/entity/feed/thread';
-import { EntityReference } from '../generated/entity/teams/user';
 import { getEntityFeedLink } from './EntityUtils';
 
 const iconsProps = {
@@ -57,20 +54,4 @@ export const getFieldThreadElement = (
       />
     </Tooltip>
   );
-};
-
-export const getDefaultValue = (owner: EntityReference) => {
-  const message = t('message.can-you-add-a-description');
-  if (isUndefined(owner)) {
-    return `${message}`;
-  } else {
-    const name = owner.name;
-    const displayName = owner.displayName;
-    const entityType = owner.type;
-    const mention = `<a href=${`/${
-      entityUrlMap[entityType as keyof typeof entityUrlMap]
-    }/${name}`}>@${displayName}</a>`;
-
-    return `${mention} ${message}`;
-  }
 };

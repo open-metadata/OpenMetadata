@@ -17,7 +17,6 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ContainerChildren from 'components/ContainerDetail/ContainerChildren/ContainerChildren';
@@ -79,8 +78,8 @@ const ContainerPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { entityFQN: containerName, tab } =
-    useParams<{ entityFQN: string; tab: EntityTabs }>();
+  const { fqn: containerName, tab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   // Local states
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -642,9 +641,6 @@ const ContainerPage = () => {
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={
-              containerData as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.CONTAINER}
             handleExtensionUpdate={handleExtensionUpdate}
             hasEditAccess={hasEditCustomFieldsPermission}

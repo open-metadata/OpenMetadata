@@ -12,11 +12,9 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { getTeamAndUserDetailsPath } from 'constants/constants';
-import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,11 +24,10 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
 } from 'utils/EntityUtils';
-import { showErrorToast } from 'utils/ToastUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
+import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
@@ -73,35 +70,27 @@ function TopicSummary({
 
     return {
       value:
-        getOwnerNameWithProfilePic(owner) ||
+        getOwnerNameWithProfilePic(owner) ??
         t('label.no-entity', {
           entity: t('label.owner'),
         }),
-      url: getTeamAndUserDetailsPath(owner?.name || ''),
-      isLink: owner?.name ? true : false,
+      url: getTeamAndUserDetailsPath(owner?.name ?? ''),
+      isLink: !isEmpty(owner?.name),
     };
   }, [entityDetails, topicDetails]);
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', [
-        'tags',
-        'owner',
-      ]);
+      const res = await getTopicByFqn(
+        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
+        ['tags', 'owner']
+      );
 
       const { partitions, messageSchema } = res;
 
       setTopicDetails({ ...entityDetails, partitions, messageSchema });
     } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
-        showErrorToast(
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.topic-lowercase'),
-            entityName: entityDetails.name,
-          })
-        );
-      }
+      // Error
     }
   }, [entityDetails]);
 
