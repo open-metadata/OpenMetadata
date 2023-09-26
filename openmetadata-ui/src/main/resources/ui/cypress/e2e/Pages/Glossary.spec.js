@@ -700,6 +700,7 @@ describe('Glossary page should work properly', () => {
 
     verifyResponseStatusCode('@activityFeed', 200);
 
+    goToGlossaryPage();
     selectActiveGlossary(NEW_GLOSSARY.name);
 
     cy.get(`[data-testid="${fullyQualifiedName}-status"]`)
