@@ -10,29 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from 'antd';
+import { Button, Tabs, Typography } from 'antd';
 import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockFeedData } from 'constants/mockTourData.constants';
+import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { FeedFilter } from 'enums/mydata.enum';
 import { ThreadTaskStatus, ThreadType } from 'generated/entity/feed/thread';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
-import { getCountBadge } from 'utils/CommonUtils';
+import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import './feeds-widget.less';
 
 const FeedsWidget = () => {
   const { t } = useTranslation();
+  const history = useHistory();
   const { isTourOpen } = useTourProvider();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
     ActivityFeedTabs.ALL
   );
-  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
+  const { loading, entityThread, entityPaging, getFeedData } =
+    useActivityFeedProvider();
   const [taskCount, setTaskCount] = useState(0);
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -54,6 +58,33 @@ const FeedsWidget = () => {
   }, [taskCount, activeTab]);
 
   const onTabChange = (key: string) => setActiveTab(key as ActivityFeedTabs);
+
+  const redirectToUserPage = useCallback(() => {
+    history.push(
+      getEntityDetailLink(
+        EntityType.USER,
+        currentUser?.name as string,
+        EntityTabs.ACTIVITY_FEED,
+        activeTab
+      )
+    );
+  }, [activeTab, currentUser]);
+
+  const moreButton = useMemo(() => {
+    if (!loading && entityPaging.after) {
+      return (
+        <div className="p-x-md p-b-md">
+          <Button className="w-full" onClick={redirectToUserPage}>
+            <Typography.Text className="text-primary">
+              {t('label.more')}
+            </Typography.Text>
+          </Button>
+        </div>
+      );
+    }
+
+    return null;
+  }, [loading, entityPaging, redirectToUserPage]);
 
   useEffect(() => {
     getFeedsWithFilter(
@@ -90,28 +121,34 @@ const FeedsWidget = () => {
             label: t('label.all'),
             key: ActivityFeedTabs.ALL,
             children: (
-              <ActivityFeedListV1
-                emptyPlaceholderText={t('message.no-activity-feed')}
-                feedList={isTourOpen ? mockFeedData : threads}
-                hidePopover={false}
-                isLoading={loading && !isTourOpen}
-                showThread={false}
-                tab={ActivityFeedTabs.ALL}
-              />
+              <>
+                <ActivityFeedListV1
+                  emptyPlaceholderText={t('message.no-activity-feed')}
+                  feedList={isTourOpen ? mockFeedData : threads}
+                  hidePopover={false}
+                  isLoading={loading && !isTourOpen}
+                  showThread={false}
+                  tab={ActivityFeedTabs.ALL}
+                />
+                {moreButton}
+              </>
             ),
           },
           {
             label: `@${t('label.mention-plural')}`,
             key: ActivityFeedTabs.MENTIONS,
             children: (
-              <ActivityFeedListV1
-                emptyPlaceholderText={t('message.no-mentions')}
-                feedList={threads}
-                hidePopover={false}
-                isLoading={loading}
-                showThread={false}
-                tab={ActivityFeedTabs.MENTIONS}
-              />
+              <>
+                <ActivityFeedListV1
+                  emptyPlaceholderText={t('message.no-mentions')}
+                  feedList={threads}
+                  hidePopover={false}
+                  isLoading={loading}
+                  showThread={false}
+                  tab={ActivityFeedTabs.MENTIONS}
+                />
+                {moreButton}
+              </>
             ),
           },
           {
@@ -123,14 +160,17 @@ const FeedsWidget = () => {
             ),
             key: ActivityFeedTabs.TASKS,
             children: (
-              <ActivityFeedListV1
-                emptyPlaceholderText={t('message.no-tasks-assigned')}
-                feedList={threads}
-                hidePopover={false}
-                isLoading={loading}
-                showThread={false}
-                tab={ActivityFeedTabs.TASKS}
-              />
+              <>
+                <ActivityFeedListV1
+                  emptyPlaceholderText={t('message.no-tasks-assigned')}
+                  feedList={threads}
+                  hidePopover={false}
+                  isLoading={loading}
+                  showThread={false}
+                  tab={ActivityFeedTabs.TASKS}
+                />
+                {moreButton}
+              </>
             ),
           },
         ]}
