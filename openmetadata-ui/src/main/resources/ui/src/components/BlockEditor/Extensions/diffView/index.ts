@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { mergeAttributes, Node } from '@tiptap/core';
 
-import { TeamType } from '../../../generated/entity/teams/team';
+export default Node.create({
+  name: 'diffView',
+  content: 'inline*',
+  group: 'inline',
+  inline: true,
 
-export const getTeamTypeOptions = (showGroupOption: boolean) => {
-  const teamTypesArray = Object.values(TeamType).filter((key) =>
-    key === TeamType.Group ? showGroupOption : key !== TeamType.Organization
-  );
+  addAttributes() {
+    return {
+      class: {
+        default: '',
+      },
+    };
+  },
 
-  return teamTypesArray.map((teamType) => ({
-    label: teamType,
-    value: teamType,
-  }));
-};
+  parseHTML() {
+    return [
+      {
+        tag: 'diff-view',
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return ['diff-view', mergeAttributes(HTMLAttributes), 0];
+  },
+});

@@ -42,7 +42,7 @@ import './CustomPropertiesPageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ [key: string]: string }>();
+  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
   const history = useHistory();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(
@@ -55,7 +55,7 @@ const CustomEntityDetailV1 = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const tabAttributePath = ENTITY_PATH[tab.toLowerCase()];
+  const tabAttributePath = ENTITY_PATH[tab];
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -134,7 +134,7 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.pipelines:
         return PAGE_HEADERS.PIPELINES_CUSTOM_ATTRIBUTES;
 
-      case ENTITY_PATH.mlmodels:
+      case ENTITY_PATH.mlModels:
         return PAGE_HEADERS.ML_MODELS_CUSTOM_ATTRIBUTES;
 
       case ENTITY_PATH.containers:
@@ -142,8 +142,19 @@ const CustomEntityDetailV1 = () => {
 
       case ENTITY_PATH.searchindex:
         return PAGE_HEADERS.SEARCH_INDEX_CUSTOM_ATTRIBUTES;
-      case ENTITY_PATH.storedprocedure:
+
+      case ENTITY_PATH.storedProcedure:
         return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.glossaryTerm:
+        return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.database:
+        return PAGE_HEADERS.DATABASE_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.databaseSchema:
+        return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
+
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }

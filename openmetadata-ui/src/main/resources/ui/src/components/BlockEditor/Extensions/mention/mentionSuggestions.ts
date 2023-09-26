@@ -15,8 +15,9 @@ import tippy, { Instance, Props } from 'tippy.js';
 
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
+import { EntityUrlMapType, ENTITY_URL_MAP } from 'constants/Feeds.constants';
 import { getSearchedUsers, getUserSuggestions } from 'rest/miscAPI';
+import { buildMentionLink } from 'utils/FeedUtils';
 import { ExtensionRef } from '../BlockEditor.interface';
 import MentionList from './MentionList';
 
@@ -31,10 +32,10 @@ export const mentionSuggestion = () => ({
         name: hit._source.name,
         label: hit._source.displayName,
         fqn: hit._source.fullyQualifiedName,
-        href:
-          hit._source.entityType === 'user'
-            ? getUserPath(hit._source.fullyQualifiedName ?? '')
-            : getTeamAndUserDetailsPath(hit._source.fullyQualifiedName ?? ''),
+        href: buildMentionLink(
+          ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
+          hit._source.name
+        ),
         type: hit._source.entityType,
       }));
     } else {
@@ -46,10 +47,10 @@ export const mentionSuggestion = () => ({
         name: hit._source.name,
         label: hit._source.displayName,
         fqn: hit._source.fullyQualifiedName,
-        href:
-          hit._source.entityType === 'user'
-            ? getUserPath(hit._source.fullyQualifiedName ?? '')
-            : getTeamAndUserDetailsPath(hit._source.fullyQualifiedName ?? ''),
+        href: buildMentionLink(
+          ENTITY_URL_MAP[hit._source.entityType as EntityUrlMapType],
+          hit._source.name
+        ),
         type: hit._source.entityType,
       }));
     }

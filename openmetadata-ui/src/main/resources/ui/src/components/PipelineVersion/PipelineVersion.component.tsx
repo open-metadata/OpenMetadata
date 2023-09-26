@@ -15,7 +15,6 @@ import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -236,9 +235,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}

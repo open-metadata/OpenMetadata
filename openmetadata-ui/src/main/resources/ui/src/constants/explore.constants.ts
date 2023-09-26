@@ -63,13 +63,11 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     icon: Icons.TABLE_GREY,
     selectedIcon: Icons.TABLE,
   },
-  [SearchIndex.TOPIC]: {
-    label: i18n.t('label.topic-plural'),
+  [SearchIndex.STORED_PROCEDURE]: {
+    label: i18n.t('label.stored-procedure-plural'),
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
-    path: 'topics',
-    icon: Icons.TOPIC_GREY,
-    selectedIcon: Icons.TOPIC,
+    path: 'storedProcedure',
   },
   [SearchIndex.DASHBOARD]: {
     label: i18n.t('label.dashboard-plural'),
@@ -79,6 +77,12 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     icon: Icons.DASHBOARD_GREY,
     selectedIcon: Icons.DASHBOARD,
   },
+  [SearchIndex.DASHBOARD_DATA_MODEL]: {
+    label: i18n.t('label.dashboard-data-model-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'dashboardDataModel',
+  },
   [SearchIndex.PIPELINE]: {
     label: i18n.t('label.pipeline-plural'),
     sortingFields: entitySortingFields,
@@ -86,6 +90,14 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
     selectedIcon: Icons.PIPELINE,
+  },
+  [SearchIndex.TOPIC]: {
+    label: i18n.t('label.topic-plural'),
+    sortingFields: entitySortingFields,
+    sortField: INITIAL_SORT_FIELD,
+    path: 'topics',
+    icon: Icons.TOPIC_GREY,
+    selectedIcon: Icons.TOPIC,
   },
   [SearchIndex.MLMODEL]: {
     label: i18n.t('label.ml-model-plural'),
@@ -98,18 +110,6 @@ export const tabsInfo: { [K in ExploreSearchIndex]: ExploreTabInfo } = {
     sortingFields: entitySortingFields,
     sortField: INITIAL_SORT_FIELD,
     path: 'containers',
-  },
-  [SearchIndex.STORED_PROCEDURE]: {
-    label: i18n.t('label.stored-procedure-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'storedProcedure',
-  },
-  [SearchIndex.DASHBOARD_DATA_MODEL]: {
-    label: i18n.t('label.data-model-plural'),
-    sortingFields: entitySortingFields,
-    sortField: INITIAL_SORT_FIELD,
-    path: 'dashboardDataModel',
   },
   [SearchIndex.GLOSSARY]: {
     label: i18n.t('label.glossary-plural'),
@@ -135,3 +135,7 @@ export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',
 ];
+
+export const ALL_EXPLORE_SEARCH_INDEX =
+  // eslint-disable-next-line max-len
+  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL},${SearchIndex.CONTAINER},${SearchIndex.GLOSSARY},${SearchIndex.TAG},${SearchIndex.SEARCH_INDEX}` as SearchIndex;

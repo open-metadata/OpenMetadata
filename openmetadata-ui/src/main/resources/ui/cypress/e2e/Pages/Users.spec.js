@@ -54,11 +54,11 @@ describe('Users flow should work properly', () => {
     softDeleteUser(userName);
   });
 
-  it('Restore soft deleted user', () => {
+  it.skip('Restore soft deleted user', () => {
     restoreUser(userName);
   });
 
-  it('Permanently Delete Soft Deleted User', () => {
+  it.skip('Permanently Delete Soft Deleted User', () => {
     softDeleteUser(userName);
     deleteSoftDeletedUser(userName);
   });

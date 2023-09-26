@@ -16,7 +16,6 @@ import os
 from functools import partial
 from typing import Optional
 
-from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 
@@ -98,8 +97,6 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    _, project_ids = auth.default()
-    project_ids = project_ids if isinstance(project_ids, list) else [project_ids]
 
     def get_tags(taxonomies):
         for taxonomy in taxonomies:
@@ -109,12 +106,10 @@ def test_connection(
             return policy_tags
 
     def test_tags():
-        for project in project_ids:
-            taxonomies = PolicyTagManagerClient().list_taxonomies(
-                parent=f"projects/{project}/locations/{service_connection.taxonomyLocation}"
-            )
-            return get_tags(taxonomies)
-        return None
+        taxonomies = PolicyTagManagerClient().list_taxonomies(
+            parent=f"projects/{engine.url.host}/locations/{service_connection.taxonomyLocation}"
+        )
+        return get_tags(taxonomies)
 
     def test_connection_inner(engine):
         test_fn = {
@@ -139,7 +134,4 @@ def test_connection(
             automation_workflow=automation_workflow,
         )
 
-    for project in project_ids:
-        if project in str(engine.url):
-            continue
-        test_connection_inner(engine)
+    test_connection_inner(engine)

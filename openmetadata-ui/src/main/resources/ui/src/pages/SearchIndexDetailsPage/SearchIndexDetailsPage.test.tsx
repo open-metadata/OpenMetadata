@@ -105,7 +105,7 @@ jest.mock(
 jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
-    .mockImplementation(() => ({ searchIndexFQN: 'fqn', tab: 'fields' })),
+    .mockImplementation(() => ({ fqn: 'fqn', tab: 'fields' })),
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
@@ -146,7 +146,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'fields,extension,followers,tags,owner,domain'
+      'fields,followers,tags,owner,domain'
     );
   });
 
@@ -163,7 +163,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'fields,extension,followers,tags,owner,domain'
+      'fields,followers,tags,owner,domain'
     );
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('SearchIndexDetailsPage component', () => {
 
     expect(getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
       'fqn',
-      'fields,extension,followers,tags,owner,domain'
+      'fields,followers,tags,owner,domain'
     );
 
     expect(

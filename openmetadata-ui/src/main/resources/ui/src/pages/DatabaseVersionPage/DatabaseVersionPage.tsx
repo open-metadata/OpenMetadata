@@ -13,6 +13,7 @@
 
 import { Col, Row, Space, Tabs } from 'antd';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
@@ -30,6 +31,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDatabaseDetailsPath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from 'constants/constants';
@@ -59,15 +61,19 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getDatabaseVersionPath } from 'utils/RouterUtils';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { databaseFQN, version } = useParams<{
-    databaseFQN: string;
+  const {
+    fqn: databaseFQN,
+    version,
+    tab,
+  } = useParams<{
+    fqn: string;
     version: string;
+    tab: EntityTabs;
   }>();
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
@@ -195,14 +201,32 @@ function DatabaseVersionPage() {
   const { versionHandler, backHandler } = useMemo(
     () => ({
       versionHandler: (newVersion = version) => {
-        history.push(getDatabaseVersionPath(databaseFQN, toString(newVersion)));
+        history.push(
+          getVersionPathWithTab(
+            EntityType.DATABASE,
+            databaseFQN,
+            newVersion,
+            tab
+          )
+        );
       },
       backHandler: () => {
         history.push(getDatabaseDetailsPath(databaseFQN));
       },
     }),
-    [databaseFQN]
+    [databaseFQN, tab]
   );
+
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.DATABASE,
+        databaseFQN,
+        String(version),
+        activeKey
+      )
+    );
+  };
 
   const { displayName, tags, description } = useMemo(
     () => getCommonDiffsFromVersionData(currentVersionData, changeDescription),
@@ -271,6 +295,25 @@ function DatabaseVersionPage() {
           </Row>
         ),
       },
+
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={currentVersionData}
+            entityType={EntityType.DATABASE}
+            hasEditAccess={false}
+            hasPermission={viewVersionPermission}
+          />
+        ),
+      },
     ],
     [tags, description, databaseFQN, databaseTable]
   );
@@ -310,7 +353,9 @@ function DatabaseVersionPage() {
                 <Tabs
                   className="entity-details-page-tabs"
                   data-testid="tabs"
+                  defaultActiveKey={tab ?? EntityTabs.SCHEMA}
                   items={tabs}
+                  onChange={handleTabChange}
                 />
               </Col>
             </Row>

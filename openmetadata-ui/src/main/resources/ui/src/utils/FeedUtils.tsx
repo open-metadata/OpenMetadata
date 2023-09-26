@@ -42,7 +42,8 @@ import {
   entityLinkRegEx,
   EntityRegEx,
   entityRegex,
-  entityUrlMap,
+  EntityUrlMapType,
+  ENTITY_URL_MAP,
   hashtagRegEx,
   linkRegEx,
   mentionRegEx,
@@ -219,7 +220,7 @@ export async function suggestions(
             id: hit._id,
             value: name,
             link: buildMentionLink(
-              entityUrlMap[entityType as keyof typeof entityUrlMap],
+              ENTITY_URL_MAP[entityType as EntityUrlMapType],
               hit._source.name
             ),
             name: hit._source.name,
@@ -246,7 +247,7 @@ export async function suggestions(
             id: hit._id,
             value: name,
             link: buildMentionLink(
-              entityUrlMap[entityType as keyof typeof entityUrlMap],
+              ENTITY_URL_MAP[entityType as EntityUrlMapType],
               hit._source.name
             ),
             name: hit._source.name,
@@ -352,7 +353,7 @@ export const getBackendFormat = (message: string) => {
   const hashtagList = [...new Set(getHashTagList(message) ?? [])];
   const mentionDetails = mentionList.map((m) => getEntityDetail(m) ?? []);
   const hashtagDetails = hashtagList.map((h) => getEntityDetail(h) ?? []);
-  const urlEntries = Object.entries(entityUrlMap);
+  const urlEntries = Object.entries(ENTITY_URL_MAP);
 
   mentionList.forEach((m, i) => {
     const updatedDetails = mentionDetails[i].slice(-2);
@@ -594,6 +595,9 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
 
 export const MarkdownToHTMLConverter = new Showdown.Converter({
   strikethrough: true,
+  tables: true,
+  tasklists: true,
+  simpleLineBreaks: true,
 });
 
 export const getFeedPanelHeaderText = (

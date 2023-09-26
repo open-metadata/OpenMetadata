@@ -120,7 +120,7 @@ describe('Schema search', () => {
     );
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=%2Asales%2A&index=database_schema_search_index*`,
+      `/api/v1/search/query?q=*sales*&index=database_schema_search_index*`,
       'searchSchema'
     );
 

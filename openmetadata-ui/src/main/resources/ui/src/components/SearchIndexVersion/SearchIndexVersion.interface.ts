@@ -12,14 +12,13 @@
  */
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface SearchIndexVersionProps {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: SearchIndex;
   isVersionLoading: boolean;
   owner: SearchIndex['owner'];
   domain: SearchIndex['domain'];

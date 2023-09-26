@@ -43,8 +43,8 @@ import { UserAssetsDataType } from './UserPage.interface';
 const UserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { username, tab = UserProfileTab.ACTIVITY } =
-    useParams<{ [key: string]: string }>();
+  const { fqn: username, tab = UserProfileTab.ACTIVITY } =
+    useParams<{ fqn: string; tab: UserProfileTab }>();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);

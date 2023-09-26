@@ -15,12 +15,10 @@ package org.openmetadata.service.resources.databases;
 
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.openmetadata.schema.type.ColumnDataType.*;
 import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.*;
-import static org.openmetadata.service.util.EntityUtil.*;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.*;
-import static org.openmetadata.service.util.TestUtils.UpdateType.*;
 
 import java.io.IOException;
 import java.util.*;
@@ -34,16 +32,12 @@ import org.openmetadata.schema.type.*;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
-import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.util.*;
-import org.openmetadata.service.util.EntityUtil.*;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class StoredProcedureResourceTest extends EntityResourceTest<StoredProcedure, CreateStoredProcedure> {
-  private final TagResourceTest tagResourceTest = new TagResourceTest();
-
   public StoredProcedureResourceTest() {
     super(
         STORED_PROCEDURE,
@@ -99,7 +93,21 @@ public class StoredProcedureResourceTest extends EntityResourceTest<StoredProced
     StoredProcedure storedProcedure1 =
         patchEntity(storedProcedure.getId(), storedProcedureJson, storedProcedure, ADMIN_AUTH_HEADERS);
     compareEntities(storedProcedure, storedProcedure1, ADMIN_AUTH_HEADERS);
-    StoredProcedure storedProcedure2 = getEntity(storedProcedure.getId(), "", ADMIN_AUTH_HEADERS);
+    getEntity(storedProcedure.getId(), "", ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a database schema with owner data consumer
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the database schema can create stored procedure under it
+    createEntity(
+        createRequest("storedProcedure").withDatabaseSchema(schema.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override

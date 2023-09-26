@@ -12,7 +12,6 @@
  */
 
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -20,7 +19,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface DashboardVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Dashboard;
   isVersionLoading: boolean;
   owner: Dashboard['owner'];
   domain: Dashboard['domain'];

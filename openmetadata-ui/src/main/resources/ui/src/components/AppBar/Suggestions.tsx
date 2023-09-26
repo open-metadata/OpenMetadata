@@ -14,14 +14,17 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
+import { PAGE_SIZE_BASE } from 'constants/constants';
+import { ALL_EXPLORE_SEARCH_INDEX } from 'constants/explore.constants';
 import {
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
 } from 'interface/search.interface';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSuggestions } from 'rest/miscAPI';
+import { searchData } from 'rest/miscAPI';
+import { Transi18next } from 'utils/CommonUtils';
 import {
   filterOptionsByIndex,
   getGroupLabel,
@@ -90,7 +93,7 @@ const Suggestions = ({
 
   const isMounting = useRef(true);
 
-  const setSuggestions = (options: Array<Option>) => {
+  const updateSuggestions = (options: Array<Option>) => {
     setTableSuggestions(filterOptionsByIndex(options, SearchIndex.TABLE));
     setTopicSuggestions(filterOptionsByIndex(options, SearchIndex.TOPIC));
     setDashboardSuggestions(
@@ -177,35 +180,38 @@ const Suggestions = ({
     );
   };
 
+  const fetchSearchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await searchData(
+        searchText,
+        1,
+        PAGE_SIZE_BASE,
+        '',
+        '',
+        '',
+        searchCriteria ?? ALL_EXPLORE_SEARCH_INDEX
+      );
+
+      if (res.data) {
+        setOptions(res.data.hits.hits as unknown as Option[]);
+        updateSuggestions(res.data.hits.hits as unknown as Option[]);
+      }
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.suggestion-lowercase-plural'),
+        })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchText, searchCriteria]);
+
   useEffect(() => {
     if (!isMounting.current && searchText) {
-      setIsLoading(true);
-      getSuggestions(searchText, searchCriteria)
-        .then((res) => {
-          if (res.data) {
-            setOptions(
-              res.data.suggest['metadata-suggest'][0]
-                .options as unknown as Option[]
-            );
-            setSuggestions(
-              res.data.suggest['metadata-suggest'][0]
-                .options as unknown as Option[]
-            );
-          } else {
-            throw t('server.unexpected-response');
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.suggestion-lowercase-plural'),
-            })
-          );
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+      fetchSearchData();
     }
   }, [searchText, searchCriteria]);
 
@@ -219,7 +225,17 @@ const Suggestions = ({
   }
 
   if (options.length === 0) {
-    return <Typography.Text>{t('message.no-match-found')}</Typography.Text>;
+    return (
+      <Typography.Text>
+        <Transi18next
+          i18nKey="message.please-enter-to-find-data-assets"
+          renderElement={<strong />}
+          values={{
+            keyword: `"${searchText}"`,
+          }}
+        />
+      </Typography.Text>
+    );
   }
 
   return getEntitiesSuggestions();

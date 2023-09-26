@@ -415,7 +415,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   protected List<EntityReference> getChildren(UUID teamId) {
     if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
-      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId.toString());
+      List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
     return findTo(teamId, TEAM, Relationship.PARENT_OF, TEAM);
