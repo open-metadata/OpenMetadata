@@ -1001,11 +1001,11 @@ const TeamDetailsV1 = ({
               collapsible="icon"
               header={teamsCollapseHeader}
               key="1">
-              <Row className="border-top">
+              <Row>
                 {(currentTeam.owner?.id === currentUser?.id ||
                   entityPermissions.EditAll ||
                   isAlreadyJoinedTeam) && (
-                  <Col className="p-md" span={24}>
+                  <Col className="p-md border-top" span={24}>
                     <TeamsSubscription
                       hasEditPermission={hasEditSubscriptionPermission}
                       subscription={currentTeam.profile?.subscription}
@@ -1014,9 +1014,9 @@ const TeamDetailsV1 = ({
                   </Col>
                 )}
 
-                <Col span={24}>
+                <Col className=" border-top" span={24}>
                   <Card
-                    className="ant-card-feed card-body-border-none card-padding-y-0 border-top p-y-sm"
+                    className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
                     data-testid="teams-description"
                     title={
                       <Space align="center">
