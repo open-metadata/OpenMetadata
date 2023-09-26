@@ -235,11 +235,14 @@ public class QueryRepository extends EntityRepository<Query> {
       // Store Query Used in Relation
       recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);
-      String originalChecksum = EntityUtil.hash(original.getQuery());
-      String updatedChecksum = EntityUtil.hash(updated.getQuery());
-      if (!originalChecksum.equals(updatedChecksum)) {
-        recordChange("query", original.getQuery(), updated.getQuery());
-        recordChange("checkSum", original.getChecksum(), updatedChecksum);
+      // Query is a required field. Cannot be removed.
+      if (updated.getQuery() != null) {
+        String originalChecksum = EntityUtil.hash(original.getQuery());
+        String updatedChecksum = EntityUtil.hash(updated.getQuery());
+        if (!originalChecksum.equals(updatedChecksum)) {
+          recordChange("query", original.getQuery(), updated.getQuery());
+          recordChange("checkSum", original.getChecksum(), updatedChecksum);
+        }
       }
     }
   }

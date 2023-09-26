@@ -12,6 +12,7 @@
 Handle big query usage extraction
 """
 from abc import ABC
+from copy import deepcopy
 from datetime import datetime
 
 from google import auth
@@ -25,7 +26,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.security.credentials.gcpValues import MultipleProjectId
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
 
@@ -65,3 +68,18 @@ class BigqueryQueryParserSource(QueryParserSource, ABC):
     def set_project_id():
         _, project_id = auth.default()
         return project_id
+
+    def get_engine(self):
+        if isinstance(
+            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
+        ):
+            project_ids = deepcopy(
+                self.service_connection.credentials.gcpConfig.projectId
+            )
+            for project_id in project_ids.__root__:
+                inspector_details = get_inspector_details(
+                    project_id, self.service_connection
+                )
+                yield inspector_details.engine
+        else:
+            yield self.engine

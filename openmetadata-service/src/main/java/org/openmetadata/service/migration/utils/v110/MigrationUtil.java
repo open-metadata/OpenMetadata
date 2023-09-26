@@ -537,12 +537,12 @@ public class MigrationUtil {
       List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
           collectionDAO
               .relationshipDAO()
-              .findTo(testSuite.getId().toString(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
+              .findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
       for (CollectionDAO.EntityRelationshipRecord ingestionRecord : ingestionPipelineRecords) {
         // remove relationship
-        collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId().toString(), INGESTION_PIPELINE);
+        collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId(), INGESTION_PIPELINE);
         // Cannot use Delete directly it uses other repos internally
-        ingestionPipelineRepository.getDao().delete(ingestionRecord.getId().toString());
+        ingestionPipelineRepository.getDao().delete(ingestionRecord.getId());
       }
     }
   }

@@ -20,6 +20,7 @@ import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -139,16 +140,12 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
 
   @Override
   public CreateSearchService createRequest(String name) {
-    try {
-      return new CreateSearchService()
-          .withName(name)
-          .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
-          .withConnection(
-              new SearchConnection()
-                  .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9200"))));
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
-    }
+    return new CreateSearchService()
+        .withName(name)
+        .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
+        .withConnection(
+            new SearchConnection()
+                .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200"))));
   }
 
   @Override
