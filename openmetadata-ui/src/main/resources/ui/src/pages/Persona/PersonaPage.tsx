@@ -144,9 +144,7 @@ export const PersonaPage = () => {
                 disabled={!isAdminUser}
                 icon={
                   <IconDelete
-                    data-testid={`delete-user-btn-${
-                      record.displayName || record.name
-                    }`}
+                    data-testid={`delete-user-btn-${getEntityName(record)}`}
                     name={t('label.delete')}
                     width="16px"
                   />
@@ -243,8 +241,8 @@ export const PersonaPage = () => {
       <DeleteWidgetModal
         afterDeleteAction={fetchPersonas}
         allowSoftDelete={false}
-        entityId={personaDeleting?.id || ''}
-        entityName={personaDeleting?.name || ''}
+        entityId={personaDeleting?.id ?? ''}
+        entityName={personaDeleting?.name ?? ''}
         entityType={EntityType.PERSONA}
         visible={Boolean(personaDeleting)}
         onCancel={() => {

@@ -134,7 +134,7 @@ export const AddEditPersonaForm = ({
   return (
     <Modal
       centered
-      visible
+      open
       cancelText={t('label.cancel')}
       confirmLoading={isSaving}
       okText={t('label.create')}

@@ -325,6 +325,12 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
+          label: i18next.t('label.custom-page'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customPages',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
           label: i18next.t('label.custom-logo'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customLogo',
