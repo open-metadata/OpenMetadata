@@ -81,6 +81,7 @@ import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -173,6 +174,39 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
       return;
     }
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void get_listPipelinesFiltered(TestInfo test) throws IOException {
+
+    CreateIngestionPipeline createMessaging =
+        new CreateIngestionPipeline()
+            .withName(getEntityName(test))
+            .withPipelineType(PipelineType.METADATA)
+            .withSourceConfig(MESSAGING_METADATA_CONFIG)
+            .withService(REDPANDA_REFERENCE)
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("5 * * * *"));
+    createAndCheckEntity(createMessaging, ADMIN_AUTH_HEADERS);
+
+    CreateIngestionPipeline createDatabase = createRequest(test);
+    createAndCheckEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // If we filter by service type, we get just one
+    Map<String, String> paramsMessaging = new HashMap<>();
+    paramsMessaging.put("serviceType", "messagingService");
+    ResultList<IngestionPipeline> resList = listEntities(paramsMessaging, ADMIN_AUTH_HEADERS);
+    assertEquals(1, resList.getData().size());
+
+    Map<String, String> paramsType = new HashMap<>();
+    paramsType.put("pipelineType", "metadata");
+    ResultList<IngestionPipeline> resListMeta = listEntities(paramsType, ADMIN_AUTH_HEADERS);
+    // We get at least the 2 pipelines created here
+    assertTrue(resListMeta.getData().size() >= 2);
+
+    Map<String, String> paramsMessagingService = new HashMap<>();
+    paramsMessagingService.put("service", REDPANDA_REFERENCE.getFullyQualifiedName());
+    ResultList<IngestionPipeline> redpandaIngestionList = listEntities(paramsMessagingService, ADMIN_AUTH_HEADERS);
+    assertEquals(1, redpandaIngestionList.getData().size());
   }
 
   @Test
