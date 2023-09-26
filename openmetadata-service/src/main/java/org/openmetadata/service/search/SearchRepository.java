@@ -33,6 +33,7 @@ import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -314,11 +315,10 @@ public interface SearchRepository {
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
-        List<LinkedHashMap<String, Object>> entityReferencesMap =
-            (List<LinkedHashMap<String, Object>>) fieldChange.getNewValue();
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
         List<String> newFollowers = new ArrayList<>();
-        for (LinkedHashMap<String, Object> entityReferenceMap : entityReferencesMap) {
-          newFollowers.add(entityReferenceMap.get("id").toString());
+        for (EntityReference follower : entityReferences) {
+          newFollowers.add(follower.getId().toString());
         }
         fieldAddParams.put(fieldChange.getName(), newFollowers);
         scriptTxt.append("ctx._source.followers.addAll(params.followers);");
@@ -328,10 +328,9 @@ public interface SearchRepository {
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
-        List<LinkedHashMap<String, Object>> entityReferencesMap =
-            (List<LinkedHashMap<String, Object>>) fieldChange.getOldValue();
-        for (LinkedHashMap<String, Object> entityReferenceMap : entityReferencesMap) {
-          fieldAddParams.put(fieldChange.getName(), entityReferenceMap.get("id").toString());
+        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
+        for (EntityReference follower : entityReferences) {
+          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
         }
         scriptTxt.append("ctx._source.followers.removeAll(Collections.singleton(params.followers));");
       }
