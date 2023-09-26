@@ -14,6 +14,7 @@ SUM Metric definition
 """
 # pylint: disable=duplicate-code
 
+import pandas as pd
 from sqlalchemy import column
 
 from metadata.profiler.metrics.core import StaticMetric, _label
@@ -49,5 +50,5 @@ class Sum(StaticMetric):
     def df_fn(self, dfs=None):
         """pandas function"""
         if is_quantifiable(self.col.type):
-            return sum(df[self.col.name].sum() for df in dfs)
+            return sum(pd.to_numeric(df[self.col.name]).sum() for df in dfs)
         return None

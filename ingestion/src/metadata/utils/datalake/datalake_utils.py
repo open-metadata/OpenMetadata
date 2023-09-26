@@ -261,7 +261,7 @@ def fetch_col_types(data_frame, column_name):
             try:
                 # Safely evaluate the input string
                 df_row_val = data_frame[column_name].dropna().values[0]
-                parsed_object = ast.literal_eval(df_row_val)
+                parsed_object = ast.literal_eval(str(df_row_val))
                 # Determine the data type of the parsed object
                 data_type = type(parsed_object).__name__.lower()
             except (ValueError, SyntaxError):

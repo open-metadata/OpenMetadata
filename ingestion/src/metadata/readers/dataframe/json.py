@@ -45,11 +45,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @staticmethod
     def read_from_json(
-        key: str,
-        json_text: bytes,
-        decode: bool = False,
-        is_profiler: bool = False,
-        **__
+        key: str, json_text: bytes, decode: bool = False, **__
     ) -> List["DataFrame"]:
         """
         Decompress a JSON file (if needed) and read its contents
@@ -69,8 +65,6 @@ class JSONDataFrameReader(DataFrameReader):
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
-        if is_profiler:
-            return dataframe_to_chunks(json_normalize(data))
         return dataframe_to_chunks(json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR))
 
     def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
