@@ -15,14 +15,13 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as IconEdit } from 'assets/svg/ic-edit.svg';
 import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Table from 'components/common/Table/Table';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import PageHeader from 'components/header/PageHeader.component';
-import { AddPersonaForm } from 'components/Persona/AddPersona/AddPersona.component';
+import { AddEditPersonaForm } from 'components/Persona/AddEditPersona/AddEditPersona.component';
 import { ADMIN_ONLY_ACTION } from 'constants/HelperTextUtil';
 import { PAGE_HEADERS } from 'constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -31,11 +30,9 @@ import { Persona } from 'generated/entity/teams/persona';
 import { EntityReference } from 'generated/entity/type';
 import { useAuth } from 'hooks/authHooks';
 import { usePaging } from 'hooks/paging/usePaging';
-import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAllPersonas } from 'rest/PersonaAPI';
-import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 
@@ -190,17 +187,13 @@ export const PersonaPage = () => {
     fetchPersonas();
   };
 
-  if (isEmpty(persona)) {
-    return errorPlaceHolder;
-  }
-
   return (
     <Row
       className="user-listing p-b-md"
       data-testid="user-list-v1-component"
       gutter={[16, 16]}>
       <Col span={18}>
-        <PageHeader data={PAGE_HEADERS.USERS} />
+        <PageHeader data={PAGE_HEADERS.PERSONAS} />
       </Col>
       <Col span={6}>
         <Space align="center" className="w-full justify-end" size={16}>
@@ -222,7 +215,7 @@ export const PersonaPage = () => {
           dataSource={persona}
           loading={isLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: errorPlaceHolder,
           }}
           pagination={false}
           rowKey="id"
@@ -230,19 +223,17 @@ export const PersonaPage = () => {
         />
       </Col>
       <Col span={24}>
-        {showPagination(paging) && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={({ currentPage }) => handlePageChange(currentPage)}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
+        <NextPrevious
+          currentPage={currentPage}
+          pageSize={pageSize}
+          paging={paging}
+          pagingHandler={({ currentPage }) => handlePageChange(currentPage)}
+          onShowSizeChange={handlePageSizeChange}
+        />
       </Col>
 
       {Boolean(addEditPersona) && (
-        <AddPersonaForm
+        <AddEditPersonaForm
           persona={addEditPersona}
           onCancel={handlePersonalAddEditCancel}
           onSave={handlePersonaAddEditSave}

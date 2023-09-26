@@ -12,7 +12,12 @@
  */
 import { Button, Popover, Tooltip } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { SelectableList } from 'components/common/SelectableList/SelectableList.component';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from 'constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
@@ -21,21 +26,18 @@ import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
+import { getAllPersonas } from 'rest/PersonaAPI';
 import { formatUsersResponse } from 'utils/APIUtils';
 import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
-import { SelectableList } from '../SelectableList/SelectableList.component';
-import './user-select-dropdown.less';
-import { UserSelectableListProps } from './UserSelectableList.interface';
+import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
-export const UserSelectableList = ({
+export const PersonaSelectableList = ({
   hasPermission,
-  selectedUsers = [],
+  selectedPersonas = [],
   onUpdate = noop,
   children,
   popoverProps,
-  multiSelect = true,
-}: UserSelectableListProps) => {
+}: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
 
@@ -46,7 +48,7 @@ export const UserSelectableList = ({
           searchText,
           1,
           PAGE_SIZE_MEDIUM,
-          'isBot:false',
+          '',
           '',
           '',
           SearchIndex.USER
@@ -63,14 +65,13 @@ export const UserSelectableList = ({
       }
     } else {
       try {
-        const { data, paging } = await getUsers({
-          limit: PAGE_SIZE_MEDIUM,
+        const { data, paging } = await getAllPersonas({
+          limit: PAGE_SIZE_LARGE,
           after: after ?? undefined,
-          isBot: false,
         });
         const filterData = getEntityReferenceListFromEntities(
           data,
-          EntityType.USER
+          EntityType.PERSONA
         );
 
         return { data: filterData, paging };
@@ -82,11 +83,8 @@ export const UserSelectableList = ({
 
   const handleUpdate = useCallback(
     (users: EntityReference[]) => {
-      if (multiSelect) {
-        (onUpdate as (users: EntityReference[]) => void)(users);
-      } else {
-        (onUpdate as (users: EntityReference) => void)(users[0]);
-      }
+      (onUpdate as (users: EntityReference[]) => void)(users);
+
       setPopupVisible(false);
     },
     [onUpdate]
@@ -97,12 +95,12 @@ export const UserSelectableList = ({
       destroyTooltipOnHide
       content={
         <SelectableList
+          multiSelect
           fetchOptions={fetchOptions}
-          multiSelect={multiSelect}
           searchPlaceholder={t('label.search-for-type', {
-            type: t('label.user'),
+            type: t('label.persona'),
           })}
-          selectedItems={selectedUsers}
+          selectedItems={selectedPersonas}
           onCancel={() => setPopupVisible(false)}
           onUpdate={handleUpdate}
         />

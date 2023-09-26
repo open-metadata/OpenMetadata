@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Space } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Form, Space } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
@@ -26,16 +27,11 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPersona, updatePersona } from 'rest/PersonaAPI';
 import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields } from 'utils/formUtils';
+import { generateFormFields, getField } from 'utils/formUtils';
 import { showErrorToast } from 'utils/ToastUtils';
+import { AddPersonaFormProps } from './AddEditPersona.interface';
 
-interface AddPersonaFormProps {
-  onCancel: () => void;
-  onSave: () => void;
-  persona?: Persona;
-}
-
-export const AddPersonaForm = ({
+export const AddEditPersonaForm = ({
   onCancel,
   onSave,
   persona,
@@ -102,25 +98,36 @@ export const AddPersonaForm = ({
           initialValue: '',
         },
       },
-      {
-        name: 'users',
-        required: true,
-        label: t('label.user-plural'),
-        id: 'root/users',
-        formItemProps: {
-          valuePropName: 'selectedUsers',
-          trigger: 'onUpdate',
-          initialValue: [],
-          className: 'm-0',
-        },
-        formItemLayout: FormItemLayout.HORIZONATAL,
-        type: FieldTypes.USER_MULTI_SELECT,
-        props: {
-          'data-testid': 'user',
-          hasPermission: true,
-        },
-      },
     ],
+    []
+  );
+
+  const usersField = useMemo(
+    () => ({
+      name: 'users',
+      required: true,
+      label: t('label.user-plural'),
+      id: 'root/users',
+      formItemProps: {
+        valuePropName: 'selectedUsers',
+        trigger: 'onUpdate',
+        initialValue: [],
+      },
+      formItemLayout: FormItemLayout.HORIZONATAL,
+      type: FieldTypes.USER_MULTI_SELECT,
+      props: {
+        'data-testid': 'user',
+        hasPermission: true,
+        children: (
+          <Button
+            data-testid="add-reviewers"
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            size="small"
+            type="primary"
+          />
+        ),
+      },
+    }),
     []
   );
 
@@ -142,23 +149,25 @@ export const AddPersonaForm = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSave}>
         {generateFormFields(fields)}
-
-        {Boolean(usersList.length) && (
-          <Space
-            wrap
-            className="m-y-xs"
-            data-testid="reviewers-container"
-            size={[8, 8]}>
-            {usersList.map((d) => (
-              <UserTag
-                id={d.id}
-                key={d.id}
-                name={getEntityName(d)}
-                size={UserTagSize.small}
-              />
-            ))}
-          </Space>
-        )}
+        <div>
+          {getField(usersField)}
+          {Boolean(usersList.length) && (
+            <Space
+              wrap
+              className="m--t-md"
+              data-testid="reviewers-container"
+              size={[8, 8]}>
+              {usersList.map((d) => (
+                <UserTag
+                  id={d.id}
+                  key={d.id}
+                  name={getEntityName(d)}
+                  size={UserTagSize.small}
+                />
+              ))}
+            </Space>
+          )}
+        </div>
       </Form>
     </Modal>
   );

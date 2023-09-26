@@ -16,15 +16,18 @@ import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/A
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { PersonaSelectableList } from 'components/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import SearchedData from 'components/searched-data/SearchedData';
 import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { EntityType } from 'enums/entity.enum';
+import { EntityReference } from 'generated/entity/type';
 import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { getEntityName } from 'utils/EntityUtils';
 import { getUserPath } from '../../constants/constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
 import PageLayoutV1 from '../containers/PageLayoutV1';
@@ -114,6 +117,13 @@ const Users = ({
     [userData, username]
   );
 
+  const handlePersonaUpdate = useCallback(
+    async (personas: EntityReference[]) => {
+      await updateUserDetails({ ...userData, personas });
+    },
+    [updateUserDetails, userData]
+  );
+
   const tabDetails = useMemo(() => {
     switch (tab) {
       case UserPageTabs.FOLLOWING:
@@ -181,8 +191,11 @@ const Users = ({
   return (
     <PageLayoutV1 className="user-layout h-full" pageTitle={t('label.user')}>
       <div data-testid="table-container">
-        <Row className="user-profile-container" data-testid="user-profile">
-          <Col className="flex-center border-right" span={4}>
+        <Row
+          className="user-profile-container"
+          data-testid="user-profile"
+          gutter={[16, 16]}>
+          <Col className="flex-center border-right" flex="120px">
             <UserProfileImage
               userData={{
                 id: userData.id,
@@ -215,11 +228,22 @@ const Users = ({
               updateUserDetails={updateUserDetails}
               userRoles={userData.roles}
             />
-          </Col>
-          <Col className="p-x-sm" span={5}>
             <UserProfileInheritedRoles
               inheritedRoles={userData.inheritedRoles}
             />
+          </Col>
+          <Col span={5}>
+            <Typography.Text
+              className="right-panel-label m-b-0 d-flex gap-2"
+              data-testid="inherited-roles">
+              {t('label.persona')}
+              <PersonaSelectableList
+                hasPermission
+                selectedPersonas={userData.personas ?? []}
+                onUpdate={handlePersonaUpdate}
+              />
+            </Typography.Text>
+            <div>{userData.personas?.map(getEntityName).join(', ')}</div>
           </Col>
         </Row>
         <Tabs

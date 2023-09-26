@@ -73,7 +73,7 @@ const UserPage = () => {
 
   const fetchUserData = async () => {
     try {
-      const res = await getUserByName(username, 'profile,roles,teams');
+      const res = await getUserByName(username, 'profile,roles,teams,personas');
       setUserData(res);
     } catch (error) {
       showErrorToast(
