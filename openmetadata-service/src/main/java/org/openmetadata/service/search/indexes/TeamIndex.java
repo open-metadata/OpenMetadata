@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.service.Entity;
@@ -29,6 +30,10 @@ public class TeamIndex implements ElasticSearchIndex {
     suggest.add(SearchSuggest.builder().input(team.getDisplayName()).weight(10).build());
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            team.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 }

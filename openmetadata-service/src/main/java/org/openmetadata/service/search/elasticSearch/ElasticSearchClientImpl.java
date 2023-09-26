@@ -16,9 +16,9 @@ import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_C
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
@@ -479,9 +479,9 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("tasks.name", 2.0f)
             .field("tasks.description", 1.0f)
@@ -512,8 +512,8 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME, 15.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("mlFeatures.name", 2.0f)
@@ -544,7 +544,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_NAME_NGRAM)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
@@ -574,8 +574,8 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_NAME_NGRAM)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
             .field("charts.name", 2.0f)
@@ -614,8 +614,8 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_NAME_NGRAM)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
             .field(NAME_KEYWORD, 25.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(COLUMNS_NAME_KEYWORD, 10.0f)
             .field("columns.name", 2.0f)
             .field("columns.name.ngram")
@@ -667,6 +667,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME, 3.0f)
             .field(DISPLAY_NAME_KEYWORD, 5.0f)
             .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(FIELD_NAME, 2.0f)
             .field(NAME_KEYWORD, 3.0f)
             .defaultOperator(Operator.AND)
@@ -682,8 +683,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_NAME, 10.0f)
             .field(NAME_KEYWORD, 10.0f)
             .field(DISPLAY_NAME_KEYWORD, 10.0f)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DISPLAY_NAME_NGRAM)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field("synonyms", 5.0f)
             .field("synonyms.ngram")
             .field(FIELD_DESCRIPTION, 3.0f)
@@ -724,6 +724,7 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_NAME, 10.0f)
             .field(FIELD_DISPLAY_NAME, 10.0f)
             .field(FIELD_NAME_NGRAM, 1.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field("classification.name", 1.0f)
             .field(FIELD_DESCRIPTION, 3.0f)
             .defaultOperator(Operator.AND)
@@ -752,8 +753,8 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(FIELD_DISPLAY_NAME_NGRAM)
             .field(FIELD_NAME, 15.0f)
             .field(FIELD_DESCRIPTION, 1.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .field(DISPLAY_NAME_KEYWORD, 25.0f)
+            .field(FULLY_QUALIFIED_NAME_PARTS, 10.0f)
             .field(NAME_KEYWORD, 25.0f)
             .field("dataModel.columns.name", 2.0f)
             .field(DATA_MODEL_COLUMNS_NAME_KEYWORD, 10.0f)
@@ -797,7 +798,6 @@ public class ElasticSearchClientImpl implements SearchClient {
             .field(QUERY, 10.0f)
             .field(QUERY_NGRAM)
             .field(FIELD_DESCRIPTION, 1.0f)
-            .field(FIELD_DESCRIPTION_NGRAM, 1.0f)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO);
 
