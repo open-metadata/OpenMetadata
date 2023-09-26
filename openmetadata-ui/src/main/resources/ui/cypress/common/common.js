@@ -1342,11 +1342,7 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
     cy.url().should('eq', `${BASE_URL}/my-data`);
 
     // Verify user profile
-    cy.get('[data-testid="avatar"]')
-      .first()
-      .should('be.visible')
-      .trigger('mouseover')
-      .click();
+    cy.get('[data-testid="avatar"]').first().trigger('mouseover').click();
     cy.get('[data-testid="user-name"]')
       .should('be.visible')
       .invoke('text')
@@ -1354,9 +1350,7 @@ export const signupAndLogin = (email, password, firstName, lastName) => {
 
     interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
 
-    cy.get('[data-testid="user-name"]')
-      .should('be.visible')
-      .click({ force: true });
+    cy.get('[data-testid="user-name"]').click({ force: true });
     cy.wait('@getUserPage').then((response) => {
       createdUserId = response.response.body.id;
       resolve(createdUserId); // Resolve the promise with the createdUserId

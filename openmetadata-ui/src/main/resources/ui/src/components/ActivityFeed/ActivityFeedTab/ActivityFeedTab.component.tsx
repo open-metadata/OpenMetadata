@@ -111,13 +111,7 @@ export const ActivityFeedTab = ({
     history.push(
       getEntityDetailLink(
         entityType,
-        [
-          EntityType.TABLE,
-          EntityType.GLOSSARY,
-          EntityType.GLOSSARY_TERM,
-        ].includes(entityType)
-          ? getEncodedFqn(fqn)
-          : fqn,
+        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
         EntityTabs.ACTIVITY_FEED,
         subTab
       )

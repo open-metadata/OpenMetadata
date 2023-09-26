@@ -91,7 +91,7 @@ const GlossaryTermsV1 = ({
     history.push({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(glossaryFqn, tab),
+        : getGlossaryTermDetailsPath(decodeURIComponent(glossaryFqn), tab),
     });
   };
 

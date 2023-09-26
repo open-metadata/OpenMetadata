@@ -286,6 +286,8 @@ export const TaskTab = ({
       return null;
     }
 
+    const taskType = taskDetails?.type ?? '';
+
     if (isTaskGlossaryApproval) {
       return approvalWorkflowActions;
     }
@@ -293,7 +295,7 @@ export const TaskTab = ({
     const parsedSuggestion = [
       'RequestDescription',
       'UpdateDescription',
-    ].includes(taskDetails?.type ?? '')
+    ].includes(taskType)
       ? taskDetails?.suggestion
       : JSON.parse(taskDetails?.suggestion || '[]');
 
@@ -307,9 +309,8 @@ export const TaskTab = ({
         )}
         {hasEditAccess ? (
           <>
-            {['RequestDescription', 'RequestTag'].includes(
-              taskDetails?.type ?? ''
-            ) && isEmpty(parsedSuggestion) ? (
+            {['RequestDescription', 'RequestTag'].includes(taskType) &&
+            isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>

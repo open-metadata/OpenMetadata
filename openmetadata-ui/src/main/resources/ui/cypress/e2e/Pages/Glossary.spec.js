@@ -422,22 +422,16 @@ const voteGlossary = (isGlossary) => {
 const goToGlossaryPage = () => {
   interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
   interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
-  cy.get('[data-testid="governance"]')
-    .should('exist')
-    .and('be.visible')
-    .click({ animationDistanceThreshold: 20 });
+  cy.get('[data-testid="governance"]').click({
+    animationDistanceThreshold: 20,
+  });
 
   // Clicking on Glossary
-  cy.get('.govern-menu')
-    .should('exist')
-    .and('be.visible')
-    .then(($el) => {
-      cy.wrap($el)
-        .find('[data-testid="app-bar-item-glossary"]')
-        .should('exist')
-        .and('be.visible')
-        .click({ force: true });
-    });
+  cy.get('.govern-menu').then(($el) => {
+    cy.wrap($el)
+      .find('[data-testid="app-bar-item-glossary"]')
+      .click({ force: true });
+  });
 };
 
 describe('Prerequisites', () => {

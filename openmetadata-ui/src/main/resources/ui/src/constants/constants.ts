@@ -684,7 +684,7 @@ export const getGlossaryTermDetailsPath = (
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, glossaryFQN);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryFQN));
 
   return path;
 };

@@ -118,10 +118,7 @@ const GlossaryDetails = ({
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       history.push(
-        getGlossaryTermDetailsPath(
-          getEncodedFqn(glossary.fullyQualifiedName ?? ''),
-          activeKey
-        )
+        getGlossaryTermDetailsPath(glossary.fullyQualifiedName ?? '', activeKey)
       );
     }
   };
