@@ -217,6 +217,7 @@ export const testServiceCreationAndIngestion = ({
   serviceType,
   connectionInput,
   addIngestionInput,
+  viewIngestionInput,
   serviceName,
   type = 'database',
   testIngestionButton = true,
@@ -340,6 +341,16 @@ export const testServiceCreationAndIngestion = ({
     addIngestionInput && addIngestionInput();
 
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+
+    if (viewIngestionInput) {
+      // Go back and data should persist
+      cy.get('[data-testid="back-button"]').scrollIntoView().click();
+
+      viewIngestionInput();
+
+      // Go Next
+      cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+    }
 
     scheduleIngestion();
 
@@ -482,7 +493,16 @@ export const visitEntityDetailsPage = (
   dataTestId,
   entityType
 ) => {
-  interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+  if (entity === 'dashboardDataModel') {
+    interceptURL(
+      'GET',
+      '/api/v1/dashboard/datamodels/name/*',
+      'getEntityDetails'
+    );
+  } else {
+    interceptURL('GET', '/api/v1/*/name/*', 'getEntityDetails');
+  }
+
   interceptURL(
     'GET',
     `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,

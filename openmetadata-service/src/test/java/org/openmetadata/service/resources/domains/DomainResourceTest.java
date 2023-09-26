@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.domains;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -89,6 +90,17 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     change = getChangeDescription(domain.getVersion());
     fieldUpdated(change, "domainType", DomainType.SOURCE_ALIGNED, DomainType.CONSUMER_ALIGNED);
     patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a domain with owner data consumer
+    CreateDomain create = createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    Domain d = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of domain can create subdomain under it
+    create = createRequest("subdomain").withParent(d.getFullyQualifiedName());
+    createEntity(create, authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override

@@ -1469,7 +1469,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return !supportsDataProducts ? null : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
   }
 
-  protected EntityReference getParent(T entity) {
+  public EntityInterface getParentEntity(T entity, String fields) {
+    return null; // Override this method to inherit permissions from the parent entity
+  }
+
+  public EntityReference getParent(T entity) {
     return getFromEntityRef(entity.getId(), Relationship.CONTAINS, entityType, false);
   }
 

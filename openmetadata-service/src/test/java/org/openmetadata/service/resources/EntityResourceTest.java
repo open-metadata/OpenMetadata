@@ -255,10 +255,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Team TEAM2; // Team 2 has team only policy and does not allow access to users not in team hierarchy
   public static Team TEAM21; // Team under Team2
 
-  public static User USER_WITH_DATA_STEWARD_ROLE;
+  public static User DATA_STEWARD;
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;
-  public static User USER_WITH_DATA_CONSUMER_ROLE;
+  public static User DATA_CONSUMER;
   public static Role DATA_CONSUMER_ROLE;
   public static EntityReference DATA_CONSUMER_ROLE_REF;
   public static Role ROLE1;
@@ -1332,8 +1332,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Admins, Owner or a User with policy can update the entity without owner
     entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
-    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, DATA_STEWARD.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, DATA_CONSUMER.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
 
     if (!supportsOwner) {
@@ -1352,8 +1352,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Admin, owner (USER1) and user with DataSteward role can update the owner on entity owned by USER1.
     entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
-    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), false);
-    patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), true);
+    entity = patchEntityAndCheckAuthorization(entity, DATA_STEWARD.getName(), false);
+    patchEntityAndCheckAuthorization(entity, DATA_CONSUMER.getName(), true);
   }
 
   @Test

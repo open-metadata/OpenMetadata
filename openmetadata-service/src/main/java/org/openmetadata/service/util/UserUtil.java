@@ -40,6 +40,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public final class UserUtil {
@@ -128,7 +129,7 @@ public final class UserUtil {
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
@@ -136,7 +137,6 @@ public final class UserUtil {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception", exception);
       user.setAuthenticationMechanism(null);
-      LOG.debug("User entry: {} already exists.", user.getName());
     }
     return null;
   }

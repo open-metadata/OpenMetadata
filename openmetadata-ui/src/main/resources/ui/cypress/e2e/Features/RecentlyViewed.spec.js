@@ -19,6 +19,7 @@ import {
   SEARCH_ENTITY_DASHBOARD,
   SEARCH_ENTITY_MLMODEL,
   SEARCH_ENTITY_PIPELINE,
+  SEARCH_ENTITY_STORED_PROCEDURE,
   SEARCH_ENTITY_TABLE,
   SEARCH_ENTITY_TOPIC,
 } from '../../constants/constants';
@@ -33,6 +34,7 @@ const RECENTLY_VIEW_ENTITIES = [
   SEARCH_ENTITY_TOPIC.topic_1,
   SEARCH_ENTITY_PIPELINE.pipeline_1,
   SEARCH_ENTITY_MLMODEL.mlmodel_2,
+  SEARCH_ENTITY_STORED_PROCEDURE.stored_procedure_2,
 ];
 
 describe('Recently viwed data assets', () => {
