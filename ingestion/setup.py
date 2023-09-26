@@ -197,7 +197,7 @@ plugins: Dict[str, Set[str]] = {
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk>=22.20.0", "lkml~=1.3"},
-    "mlflow": {"mlflow-skinny~=1.30", "alembic~=1.10.2"},
+    "mlflow": {"mlflow-skinny>=2.3.0", "alembic~=1.10.2"},
     "mongo": {"pymongo~=4.3", VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {"sqlalchemy-pytds~=0.3"},
