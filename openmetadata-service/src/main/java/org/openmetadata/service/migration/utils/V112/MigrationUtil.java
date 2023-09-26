@@ -50,7 +50,7 @@ public class MigrationUtil {
           if (ex instanceof SQLIntegrityConstraintViolationException) {
             LOG.info("Update for userName : {} skipped since already migrated", userEntity.getName());
           } else {
-            throw ex;
+            LOG.error("Update for User failed. Username : {}", userEntity.getName());
           }
         }
       }
