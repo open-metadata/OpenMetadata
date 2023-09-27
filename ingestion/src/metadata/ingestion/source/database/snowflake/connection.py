@@ -193,32 +193,36 @@ def test_connection(
     )
 
 
+def _init_database(engine_wrapper: SnowflakeEngineWrapper):
+    """
+    Initialize database
+    """
+    if not engine_wrapper.service_connection.database:
+        if not engine_wrapper.database_name:
+            databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
+            for database in databases:
+                engine_wrapper.database_name = database.name
+                break
+
 def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: str):
     """
     Method to test connection via inspector functions,
     this function creates the inspector object and fetches
     the function with name `func_name` and executes it
     """
-    if not engine_wrapper.service_connection.database:
-        if not engine_wrapper.database_name:
-            databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
-            for database in databases:
-                engine_wrapper.database_name = database.name
-                break
-        engine_wrapper.engine.execute(f"USE DATABASE {engine_wrapper.database_name}")
+    _init_database(engine_wrapper)
+    engine_wrapper.engine.execute(f"USE DATABASE {engine_wrapper.database_name}")
     inspector = inspect(engine_wrapper.engine)
     inspector_fn = getattr(inspector, func_name)
     inspector_fn()
 
 
 def test_table_query(engine_wrapper: SnowflakeEngineWrapper, statement: str):
-    if not engine_wrapper.service_connection.database:
-        if not engine_wrapper.database_name:
-            databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
-            for database in databases:
-                engine_wrapper.database_name = database.name
-                break
-        test_query(
-            engine=engine_wrapper.engine,
-            statement=statement.format(database_name=engine_wrapper.database_name),
-        )
+    """
+    Test Table queries
+    """
+    _init_database(engine_wrapper)
+    test_query(
+        engine=engine_wrapper.engine,
+        statement=statement.format(database_name=engine_wrapper.database_name),
+    )
