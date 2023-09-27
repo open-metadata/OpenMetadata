@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.utils.V112;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,15 @@ public class MigrationUtil {
         User userEntity = JsonUtils.readValue(json, User.class);
         userEntity.setFullyQualifiedName(
             EntityInterfaceUtil.quoteName(userEntity.getFullyQualifiedName().toLowerCase()));
-        daoCollection.userDAO().update(userEntity);
+        try {
+          daoCollection.userDAO().update(userEntity);
+        } catch (Exception ex) {
+          if (ex instanceof SQLIntegrityConstraintViolationException) {
+            LOG.info("Update for userName : {} skipped since already migrated", userEntity.getName());
+          } else {
+            throw ex;
+          }
+        }
       }
       offset = offset + limit;
     }
