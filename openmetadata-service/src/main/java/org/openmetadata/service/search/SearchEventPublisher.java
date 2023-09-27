@@ -37,7 +37,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class SearchEventPublisher extends AbstractEventPublisher {
-  private static SearchClient searchClient;
+  private static SearchRepository searchRepository;
   private static CollectionDAO dao;
 
   public SearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
@@ -45,8 +45,8 @@ public class SearchEventPublisher extends AbstractEventPublisher {
     SearchEventPublisher.dao = dao;
     // needs Db connection
     registerElasticSearchJobs();
-    searchClient = IndexUtil.getSearchClient(esConfig, dao);
-    SearchIndexDefinition esIndexDefinition = new SearchIndexDefinition(searchClient);
+    searchRepository = IndexUtil.getSearchClient(esConfig, dao);
+    SearchIndexDefinition esIndexDefinition = new SearchIndexDefinition(searchRepository);
     esIndexDefinition.createIndexes(esConfig);
   }
 
@@ -62,7 +62,7 @@ public class SearchEventPublisher extends AbstractEventPublisher {
 
   @Override
   public void onShutdown() {
-    searchClient.close();
+    searchRepository.close();
     LOG.info("Shutting down ElasticSearchEventPublisher");
   }
 

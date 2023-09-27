@@ -22,7 +22,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -30,7 +33,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -53,7 +56,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  public static SearchClient searchClient;
+  public static SearchRepository searchRepository;
   public static ElasticSearchConfiguration esConfig;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
@@ -69,7 +72,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     esConfig = config.getElasticSearchConfiguration();
-    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
+    searchRepository = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation
   }
 

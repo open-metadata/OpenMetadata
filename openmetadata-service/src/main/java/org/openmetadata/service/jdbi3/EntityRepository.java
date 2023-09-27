@@ -19,10 +19,35 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_CHILDREN;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
+import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_CHILDREN_MAPPING;
+import static org.openmetadata.service.search.SearchRepository.ADD;
+import static org.openmetadata.service.search.SearchRepository.DEFAULT_UPDATE_SCRIPT;
+import static org.openmetadata.service.search.SearchRepository.DELETE;
+import static org.openmetadata.service.search.SearchRepository.UPDATE;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -76,6 +101,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
@@ -192,7 +218,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
 
-  protected boolean supportsSearchIndex = false;
+  protected boolean supportsSearch = false;
 
   protected EntityRepository(
       String collectionPath,
@@ -694,17 +720,46 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+    if (supportsSearch) {
+      searchRepository.createEntity(entity);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    if (supportsSearchIndex) {
-      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
+    if (supportsSearch) {
+      searchRepository.updateEntity(updated, DEFAULT_UPDATE_SCRIPT, "");
+      if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
+          && (updated.getChangeDescription() != null)) {
+        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+            searchRepository.handleOwnerUpdates(original, updated, ADD);
+          }
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+            searchRepository.handleDomainUpdates(original, updated, ADD);
+          }
+        }
+        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsUpdated()) {
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+            searchRepository.handleOwnerUpdates(original, updated, UPDATE);
+          }
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+            searchRepository.handleDomainUpdates(original, updated, UPDATE);
+          }
+          if (fieldChange.getName().equalsIgnoreCase("disabled")
+              && updated.getEntityReference().getType().equals(Entity.CLASSIFICATION)) {
+            searchRepository.handleClassificationUpdate((Classification) updated);
+          }
+        }
+        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsDeleted()) {
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
+            searchRepository.handleOwnerUpdates(original, updated, DELETE);
+          }
+          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
+            searchRepository.handleDomainUpdates(original, updated, DELETE);
+          }
+        }
+      }
     }
   }
 
@@ -775,7 +830,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(entity, entity);
+    if (supportsSearch) {
+      postUpdate(entity, entity);
+    }
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -844,19 +901,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postDelete(T entity) {}
 
   public void deleteFromSearch(T entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+    if (supportsSearch) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
+        searchRepository.softDeleteOrRestoreEntity(entity, true);
+        if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
+          searchRepository.handleSoftDeletedAndRestoredEntity(entity, true);
+        }
       } else {
-        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
+        searchRepository.deleteEntity(entity, "", "", "");
+        if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
+          searchRepository.handleEntityDeleted(entity);
+        }
       }
     }
   }
 
   public void restoreFromSearch(T entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
+    if (supportsSearch) {
+      searchRepository.softDeleteOrRestoreEntity(entity, false);
+      if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
+        searchRepository.handleSoftDeletedAndRestoredEntity(entity, false);
+      }
     }
   }
 
@@ -879,6 +944,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       cleanup(updated);
       changeType = RestUtil.ENTITY_DELETED;
     }
+    if (supportsSearch) {}
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
   }
