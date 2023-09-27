@@ -12,6 +12,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -21,9 +22,9 @@ public class MigrationUtil {
     /* Cannot create object  util class*/
   }
 
-  // TODO THIS SHOULD EAT POSTGRES TOO
   private static final String MYSQL_LIST_TABLE_FQNS =
       "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM table_entity";
+  private static final String POSTGRES_LIST_TABLE_FQNS = "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
 
   public static void fixTestCases(Handle handle, CollectionDAO collectionDAO) {
     TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
@@ -32,7 +33,12 @@ public class MigrationUtil {
         testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 
     try {
-      List<String> fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
+      List<String> fqnList;
+      if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+        fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
+      } else {
+        fqnList = handle.createQuery(POSTGRES_LIST_TABLE_FQNS).mapTo(String.class).list();
+      }
       Map<String, String> tableMap = new HashMap<>();
       for (String fqn : fqnList) {
         tableMap.put(fqn.toLowerCase(), fqn);
