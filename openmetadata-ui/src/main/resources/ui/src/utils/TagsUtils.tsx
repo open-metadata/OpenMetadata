@@ -12,17 +12,17 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { EntityTags, TagOption } from 'Models';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import Loader from 'components/Loader/Loader';
+import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getExplorePath, PAGE_SIZE } from 'constants/constants';
+import { PAGE_SIZE, getExplorePath } from 'constants/constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
-import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { searchQuery } from 'rest/searchAPI';
@@ -300,6 +300,7 @@ export const fetchTagsElasticSearch = async (
   data: {
     label: string;
     value: string;
+    data: Tag;
   }[];
   paging: Paging;
 }> => {
@@ -316,6 +317,7 @@ export const fetchTagsElasticSearch = async (
     data: formatSearchTagsResponse(res.hits.hits ?? []).map((item) => ({
       label: item.fullyQualifiedName ?? '',
       value: item.fullyQualifiedName ?? '',
+      data: item,
     })),
     paging: {
       total: res.hits.total.value,

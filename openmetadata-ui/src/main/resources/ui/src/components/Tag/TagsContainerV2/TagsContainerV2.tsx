@@ -14,9 +14,10 @@
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
+import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { SearchIndex } from 'enums/search.enum';
+import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Paging } from 'generated/type/paging';
 import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
@@ -84,6 +85,7 @@ const TagsContainerV2 = ({
       data: {
         label: string;
         value: string;
+        data: GlossaryTerm;
       }[];
       paging: Paging;
     }> => {
@@ -101,6 +103,7 @@ const TagsContainerV2 = ({
         ).map((item) => ({
           label: item.fullyQualifiedName ?? '',
           value: item.fullyQualifiedName ?? '',
+          data: item,
         })),
         paging: {
           total: glossaryResponse.hits.total.value,
@@ -169,7 +172,6 @@ const TagsContainerV2 = ({
       <Col span={24}>
         <TagsViewer
           displayType={displayType}
-          layoutType={layoutType}
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={tags?.[tagType] ?? []}
         />
@@ -326,7 +328,6 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
-          layoutType={layoutType}
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={tags?.[tagType] ?? []}
         />
@@ -353,17 +354,17 @@ const TagsContainerV2 = ({
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
 
-      {!isEditTags &&
-        (isHoriZontalLayout ? (
-          horizontalLayout
-        ) : (
-          <Row data-testid="entity-tags">
-            {addTagButton}
-            {renderTags}
-            {showInlineEditButton && <Col>{editTagButton}</Col>}
-          </Row>
-        ))}
-      {isEditTags && tagsSelectContainer}
+      {isEditTags ? (
+        tagsSelectContainer
+      ) : isHoriZontalLayout ? (
+        horizontalLayout
+      ) : (
+        <Row data-testid="entity-tags">
+          {addTagButton}
+          {renderTags}
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
+      )}
 
       <Space align="baseline" className="m-t-xs w-full" size="middle">
         {showBottomEditButton && !showInlineEditButton && editTagButton}

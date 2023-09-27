@@ -16,6 +16,7 @@ import { Paging } from 'generated/type/paging';
 export type SelectOption = {
   label: string;
   value: string;
+  data?: unknown;
 };
 
 export interface AsyncSelectListProps {

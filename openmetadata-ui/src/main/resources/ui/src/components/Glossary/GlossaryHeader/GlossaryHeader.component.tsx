@@ -23,8 +23,6 @@ import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -32,6 +30,8 @@ import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.c
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import Voting from 'components/Voting/Voting.component';
 import { VotingDataProps } from 'components/Voting/voting.interface';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityAction, EntityType } from 'enums/entity.enum';
@@ -267,6 +267,28 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
+    ...(permissions?.EditAll && !isGlossary
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.rename-entity', {
+                  entity: t('label.glossary-term'),
+                })}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="rename-button"
+                name={t('label.edit-entity', { entity: t('label.style') })}
+              />
+            ),
+            key: 'rename-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsNameEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(permissions.Delete
       ? ([
           {
@@ -384,6 +406,13 @@ const GlossaryHeader = ({
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="folder"
+                  width={32}
+                />
+              ) : (selectedData as GlossaryTerm).style?.iconURL ? (
+                <img
+                  data-testid="icon"
+                  height={36}
+                  src={(selectedData as GlossaryTerm).style?.iconURL}
                   width={32}
                 />
               ) : (

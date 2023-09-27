@@ -14,6 +14,7 @@ import { Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
+import { EntityReference } from 'generated/entity/type';
 import { Paging } from 'generated/type/paging';
 import { debounce } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
@@ -67,8 +68,11 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
     const newTags = options
       .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
+        const displayName = (tag.data as EntityReference)?.displayName;
         const parts = Fqn.split(tag.label);
-        const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        const lastPartOfTag = displayName
+          ? displayName
+          : parts.slice(-1).join(FQN_SEPARATOR_CHAR);
         parts.pop();
 
         return {
