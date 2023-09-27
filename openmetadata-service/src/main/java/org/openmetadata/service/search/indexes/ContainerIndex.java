@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.type.EntityReference;
@@ -55,6 +56,11 @@ public class ContainerIndex implements ColumnIndex {
     doc.put("column_suggest", columnSuggest);
     doc.put("entityType", Entity.CONTAINER);
     doc.put("serviceType", container.getServiceType());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            container.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 }

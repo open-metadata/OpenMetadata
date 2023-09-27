@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.type.EntityReference;
@@ -40,6 +41,11 @@ public class MlModelIndex implements ElasticSearchIndex {
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.MLMODEL);
     doc.put("serviceType", mlModel.getServiceType());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            mlModel.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 }

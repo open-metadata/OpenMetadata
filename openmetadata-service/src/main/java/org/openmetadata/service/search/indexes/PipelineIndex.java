@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.EntityReference;
@@ -51,6 +52,11 @@ public class PipelineIndex implements ElasticSearchIndex {
     doc.put("service_suggest", serviceSuggest);
     doc.put("entityType", Entity.PIPELINE);
     doc.put("serviceType", pipeline.getServiceType());
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            pipeline.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 }

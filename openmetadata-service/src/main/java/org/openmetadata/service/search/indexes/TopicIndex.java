@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.EntityReference;
@@ -63,6 +64,11 @@ public class TopicIndex implements ElasticSearchIndex {
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+
     return doc;
   }
 
