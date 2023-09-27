@@ -15,7 +15,10 @@ import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { UserTag } from 'components/common/UserTag/UserTag.component';
 import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
 import { PAGE_SIZE } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+import {
+  ENTITY_NAME_REGEX,
+  HEX_COLOR_CODE_REGEX,
+} from 'constants/regex.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { EntityReference } from 'generated/entity/type';
 import { Paging } from 'generated/type/paging';
@@ -256,6 +259,19 @@ const AddGlossaryTermForm = ({
         }),
         fetchOptions: fetchGlossaryTerms,
       },
+    },
+    {
+      name: 'color',
+      id: 'root/color',
+      label: t('label.color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
     },
     {
       name: 'mutuallyExclusive',

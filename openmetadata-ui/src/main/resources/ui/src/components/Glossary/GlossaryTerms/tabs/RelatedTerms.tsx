@@ -12,6 +12,7 @@
  */
 
 import { Button, Tooltip, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
@@ -30,7 +31,7 @@ import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { ChangeDescription, EntityReference } from 'generated/entity/type';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEmpty, uniqWith } from 'lodash';
+import { cloneDeep, includes, isArray, isEmpty, uniqWith } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
@@ -68,12 +69,17 @@ const RelatedTerms = ({
   };
 
   const handleRelatedTermsSave = async (
-    selectedData: string[]
+    selectedData: DefaultOptionType | DefaultOptionType[]
   ): Promise<void> => {
+    if (!isArray(selectedData)) {
+      return;
+    }
     const newOptions = uniqWith(
       options,
       (arrVal, othVal) => arrVal.id === othVal.id
-    ).filter((item) => includes(selectedData, item.fullyQualifiedName));
+    ).filter((item) =>
+      selectedData.find((data) => data.value === item.fullyQualifiedName)
+    );
 
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
     const oldTerms = newOptions.filter((d) =>

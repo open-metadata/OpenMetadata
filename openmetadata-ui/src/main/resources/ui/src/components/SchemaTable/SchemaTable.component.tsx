@@ -12,19 +12,18 @@
  */
 
 import Icon, { FilterOutlined } from '@ant-design/icons';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import TableDescription from 'components/TableDescription/TableDescription.component';
 import TableTags from 'components/TableTags/TableTags.component';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { PRIMERY_COLOR } from 'constants/constants';
+import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
@@ -32,13 +31,13 @@ import {
   isEmpty,
   isUndefined,
   lowerCase,
-  map,
   reduce,
   set,
   sortBy,
   toLower,
   uniqBy,
 } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
@@ -129,19 +128,18 @@ const SchemaTable = ({
 
     return reduce(
       newColumnTags,
-      (acc: Array<EntityTags>, cv: TagOption) => {
-        if (prevTagsFqn?.includes(cv.fqn)) {
-          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+      (acc: Array<EntityTags>, cv: EntityTags) => {
+        if (prevTagsFqn?.includes(cv.tagFQN)) {
+          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
 
           return [...acc, prev];
         } else {
           return [
             ...acc,
             {
+              ...cv,
               labelType: LabelType.Manual,
               state: State.Confirmed,
-              source: cv.source,
-              tagFQN: cv.fqn,
             },
           ];
         }
@@ -153,7 +151,7 @@ const SchemaTable = ({
   const updateColumnTags = (
     tableCols: Column[],
     changedColFQN: string,
-    newColumnTags: Array<TagOption>
+    newColumnTags: EntityTags[]
   ) => {
     tableCols?.forEach((col) => {
       if (col.fullyQualifiedName === changedColFQN) {
@@ -188,16 +186,12 @@ const SchemaTable = ({
     selectedTags: EntityTags[],
     editColumnTag: Column
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-    if (newSelectedTags && editColumnTag) {
+    if (selectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
       updateColumnTags(
         tableCols,
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags
+        selectedTags
       );
       await onUpdate(tableCols);
     }

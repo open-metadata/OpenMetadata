@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 import { Form, FormProps, Input, Modal } from 'antd';
+import ColorPicker from 'components/common/ColorPicker/ColorPicker.component';
 import { HEX_COLOR_CODE_REGEX } from 'constants/regex.constants';
 import { isUndefined, omit } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
-
-// css
-import './style-modal.style.less';
 
 const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
   const { t } = useTranslation();
@@ -61,26 +59,16 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
             })}
           />
         </Form.Item>
-        <Form.Item label={t('label.color')} name="colorGroup">
-          <Input.Group compact>
-            <Form.Item noStyle name="color">
-              <Input className="style-color-picker" type="color" />
-            </Form.Item>
-            <Form.Item
-              noStyle
-              name="colorInput"
-              rules={[
-                {
-                  pattern: HEX_COLOR_CODE_REGEX,
-                  message: t('message.hex-color-validation'),
-                },
-              ]}>
-              <Input
-                className="style-color-input"
-                placeholder={t('message.hex-code-placeholder')}
-              />
-            </Form.Item>
-          </Input.Group>
+        <Form.Item
+          label={t('label.color')}
+          name="color"
+          rules={[
+            {
+              pattern: HEX_COLOR_CODE_REGEX,
+              message: t('message.hex-color-validation'),
+            },
+          ]}>
+          <ColorPicker />
         </Form.Item>
       </Form>
     </Modal>

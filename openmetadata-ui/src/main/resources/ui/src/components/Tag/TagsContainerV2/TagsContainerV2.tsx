@@ -12,21 +12,22 @@
  */
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
 import { SearchIndex } from 'enums/search.enum';
 import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import { Paging } from 'generated/type/paging';
 import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { getGlossaryTerms } from 'rest/glossaryAPI';
 import { searchQuery } from 'rest/searchAPI';
-import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
 import { getEntityFeedLink } from 'utils/EntityUtils';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
 import { fetchTagsElasticSearch, getTagPlaceholder } from 'utils/TagsUtils';
@@ -97,20 +98,20 @@ const TagsContainerV2 = ({
         searchIndex: SearchIndex.GLOSSARY,
       });
 
+      const hits = glossaryResponse.hits.hits;
+
       return {
-        data: formatSearchGlossaryTermResponse(
-          glossaryResponse.hits.hits ?? []
-        ).map((item) => ({
-          label: item.fullyQualifiedName ?? '',
-          value: item.fullyQualifiedName ?? '',
-          data: item,
+        data: hits.map(({ _source }) => ({
+          label: _source.fullyQualifiedName ?? '',
+          value: _source.fullyQualifiedName ?? '',
+          data: _source,
         })),
         paging: {
           total: glossaryResponse.hits.total.value,
         },
       };
     },
-    [searchQuery, getGlossaryTerms, formatSearchGlossaryTermResponse]
+    [searchQuery, getGlossaryTerms]
   );
 
   const fetchAPI = useCallback(
@@ -129,11 +130,25 @@ const TagsContainerV2 = ({
     [showAddTagButton, tags?.[tagType]]
   );
 
-  const handleSave = async (data: string[]) => {
-    const updatedTags = data.map((t) => ({
-      tagFQN: t,
-      source: tagType,
-    }));
+  const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
+    const updatedTags = (data as DefaultOptionType[]).map((tag) => {
+      let tagData: EntityTags = {
+        tagFQN: tag.value,
+        source: tagType,
+      };
+
+      if (tag.data) {
+        tagData = {
+          ...tagData,
+          name: tag.data?.name,
+          displayName: tag.data?.displayName,
+          description: tag.data?.description,
+          style: tag.data?.style,
+        };
+      }
+
+      return tagData;
+    });
 
     if (onSelectionChange) {
       await onSelectionChange([

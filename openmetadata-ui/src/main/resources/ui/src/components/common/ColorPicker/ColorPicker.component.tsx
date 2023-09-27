@@ -10,22 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Input, InputProps } from 'antd';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import './color-picker.style.less';
 
-import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from 'components/AsyncSelectList/AsyncSelectList.interface';
-import { Paging } from 'generated/type/paging';
+const ColorPicker = (pros: InputProps) => {
+  const { t } = useTranslation();
 
-export type TagsSelectFormProps = {
-  placeholder: string;
-  defaultValue: string[];
-  onChange?: (value: string[]) => void;
-  onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
-  onCancel: () => void;
-  fetchApi: (
-    search: string,
-    page: number
-  ) => Promise<{
-    data: SelectOption[];
-    paging: Paging;
-  }>;
+  return (
+    <Input.Group compact>
+      <Input {...pros} className="style-color-picker" type="color" />
+      <Input
+        {...pros}
+        className="style-color-input"
+        placeholder={t('message.hex-code-placeholder')}
+      />
+    </Input.Group>
+  );
 };
+
+export default ColorPicker;
