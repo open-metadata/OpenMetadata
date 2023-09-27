@@ -58,7 +58,7 @@ public class MigrationUtil {
   public static void addQueryService(Handle handle, CollectionDAO collectionDAO) {
     QueryRepository queryRepository = new QueryRepository(collectionDAO);
 
-    try (handle) {
+    try {
       handle
           .createQuery(QUERY_LIST_SERVICE)
           .mapToMap()

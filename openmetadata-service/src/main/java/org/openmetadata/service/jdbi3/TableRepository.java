@@ -158,7 +158,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) {
-    EntityReference schemaRef = getContainer(table.getId());
+    EntityReference schemaRef = getContainer(table.getId(), DATABASE_SCHEMA);
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
