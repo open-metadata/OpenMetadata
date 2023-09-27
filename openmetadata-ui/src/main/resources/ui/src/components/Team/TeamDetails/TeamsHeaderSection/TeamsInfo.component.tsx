@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Divider,
-  Form,
-  FormProps,
-  Input,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Icon from '@ant-design/icons/lib/components/Icon';
@@ -95,7 +86,7 @@ const TeamsInfo = ({
     setIsHeadingEditing(false);
   };
 
-  const onEmailSave: FormProps['onFinish'] = async (data): Promise<void> => {
+  const onEmailSave = async (data: { email: string }) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
@@ -108,17 +99,15 @@ const TeamsInfo = ({
   };
 
   const updateOwner = useCallback(
-    (owner?: EntityReference) => {
+    async (owner?: EntityReference) => {
       if (currentTeam) {
         const updatedData: Team = {
           ...currentTeam,
           owner,
         };
 
-        return updateTeamHandler(updatedData);
+        await updateTeamHandler(updatedData);
       }
-
-      return Promise.reject();
     },
     [currentTeam]
   );
@@ -292,47 +281,42 @@ const TeamsInfo = ({
         <Typography.Text className="text-grey-muted">
           {`${t('label.type')} :`}
         </Typography.Text>
-
-        {teamType ? (
-          showTypeSelector ? (
-            <TeamTypeSelect
-              handleShowTypeSelector={setShowTypeSelector}
-              parentTeamType={
-                last(parentTeams)?.teamType ?? TeamType.Organization
-              }
-              showGroupOption={!childTeamsCount}
-              teamType={teamType ?? TeamType.Department}
-              updateTeamType={hasEditPermission ? updateTeamType : undefined}
-            />
-          ) : (
-            <>
-              <Typography.Text className="font-medium" data-testid="team-type">
-                {teamType}
-              </Typography.Text>
-
-              {hasEditPermission && (
-                <Icon
-                  className={classNames('vertical-middle m-l-xs', {
-                    'opacity-50': isGroupType,
-                  })}
-                  data-testid="edit-team-type-icon"
-                  title={
-                    isGroupType
-                      ? t('message.group-team-type-change-message')
-                      : t('label.edit-entity', {
-                          entity: t('label.team-type'),
-                        })
-                  }
-                  onClick={
-                    isGroupType ? undefined : () => setShowTypeSelector(true)
-                  }>
-                  <EditIcon />
-                </Icon>
-              )}
-            </>
-          )
+        {showTypeSelector ? (
+          <TeamTypeSelect
+            handleShowTypeSelector={setShowTypeSelector}
+            parentTeamType={
+              last(parentTeams)?.teamType ?? TeamType.Organization
+            }
+            showGroupOption={!childTeamsCount}
+            teamType={teamType ?? TeamType.Department}
+            updateTeamType={hasEditPermission ? updateTeamType : undefined}
+          />
         ) : (
-          <span>{teamType}</span>
+          <>
+            <Typography.Text className="font-medium" data-testid="team-type">
+              {teamType}
+            </Typography.Text>
+
+            {hasEditPermission && (
+              <Icon
+                className={classNames('vertical-middle m-l-xs', {
+                  'opacity-50': isGroupType,
+                })}
+                data-testid="edit-team-type-icon"
+                title={
+                  isGroupType
+                    ? t('message.group-team-type-change-message')
+                    : t('label.edit-entity', {
+                        entity: t('label.team-type'),
+                      })
+                }
+                onClick={
+                  isGroupType ? undefined : () => setShowTypeSelector(true)
+                }>
+                <EditIcon />
+              </Icon>
+            )}
+          </>
         )}
       </Space>
     );

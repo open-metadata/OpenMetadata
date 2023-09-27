@@ -38,7 +38,7 @@ import {
   patchTeamDetail,
 } from 'rest/teamsAPI';
 import { getUsers, updateUserDetail } from 'rest/userAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
@@ -219,7 +219,7 @@ const TeamsPage = () => {
     getUsers({
       fields: 'teams,roles',
       limit: PAGE_SIZE_BASE,
-      team,
+      team: getDecodedFqn(team),
       ...paging,
     })
       .then((res) => {

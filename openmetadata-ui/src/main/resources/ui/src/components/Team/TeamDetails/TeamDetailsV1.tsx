@@ -902,15 +902,15 @@ const TeamDetailsV1 = ({
                 allowSoftDelete={!currentTeam.deleted}
                 canDelete={entityPermissions.EditAll}
                 entityId={currentTeam.id}
-                entityName={currentTeam.fullyQualifiedName || currentTeam.name}
+                entityName={currentTeam.fullyQualifiedName ?? currentTeam.name}
                 entityType="team"
                 extraDropdownContent={extraDropdownContent}
                 hardDeleteMessagePostFix={getDeleteMessagePostFix(
-                  currentTeam.fullyQualifiedName || currentTeam.name,
+                  currentTeam.fullyQualifiedName ?? currentTeam.name,
                   t('label.permanently-lowercase')
                 )}
                 softDeleteMessagePostFix={getDeleteMessagePostFix(
-                  currentTeam.fullyQualifiedName || currentTeam.name,
+                  currentTeam.fullyQualifiedName ?? currentTeam.name,
                   t('label.soft-lowercase')
                 )}
               />
