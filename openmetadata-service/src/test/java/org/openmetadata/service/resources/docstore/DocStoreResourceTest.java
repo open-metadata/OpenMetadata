@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.docstore;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.Entity.DOCUMENT;
+import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -81,7 +82,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
                 new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/activityFeed'}"));
     String fqn =
         FullyQualifiedName.build(
-            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "ActivityFeed");
+            knowledgePanel.getEntityType().toString(), "ActivityFeed");
     CreateDocument create =
         createRequest(test, 1)
             .withName("ActivityFeed")
@@ -97,7 +98,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
                 new Configuration().withAdditionalProperty("configuration", "{'api':'/api/v1/knowledgePanel'}"));
     fqn =
         FullyQualifiedName.build(
-            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "MyData");
+            knowledgePanel.getEntityType().toString(), "MyData");
     create =
         createRequest(test, 1)
             .withName("MyData")
@@ -110,7 +111,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     knowledgePanel = new KnowledgePanel();
     fqn =
         FullyQualifiedName.build(
-            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "Following");
+             knowledgePanel.getEntityType().toString(), "Following");
     create =
         createRequest(test, 1)
             .withName("Following")
@@ -121,7 +122,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     panelDocs.add(following);
     fqn =
         FullyQualifiedName.build(
-            DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString(), "DataInsights");
+             knowledgePanel.getEntityType().toString(), "DataInsights");
     knowledgePanel =
         new KnowledgePanel()
             .withConfiguration(
@@ -137,7 +138,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put(
         "fqnPrefix",
-        FullyQualifiedName.build(DATA_SCIENTIST.getFullyQualifiedName(), knowledgePanel.getEntityType().toString()));
+        FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(panelDocs.size(), panelList.getPaging().getTotal());
 
@@ -147,10 +148,13 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         new Page()
             .withPageType(PageType.LANDING_PAGE)
             .withKnowledgePanels(List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
+    fqn =
+            FullyQualifiedName.build(PERSONA, DATA_SCIENTIST.getFullyQualifiedName(),
+                    page.getEntityType().toString(), page.getPageType().toString());
     create =
         createRequest(test, 1)
             .withName("LandingPage")
-            .withFullyQualifiedName(page.getEntityType().toString() + ".LandingPage")
+            .withFullyQualifiedName(fqn)
             .withEntityType(page.getEntityType().toString())
             .withData(new Data().withAdditionalProperty(page.getEntityType().toString(), page));
     Document landingPage = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
@@ -160,16 +164,19 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
         new Page()
             .withPageType(PageType.GLOSSARY_TERM_LANDING_PAGE)
             .withKnowledgePanels(List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
+    fqn = FullyQualifiedName.build(PERSONA, DATA_SCIENTIST.getFullyQualifiedName(),
+            page.getEntityType().toString(), page.getPageType().toString());
     create =
         createRequest(test, 1)
             .withName("GlossaryTermLandingPage")
-            .withFullyQualifiedName(page.getEntityType().toString() + ".GlossaryTermLandingPage")
+            .withFullyQualifiedName(fqn)
             .withEntityType(page.getEntityType().toString())
             .withData(new Data().withAdditionalProperty(page.getEntityType().toString(), page));
     Document glossaryTermLandingPage = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     pageDocs.add(glossaryTermLandingPage);
     queryParams = new HashMap<>();
-    queryParams.put("entityType", page.getEntityType().toString());
+    queryParams.put("fqnPrefix", FullyQualifiedName.build(PERSONA, DATA_SCIENTIST.getFullyQualifiedName(),
+            page.getEntityType().toString()));
     ResultList<Document> docList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(pageDocs.size(), docList.getPaging().getTotal());
   }
