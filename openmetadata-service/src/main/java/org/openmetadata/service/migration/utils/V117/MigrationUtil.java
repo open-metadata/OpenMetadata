@@ -33,7 +33,7 @@ public class MigrationUtil {
     List<TestCase> testCases =
         testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 
-    try (handle) {
+    try {
       List<String> fqnList = handle.createQuery(MYSQL_LIST_TABLE_FQNS).mapTo(String.class).list();
       Map<String, String> tableMap = new HashMap<>();
       for (String fqn : fqnList) {

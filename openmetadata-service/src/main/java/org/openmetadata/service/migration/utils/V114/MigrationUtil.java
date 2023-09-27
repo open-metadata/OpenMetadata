@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.utils.V114;
 
 import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.migration.utils.v110.MigrationUtil.getTestSuite;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.groupTestCasesByTable;
 
 import java.util.ArrayList;
@@ -8,15 +9,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
@@ -59,8 +65,7 @@ public class MigrationUtil {
       try {
         List<TestCase> testCases = testCasesGroupByTable.get(tableFQN);
         String executableTestSuiteFQN = tableFQN + ".testSuite";
-        TestSuite executableTestSuite =
-            testSuiteRepository.getDao().findEntityByName(executableTestSuiteFQN, "fqnHash", Include.ALL);
+        TestSuite executableTestSuite = getOrCreateExecutableTestSuite(collectionDAO, testCases, testSuiteRepository, executableTestSuiteFQN);
         for (TestCase testCase : testCases) {
           // we are setting mustHaveRelationship to "false" to not throw any error.
           List<CollectionDAO.EntityRelationshipRecord> existingRelations =
@@ -70,7 +75,7 @@ public class MigrationUtil {
             for (CollectionDAO.EntityRelationshipRecord existingTestSuiteRel : existingRelations) {
               try {
                 TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(existingTestSuiteRel.getId());
-                if (existingTestSuite.getExecutable()
+                if (Boolean.TRUE.equals(existingTestSuite.getExecutable())
                     && existingTestSuite.getFullyQualifiedName().equals(executableTestSuiteFQN)) {
                   // There is a native test suite associated with this testCase.
                   relationWithExecutableTestSuiteExists = true;
@@ -96,7 +101,7 @@ public class MigrationUtil {
                 executableTestSuite.getExecutableEntityReference().getId(), TABLE, Relationship.CONTAINS, TEST_SUITE);
         for (CollectionDAO.EntityRelationshipRecord testSuiteRel : testSuiteRels) {
           try {
-            TestSuite existingTestSuite = testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
+            testSuiteRepository.getDao().findEntityById(testSuiteRel.getId());
           } catch (EntityNotFoundException ex) {
             // if testsuite cannot be retrieved but the relation exists, then this is orphaned relation, we will
             // delete the relation
@@ -112,6 +117,45 @@ public class MigrationUtil {
         LOG.error(
             String.format("Error trying to migrate tests from Table [%s] due to [%s]", tableFQN, exc.getMessage()));
       }
+    }
+  }
+
+  private static TestSuite getOrCreateExecutableTestSuite(CollectionDAO collectionDAO, List<TestCase> testCases, TestSuiteRepository testSuiteRepository, String executableTestSuiteFQN) {
+    try {
+      // Try to return the Executable Test Suite that should exist
+      return testSuiteRepository.getDao().findEntityByName(executableTestSuiteFQN, "fqnHash", Include.ALL);
+    } catch (EntityNotFoundException exc) {
+      // If it does not exist, create it and return it
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
+      TestSuite newExecutableTestSuite =
+          getTestSuite(
+              collectionDAO,
+              new CreateTestSuite()
+                  .withName(FullyQualifiedName.buildHash(executableTestSuiteFQN))
+                  .withDisplayName(executableTestSuiteFQN)
+                  .withExecutableEntityReference(entityLink.getEntityFQN()),
+              "ingestion-bot")
+              .withExecutable(true)
+              .withFullyQualifiedName(executableTestSuiteFQN);
+      testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
+      testSuiteRepository
+          .getDao()
+          .insert("fqnHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
+      // add relationship between executable TestSuite with Table
+      testSuiteRepository.addRelationship(
+          newExecutableTestSuite.getExecutableEntityReference().getId(),
+          newExecutableTestSuite.getId(),
+          Entity.TABLE,
+          TEST_SUITE,
+          Relationship.CONTAINS);
+
+      // add relationship between all the testCases that are created against a table with native test suite.
+      for (TestCase testCase : testCases) {
+        testSuiteRepository.addRelationship(
+            newExecutableTestSuite.getId(), testCase.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+      }
+      return newExecutableTestSuite;
     }
   }
 }
