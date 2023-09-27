@@ -306,7 +306,7 @@ const TeamsInfo = ({
             />
           ) : (
             <>
-              <Typography.Text className="font-medium">
+              <Typography.Text className="font-medium" data-testid="team-type">
                 {teamType}
               </Typography.Text>
 
