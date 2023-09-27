@@ -47,6 +47,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
@@ -230,6 +233,19 @@
       "deleted": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
       "owner": {
         "properties": {
           "id": {
@@ -402,6 +418,9 @@
             "type": "keyword"
           }
         }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "extension": {
         "type": "keyword"

@@ -12,11 +12,8 @@
 Snowflake source module
 """
 import json
-import re
 import traceback
-from collections import defaultdict
-from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
 from requests.utils import quote
@@ -25,11 +22,9 @@ from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
@@ -48,19 +43,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import (
-    EntityName,
-    SourceUrl,
-    SqlQuery,
-    Timestamp,
-)
-from metadata.generated.schema.type.entityLineage import Source as LineageSource
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.lifeCycle import Created, Deleted
+from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
@@ -68,7 +54,9 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.database_service import QueryByProcedure
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
+)
 from metadata.ingestion.source.database.snowflake.constants import (
     SNOWFLAKE_REGION_ID_MAP,
 )
@@ -106,13 +94,15 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names,
     normalize_names,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import get_start_and_end
-from metadata.utils.life_cycle_utils import init_empty_life_cycle_properties
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
-from metadata.utils.stored_procedures import get_procedure_name_from_call
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
@@ -146,7 +136,7 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 
 
-class SnowflakeSource(CommonDbSourceService):
+class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Snowflake Source
@@ -627,26 +617,22 @@ class SnowflakeSource(CommonDbSourceService):
         """
         table = self.context.table
         try:
-            results = self.engine.execute(
-                SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+            life_cycle_data = self.life_cycle_query_dict(
+                query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
                     database_name=table.database.name,
                     schema_name=table.databaseSchema.name,
-                    table_name=table.name.__root__,
                 )
-            ).all()
-            for row in results:
-                life_cycle = init_empty_life_cycle_properties()
-                life_cycle.created = Created(
-                    created_at=convert_timestamp_to_milliseconds(row[0].timestamp())
-                )
-                if row[1]:
-                    life_cycle.deleted = Deleted(
-                        deleted_at=convert_timestamp_to_milliseconds(row[1].timestamp())
+            ).get(table.name.__root__)
+            if life_cycle_data:
+                life_cycle = LifeCycle(
+                    created=AccessDetails(
+                        timestamp=convert_timestamp_to_milliseconds(
+                            life_cycle_data.created_at.timestamp()
+                        )
                     )
+                )
                 yield Either(
-                    right=OMetaLifeCycleData(
-                        entity=table, life_cycle_properties=life_cycle
-                    )
+                    right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
                 )
         except Exception as exc:
             yield Either(
@@ -706,127 +692,29 @@ class SnowflakeSource(CommonDbSourceService):
                 )
             )
 
-    @lru_cache
-    def procedure_queries_dict(
-        self, schema_name: str, database_name: str
-    ) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Cache the queries ran for the stored procedures in the last `queryLogDuration` days.
-
-        We will run this for each different and db name.
-
-        The dictionary key will be the case-insensitive procedure name.
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        results = self.engine.execute(
-            SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
-                start_date=start,
-                warehouse=self.service_connection.warehouse,
-                schema_name=schema_name,
-                database_name=database_name,
-            )
-        ).all()
-
-        queries_dict = defaultdict(list)
-
-        for row in results:
-            try:
-                query_by_procedure = QueryByProcedure.parse_obj(dict(row))
-                procedure_name = get_procedure_name_from_call(
-                    query_text=query_by_procedure.procedure_text,
-                    schema_name=schema_name,
-                    database_name=database_name,
-                )
-                queries_dict[procedure_name].append(query_by_procedure)
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name="Stored Procedure",
-                        error=f"Error trying to get procedure name due to [{exc}]",
-                        stack_trace=traceback.format_exc(),
-                    )
-                )
-
-        return queries_dict
-
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """
         Pick the stored procedure name from the context
         and return the list of associated queries
         """
-        queries_dict = self.procedure_queries_dict(
-            schema_name=self.context.database_schema.name.__root__,
-            database_name=self.context.database.name.__root__,
-        )
-
-        for query_by_procedure in (
-            queries_dict.get(self.context.stored_procedure.name.__root__.lower()) or []
-        ):
-            yield query_by_procedure
-
-    @staticmethod
-    def is_lineage_query(query_type: str, query_text: str) -> bool:
-        """Check if it's worth it to parse the query for lineage"""
-
-        if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
-            return True
-
-        if query_type == "INSERT" and re.search(
-            "^.*insert.*into.*select.*$", query_text, re.IGNORECASE
-        ):
-            return True
-
-        return False
-
-    def yield_procedure_lineage(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Add procedure lineage from its query"""
-
-        self.update_context(key="stored_procedure_query_lineage", value=False)
-        if self.is_lineage_query(
-            query_type=query_by_procedure.query_type,
-            query_text=query_by_procedure.query_text,
-        ):
-            self.update_context(key="stored_procedure_query_lineage", value=True)
-
-            for either_lineage in get_lineage_by_query(
-                self.metadata,
-                query=query_by_procedure.query_text,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
+        # Only process if we actually have yield a stored procedure
+        if self.context.stored_procedure:
+            start, _ = get_start_and_end(self.source_config.queryLogDuration)
+            query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
+                start_date=start,
+                warehouse=self.service_connection.warehouse,
                 schema_name=self.context.database_schema.name.__root__,
-                dialect=ConnectionTypeDialectMapper.dialect_of(
-                    self.context.database_service.serviceType.value
-                ),
-                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-                lineage_source=LineageSource.QueryLineage,
-            ):
-                if either_lineage.right.edge.lineageDetails:
-                    either_lineage.right.edge.lineageDetails.pipeline = EntityReference(
-                        id=self.context.stored_procedure.id,
-                        type="storedProcedure",
-                    )
-
-                yield either_lineage
-
-    def yield_procedure_query(
-        self, query_by_procedure: QueryByProcedure
-    ) -> Iterable[Either[CreateQueryRequest]]:
-        """Check the queries triggered by the procedure and add their lineage, if any"""
-
-        yield Either(
-            right=CreateQueryRequest(
-                query=SqlQuery(__root__=query_by_procedure.query_text),
-                query_type=query_by_procedure.query_type,
-                duration=query_by_procedure.query_duration,
-                queryDate=Timestamp(
-                    __root__=int(query_by_procedure.query_start_time.timestamp()) * 1000
-                ),
-                triggeredBy=EntityReference(
-                    id=self.context.stored_procedure.id,
-                    type="storedProcedure",
-                ),
-                processedLineage=bool(self.context.stored_procedure_query_lineage),
+                database_name=self.context.database.name.__root__,
             )
-        )
+
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+                schema_name=self.context.database_schema.name.__root__,
+                database_name=self.context.database.name.__root__,
+            )
+
+            for query_by_procedure in (
+                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
+                or []
+            ):
+                yield query_by_procedure

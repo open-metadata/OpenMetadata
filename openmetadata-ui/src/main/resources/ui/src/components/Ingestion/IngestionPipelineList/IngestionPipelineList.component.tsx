@@ -10,21 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Typography } from 'antd';
-import Tooltip from 'antd/es/tooltip';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
+import Loader from 'components/Loader/Loader';
 import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import { PRIMERY_COLOR } from 'constants/constants';
 import cronstrue from 'cronstrue';
+import { ServiceCategory } from 'enums/service.enum';
 import {
   IngestionPipeline,
   PipelineType,
 } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Paging } from 'generated/type/paging';
+import { usePaging } from 'hooks/paging/usePaging';
+import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { isNil, map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,25 +37,38 @@ import {
 } from 'rest/ingestionPipelineAPI';
 import { showPagination } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
+import { getEntityTypeFromServiceCategory } from 'utils/ServiceUtils';
+import { FilterIcon } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 
 export const IngestionPipelineList = ({
   serviceName,
 }: {
-  serviceName: string;
+  serviceName: ServiceCategory;
 }) => {
   const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
-  const [pipelinePaging, setPipelinePaging] = useState<Paging>({ total: 0 });
-  const [selectedPipelines, setSelectedPipelines] =
-    useState<Array<IngestionPipeline>>();
+
+  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
+
+  const [selectedPipelines, setSelectedPipelines] = useState<
+    Array<IngestionPipeline>
+  >([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Array<React.Key>>([]);
   const [deploying, setDeploying] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [pipelineTypeFilter, setPipelineTypeFilter] =
     useState<PipelineType[]>();
-  const [pageSize, setPageSize] = useState(10);
+
+  const {
+    currentPage,
+    handlePageChange,
+    paging,
+    handlePagingChange,
+    pageSize,
+    handlePageSizeChange,
+  } = usePaging();
+
   const { t } = useTranslation();
 
   const renderNameField = (_: string, record: IngestionPipeline) => {
@@ -101,11 +117,7 @@ export const IngestionPipelineList = ({
         dataIndex: 'pipelineType',
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
-        filterIcon: (filtered: boolean) => (
-          <FilterOutlined
-            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
-          />
-        ),
+        filterIcon: FilterIcon,
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,
@@ -182,14 +194,14 @@ export const IngestionPipelineList = ({
     try {
       const { data, paging } = await getIngestionPipelines({
         arrQueryFields: ['owner'],
-        serviceType: serviceName,
+        serviceType: getEntityTypeFromServiceCategory(serviceName),
         paging: cursor,
         pipelineType,
         limit,
       });
 
       setPipelines(data);
-      setPipelinePaging(paging);
+      handlePagingChange(paging);
     } catch {
       // Error
     } finally {
@@ -197,16 +209,21 @@ export const IngestionPipelineList = ({
     }
   };
 
-  const handlePageChange = (cursor: string | number, activePage?: number) => {
-    const pagingString = `&${cursor}=${pipelinePaging[cursor as keyof Paging]}`;
+  const handlePipelinePageChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
-    fetchPipelines({ cursor: pagingString, limit: pageSize });
-    setCurrentPage(activePage ?? 1);
+      fetchPipelines({ cursor: pagingString, limit: pageSize });
+      handlePageChange(currentPage);
+    }
   };
 
   useEffect(() => {
-    fetchPipelines({ limit: pageSize });
-  }, [serviceName]);
+    isAirflowAvailable && fetchPipelines({ limit: pageSize });
+  }, [serviceName, isAirflowAvailable]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] = (
     _pagination,
@@ -220,10 +237,18 @@ export const IngestionPipelineList = ({
     });
   };
 
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
+  const handlePipelinePageSizeChange = (size: number) => {
+    handlePageSizeChange(size);
     fetchPipelines({ pipelineType: pipelineTypeFilter, limit: size });
   };
+
+  if (isFetchingStatus) {
+    return <Loader />;
+  }
+
+  if (!isAirflowAvailable) {
+    return <ErrorPlaceHolderIngestion />;
+  }
 
   return (
     <Row gutter={[16, 16]}>
@@ -241,6 +266,9 @@ export const IngestionPipelineList = ({
           columns={tableColumn}
           dataSource={pipelines}
           loading={loading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
           pagination={false}
           rowKey="fullyQualifiedName"
           rowSelection={{
@@ -262,14 +290,13 @@ export const IngestionPipelineList = ({
         />
       </Col>
       <Col span={24}>
-        {showPagination(pipelinePaging) && (
+        {showPagination(paging) && (
           <NextPrevious
-            showPageSize
             currentPage={currentPage}
             pageSize={pageSize}
-            paging={pipelinePaging}
-            pagingHandler={handlePageChange}
-            onShowSizeChange={handlePageSizeChange}
+            paging={paging}
+            pagingHandler={handlePipelinePageChange}
+            onShowSizeChange={handlePipelinePageSizeChange}
           />
         )}
       </Col>

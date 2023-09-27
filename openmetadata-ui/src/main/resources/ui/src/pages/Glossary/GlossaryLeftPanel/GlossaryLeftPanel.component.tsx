@@ -33,7 +33,7 @@ import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const { fqn: glossaryName } = useParams<{ fqn: string }>();
   const glossaryFqn = glossaryName ? decodeURIComponent(glossaryName) : null;
   const history = useHistory();
 

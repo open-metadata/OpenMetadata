@@ -15,7 +15,6 @@ import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -47,6 +46,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   slashedPipelineName,
   versionList,
@@ -61,10 +61,17 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
+    );
 
   const pipelineVersionTableData = useMemo(
     () => getUpdatedPipelineTasks(currentVersionData, changeDescription),
@@ -228,9 +235,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -261,6 +266,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
                 entityType={EntityType.PIPELINE}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}

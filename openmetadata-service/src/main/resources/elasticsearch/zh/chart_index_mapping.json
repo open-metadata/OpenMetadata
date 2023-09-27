@@ -57,10 +57,26 @@
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
         },
+        "fqnParts": {
+          "type": "keyword"
+        },
         "description": {
           "type": "text",
           "analyzer": "ik_max_word",
           "search_analyzer": "ik_smart"
+        },
+        "entityType": {
+          "type": "keyword"
+        },
+        "suggest": {
+          "type": "completion",
+          "contexts": [
+            {
+              "name": "deleted",
+              "type": "category",
+              "path": "deleted"
+            }
+          ]
         },
         "version": {
           "type": "float"
@@ -263,8 +279,55 @@
             }
           }
         },
+        "lifeCycle": {
+          "type": "object"
+        },
         "dataProducts" : {
-          "type": "keyword"
+          "properties": {
+            "id": {
+              "type": "keyword",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 36
+                }
+              }
+            },
+            "type": {
+              "type": "keyword"
+            },
+            "name": {
+              "type": "keyword",
+              "normalizer": "lowercase_normalizer",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "displayName": {
+              "type": "keyword",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "fullyQualifiedName": {
+              "type": "text"
+            },
+            "description": {
+              "type": "text"
+            },
+            "deleted": {
+              "type": "text"
+            },
+            "href": {
+              "type": "text"
+            }
+          }
         }
       }
     }

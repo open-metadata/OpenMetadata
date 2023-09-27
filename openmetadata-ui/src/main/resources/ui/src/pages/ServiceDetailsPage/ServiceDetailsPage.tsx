@@ -26,6 +26,7 @@ import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import TestConnection from 'components/common/TestConnection/TestConnection';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -54,6 +55,7 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { Topic } from 'generated/entity/data/topic';
 import { DashboardConnection } from 'generated/entity/services/dashboardService';
@@ -96,6 +98,7 @@ import {
 import { fetchAirflowConfig } from 'rest/miscAPI';
 import { getMlModels } from 'rest/mlModelAPI';
 import { getPipelines } from 'rest/pipelineAPI';
+import { getSearchIndexes } from 'rest/SearchIndexAPI';
 import { getServiceByFQN, patchService } from 'rest/serviceAPI';
 import { getContainers } from 'rest/storageAPI';
 import { getTopics } from 'rest/topicsAPI';
@@ -125,27 +128,37 @@ export type ServicePageData =
   | Pipeline
   | Container
   | DashboardDataModel
+  | SearchIndex
   | StoredProcedure;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
-  const { serviceFQN, serviceCategory, tab } = useParams<{
-    serviceFQN: string;
+  const {
+    fqn: serviceFQN,
+    serviceCategory,
+    tab,
+  } = useParams<{
+    fqn: string;
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
+
+  const isMetadataService = useMemo(
+    () => serviceCategory === ServiceCategory.METADATA_SERVICES,
+    [serviceCategory]
+  );
 
   const activeTab = useMemo(() => {
     if (tab) {
       return tab;
     }
-    if (serviceCategory === ServiceCategory.METADATA_SERVICES) {
+    if (isMetadataService) {
       return EntityTabs.INGESTIONS;
     }
 
     return getCountLabel(serviceCategory).toLowerCase();
-  }, [tab, serviceCategory]);
+  }, [tab, serviceCategory, isMetadataService]);
 
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
@@ -212,10 +225,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const isTestingDisabled = useMemo(
     () =>
       !servicePermission.EditAll ||
-      (serviceCategory === ServiceCategory.METADATA_SERVICES &&
-        serviceFQN === OPEN_METADATA) ||
+      (isMetadataService && serviceFQN === OPEN_METADATA) ||
       isUndefined(connectionDetails),
-    [servicePermission, serviceCategory, serviceFQN, connectionDetails]
+    [
+      servicePermission,
+      serviceCategory,
+      serviceFQN,
+      connectionDetails,
+      isMetadataService,
+    ]
   );
 
   const goToEditConnection = useCallback(() => {
@@ -507,6 +525,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceFQN, include]
   );
 
+  const fetchSearchIndexes = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getSearchIndexes({
+        service: getDecodedFqn(serviceFQN),
+        fields: 'owner,tags',
+        paging,
+        root: true,
+        include,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [serviceFQN, include]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal, isDataModel?: boolean) => {
       try {
@@ -546,6 +580,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
             break;
           }
+          case ServiceCategory.SEARCH_SERVICES: {
+            await fetchSearchIndexes(paging);
+
+            break;
+          }
           default:
             break;
         }
@@ -565,6 +604,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchPipeLines,
       fetchMlModal,
       fetchContainers,
+      fetchSearchIndexes,
     ]
   );
 
@@ -574,7 +614,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       const response = await getServiceByFQN(
         serviceCategory,
         serviceFQN,
-        'owner,tags,domain'
+        `owner,tags,${isMetadataService ? '' : 'domain'}`
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
@@ -584,7 +624,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [serviceCategory, serviceFQN, getOtherDetails]);
+  }, [serviceCategory, serviceFQN, getOtherDetails, isMetadataService]);
 
   useEffect(() => {
     getOtherDetails(undefined, activeTab === EntityTabs.DATA_Model);
@@ -732,21 +772,31 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const dataModelPagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails(
-        {
-          [cursorType]:
-            dataModelPaging[cursorType as keyof typeof dataModelPaging],
-        },
-        true
-      );
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails(
+          {
+            [cursorType]: dataModelPaging[cursorType],
+          },
+          true
+        );
 
-      setDataModelCurrentPage(activePage ?? 1);
+        setDataModelCurrentPage(currentPage);
+      }
     },
     [getOtherDetails, dataModelPaging]
   );
 
   const afterDeleteAction = useCallback(() => history.push('/'), []);
+
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as ServicesType;
+
+    setServiceDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   const dataModalTab = useMemo(
     () => (
@@ -922,11 +972,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const pagingHandler = useCallback(
-    (cursorType: string | number, activePage?: number) => {
-      getOtherDetails({
-        [cursorType]: paging[cursorType as keyof typeof paging],
-      });
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails({
+          [cursorType]: paging[cursorType],
+        });
+        setCurrentPage(currentPage);
+      }
     },
     [paging, getOtherDetails]
   );
@@ -944,7 +996,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;
 
-    if (serviceCategory !== ServiceCategory.METADATA_SERVICES) {
+    if (!isMetadataService) {
       tabs.push({
         name: getCountLabel(serviceCategory),
         key: getCountLabel(serviceCategory).toLowerCase(),
@@ -1027,6 +1079,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ingestionTab,
     testConnectionTab,
     activeTab,
+    isMetadataService,
   ]);
 
   const versionHandler = () => {
@@ -1050,7 +1103,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
       })}>
@@ -1064,10 +1116,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
+              afterDomainUpdateAction={afterDomainUpdateAction}
               allowSoftDelete={false}
               dataAsset={serviceDetails}
               entityType={entityType}
               permissions={servicePermission}
+              showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={() => Promise.resolve()}

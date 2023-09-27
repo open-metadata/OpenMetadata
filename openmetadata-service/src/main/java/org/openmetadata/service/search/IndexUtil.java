@@ -19,8 +19,8 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
-import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClientImpl;
+import org.openmetadata.service.search.opensearch.OpenSearchClientImpl;
 import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j
@@ -33,6 +33,7 @@ public class IndexUtil {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String REPORT_DATA = "reportData";
   public static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
 
   private static final Map<SearchIndexDefinition.ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
@@ -139,7 +140,7 @@ public class IndexUtil {
     } else if (type.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_INDEX)) {
-      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_INDEX_SEARCH;
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_ENTITY_INDEX_SEARCH;
     } else if (type.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DOMAIN)) {

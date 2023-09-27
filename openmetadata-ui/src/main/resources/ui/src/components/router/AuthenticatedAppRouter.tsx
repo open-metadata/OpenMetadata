@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import DataProductsPage from 'components/DataProducts/DataProductsPage/DataProductsPage.component';
 import AddDomain from 'components/Domain/AddDomain/AddDomain.component';
 import DomainPage from 'components/Domain/DomainPage.component';
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
@@ -256,6 +257,12 @@ const ContainerPage = withSuspenseFallback(
   React.lazy(() => import('pages/ContainerPage/ContainerPage'))
 );
 
+const SearchIndexDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
+  )
+);
+
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/QueryPage/QueryPage.component'))
 );
@@ -276,19 +283,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
-  const glossaryTermPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.GLOSSARY_TERM,
-        permissions
-      ),
-
-    [permissions]
-  );
-
   const domainPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(ResourceEntity.DOMAIN, permissions),
+    [permissions]
+  );
+
+  const dataProductPermission = useMemo(
+    () =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.DATA_PRODUCT,
+        permissions
+      ),
     [permissions]
   );
 
@@ -364,6 +370,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={ClassificationVersionPage}
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_VERSION}
+      />
+
+      <Route
+        exact
+        component={DataProductsPage}
+        path={ROUTES.DATA_PRODUCT_VERSION}
       />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
       <Route
@@ -524,6 +536,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={ContainerPage}
         path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
       />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB}
+      />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
@@ -581,6 +608,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
+
+      <AdminProtectedRoute
+        exact
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB}
+      />
+
       <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
       <AdminProtectedRoute
         exact
@@ -605,20 +646,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
         hasPermission={glossaryPermission}
         path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
       />
       <AdminProtectedRoute
         exact

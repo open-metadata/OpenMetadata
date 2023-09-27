@@ -78,29 +78,41 @@ Carefully reviewing this will prevent easy errors.
 
 ### (Optional) 3. Update your OpenMetadata Ingestion Client
 
-If you are running the ingestion workflows **externally**, you need to make sure that the Python Client you use is aligned
+If you are running the ingestion workflows **externally** or using a custom Airflow installation, you need to make sure that the Python Client you use is aligned
 with the OpenMetadata server version.
 
 For example, if you are upgrading the server to the version `x.y.z`, you will need to update your client with
 
-```
+```bash
 pip install openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
-The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.1`.
+The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.5`.
 You will find specific instructions for each connector [here](/connectors).
 
-## 1.1.1 - Stable Release 🎉
+Moreover, if working with your own Airflow deployment - not the `openmetadata-ingestion` image - you will need to upgrade
+as well the `openmetadata-managed-apis` version:
 
-OpenMetadata 1.1 is a stable release. Please check the [release notes](/releases/latest-release).
-
-If you are upgrading production this is the recommended version to upgrade to.
+```bash
+pip install openmetadata-managed-apis==x.y.z
+```
 
 ## Deprecation Notice
 
+- OpenMetadata only supports Python version 3.8 to 3.10.
 
-## Breaking Changes for 1.1 Stable Release
+## Breaking Changes for 1.2 Stable Release
+
+### Query Entity
+
+The Query Entity now has the `service` property, linking the Query to the Database Service that it belongs to. Note
+that `service` is a required property both for the Query Entity and the Create Query Entity.
+
+During the migrations, we pick up the service from the tables from `queryUsedIn`. If this information is not available,
+then there is no way to link a query to a service and the query will be removed.
 
 ### Service Connection Changes
+
+- Domo Database, Dashboard and Pipeline renamed the `sandboxDomain` in favor of `instanceDomain`.
 
 ### Other Changes

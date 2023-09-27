@@ -13,7 +13,9 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -28,6 +30,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDatabaseSchemaDetailsPath,
+  getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
 } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -37,7 +40,7 @@ import { Table } from 'generated/entity/data/table';
 import { ChangeDescription } from 'generated/entity/type';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isString, toString } from 'lodash';
+import { isEmpty, toString } from 'lodash';
 import { PagingResponse } from 'Models';
 import SchemaTablesTab from 'pages/DatabaseSchemaPage/SchemaTablesTab';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -56,16 +59,20 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getDatabaseSchemaVersionPath } from 'utils/RouterUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { databaseSchemaFQN, version } = useParams<{
-    databaseSchemaFQN: string;
+  const {
+    fqn: databaseSchemaFQN,
+    version,
+    tab,
+  } = useParams<{
+    fqn: string;
     version: string;
+    tab: EntityTabs;
   }>();
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
@@ -91,24 +98,27 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted } = useMemo(
-    () =>
-      getBasicEntityInfoFromVersionData(
-        currentVersionData,
-        EntityType.DATABASE_SCHEMA
-      ),
-    [currentVersionData]
-  );
+  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+    useMemo(
+      () =>
+        getBasicEntityInfoFromVersionData(
+          currentVersionData,
+          EntityType.DATABASE_SCHEMA
+        ),
+      [currentVersionData]
+    );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () =>
-      getCommonExtraInfoForVersionDetails(
-        currentVersionData.changeDescription as ChangeDescription,
-        owner,
-        tier
-      ),
-    [currentVersionData.changeDescription, owner, tier]
-  );
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          currentVersionData.changeDescription as ChangeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [currentVersionData.changeDescription, owner, tier, domain]
+    );
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -177,11 +187,11 @@ function DatabaseSchemaVersionPage() {
   );
 
   const tablePaginationHandler = useCallback(
-    (cursorValue: string | number, activePage?: number) => {
-      if (isString(cursorValue)) {
-        getSchemaTables({ [cursorValue]: tableData.paging[cursorValue] });
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getSchemaTables({ [cursorType]: tableData.paging[cursorType] });
       }
-      setCurrentPage(activePage ?? INITIAL_PAGING_VALUE);
+      setCurrentPage(currentPage);
     },
     [tableData, getSchemaTables]
   );
@@ -190,15 +200,31 @@ function DatabaseSchemaVersionPage() {
     () => ({
       versionHandler: (newVersion = version) => {
         history.push(
-          getDatabaseSchemaVersionPath(databaseSchemaFQN, toString(newVersion))
+          getVersionPathWithTab(
+            EntityType.DATABASE_SCHEMA,
+            databaseSchemaFQN,
+            newVersion,
+            tab
+          )
         );
       },
       backHandler: () => {
         history.push(getDatabaseSchemaDetailsPath(databaseSchemaFQN));
       },
     }),
-    [databaseSchemaFQN]
+    [databaseSchemaFQN, tab]
   );
+
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.DATABASE_SCHEMA,
+        databaseSchemaFQN,
+        String(version),
+        activeKey
+      )
+    );
+  };
 
   const tabs: TabsProps['items'] = useMemo(
     () => [
@@ -242,6 +268,25 @@ function DatabaseSchemaVersionPage() {
           </Row>
         ),
       },
+
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={currentVersionData}
+            entityType={EntityType.DATABASE_SCHEMA}
+            hasEditAccess={false}
+            hasPermission={viewVersionPermission}
+          />
+        ),
+      },
     ],
     [
       currentPage,
@@ -277,6 +322,7 @@ function DatabaseSchemaVersionPage() {
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
+                  domainDisplayName={domainDisplayName}
                   entityType={EntityType.DATABASE}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -289,7 +335,9 @@ function DatabaseSchemaVersionPage() {
                 <Tabs
                   className="entity-details-page-tabs"
                   data-testid="tabs"
+                  defaultActiveKey={tab ?? EntityTabs.TABLE}
                   items={tabs}
+                  onChange={handleTabChange}
                 />
               </Col>
             </Row>
@@ -320,6 +368,7 @@ function DatabaseSchemaVersionPage() {
     tabs,
     versionHandler,
     versionList,
+    domainDisplayName,
   ]);
 
   useEffect(() => {

@@ -58,6 +58,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
@@ -75,6 +78,19 @@
       },
       "href": {
         "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "owner": {
         "properties": {
@@ -243,7 +259,16 @@
         }
       },
       "project": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "domain" : {
         "properties": {

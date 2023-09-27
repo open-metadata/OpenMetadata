@@ -68,6 +68,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -91,6 +94,9 @@
             "analyzer": "om_ngram"
           }
         }
+      },
+      "entityType": {
+        "type": "keyword"
       },
       "version": {
         "type": "float"

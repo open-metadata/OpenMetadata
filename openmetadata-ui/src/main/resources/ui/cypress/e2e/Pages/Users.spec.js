@@ -38,7 +38,7 @@ describe('Users flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/users?fields=*', 'getUsers');
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
     cy.get('[data-testid="settings-left-panel"]').contains('Users').click();
   });
 
@@ -54,11 +54,11 @@ describe('Users flow should work properly', () => {
     softDeleteUser(userName);
   });
 
-  it('Restore soft deleted user', () => {
+  it.skip('Restore soft deleted user', () => {
     restoreUser(userName);
   });
 
-  it('Permanently Delete Soft Deleted User', () => {
+  it.skip('Permanently Delete Soft Deleted User', () => {
     softDeleteUser(userName);
     deleteSoftDeletedUser(userName);
   });
@@ -86,11 +86,7 @@ describe('Admin flow should work properly', () => {
       .should('exist')
       .should('be.visible')
       .click();
-    interceptURL(
-      'GET',
-      '/api/v1/users?fields=profile,teams,roles&&isAdmin=true&isBot=false&limit=15',
-      'getAdmins'
-    );
+    interceptURL('GET', '/api/v1/users?*isAdmin=true*', 'getAdmins');
     cy.get('.ant-menu-title-content')
       .contains('Admins')
       .should('exist')

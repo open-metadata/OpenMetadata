@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import { Button, Col, Menu, Row, Skeleton, Space } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import {
   SearchedDataProps,
   SourceType,
 } from 'components/searched-data/SearchedData.interface';
-import { AssetsFilterOptions } from 'constants/Assets.constants';
+import {
+  AssetsFilterOptions,
+  ASSETS_INDEXES,
+} from 'constants/Assets.constants';
 import { PAGE_SIZE } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
@@ -44,15 +46,12 @@ import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
 import { getCountBadge } from 'utils/CommonUtils';
 import { showErrorToast } from 'utils/ToastUtils';
-import { AssetsOfEntity } from './AssetsTabs.interface';
-
-interface Props {
-  onAddAsset: () => void;
-  permissions: OperationPermission;
-  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
-  isSummaryPanelOpen: boolean;
-  type?: AssetsOfEntity;
-}
+import './assets-tabs.less';
+import {
+  AssetsOfEntity,
+  AssetsTabsProps,
+  AssetsViewType,
+} from './AssetsTabs.interface';
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
@@ -67,7 +66,8 @@ const AssetsTabs = forwardRef(
       isSummaryPanelOpen,
       onAddAsset,
       type = AssetsOfEntity.GLOSSARY,
-    }: Props,
+      viewType = AssetsViewType.PILLS,
+    }: AssetsTabsProps,
     ref
   ) => {
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
@@ -90,23 +90,44 @@ const AssetsTabs = forwardRef(
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
 
+    const tabs = useMemo(() => {
+      return AssetsFilterOptions.map((option) => {
+        return {
+          label: (
+            <div className="d-flex justify-between">
+              <Space align="center" size="small">
+                {option.label}
+              </Space>
+
+              <span>
+                {getCountBadge(
+                  itemCount[option.key],
+                  '',
+                  activeFilter === option.value
+                )}
+              </span>
+            </div>
+          ),
+          key: option.value,
+          value: option.value,
+        };
+      });
+    }, [itemCount]);
+
     const queryParam = useMemo(() => {
-      if (type !== AssetsOfEntity.GLOSSARY) {
+      if (type === AssetsOfEntity.DOMAIN) {
         return `(domain.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.TEAM) {
+        return `(owner.fullyQualifiedName:"${fqn}")`;
       } else {
         return `(tags.tagFQN:"${glossaryName}")`;
       }
     }, [type, glossaryName, fqn]);
 
     const searchIndexes = useMemo(() => {
-      const indexesToFetch = [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-      ];
+      const indexesToFetch = [...ASSETS_INDEXES];
       if (type !== AssetsOfEntity.GLOSSARY) {
         indexesToFetch.push(SearchIndex.GLOSSARY);
       }
@@ -128,15 +149,21 @@ const AssetsTabs = forwardRef(
             pipelineResponse,
             mlmodelResponse,
             containerResponse,
+            storedProcedureResponse,
+            dashboardDataModelResponse,
             glossaryResponse,
           ]) => {
             const counts = {
-              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.TABLE]: tableResponse.data.hits.total.value,
+              [EntityType.TOPIC]: topicResponse.data.hits.total.value,
               [EntityType.DASHBOARD]: dashboardResponse.data.hits.total.value,
               [EntityType.PIPELINE]: pipelineResponse.data.hits.total.value,
               [EntityType.MLMODEL]: mlmodelResponse.data.hits.total.value,
               [EntityType.CONTAINER]: containerResponse.data.hits.total.value,
+              [EntityType.STORED_PROCEDURE]:
+                storedProcedureResponse.data.hits.total.value,
+              [EntityType.DASHBOARD_DATA_MODEL]:
+                dashboardDataModelResponse.data.hits.total.value,
               [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value
@@ -182,6 +209,7 @@ const AssetsTabs = forwardRef(
         page?: number;
       }) => {
         try {
+          setIsLoading(true);
           const res = await searchData(
             '',
             page,
@@ -214,44 +242,70 @@ const AssetsTabs = forwardRef(
           hits[0] && setSelectedCard(hits[0]._source as SourceType);
         } catch (_) {
           // Nothing here
+        } finally {
+          setIsLoading(false);
         }
       },
       [activeFilter, currentPage]
     );
 
-    useEffect(() => {
-      fetchAssets({ index: activeFilter, page: currentPage });
-    }, [activeFilter, currentPage]);
-
-    useImperativeHandle(ref, () => ({
-      refreshAssets() {
-        fetchAssets({});
-        fetchCountsByEntity();
-      },
-      closeSummaryPanel() {
-        setSelectedCard(undefined);
-      },
-    }));
-
-    useEffect(() => {
-      if (onAssetClick) {
-        onAssetClick(selectedCard ? { details: selectedCard } : undefined);
+    const assetListing = useMemo(() => {
+      if (isLoading) {
+        return (
+          <Row gutter={[0, 16]}>
+            <Col span={24}>
+              <Skeleton />
+            </Col>
+            <Col span={24}>
+              <Skeleton />
+            </Col>
+          </Row>
+        );
       }
-    }, [selectedCard, onAssetClick]);
 
-    useEffect(() => {
-      if (!isSummaryPanelOpen) {
-        setSelectedCard(undefined);
-      }
-    }, [isSummaryPanelOpen]);
+      return data.length ? (
+        <div className="assets-data-container">
+          {data.map(({ _source, _id = '' }, index) => (
+            <ExploreSearchCard
+              className={classNames(
+                'm-b-sm cursor-pointer',
+                selectedCard?.id === _source.id ? 'highlight-card' : ''
+              )}
+              handleSummaryPanelDisplay={setSelectedCard}
+              id={_id}
+              key={index}
+              showTags={false}
+              source={_source}
+            />
+          ))}
+          {total > PAGE_SIZE && data.length > 0 && (
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              pageSize={PAGE_SIZE}
+              paging={{ total }}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                setCurrentPage(currentPage)
+              }
+            />
+          )}
+        </div>
+      ) : (
+        <div className="m-t-xlg">
+          <ErrorPlaceHolder
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.asset')}
+            permission={permissions.Create}
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={onAddAsset}
+          />
+        </div>
+      );
+    }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
 
-    if (isLoading) {
-      return <Loader />;
-    }
-
-    return (
-      <div className="p-md assets-tab-container" data-testid="table-container">
-        {AssetsFilterOptions.map((option) => {
+    const assetsHeader = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return AssetsFilterOptions.map((option) => {
           const buttonStyle =
             activeFilter === option.value
               ? {
@@ -280,45 +334,74 @@ const AssetsTabs = forwardRef(
               </span>
             </Button>
           ) : null;
-        })}
-        {data.length ? (
+        });
+      } else {
+        return (
+          <Menu
+            className="p-t-sm"
+            items={tabs}
+            selectedKeys={[activeFilter]}
+            onClick={(value) => {
+              setCurrentPage(1);
+              setActiveFilter(value.key as SearchIndex);
+              setSelectedCard(undefined);
+            }}
+          />
+        );
+      }
+    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+
+    const layout = useMemo(() => {
+      if (viewType === AssetsViewType.PILLS) {
+        return (
           <>
-            {data.map(({ _source, _id = '' }, index) => (
-              <ExploreSearchCard
-                className={classNames(
-                  'm-b-sm cursor-pointer',
-                  selectedCard?.id === _source.id ? 'highlight-card' : ''
-                )}
-                handleSummaryPanelDisplay={setSelectedCard}
-                id={_id}
-                key={index}
-                showTags={false}
-                source={_source}
-              />
-            ))}
-            {total > PAGE_SIZE && data.length > 0 && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE}
-                paging={{ total }}
-                pagingHandler={(page: string | number) =>
-                  setCurrentPage(Number(page))
-                }
-              />
-            )}
+            {assetsHeader}
+            {assetListing}
           </>
-        ) : (
-          <div className="m-t-xlg">
-            <ErrorPlaceHolder
-              doc={GLOSSARIES_DOCS}
-              heading={t('label.asset')}
-              permission={permissions.Create}
-              type={ERROR_PLACEHOLDER_TYPE.CREATE}
-              onClick={onAddAsset}
-            />
-          </div>
+        );
+      } else {
+        return (
+          <PageLayoutV1 leftPanel={assetsHeader} pageTitle="">
+            {assetListing}
+          </PageLayoutV1>
+        );
+      }
+    }, [viewType, assetsHeader, assetListing, selectedCard]);
+
+    useEffect(() => {
+      fetchAssets({ index: activeFilter, page: currentPage });
+    }, [activeFilter, currentPage]);
+
+    useImperativeHandle(ref, () => ({
+      refreshAssets() {
+        fetchAssets({});
+        fetchCountsByEntity();
+      },
+      closeSummaryPanel() {
+        setSelectedCard(undefined);
+      },
+    }));
+
+    useEffect(() => {
+      if (onAssetClick) {
+        onAssetClick(selectedCard ? { details: selectedCard } : undefined);
+      }
+    }, [selectedCard, onAssetClick]);
+
+    useEffect(() => {
+      if (!isSummaryPanelOpen) {
+        setSelectedCard(undefined);
+      }
+    }, [isSummaryPanelOpen]);
+
+    return (
+      <div
+        className={classNames(
+          'assets-tab-container',
+          viewType === AssetsViewType.PILLS ? 'p-md' : ''
         )}
+        data-testid="table-container">
+        {layout}
       </div>
     );
   }

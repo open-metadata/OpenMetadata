@@ -79,6 +79,12 @@
       "href": {
         "type": "text"
       },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion"
+      },
       "owner": {
         "properties": {
           "id": {

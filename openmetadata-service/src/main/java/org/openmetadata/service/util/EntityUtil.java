@@ -134,13 +134,14 @@ public final class EntityUtil {
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException {
+  public static <T> T validate(Object id, String json, Class<T> clz) throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), identity));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id.toString()));
     }
     return entity;
   }
@@ -411,6 +412,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
+        .withDescription(term.getDescription())
+        .withStyle(term.getStyle())
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
@@ -418,6 +423,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle())
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
         .withSource(TagSource.CLASSIFICATION);
@@ -535,6 +544,10 @@ public final class EntityUtil {
 
   public static boolean isTagTask(TaskType taskType) {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
+  }
+
+  public static boolean isApprovalTask(TaskType taskType) {
+    return taskType == TaskType.RequestApproval;
   }
 
   public static Column findColumn(List<Column> columns, String columnName) {

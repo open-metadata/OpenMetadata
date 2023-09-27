@@ -19,8 +19,10 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
@@ -40,7 +42,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public Domain setFields(Domain entity, Fields fields) {
-    return entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
+    return entity.withParent(getParent(entity));
   }
 
   @Override
@@ -109,8 +111,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void deleteFromSearch(Domain entity, String changeType) {
     if (supportsSearchIndex) {
-      String scriptTxt =
-          "for (int i = 0; i < ctx._source.domain.length; i++) { if (ctx._source.domain[i].fullyQualifiedName == '%s') { ctx._source.domain.remove(i) }}";
+      String scriptTxt = "ctx._source.remove('domain')";
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
         searchClient.softDeleteOrRestoreEntityFromSearch(
             JsonUtils.deepCopy(entity, Domain.class),
@@ -121,6 +122,11 @@ public class DomainRepository extends EntityRepository<Domain> {
             JsonUtils.deepCopy(entity, Domain.class), scriptTxt, "domain.fullyQualifiedName");
       }
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Domain entity, String fields) {
+    return entity.getParent() != null ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED) : null;
   }
 
   public class DomainUpdater extends EntityUpdater {

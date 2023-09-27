@@ -8,6 +8,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_S
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.EntityReference;
@@ -42,6 +44,12 @@ public class TopicIndex implements ElasticSearchIndex {
       EntityReference owner = topic.getOwner();
       owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
       topic.setOwner(owner);
+    }
+    if (topic.getDomain() != null) {
+      EntityReference domain = topic.getDomain();
+      domain.setDisplayName(
+          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
+      topic.setDomain(domain);
     }
     Map<String, Object> doc = JsonUtils.getMap(topic);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -74,6 +82,10 @@ public class TopicIndex implements ElasticSearchIndex {
     doc.put("entityType", Entity.TOPIC);
     doc.put("serviceType", topic.getServiceType());
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 
@@ -112,6 +124,7 @@ public class TopicIndex implements ElasticSearchIndex {
     fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);
     fields.put(ES_MESSAGE_SCHEMA_FIELD, 2.0f);
     fields.put("messageSchema.schemaFields.description", 1.0f);

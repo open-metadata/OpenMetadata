@@ -75,6 +75,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -84,6 +87,19 @@
             "analyzer": "om_ngram"
           }
         }
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "version": {
         "type": "float"
@@ -264,7 +280,16 @@
         }
       },
       "project": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "domain" : {
         "properties": {

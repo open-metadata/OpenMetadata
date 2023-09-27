@@ -47,6 +47,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
@@ -121,6 +124,19 @@
             "type": "keyword"
           }
         }
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "version": {
         "type": "float"

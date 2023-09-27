@@ -21,21 +21,17 @@ import { toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTeams } from 'rest/teamsAPI';
+import { getTeamOptionsFromType } from 'utils/TeamUtils';
 import { Team, TeamType } from '../../generated/entity/teams/team';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-type AddTeamFormType = {
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (data: Team) => void;
-  isLoading: boolean;
-};
+import { AddTeamFormType } from './AddTeamForm.interface';
 
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,
   onCancel,
   onSave,
   isLoading,
+  parentTeamType,
 }) => {
   const { t } = useTranslation();
   const [description, setDescription] = useState<string>('');
@@ -43,13 +39,11 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const teamTypeOptions = useMemo(() => {
-    return Object.values(TeamType)
-      .filter((type) => type !== TeamType.Organization)
-      .map((type) => ({
-        label: type,
-        value: type,
-      }));
-  }, []);
+    return getTeamOptionsFromType(parentTeamType).map((type) => ({
+      label: type,
+      value: type,
+    }));
+  }, [parentTeamType]);
 
   const handleSubmit = (data: Team) => {
     data = {

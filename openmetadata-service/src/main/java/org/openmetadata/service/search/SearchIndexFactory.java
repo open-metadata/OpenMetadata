@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Chart;
@@ -41,6 +42,7 @@ import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.DatabaseServiceIndex;
 import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.ElasticSearchIndex;
+import org.openmetadata.service.search.indexes.EntityReportDataIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
@@ -48,7 +50,7 @@ import org.openmetadata.service.search.indexes.MlModelServiceIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
-import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
 import org.openmetadata.service.search.indexes.TableIndex;
@@ -58,6 +60,8 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestSuiteIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
+import org.openmetadata.service.search.indexes.WebAnalyticEntityViewReportDataIndex;
+import org.openmetadata.service.search.indexes.WebAnalyticUserActivityReportDataIndex;
 
 @Slf4j
 public class SearchIndexFactory {
@@ -112,7 +116,7 @@ public class SearchIndexFactory {
       case Entity.SEARCH_SERVICE:
         return new SearchServiceIndex((SearchService) entity);
       case Entity.SEARCH_INDEX:
-        return new SearchIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
+        return new SearchEntityIndex((org.openmetadata.schema.entity.data.SearchIndex) entity);
       case Entity.PIPELINE_SERVICE:
         return new PipelineServiceIndex((PipelineService) entity);
       case Entity.DOMAIN:
@@ -121,6 +125,12 @@ public class SearchIndexFactory {
         return new StoredProcedureIndex((StoredProcedure) entity);
       case Entity.DATA_PRODUCT:
         return new DataProductIndex((DataProduct) entity);
+      case Entity.ENTITY_REPORT_DATA:
+        return new EntityReportDataIndex((ReportData) entity);
+      case Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA:
+        return new WebAnalyticEntityViewReportDataIndex((ReportData) entity);
+      case Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA:
+        return new WebAnalyticUserActivityReportDataIndex((ReportData) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }

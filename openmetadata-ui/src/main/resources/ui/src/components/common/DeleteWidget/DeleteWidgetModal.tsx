@@ -225,11 +225,11 @@ const DeleteWidgetModal = ({
                 key={option.type}
                 value={option.type}>
                 <Typography.Paragraph
-                  className="delete-widget-title"
+                  className="delete-widget-title break-all"
                   data-testid={`${option.type}-option`}>
                   {option.title}
                 </Typography.Paragraph>
-                <Typography.Paragraph className="text-grey-muted text-xs">
+                <Typography.Paragraph className="text-grey-muted text-xs break-all">
                   {option.description}
                 </Typography.Paragraph>
               </Radio>

@@ -20,11 +20,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.ProviderType;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.Votes;
+import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 
 /** Interface to be implemented by all entities to provide a way to access all the common fields. */
@@ -102,6 +99,14 @@ public interface EntityInterface {
     return null;
   }
 
+  default Style getStyle() {
+    return null;
+  }
+
+  default LifeCycle getLifeCycle() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -161,6 +166,14 @@ public interface EntityInterface {
   }
 
   default void setVotes(Votes vote) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setStyle(Style style) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setLifeCycle(LifeCycle lifeCycle) {
     /* no-op implementation to be overridden */
   }
 

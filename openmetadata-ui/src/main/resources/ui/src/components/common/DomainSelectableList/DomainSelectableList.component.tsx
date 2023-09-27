@@ -28,6 +28,7 @@ import {
   getEntityReferenceListFromEntities,
 } from 'utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
+import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
 export const DomainListItemRenderer = (props: EntityReference) => {
@@ -118,21 +119,19 @@ const DomainSelectableList = ({
         />
       }
       open={popupVisible}
-      overlayClassName="user-select-popover card-shadow"
+      overlayClassName="domain-select-popover"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}
       {...popoverProps}>
-      {children ? (
-        children
-      ) : (
+      {children ?? (
         <Tooltip
           placement="topRight"
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
           <Button
             className="p-0 flex-center"
-            data-testid="add-user"
+            data-testid="add-domain"
             disabled={!hasPermission}
             icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
             size="small"

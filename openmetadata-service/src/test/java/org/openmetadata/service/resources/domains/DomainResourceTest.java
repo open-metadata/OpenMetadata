@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.domains;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -90,12 +92,24 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a domain with owner data consumer
+    CreateDomain create = createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    Domain d = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of domain can create subdomain under it
+    create = createRequest("subdomain").withParent(d.getFullyQualifiedName());
+    createEntity(create, authHeaders(DATA_CONSUMER.getName()));
+  }
+
   @Override
   public CreateDomain createRequest(String name) {
     return new CreateDomain()
         .withName(name)
         .withDomainType(DomainType.AGGREGATE)
         .withDescription("name")
+        .withStyle(new Style().withColor("#FFA07A").withIconURL("https://domainIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()));
   }
 

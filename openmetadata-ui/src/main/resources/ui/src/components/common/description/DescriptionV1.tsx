@@ -157,6 +157,7 @@ const DescriptionV1 = ({
     <>
       <Space
         className="schema-description d-flex"
+        data-testid="asset-description-container"
         direction="vertical"
         size={16}>
         <Space size="middle">

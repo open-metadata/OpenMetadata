@@ -52,8 +52,11 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { CreateDomain } from 'generated/api/domains/createDomain';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Domain } from 'generated/entity/domains/domain';
 import { ChangeDescription } from 'generated/entity/type';
 import { cloneDeep, toString } from 'lodash';
 import React, {
@@ -66,10 +69,13 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addDataProducts } from 'rest/dataProductAPI';
+import { searchData } from 'rest/miscAPI';
 import { getEntityDeleteMessage, getIsErrorMatch } from 'utils/CommonUtils';
+import { DomainAssetsSearchIndex } from 'utils/DomainUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import {
+  getDataProductsDetailsPath,
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
@@ -113,6 +119,8 @@ const DomainDetailsPage = ({
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
+  const [assetCount, setAssetCount] = useState<number>(0);
+  const [dataProductsCount, setDataProductsCount] = useState<number>(0);
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -184,10 +192,12 @@ const DomainDetailsPage = ({
       };
 
       try {
-        await addDataProducts(data as CreateDataProduct);
-        dataProductsTabRef.current?.refreshDataProducts();
-        activeTab !== DomainTabs.DATA_PRODUCTS &&
-          handleTabChange(DomainTabs.DATA_PRODUCTS);
+        const res = await addDataProducts(data as CreateDataProduct);
+        history.push(
+          getDataProductsDetailsPath(
+            encodeURIComponent(res.fullyQualifiedName ?? '')
+          )
+        );
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -219,6 +229,44 @@ const DomainDetailsPage = ({
     history.push(path);
   };
 
+  const fetchDataProducts = async () => {
+    try {
+      const res = await searchData(
+        '',
+        1,
+        0,
+        `(domain.fullyQualifiedName:"${domainFqn}")`,
+        '',
+        '',
+        SearchIndex.DATA_PRODUCT
+      );
+
+      setDataProductsCount(res.data.hits.total.value ?? 0);
+    } catch (error) {
+      setDataProductsCount(0);
+    }
+  };
+
+  const fetchDomainAssets = async () => {
+    if (fqn) {
+      try {
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(domain.fullyQualifiedName:"${fqn}")`,
+          '',
+          '',
+          DomainAssetsSearchIndex
+        );
+
+        setAssetCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setAssetCount(0);
+      }
+    }
+  };
+
   const fetchDomainPermission = async () => {
     try {
       const response = await getEntityPermission(
@@ -232,6 +280,10 @@ const DomainDetailsPage = ({
   };
 
   const handleTabChange = (activeKey: string) => {
+    if (activeKey === 'assets') {
+      // refresh domain count when assets tab is selected
+      fetchDomainAssets();
+    }
     if (activeKey !== activeTab) {
       history.push(
         getDomainDetailsPath(encodeURIComponent(domainFqn), activeKey)
@@ -264,6 +316,7 @@ const DomainDetailsPage = ({
   };
 
   const handleAssetSave = () => {
+    fetchDomainAssets();
     assetTabRef.current?.refreshAssets();
     activeTab !== 'assets' && handleTabChange('assets');
   };
@@ -336,7 +389,7 @@ const DomainDetailsPage = ({
           <DocumentationTab
             domain={domain}
             isVersionsView={isVersionsView}
-            onUpdate={onUpdate}
+            onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
       },
@@ -345,7 +398,9 @@ const DomainDetailsPage = ({
             {
               label: (
                 <TabsLabel
+                  count={dataProductsCount ?? 0}
                   id={DomainTabs.DATA_PRODUCTS}
+                  isActive={activeTab === DomainTabs.DATA_PRODUCTS}
                   name={t('label.data-product-plural')}
                 />
               ),
@@ -361,7 +416,9 @@ const DomainDetailsPage = ({
             {
               label: (
                 <TabsLabel
+                  count={assetCount ?? 0}
                   id={DomainTabs.ASSETS}
+                  isActive={activeTab === DomainTabs.ASSETS}
                   name={t('label.asset-plural')}
                 />
               ),
@@ -393,10 +450,20 @@ const DomainDetailsPage = ({
           ]
         : []),
     ];
-  }, [domain, domainPermission, previewAsset, handleAssetClick]);
+  }, [
+    domain,
+    domainPermission,
+    previewAsset,
+    handleAssetClick,
+    assetCount,
+    dataProductsCount,
+    activeTab,
+  ]);
 
   useEffect(() => {
     fetchDomainPermission();
+    fetchDomainAssets();
+    fetchDataProducts();
   }, [fqn]);
 
   if (loading) {
@@ -416,6 +483,7 @@ const DomainDetailsPage = ({
             entityType={EntityType.DOMAIN}
             icon={
               <DomainIcon
+                className="align-middle"
                 color={DE_ACTIVE_COLOR}
                 height={36}
                 name="folder"
@@ -427,7 +495,7 @@ const DomainDetailsPage = ({
         </Col>
         <Col className="p-x-md" flex="280px">
           <div style={{ textAlign: 'right' }}>
-            {!isVersionsView && (
+            {!isVersionsView && domainPermission.Create && (
               <Dropdown
                 className="m-l-xs"
                 data-testid="domain-details-add-button-menu"
@@ -463,7 +531,7 @@ const DomainDetailsPage = ({
                 </Button>
               )}
 
-              {!isVersionsView && (
+              {!isVersionsView && manageButtonContent.length > 0 && (
                 <Dropdown
                   align={{ targetOffset: [-12, 0] }}
                   className="m-l-xs"

@@ -39,6 +39,7 @@ import { getDataModelDetailsByFQN } from 'rest/dataModelsAPI';
 import { getUserSuggestions } from 'rest/miscAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
 import { getContainerByFQN } from 'rest/storageAPI';
 import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
@@ -47,8 +48,8 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getServiceDetailsPath,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -88,7 +89,7 @@ export const getRequestDescriptionPath = (
   let pathname = ROUTES.REQUEST_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -108,7 +109,7 @@ export const getRequestTagsPath = (
   let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -128,7 +129,7 @@ export const getUpdateDescriptionPath = (
   let pathname = ROUTES.UPDATE_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -148,7 +149,7 @@ export const getUpdateTagsPath = (
   let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -272,6 +273,7 @@ export const TASK_ENTITIES = [
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.STORED_PROCEDURE,
+  EntityType.SEARCH_INDEX,
 ];
 
 export const getBreadCrumbList = (
@@ -339,6 +341,10 @@ export const getBreadCrumbList = (
 
     case EntityType.MLMODEL: {
       return [service(ServiceCategory.ML_MODEL_SERVICES), activeEntity];
+    }
+
+    case EntityType.SEARCH_INDEX: {
+      return [service(ServiceCategory.SEARCH_SERVICES), activeEntity];
     }
 
     case EntityType.DATABASE_SCHEMA: {
@@ -459,6 +465,14 @@ export const fetchEntityDetail = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      getSearchIndexDetailsByFQN(entityFQN, '')
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
     case EntityType.STORED_PROCEDURE:
       getStoredProceduresDetailsByFQN(
         entityFQN,

@@ -183,9 +183,11 @@ jest.mock('../../AppState', () => ({
 }));
 
 const mockParams = {
-  databaseSchemaFQN: 'sample_data.ecommerce_db.shopify',
+  fqn: 'sample_data.ecommerce_db.shopify',
   tab: 'table',
 };
+
+const API_FIELDS = ['owner', 'usageSummary', 'tags', 'domain', 'votes'];
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
@@ -202,7 +204,7 @@ describe('Tests for DatabaseSchemaPage', () => {
 
     expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
       'databaseSchema',
-      mockParams.databaseSchemaFQN
+      mockParams.fqn
     );
   });
 
@@ -239,8 +241,8 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags'],
+      mockParams.fqn,
+      API_FIELDS,
       'include=all'
     );
   });
@@ -257,7 +259,7 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getStoredProceduresList).toHaveBeenCalledWith({
-      databaseSchema: mockParams.databaseSchemaFQN,
+      databaseSchema: mockParams.fqn,
       fields: 'owner,tags,followers',
       include: 'non-deleted',
       limit: 0,
@@ -276,8 +278,8 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags'],
+      mockParams.fqn,
+      API_FIELDS,
       'include=all'
     );
 
@@ -298,8 +300,8 @@ describe('Tests for DatabaseSchemaPage', () => {
     });
 
     expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.databaseSchemaFQN,
-      ['owner', 'usageSummary', 'tags'],
+      mockParams.fqn,
+      API_FIELDS,
       'include=all'
     );
 

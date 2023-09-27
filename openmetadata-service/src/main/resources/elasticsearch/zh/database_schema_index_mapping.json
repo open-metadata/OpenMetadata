@@ -46,6 +46,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
@@ -74,6 +77,19 @@
       },
       "href": {
         "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "domain" : {
         "properties": {
@@ -240,6 +256,9 @@
             "type": "text"
           }
         }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "usageSummary": {
         "properties": {
