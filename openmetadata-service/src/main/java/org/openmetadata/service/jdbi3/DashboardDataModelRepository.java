@@ -53,7 +53,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dao,
         "",
         "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override

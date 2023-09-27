@@ -20,6 +20,7 @@ import {
   getEpochMillisForFutureDays,
 } from '../../src/utils/date-time/DateTimeUtils';
 import {
+  BASE_URL,
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   DELETE_TERM,
@@ -1313,6 +1314,76 @@ export const visitDataModelPage = (dataModelFQN, dataModelName) => {
   verifyResponseStatusCode('@getDataModelDetails', 200);
 };
 
+export const signupAndLogin = (email, password, firstName, lastName) => {
+  return new Cypress.Promise((resolve) => {
+    let createdUserId = '';
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
+    cy.visit('/');
+    verifyResponseStatusCode('@getLoginPage', 200);
+
+    // Click on create account button
+    cy.get('[data-testid="signup"]').scrollIntoView().click();
+
+    // Enter first name
+    cy.get('[id="firstName"]').type(firstName);
+
+    // Enter last name
+    cy.get('[id="lastName"]').type(lastName);
+
+    // Enter email
+    cy.get('[id="email"]').type(email);
+
+    // Enter password
+    cy.get('[id="password"]').type(password);
+    cy.get('[id="password"]')
+      .should('have.attr', 'type')
+      .should('eq', 'password');
+
+    // Confirm password
+    cy.get('[id="confirmPassword"]').type(password);
+
+    // Click on create account button
+    cy.get('.ant-btn').contains('Create Account').click();
+
+    cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
+
+    // Login with the created user
+    login(email, password);
+    cy.goToHomePage(true);
+    cy.url().should('eq', `${BASE_URL}/my-data`);
+
+    // Verify user profile
+    cy.get('[data-testid="avatar"]').first().trigger('mouseover').click();
+    cy.get('[data-testid="user-name"]')
+      .should('be.visible')
+      .invoke('text')
+      .should('contain', `${firstName}${lastName}`);
+
+    interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
+
+    cy.get('[data-testid="user-name"]').click({ force: true });
+    cy.wait('@getUserPage').then((response) => {
+      createdUserId = response.response.body.id;
+      resolve(createdUserId); // Resolve the promise with the createdUserId
+    });
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${firstName}${lastName}`);
+  });
+};
+
+export const deleteUser = (userId) => {
+  const token = localStorage.getItem('oidcIdToken');
+
+  cy.request({
+    method: 'DELETE',
+    url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    expect(response.status).to.eq(200);
+  });
+};
+
 export const createAnnouncement = (title, startDate, endDate, description) => {
   cy.get('[data-testid="add-announcement"]').should('be.visible').click();
   cy.get('.ant-modal-header').contains('Make an announcement');
@@ -1556,3 +1627,4 @@ export const updateTableFieldDescription = (
 
   verifyResponseStatusCode('@updateDescription', 200);
 };
+

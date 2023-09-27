@@ -12,7 +12,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 
 public class EntityTimeSeriesResource<T extends EntityTimeSeriesInterface, K extends EntityTimeSeriesRepository<T>> {
@@ -20,7 +20,7 @@ public class EntityTimeSeriesResource<T extends EntityTimeSeriesInterface, K ext
   protected final String entityType;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
-  public static SearchClient searchClient;
+  public static SearchRepository searchRepository;
   public static ElasticSearchConfiguration esConfig;
 
   protected EntityTimeSeriesResource(Class<T> entityClass, K repository, Authorizer authorizer) {
@@ -35,7 +35,7 @@ public class EntityTimeSeriesResource<T extends EntityTimeSeriesInterface, K ext
       throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
           InstantiationException, IllegalAccessException {
     esConfig = config.getElasticSearchConfiguration();
-    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
+    searchRepository = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation
   }
 
