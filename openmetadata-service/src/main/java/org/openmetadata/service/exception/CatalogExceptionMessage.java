@@ -95,6 +95,17 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
+  public static String entityRepositoryNotFound(String entityType) {
+    return String.format("Entity repository for %s not found. Is the ENTITY_TYPE_MAP initialized?", entityType);
+  }
+
+  public static String entityRelationshipNotFound(
+      String entityType, UUID id, String relationshipName, String toEntityType) {
+    return String.format(
+        "Entity type %s %s does not have expected relationship %s to/from entity type %s",
+        entityType, id, relationshipName, toEntityType);
+  }
+
   public static String resourceTypeNotFound(String resourceType) {
     return String.format("Resource type %s not found", resourceType);
   }
@@ -134,6 +145,10 @@ public final class CatalogExceptionMessage {
 
   public static String notAdmin(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
+  }
+
+  public static String notReviewer(String name) {
+    return String.format("User '%s' is not a reviewer", name);
   }
 
   public static String permissionDenied(
@@ -186,6 +201,11 @@ public final class CatalogExceptionMessage {
 
   public static String invalidTeamOwner(TeamType teamType) {
     return String.format("Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
+  }
+
+  public static String invalidOwnerType(String entityType) {
+    return String.format(
+        "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.", entityType);
   }
 
   public static String failedToParse(String message) {
