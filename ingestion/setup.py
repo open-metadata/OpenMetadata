@@ -103,7 +103,7 @@ base_requirements = {
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "python-jose~=3.3",
-    "PyYAML",
+    "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "setuptools~=66.0.0",
