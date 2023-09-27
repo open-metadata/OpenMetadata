@@ -41,6 +41,13 @@ BIGQUERY_TEST_STATEMENT = textwrap.dedent(
     """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT limit 1"""
 )
 
+BIGQUERY_GET_SCHEMA = """
+select schema_name from region-{region}.INFORMATION_SCHEMA.SCHEMATA
+"""
+
+BIGQUERY_GET_SCHEMA_NAME = """
+select schema_name from {project_id}.INFORMATION_SCHEMA.SCHEMATA {schema_filter}
+"""
 
 BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
     """
@@ -53,7 +60,9 @@ BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
 
 BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
-    select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES where table_type != 'VIEW'
+    select table_name, table_type 
+    from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
+    where table_type != 'VIEW' {table_filter}
     """
 )
 

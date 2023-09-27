@@ -41,7 +41,10 @@ from metadata.ingestion.connections.test_connections import (
     test_query,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_SCHEMA,
+    BIGQUERY_TEST_STATEMENT,
+)
 from metadata.utils.credentials import set_google_credentials
 
 
@@ -114,7 +117,13 @@ def test_connection(
     def test_connection_inner(engine):
         test_fn = {
             "CheckAccess": partial(test_connection_engine_step, engine),
-            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+            "GetSchemas": partial(
+                test_query,
+                engine=engine,
+                statement=BIGQUERY_GET_SCHEMA.format(
+                    region=service_connection.usageLocation
+                ),
+            ),
             "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
             "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
             "GetTags": test_tags,
