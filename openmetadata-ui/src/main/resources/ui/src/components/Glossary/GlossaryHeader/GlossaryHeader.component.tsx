@@ -21,17 +21,19 @@ import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { ReactComponent as StyleIcon } from 'assets/svg/style.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import StyleModal from 'components/Modals/StyleModal/StyleModal.component';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import Voting from 'components/Voting/Voting.component';
 import { VotingDataProps } from 'components/Voting/voting.interface';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { EntityAction, EntityType } from 'enums/entity.enum';
@@ -40,7 +42,8 @@ import {
   EntityReference,
   GlossaryTerm,
 } from 'generated/entity/data/glossaryTerm';
-import { cloneDeep, toString } from 'lodash';
+import { Style } from 'generated/type/tagLabel';
+import { cloneDeep, isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -103,6 +106,7 @@ const GlossaryHeader = ({
   const [latestGlossaryData, setLatestGlossaryData] = useState<
     Glossary | GlossaryTerm
   >();
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -176,6 +180,22 @@ const GlossaryHeader = ({
 
     onUpdate(updatedDetails);
     setIsNameEditing(false);
+  };
+
+  const onStyleSave = (data: Style) => {
+    const style: Style = {
+      color: data.color ? data.color : undefined,
+      iconURL: data.iconURL ? data.iconURL : undefined,
+    };
+    let updatedDetails = cloneDeep(selectedData);
+
+    updatedDetails = {
+      ...selectedData,
+      style: isEmpty(style) ? undefined : style,
+    };
+
+    onUpdate(updatedDetails);
+    setIsStyleEditing(false);
   };
 
   const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
@@ -272,18 +292,18 @@ const GlossaryHeader = ({
           {
             label: (
               <ManageButtonItemLabel
-                description={t('message.rename-entity', {
+                description={t('message.edit-entity-style-description', {
                   entity: t('label.glossary-term'),
                 })}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
                 id="rename-button"
-                name={t('label.edit-entity', { entity: t('label.style') })}
+                name={t('label.style')}
               />
             ),
-            key: 'rename-button',
+            key: 'edit-style-button',
             onClick: (e) => {
               e.domEvent.stopPropagation();
-              setIsNameEditing(true);
+              setIsStyleEditing(true);
               setShowActions(false);
             },
           },
@@ -505,6 +525,13 @@ const GlossaryHeader = ({
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
+      />
+
+      <StyleModal
+        open={isStyleEditing}
+        style={(selectedData as GlossaryTerm).style}
+        onCancel={() => setIsStyleEditing(false)}
+        onSubmit={onStyleSave}
       />
     </>
   );

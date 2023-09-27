@@ -1,8 +1,90 @@
-import { Modal } from 'antd';
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { Form, FormProps, Input, Modal } from 'antd';
+import { HEX_COLOR_CODE_REGEX } from 'constants/regex.constants';
+import { isUndefined, omit } from 'lodash';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { StyleModalProps, StyleWithInput } from './StyleModal.interface';
 
-const StyleModal = () => {
-  return <Modal>StyleModal</Modal>;
+// css
+import './style-modal.style.less';
+
+const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
+
+  const handleSubmit: FormProps<StyleWithInput>['onFinish'] = (value) => {
+    onSubmit(omit(value, 'colorInput'));
+  };
+
+  return (
+    <Modal
+      okButtonProps={{
+        form: 'style-modal',
+        htmlType: 'submit',
+      }}
+      open={open}
+      title={t('label.edit-entity', { entity: t('label.style') })}
+      onCancel={onCancel}>
+      <Form<StyleWithInput>
+        form={form}
+        id="style-modal"
+        initialValues={{
+          ...style,
+          colorInput: style?.color,
+        }}
+        layout="vertical"
+        onFinish={handleSubmit}
+        onValuesChange={(value) => {
+          if (!isUndefined(value.color)) {
+            form.setFieldValue('colorInput', value.color);
+          }
+          if (!isUndefined(value.colorInput)) {
+            form.setFieldValue('color', value.colorInput);
+          }
+        }}>
+        <Form.Item label={t('label.icon-url')} name="iconURL">
+          <Input
+            placeholder={t('label.enter-entity', {
+              entity: t('label.icon-url'),
+            })}
+          />
+        </Form.Item>
+        <Form.Item label={t('label.color')} name="colorGroup">
+          <Input.Group compact>
+            <Form.Item noStyle name="color">
+              <Input className="style-color-picker" type="color" />
+            </Form.Item>
+            <Form.Item
+              noStyle
+              name="colorInput"
+              rules={[
+                {
+                  pattern: HEX_COLOR_CODE_REGEX,
+                  message: t('message.hex-color-validation'),
+                },
+              ]}>
+              <Input
+                className="style-color-input"
+                placeholder={t('message.hex-code-placeholder')}
+              />
+            </Form.Item>
+          </Input.Group>
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
 };
 
 export default StyleModal;
