@@ -38,7 +38,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
 POSTGRES_GET_TABLE_NAMES = """
     SELECT c.relname, c.relkind FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND relispartition = false
+    WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND relispartition = false {}
 """
 
 POSTGRES_GET_SCHEMA_NAMES = """

@@ -13,7 +13,7 @@ Postgres source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Tuple
+from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
+    Table,
     TablePartition,
     TableType,
 )
@@ -140,8 +141,16 @@ class PostgresSource(CommonDbSourceService):
         Overwrite the inspector implementation to handle partitioned
         and foreign types
         """
+
+        db_patterns = [
+            db_name + "%" for db_name in self.source_config.tableFilterPattern.includes
+        ]
+        format_pattern = f"AND c.relname LIKE ANY (ARRAY{db_patterns})"
         result = self.connection.execute(
-            sql.text(POSTGRES_GET_TABLE_NAMES),
+            sql.text(POSTGRES_GET_TABLE_NAMES.format(format_pattern))
+            if self.source_config.pushFilterDown
+            and self.source_config.tableFilterPattern
+            else sql.text(POSTGRES_GET_DB_NAMES.format("")),
             {"schema": schema_name},
         )
 
@@ -151,6 +160,75 @@ class PostgresSource(CommonDbSourceService):
             )
             for name, relkind in result
         ]
+
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+        """
+        Handle table and views.
+
+        Fetches them up using the context information and
+        the inspector set when preparing the db.
+
+        :return: tables or views, depending on config
+        """
+        try:
+            schema_name = self.context.database_schema.name.__root__
+            if self.source_config.includeTables:
+                for table_and_type in self.query_table_names_and_types(schema_name):
+                    table_name = self.standardize_table_name(
+                        schema_name, table_and_type.name
+                    )
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=table_name,
+                        skip_es_search=True,
+                    )
+                    if not self.source_config.pushFilterDown:
+                        if filter_by_table(
+                            self.source_config.tableFilterPattern,
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name,
+                        ):
+                            self.status.filter(
+                                table_fqn,
+                                "Table Filtered Out",
+                            )
+                            continue
+                    yield table_name, table_and_type.type_
+
+            if self.source_config.includeViews:
+                for view_name in self.inspector.get_view_names(schema_name):
+                    view_name = self.standardize_table_name(schema_name, view_name)
+                    view_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.database_service.name.__root__,
+                        database_name=self.context.database.name.__root__,
+                        schema_name=self.context.database_schema.name.__root__,
+                        table_name=view_name,
+                    )
+
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        view_fqn
+                        if self.source_config.useFqnForFiltering
+                        else view_name,
+                    ):
+                        self.status.filter(
+                            view_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
+                    yield view_name, TableType.View
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {schema_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
