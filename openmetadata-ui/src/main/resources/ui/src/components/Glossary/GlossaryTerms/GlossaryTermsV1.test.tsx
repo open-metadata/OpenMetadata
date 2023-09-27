@@ -26,6 +26,15 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <p>testActivityFeedTab</p>),
+  })
+);
+
 jest.mock('rest/miscAPI', () => ({
   searchData: jest
     .fn()
@@ -81,11 +90,12 @@ describe('Test Glossary-term component', () => {
 
     expect(await screen.findByText('GlossaryTermTab')).toBeInTheDocument();
     expect(glossaryTerm).toBeInTheDocument();
-    expect(tabs).toHaveLength(4);
+    expect(tabs).toHaveLength(5);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
       'label.glossary-term-plural0',
       'label.asset-plural0', // 1 added as its count for assets
+      'label.activity-feed-and-task-plural0',
       'label.custom-property-plural',
     ]);
   });
