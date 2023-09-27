@@ -494,7 +494,6 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-
       return listCount(getTableName(), getNameColumn(), sqlCondition);
     }
 
@@ -821,11 +820,7 @@ public interface CollectionDAO {
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFromPipleine(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
-
-    @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
-    @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFrom(@Bind("toId") String toId);
+    List<EntityRelationshipRecord> findFromPipeline(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT count(*) FROM entity_relationship " + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(@Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
@@ -1291,16 +1286,7 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @Deprecated
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(DISTINCT fromFQN, toFQN) FROM field_relationship",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT COUNT(*) FROM ( SELECT DISTINCT fromFQN, toFQN FROM field_relationship) AS subquery",
-        connectionType = POSTGRES)
-    int listDistinctCount();
-
-    @Deprecated
+    @Deprecated(since = "Release 1.1")
     @SqlQuery(
         "SELECT DISTINCT fromFQN, toFQN FROM field_relationship WHERE fromFQNHash = '' or fromFQNHash is null or toFQNHash = '' or toFQNHash is null LIMIT :limit")
     @RegisterRowMapper(FieldRelationShipMapper.class)
@@ -1999,9 +1985,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @SqlUpdate("DELETE FROM tag where fqnHash LIKE CONCAT(:fqnHashPrefix, '.%')")
-    void deleteTagsByPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
-
     @Override
     default int listCount(ListFilter filter) {
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
@@ -2165,9 +2148,6 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
-    void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
-
     @SqlUpdate(
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@BindFQN("targetFQNHash") String targetFQNHash);
@@ -2241,13 +2221,13 @@ public interface CollectionDAO {
     @Setter
     @Deprecated(since = "Release 1.1")
     class TagLabelMigration {
-      public int source;
-      public String tagFQN;
-      public String targetFQN;
-      public int labelType;
-      public int state;
+      private int source;
+      private String tagFQN;
+      private String targetFQN;
+      private int labelType;
+      private int state;
       private String tagFQNHash;
-      public String targetFQNHash;
+      private String targetFQNHash;
     }
 
     @Deprecated(since = "Release 1.1")
@@ -3259,9 +3239,6 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "report_data_time_series";
     }
-
-    @SqlQuery("SELECT json FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
-    List<String> listReportDataAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
 
     @ConnectionAwareSqlUpdate(
         value = "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date",
