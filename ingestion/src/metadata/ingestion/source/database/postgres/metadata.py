@@ -154,7 +154,17 @@ class PostgresSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            results = self.connection.execute(POSTGRES_GET_DB_NAMES)
+            db_patterns = [
+                db_name + "%"
+                for db_name in self.source_config.databaseFilterPattern.includes
+            ]
+            format_pattern = f"WHERE datname LIKE ANY (ARRAY{db_patterns})"
+            results = self.connection.execute(
+                POSTGRES_GET_DB_NAMES.format(format_pattern)
+                if self.source_config.pushFilterDown
+                and self.source_config.databaseFilterPattern
+                else POSTGRES_GET_DB_NAMES.format("")
+            )
             for res in results:
                 row = list(res)
                 new_database = row[0]
@@ -164,15 +174,15 @@ class PostgresSource(CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered Out")
-                    continue
+                if not self.source_config.pushFilterDown:
+                    if filter_by_database(
+                        self.source_config.databaseFilterPattern,
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database,
+                    ):
+                        self.status.filter(database_fqn, "Database Filtered Out")
+                        continue
 
                 try:
                     self.set_inspector(database_name=new_database)

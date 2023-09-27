@@ -139,7 +139,7 @@ POSTGRES_TEST_GET_QUERIES = """
 
 
 POSTGRES_GET_DB_NAMES = """
-select datname from pg_catalog.pg_database
+select datname from pg_catalog.pg_database {}
 """
 
 POSTGRES_COL_IDENTITY = """\
