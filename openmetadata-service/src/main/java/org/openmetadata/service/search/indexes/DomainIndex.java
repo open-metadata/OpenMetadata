@@ -12,9 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
@@ -43,10 +41,8 @@ public class DomainIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DOMAIN);
-    if (domain.getOwner() != null) {
-      EntityReference owner = domain.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      doc.put("owner", owner);
+    if (domain.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(domain.getDomain()));
     }
     return doc;
   }
