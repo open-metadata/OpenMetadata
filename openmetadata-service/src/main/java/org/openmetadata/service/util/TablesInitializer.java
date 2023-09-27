@@ -53,6 +53,7 @@ import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
@@ -183,9 +184,21 @@ public final class TablesInitializer {
     if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }
+
+    // Check for db auth providers.
+    DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl())
+        .ifPresent(
+            databaseAuthenticationProvider -> {
+              String token =
+                  databaseAuthenticationProvider.authenticate(
+                      dataSourceFactory.getUrl(), dataSourceFactory.getUser(), dataSourceFactory.getPassword());
+              dataSourceFactory.setPassword(token);
+            });
+
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
+
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
