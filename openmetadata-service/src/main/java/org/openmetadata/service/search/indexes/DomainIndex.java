@@ -41,9 +41,6 @@ public class DomainIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DOMAIN);
-    if (domain.getDomain() != null) {
-      doc.put("domain", getDomainWithDisplayName(domain.getDomain()));
-    }
     return doc;
   }
 

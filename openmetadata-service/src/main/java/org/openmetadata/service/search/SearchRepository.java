@@ -100,6 +100,7 @@ public interface SearchRepository {
             ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
             updated.getOwner());
         break;
+      default:
     }
   }
 
@@ -110,8 +111,8 @@ public interface SearchRepository {
             updated,
             getDomainChangeScript(eventType, ""),
             updated.getEntityReference().getType() + ".id",
-            ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
             updated.getId().toString(),
+            ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
             updated.getDomain());
         break;
       case UPDATE:
@@ -124,6 +125,7 @@ public interface SearchRepository {
             ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
             updated.getDomain());
         break;
+      default:
     }
   }
 
