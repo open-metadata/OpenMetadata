@@ -42,6 +42,7 @@ import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySumm
 import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import AssetsTabs from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { ROUTES } from 'constants/constants';
 import {
   GlobalSettingOptions,
@@ -52,7 +53,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import { useAuth } from 'hooks/authHooks';
-import { cloneDeep, isEmpty, isNil, isUndefined, lowerCase } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
 import Qs from 'qs';
@@ -78,7 +79,6 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../../interface/teamsAndUsers.interface';
-import { getCountBadge } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
@@ -214,37 +214,6 @@ const TeamDetailsV1 = ({
   const updateActiveTab = (key: string) => {
     history.push({ search: Qs.stringify({ activeTab: key }) });
   };
-
-  const tabs = useMemo(() => {
-    const allTabs = getTabs(
-      currentTeam,
-      isGroupType,
-      isOrganization,
-      teamCount,
-      assetsCount
-    ).map((tab) => ({
-      ...tab,
-      label: (
-        <div data-testid={`${lowerCase(tab.key)}-tab`}>
-          {tab.name}
-          <span className="p-l-xs">
-            {!isNil(tab.count)
-              ? getCountBadge(tab.count, '', currentTab === tab.key)
-              : getCountBadge()}
-          </span>
-        </div>
-      ),
-    }));
-
-    return allTabs;
-  }, [
-    currentTeam,
-    teamUserPaging,
-    searchTerm,
-    teamCount,
-    currentTab,
-    assetsCount,
-  ]);
 
   const createTeamPermission = useMemo(
     () =>
@@ -680,11 +649,6 @@ const TeamDetailsV1 = ({
               {createTeamPermission && (
                 <Button
                   data-testid="add-team"
-                  title={
-                    createTeamPermission
-                      ? addTeam
-                      : t('message.no-permission-for-action')
-                  }
                   type="primary"
                   onClick={() => handleAddTeam(true)}>
                   {addTeam}
@@ -705,19 +669,17 @@ const TeamDetailsV1 = ({
         </Row>
       ),
     [
-      onTeamExpand,
-      isFetchingAllTeamAdvancedDetails,
-      childTeamList,
       addTeam,
-      createTeamPermission,
-      onShowDeletedTeamChange,
-      showDeletedTeam,
-      handleTeamSearch,
       searchTerm,
-      createTeamPermission,
-      handleAddTeam,
       currentTeam,
-      searchTerm,
+      childTeamList,
+      showDeletedTeam,
+      createTeamPermission,
+      isFetchingAllTeamAdvancedDetails,
+      onTeamExpand,
+      handleAddTeam,
+      handleTeamSearch,
+      onShowDeletedTeamChange,
     ]
   );
 
@@ -908,7 +870,7 @@ const TeamDetailsV1 = ({
 
   const teamsCollapseHeader = useMemo(
     () => (
-      <Space className="w-full justify-between">
+      <Space wrap className="w-full justify-between">
         <Space className="w-full" size="middle">
           <Avatar className="teams-profile" size={40}>
             <IconTeams className="text-primary" width={20} />
@@ -973,6 +935,81 @@ const TeamDetailsV1 = ({
     ]
   );
 
+  const getTabChildren = useCallback(
+    (key: TeamsPageTab) => {
+      switch (key) {
+        case TeamsPageTab.ASSETS:
+          return assetTabRender;
+        case TeamsPageTab.POLICIES:
+          return policiesTabRender;
+        case TeamsPageTab.ROLES:
+          return rolesTabRender;
+        case TeamsPageTab.TEAMS:
+          return teamsTableRender;
+        case TeamsPageTab.USERS:
+          return userTabRender;
+      }
+    },
+    [
+      assetTabRender,
+      policiesTabRender,
+      rolesTabRender,
+      teamsTableRender,
+      userTabRender,
+    ]
+  );
+
+  const tabsChildrenRender = useCallback(
+    (key: TeamsPageTab) => (
+      <Row className="teams-tabs-content-container">
+        <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
+          {isFetchingAdvancedDetails ? <Loader /> : getTabChildren(key)}
+        </Col>
+        {previewAsset && (
+          <Col className="border-left team-assets-right-panel" span={6}>
+            <EntitySummaryPanel
+              entityDetails={previewAsset}
+              handleClosePanel={() => setPreviewAsset(undefined)}
+            />
+          </Col>
+        )}
+      </Row>
+    ),
+    [previewAsset, isFetchingAdvancedDetails, getTabChildren]
+  );
+
+  const tabs = useMemo(
+    () =>
+      getTabs(
+        currentTeam,
+        isGroupType,
+        isOrganization,
+        teamCount,
+        assetsCount
+      ).map((tab) => ({
+        ...tab,
+        label: (
+          <TabsLabel
+            count={tab.count}
+            id={tab.key}
+            isActive={currentTab === tab.key}
+            name={tab.name}
+          />
+        ),
+        children: tabsChildrenRender(tab.key),
+      })),
+    [
+      currentTeam,
+      teamUserPaging,
+      searchTerm,
+      teamCount,
+      currentTab,
+      assetsCount,
+      getTabChildren,
+      tabsChildrenRender,
+    ]
+  );
+
   if (isTeamMemberLoading > 0) {
     return <Loader />;
   }
@@ -1014,7 +1051,7 @@ const TeamDetailsV1 = ({
                   </Col>
                 )}
 
-                <Col className=" border-top" span={24}>
+                <Col className="border-top" span={24}>
                   <Card
                     className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
                     data-testid="teams-description"
@@ -1028,7 +1065,7 @@ const TeamDetailsV1 = ({
                           <EditIcon
                             className="cursor-pointer align-middle"
                             color={DE_ACTIVE_COLOR}
-                            data-testid="edit-roles"
+                            data-testid="edit-description"
                             {...ICON_DIMENSION}
                             onClick={() => descriptionHandler(true)}
                           />
@@ -1051,40 +1088,13 @@ const TeamDetailsV1 = ({
 
         <Col className="m-t-sm" span={24}>
           <Tabs
+            destroyInactiveTabPane
             className="entity-details-page-tabs"
             defaultActiveKey={currentTab}
             items={tabs}
             onChange={updateActiveTab}
           />
         </Col>
-
-        <Row className="teams-tabs-content-container">
-          <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
-            {isFetchingAdvancedDetails ? (
-              <Loader />
-            ) : (
-              <>
-                {currentTab === TeamsPageTab.TEAMS && teamsTableRender}
-
-                {currentTab === TeamsPageTab.USERS && userTabRender}
-
-                {currentTab === TeamsPageTab.ASSETS && assetTabRender}
-
-                {currentTab === TeamsPageTab.ROLES && rolesTabRender}
-
-                {currentTab === TeamsPageTab.POLICIES && policiesTabRender}
-              </>
-            )}
-          </Col>
-          {previewAsset && (
-            <Col className="border-left team-assets-right-panel" span={6}>
-              <EntitySummaryPanel
-                entityDetails={previewAsset}
-                handleClosePanel={() => setPreviewAsset(undefined)}
-              />
-            </Col>
-          )}
-        </Row>
 
         <ConfirmationModal
           bodyText={removeUserBodyText(deletingUser.leave)}

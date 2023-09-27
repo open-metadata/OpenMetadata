@@ -170,9 +170,9 @@ const TeamsInfo = ({
       ) : (
         <Space align="baseline">
           <Typography.Title
-            className="m-b-0"
+            className="m-b-0 w-max-200"
             data-testid="team-heading"
-            ellipsis={{ rows: 1, tooltip: true }}
+            ellipsis={{ tooltip: true }}
             level={5}>
             {heading}
           </Typography.Title>
@@ -189,7 +189,7 @@ const TeamsInfo = ({
               <Icon
                 className="align-middle"
                 component={EditIcon}
-                data-testid="edit-team-name "
+                data-testid="edit-team-name"
                 disabled={!hasEditDisplayNamePermission}
                 style={{ fontSize: '16px' }}
                 onClick={() => setIsHeadingEditing(true)}
@@ -357,15 +357,15 @@ const TeamsInfo = ({
     <Space size={4}>
       {teamHeadingRender}
       <Divider type="vertical" />
-      {emailRender}
-      {teamTypeElement}
-      <Divider type="vertical" />
       <OwnerLabel
         className="text-sm"
         hasPermission={hasAccess}
         owner={owner}
         onUpdate={updateOwner}
       />
+      <Divider type="vertical" />
+      {emailRender}
+      {teamTypeElement}
     </Space>
   );
 };
