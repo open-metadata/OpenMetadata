@@ -47,6 +47,12 @@ import org.opensearch.action.update.UpdateRequest;
 import org.opensearch.client.RequestOptions;
 
 public interface SearchRepository {
+
+  String UPDATE = "update";
+
+  String ADD = "add";
+
+  String DELETE = "delete";
   String GLOBAL_SEARCH_ALIAS = "AllEntities";
   String DATABASE_ALIAS = "databaseAlias";
   String CLASSIFICATION_ALIAS = "classificationAlias";
@@ -61,93 +67,100 @@ public interface SearchRepository {
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String PROPAGATE_OWNER_SCRIPT = "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
+  String REMOVE_PROPAGATED_OWNER_SCRIPT = "if(ctx._source.owner.id == '%s'){ ctx._source.remove('owner')}";
+  String UPDATE_PROPAGATED_OWNER_SCRIPT = "if(ctx._source.owner.id == '%s'){ ctx._source.put('owner', params)}";
+  String PROPAGATE_DOMAIN_SCRIPT = "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
+  String REMOVE_PROPAGATED_DOMAIN_SCRIPT = "if(ctx._source.domain.id == '%s'){ ctx._source.remove('domain')}";
+  String UPDATE_PROPAGATED_DOMAIN_SCRIPT = "if(ctx._source.domain.id == '%s'){ ctx._source.put('domain', params)}";
+  String SOFT_DELETE_RESTORE_SCRIPT = "if(ctx._source.domain.id == '%s'){ ctx._source.put('domain', params)}";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   default void handleOwnerUpdates(EntityInterface original, EntityInterface updated, String eventType) {
-    if (eventType.equalsIgnoreCase("added")) {
-      this.updateSearchChildrenUpdated(
-          updated,
-          getOwnerChangeScript(eventType, ""),
-          updated.getEntityReference().getType() + ".id",
-          updated.getId().toString(),
-          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
-          updated.getOwner());
-    } else if (eventType.equalsIgnoreCase("updated")) {
-      this.updateSearchChildrenUpdated(
-          updated,
-          getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
-          updated.getEntityReference().getType() + ".id",
-          updated.getId().toString(),
-          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
-          updated.getOwner());
-    }
-    if (eventType.equalsIgnoreCase("deleted")) {
-      this.updateSearchChildrenUpdated(
-          updated,
-          getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
-          updated.getEntityReference().getType() + ".id",
-          updated.getId().toString(),
-          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
-          updated.getOwner());
+    switch (eventType) {
+      case ADD:
+        this.updateChildren(
+            updated,
+            getOwnerChangeScript(eventType, ""),
+            updated.getEntityReference().getType() + ".id",
+            updated.getId().toString(),
+            ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+            updated.getOwner());
+        break;
+      case UPDATE:
+      case DELETE:
+        this.updateChildren(
+            updated,
+            getOwnerChangeScript(eventType, original.getOwner().getId().toString()),
+            updated.getEntityReference().getType() + ".id",
+            updated.getId().toString(),
+            ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+            updated.getOwner());
+        break;
     }
   }
 
   default void handleDomainUpdates(EntityInterface original, EntityInterface updated, String eventType) {
-    if (eventType.equalsIgnoreCase("added")) {
-      this.updateSearchChildrenUpdated(
-          updated,
-          getDomainChangeScript(eventType, ""),
-          updated.getEntityReference().getType() + ".id",
-          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
-          updated.getId().toString(),
-          updated.getDomain());
-    } else if (eventType.equalsIgnoreCase("updated")) {
-      this.updateSearchChildrenUpdated(
-          updated,
-          getDomainChangeScript(eventType, original.getDomain().getId().toString()),
-          updated.getEntityReference().getType() + ".id",
-          updated.getId().toString(),
-          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
-          updated.getDomain());
-    }
-    if (eventType.equalsIgnoreCase("deleted")) {
-      this.updateSearchChildrenUpdated(
-          updated,
-          getDomainChangeScript(eventType, original.getDomain().getId().toString()),
-          updated.getEntityReference().getType() + ".id",
-          updated.getId().toString(),
-          ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
-          updated.getDomain());
+    switch (eventType) {
+      case ADD:
+        this.updateChildren(
+            updated,
+            getDomainChangeScript(eventType, ""),
+            updated.getEntityReference().getType() + ".id",
+            ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+            updated.getId().toString(),
+            updated.getDomain());
+        break;
+      case UPDATE:
+      case DELETE:
+        this.updateChildren(
+            updated,
+            getDomainChangeScript(eventType, original.getDomain().getId().toString()),
+            updated.getEntityReference().getType() + ".id",
+            updated.getId().toString(),
+            ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()).toString(),
+            updated.getDomain());
+        break;
     }
   }
 
   default void handleClassificationUpdate(Classification entity) {
-    this.updateSearchEntityUpdated(entity, String.format(CLASSIFICATION_DISABLE_SCRIPT, entity.getDisabled()), "");
+    this.updateEntity(entity, String.format(CLASSIFICATION_DISABLE_SCRIPT, entity.getDisabled()), "");
   }
 
   default String getOwnerChangeScript(String eventType, String ownerId) {
     String scriptTxt = "";
-    if (eventType.equals("added")) {
-      scriptTxt = "if(ctx._source.owner == null){ ctx._source.put('owner', params)}";
-    } else if (eventType.equals("deleted")) {
-      scriptTxt = String.format("if(ctx._source.owner.id == '%s'){ ctx._source.remove('owner')}", ownerId);
-    } else if (eventType.equals("updated")) {
-      scriptTxt = String.format("if(ctx._source.owner.id == '%s'){ ctx._source.put('owner', params)}", ownerId);
+    switch (eventType) {
+      case ADD:
+        scriptTxt = PROPAGATE_OWNER_SCRIPT;
+        break;
+      case DELETE:
+        scriptTxt = String.format(REMOVE_PROPAGATED_OWNER_SCRIPT, ownerId);
+        break;
+      case UPDATE:
+        scriptTxt = String.format(UPDATE_PROPAGATED_OWNER_SCRIPT, ownerId);
+        break;
+      default:
     }
     return scriptTxt;
   }
 
   default String getDomainChangeScript(String eventType, String domainId) {
     String scriptTxt = "";
-    if (eventType.equals("added")) {
-      scriptTxt = "if(ctx._source.domain == null){ ctx._source.put('domain', params)}";
-    } else if (eventType.equals("deleted")) {
-      scriptTxt = String.format("if(ctx._source.domain.id == '%s'){ ctx._source.remove('domain')}", domainId);
-    } else if (eventType.equals("updated")) {
-      scriptTxt = String.format("if(ctx._source.domain.id == '%s'){ ctx._source.put('domain', params)}", domainId);
+    switch (eventType) {
+      case ADD:
+        scriptTxt = PROPAGATE_DOMAIN_SCRIPT;
+        break;
+      case DELETE:
+        scriptTxt = String.format(REMOVE_PROPAGATED_DOMAIN_SCRIPT, domainId);
+        break;
+      case UPDATE:
+        scriptTxt = String.format(UPDATE_PROPAGATED_DOMAIN_SCRIPT, domainId);
+        break;
+      default:
     }
     return scriptTxt;
   }
@@ -155,7 +168,7 @@ public interface SearchRepository {
   default void handleEntityDeleted(EntityInterface entity) {
     switch (entity.getEntityReference().getType()) {
       case Entity.DOMAIN:
-        this.updateSearchChildrenUpdated(
+        this.updateChildren(
             entity,
             REMOVE_DOMAINS_CHILDREN_SCRIPT,
             entity.getEntityReference().getType() + ".id",
@@ -165,7 +178,7 @@ public interface SearchRepository {
         break;
       case Entity.TAG:
       case Entity.GLOSSARY_TERM:
-        this.updateSearchChildrenUpdated(
+        this.updateChildren(
             entity,
             REMOVE_TAGS_CHILDREN_SCRIPT,
             "tags.tagFQN",
@@ -176,13 +189,13 @@ public interface SearchRepository {
       case Entity.TEST_SUITE:
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-          this.updateSearchEntityDeleted(
+          this.deleteEntity(
               entity,
               "",
               "testSuites.id",
               ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
         } else {
-          this.updateSearchChildrenUpdated(
+          this.updateChildren(
               entity,
               REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
               "testSuites.id",
@@ -197,11 +210,11 @@ public interface SearchRepository {
       case Entity.PIPELINE_SERVICE:
       case Entity.MLMODEL_SERVICE:
       case Entity.STORAGE_SERVICE:
-        this.updateSearchEntityDeleted(
+        this.deleteEntity(
             entity, "", "service.id", ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
         break;
       default:
-        this.updateSearchEntityDeleted(
+        this.deleteEntity(
             entity,
             "",
             entity.getEntityReference().getType() + ".id",
@@ -211,19 +224,21 @@ public interface SearchRepository {
 
   default void handleSoftDeletedAndRestoredEntity(EntityInterface entity, boolean delete) {
     if (entity.getEntityReference().getType().equals(Entity.DATABASE_SERVICE)) {
-      this.softDeleteOrRestoreChildrenFromSearch(
+      this.softDeleteOrRestoreChildren(
           entity,
           delete,
           "service.id",
           ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
     } else {
-      this.softDeleteOrRestoreChildrenFromSearch(
+      this.softDeleteOrRestoreChildren(
           entity,
           delete,
           entity.getEntityReference().getType() + ".id",
           ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()).toString());
     }
   }
+
+  CollectionDAO getDao();
 
   boolean createIndex(ElasticSearchIndexType elasticSearchIndexType, String lang);
 
@@ -251,22 +266,21 @@ public interface SearchRepository {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  void updateSearchEntityCreated(EntityInterface entity);
+  void createEntity(EntityInterface entity);
 
-  void updateSearchEntityCreated(EntityTimeSeriesInterface entity);
+  void createTimeSeriesEntity(EntityTimeSeriesInterface entity);
 
   void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params);
 
-  void updateSearchEntityDeleted(EntityInterface entity, String script, String field, String alias);
+  void deleteEntity(EntityInterface entity, String script, String field, String alias);
 
-  void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete);
+  void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete);
 
-  void softDeleteOrRestoreChildrenFromSearch(EntityInterface entity, boolean delete, String field, String alias);
+  void softDeleteOrRestoreChildren(EntityInterface entity, boolean delete, String field, String alias);
 
-  void updateSearchEntityUpdated(EntityInterface entity, String script, String field);
+  void updateEntity(EntityInterface entity, String script, String field);
 
-  void updateSearchChildrenUpdated(
-      EntityInterface entity, String scriptTxt, String field, String value, String alias, Object data);
+  void updateChildren(EntityInterface entity, String scriptTxt, String field, String value, String alias, Object data);
 
   void close();
 
@@ -369,8 +383,6 @@ public interface SearchRepository {
     assert in != null;
     return new String(in.readAllBytes());
   }
-
-  CollectionDAO getDao();
 
   @SneakyThrows
   default void updateElasticSearchFailureStatus(String failedFor, String failureMessage) {

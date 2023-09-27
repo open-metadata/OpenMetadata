@@ -913,7 +913,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void updateSearchEntityCreated(EntityInterface entity) {
+  public void createEntity(EntityInterface entity) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -935,7 +935,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void updateSearchEntityCreated(EntityTimeSeriesInterface entity) {
+  public void createTimeSeriesEntity(EntityTimeSeriesInterface entity) {
     if (entity == null) {
       LOG.error("Entity is null");
       return;
@@ -991,7 +991,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void updateSearchEntityDeleted(EntityInterface entity, String scriptTxt, String field, String alias) {
+  public void deleteEntity(EntityInterface entity, String scriptTxt, String field, String alias) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -1018,12 +1018,12 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void softDeleteOrRestoreEntityFromSearch(EntityInterface entity, boolean delete) {
+  public void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
       UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-      String scriptTxt = "ctx._source.deleted=" + delete;
+      String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
       updateRequest.script(script);
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
@@ -1046,12 +1046,11 @@ public class ElasticSearchClientImpl implements SearchRepository {
    * @param alias
    */
   @Override
-  public void softDeleteOrRestoreChildrenFromSearch(
-      EntityInterface entity, boolean delete, String field, String alias) {
+  public void softDeleteOrRestoreChildren(EntityInterface entity, boolean delete, String field, String alias) {
     if (entity != null) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
-      String scriptTxt = "ctx._source.deleted=" + delete;
+      String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
       updateByQueryRequest.setScript(script);
       try {
@@ -1067,7 +1066,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void updateSearchEntityUpdated(EntityInterface entity, String scriptTxt, String field) {
+  public void updateEntity(EntityInterface entity, String scriptTxt, String field) {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
@@ -1096,7 +1095,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   @Override
-  public void updateSearchChildrenUpdated(
+  public void updateChildren(
       EntityInterface entity, String scriptTxt, String field, String value, String alias, Object data) {
     if (entity != null) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);

@@ -38,7 +38,7 @@ public class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
 
   protected void postCreate(T entity) {
     if (supportsSearchIndex) {
-      searchRepository.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+      searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
     }
   }
 }

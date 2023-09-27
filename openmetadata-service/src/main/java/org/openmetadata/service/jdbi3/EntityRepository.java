@@ -44,7 +44,10 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotS
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_CHILDREN_MAPPING;
+import static org.openmetadata.service.search.SearchRepository.ADD;
 import static org.openmetadata.service.search.SearchRepository.DEFAULT_UPDATE_SCRIPT;
+import static org.openmetadata.service.search.SearchRepository.DELETE;
+import static org.openmetadata.service.search.SearchRepository.UPDATE;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -718,30 +721,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     if (supportsSearch) {
-      searchRepository.updateSearchEntityCreated(entity);
+      searchRepository.createEntity(entity);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
     if (supportsSearch) {
-      searchRepository.updateSearchEntityUpdated(updated, DEFAULT_UPDATE_SCRIPT, "");
+      searchRepository.updateEntity(updated, DEFAULT_UPDATE_SCRIPT, "");
       if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
           && (updated.getChangeDescription() != null)) {
         for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
           if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-            searchRepository.handleOwnerUpdates(original, updated, "added");
+            searchRepository.handleOwnerUpdates(original, updated, ADD);
           }
           if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-            searchRepository.handleDomainUpdates(original, updated, "added");
+            searchRepository.handleDomainUpdates(original, updated, ADD);
           }
         }
         for (FieldChange fieldChange : updated.getChangeDescription().getFieldsUpdated()) {
           if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-            searchRepository.handleOwnerUpdates(original, updated, "updated");
+            searchRepository.handleOwnerUpdates(original, updated, UPDATE);
           }
           if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-            searchRepository.handleDomainUpdates(original, updated, "updated");
+            searchRepository.handleDomainUpdates(original, updated, UPDATE);
           }
           if (fieldChange.getName().equalsIgnoreCase("disabled")
               && updated.getEntityReference().getType().equals(Entity.CLASSIFICATION)) {
@@ -750,10 +753,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         for (FieldChange fieldChange : updated.getChangeDescription().getFieldsDeleted()) {
           if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-            searchRepository.handleOwnerUpdates(original, updated, "deleted");
+            searchRepository.handleOwnerUpdates(original, updated, DELETE);
           }
           if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-            searchRepository.handleDomainUpdates(original, updated, "deleted");
+            searchRepository.handleDomainUpdates(original, updated, DELETE);
           }
         }
       }
@@ -900,12 +903,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void deleteFromSearch(T entity, String changeType) {
     if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
-        searchRepository.softDeleteOrRestoreEntityFromSearch(entity, true);
+        searchRepository.softDeleteOrRestoreEntity(entity, true);
         if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
           searchRepository.handleSoftDeletedAndRestoredEntity(entity, true);
         }
       } else {
-        searchRepository.updateSearchEntityDeleted(entity, "", "", "");
+        searchRepository.deleteEntity(entity, "", "", "");
         if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
           searchRepository.handleEntityDeleted(entity);
         }
@@ -915,7 +918,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public void restoreFromSearch(T entity) {
     if (supportsSearch) {
-      searchRepository.softDeleteOrRestoreEntityFromSearch(entity, false);
+      searchRepository.softDeleteOrRestoreEntity(entity, false);
       if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
         searchRepository.handleSoftDeletedAndRestoredEntity(entity, false);
       }
