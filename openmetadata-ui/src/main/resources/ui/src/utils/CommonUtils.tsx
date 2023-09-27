@@ -53,6 +53,7 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getDataModelDetailsPath,
+  getGlossaryTermDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
   getStoredProcedureDetailPath,
@@ -853,6 +854,11 @@ export const getEntityDetailLink = (
 
     case EntityType.STORED_PROCEDURE:
       path = getStoredProcedureDetailPath(fqn, tab, subTab);
+
+      break;
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      path = getGlossaryTermDetailsPath(fqn, tab, subTab);
 
       break;
   }
