@@ -2,7 +2,6 @@ package org.openmetadata.service.migration.mysql.v117;
 
 import static org.openmetadata.service.migration.utils.V114.MigrationUtil.fixTestSuites;
 import static org.openmetadata.service.migration.utils.V117.MigrationUtil.fixTestCases;
-import static org.openmetadata.service.migration.utils.v110.MigrationUtil.testSuitesMigration;
 
 import lombok.SneakyThrows;
 import org.jdbi.v3.core.Handle;

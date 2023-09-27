@@ -19,7 +19,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
-import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -65,7 +64,8 @@ public class MigrationUtil {
       try {
         List<TestCase> testCases = testCasesGroupByTable.get(tableFQN);
         String executableTestSuiteFQN = tableFQN + ".testSuite";
-        TestSuite executableTestSuite = getOrCreateExecutableTestSuite(collectionDAO, testCases, testSuiteRepository, executableTestSuiteFQN);
+        TestSuite executableTestSuite =
+            getOrCreateExecutableTestSuite(collectionDAO, testCases, testSuiteRepository, executableTestSuiteFQN);
         for (TestCase testCase : testCases) {
           // we are setting mustHaveRelationship to "false" to not throw any error.
           List<CollectionDAO.EntityRelationshipRecord> existingRelations =
@@ -120,7 +120,11 @@ public class MigrationUtil {
     }
   }
 
-  private static TestSuite getOrCreateExecutableTestSuite(CollectionDAO collectionDAO, List<TestCase> testCases, TestSuiteRepository testSuiteRepository, String executableTestSuiteFQN) {
+  private static TestSuite getOrCreateExecutableTestSuite(
+      CollectionDAO collectionDAO,
+      List<TestCase> testCases,
+      TestSuiteRepository testSuiteRepository,
+      String executableTestSuiteFQN) {
     try {
       // Try to return the Executable Test Suite that should exist
       return testSuiteRepository.getDao().findEntityByName(executableTestSuiteFQN, "fqnHash", Include.ALL);
@@ -130,12 +134,12 @@ public class MigrationUtil {
           MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
       TestSuite newExecutableTestSuite =
           getTestSuite(
-              collectionDAO,
-              new CreateTestSuite()
-                  .withName(FullyQualifiedName.buildHash(executableTestSuiteFQN))
-                  .withDisplayName(executableTestSuiteFQN)
-                  .withExecutableEntityReference(entityLink.getEntityFQN()),
-              "ingestion-bot")
+                  collectionDAO,
+                  new CreateTestSuite()
+                      .withName(FullyQualifiedName.buildHash(executableTestSuiteFQN))
+                      .withDisplayName(executableTestSuiteFQN)
+                      .withExecutableEntityReference(entityLink.getEntityFQN()),
+                  "ingestion-bot")
               .withExecutable(true)
               .withFullyQualifiedName(executableTestSuiteFQN);
       testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
