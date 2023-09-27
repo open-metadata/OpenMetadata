@@ -11,14 +11,11 @@
         }
       },
       "analyzer": {
-        "om_analyzer_jp" : {
-          "tokenizer" : "kuromoji_tokenizer",
-          "type" : "custom",
-          "filter" : [
-            "kuromoji_baseform",
-            "kuromoji_part_of_speech",
-            "kuromoji_number",
-            "kuromoji_stemmer"
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
           ]
         },
         "om_ngram": {
@@ -56,44 +53,26 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "fqnParts": {
-        "type": "keyword"
-      },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          },
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
           }
         }
       },
+      "serviceType": {
+        "type": "keyword"
+      },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer"
       },
-      "version": {
-        "type": "float"
+      "entityType": {
+        "type": "keyword"
       },
-      "updatedAt": {
-        "type": "date",
-        "format": "epoch_second"
-      },
-      "updatedBy": {
-        "type": "text"
-      },
-      "href": {
-        "type": "text"
-      },
-      "sourceUrl": {
-        "type": "text"
-      },
-      "domain" : {
+      "pipelines": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -117,7 +96,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "keyword"
+            "type": "text"
           },
           "description": {
             "type": "text"
@@ -130,38 +109,37 @@
           }
         }
       },
-      "tasks": {
+      "tags": {
         "properties": {
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+          "tagFQN": {
+            "type": "keyword"
           },
-          "displayName": {
-            "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+          "labelType": {
+            "type": "keyword"
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer_jp"
-          },
-          "sourceUrl": {
             "type": "text"
           },
-          "taskType": {
-            "type": "text"
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
+      },
+      "version": {
+        "type": "float"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "updatedBy": {
+        "type": "text"
+      },
+      "href": {
+        "type": "text"
       },
       "owner": {
         "properties": {
@@ -209,7 +187,10 @@
           }
         }
       },
-      "service": {
+      "deleted": {
+        "type": "text"
+      },
+      "domain" : {
         "properties": {
           "id": {
             "type": "keyword",
@@ -232,6 +213,15 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -245,77 +235,7 @@
             "type": "text"
           }
         }
-      },
-      "deleted": {
-        "type": "text"
-      },
-      "followers": {
-        "type": "keyword"
-      },
-      "tier": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "tags": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "lifeCycle": {
-        "type": "object"
-      },
-      "serviceType": {
-        "type": "keyword"
-      },
-      "entityType": {
-        "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
-      "task_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
       }
     }
   }
-
 }

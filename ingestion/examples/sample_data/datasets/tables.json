@@ -678,7 +678,7 @@
           },
           {
               "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
-              "name": "0005_dim_address_clean",
+              "name": "dim_address_clean",
               "description": "Created from dim_address after a small cleanup.",
               "version": 0.1,
               "updatedAt": 1638354087591,

@@ -11,6 +11,13 @@
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        },
         "om_analyzer_jp" : {
           "tokenizer" : "kuromoji_tokenizer",
           "type" : "custom",
@@ -45,10 +52,15 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -56,44 +68,28 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "fqnParts": {
-        "type": "keyword"
-      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          },
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
+      },
+      "serviceType": {
+        "type": "keyword"
       },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer_jp"
       },
-      "version": {
-        "type": "float"
-      },
-      "updatedAt": {
-        "type": "date",
-        "format": "epoch_second"
-      },
-      "updatedBy": {
-        "type": "text"
-      },
-      "href": {
-        "type": "text"
-      },
-      "sourceUrl": {
-        "type": "text"
-      },
-      "domain" : {
+      "pipelines": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -117,7 +113,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "keyword"
+            "type": "text"
           },
           "description": {
             "type": "text"
@@ -130,36 +126,32 @@
           }
         }
       },
-      "tasks": {
+      "version": {
+        "type": "float"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "updatedBy": {
+        "type": "text"
+      },
+      "tags": {
         "properties": {
-          "name": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+          "tagFQN": {
+            "type": "keyword"
           },
-          "displayName": {
-            "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
+          "labelType": {
+            "type": "keyword"
           },
           "description": {
-            "type": "text",
-            "analyzer": "om_analyzer_jp"
-          },
-          "sourceUrl": {
             "type": "text"
           },
-          "taskType": {
-            "type": "text"
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
@@ -179,6 +171,7 @@
           },
           "name": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -187,43 +180,6 @@
             }
           },
           "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "text"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
-      },
-      "service": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
             "type": "keyword",
             "fields": {
               "keyword": {
@@ -249,73 +205,12 @@
       "deleted": {
         "type": "text"
       },
-      "followers": {
-        "type": "keyword"
+      "href": {
+        "type": "text"
       },
-      "tier": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "tags": {
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
-      "lifeCycle": {
-        "type": "object"
-      },
-      "serviceType": {
-        "type": "keyword"
-      },
-      "entityType": {
-        "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
-      "task_suggest": {
-        "type": "completion"
-      },
-      "service_suggest": {
-        "type": "completion"
+      "provider" : {
+        "type": "text"
       }
     }
   }
-
 }
