@@ -41,6 +41,10 @@ POSTGRES_GET_TABLE_NAMES = """
     WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND relispartition = false
 """
 
+POSTGRES_GET_SCHEMA_NAMES = """
+        SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' {}
+    """
+
 POSTGRES_PARTITION_DETAILS = textwrap.dedent(
     """
     select
@@ -112,6 +116,9 @@ AND n.nspname not in ('pg_catalog','information_schema')
 
 POSTGRES_GET_DATABASE = """
 select datname from pg_catalog.pg_database
+"""
+POSTGRES_GET_SCHEMA = """
+SELECT nspname FROM pg_namespace
 """
 
 POSTGRES_TEST_GET_TAGS = """

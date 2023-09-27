@@ -25,6 +25,7 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
+    POSTGRES_GET_SCHEMA_NAMES,
     POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
@@ -386,3 +387,25 @@ def get_postgres_time_column_name(engine) -> str:
     ):
         time_column_name = "total_time"
     return time_column_name
+
+
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_schema_names(self, connection, **kw):
+    db_patterns = [db_name + "%" for db_name in kw["filter_schema_name"]]
+    format_pattern = f"and nspname like any (array{db_patterns})"
+    query = POSTGRES_GET_SCHEMA_NAMES
+    cursor = connection.execute(
+        query.format(format_pattern)
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else query.format("")
+    )
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result

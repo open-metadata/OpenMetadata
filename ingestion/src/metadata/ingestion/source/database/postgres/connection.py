@@ -34,6 +34,7 @@ from metadata.ingestion.connections.test_connections import test_connection_db_c
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DATABASE,
+    POSTGRES_GET_SCHEMA,
     POSTGRES_TEST_GET_QUERIES,
     POSTGRES_TEST_GET_TAGS,
 )
@@ -76,6 +77,7 @@ def test_connection(
         "GetQueries": POSTGRES_TEST_GET_QUERIES.format(
             time_column_name=get_postgres_time_column_name(engine=engine),
         ),
+        "GetSchemas": POSTGRES_GET_SCHEMA,
         "GetDatabases": POSTGRES_GET_DATABASE,
         "GetTags": POSTGRES_TEST_GET_TAGS,
     }

@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
     TablePartition,
@@ -51,11 +52,13 @@ from metadata.ingestion.source.database.postgres.queries import (
 from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
+    get_schema_names,
+    get_schema_names_reflection,
     get_table_comment,
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -109,7 +112,8 @@ PGDialect._get_column_info = get_column_info  # pylint: disable=protected-access
 PGDialect.get_view_definition = get_view_definition
 PGDialect.get_columns = get_columns
 PGDialect.get_all_view_definitions = get_all_view_definitions
-
+PGDialect.get_schema_names = get_schema_names
+Inspector.get_schema_names = get_schema_names_reflection
 PGDialect.ischema_names = ischema_names
 
 
@@ -192,6 +196,41 @@ class PostgresSource(CommonDbSourceService):
                     logger.error(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names(
+                pushFilterDown=self.source_config.pushFilterDown,
+                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                if self.source_config.schemaFilterPattern
+                else None,
+            ):
+                yield schema_name
+
+    def _get_filtered_schema_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
+        for schema_name in self.get_raw_database_schema_names():
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.database_service.name.__root__,
+                database_name=self.context.database.name.__root__,
+                schema_name=schema_name,
+            )
+            if not self.source_config.pushFilterDown:
+                if filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    schema_fqn
+                    if self.source_config.useFqnForFiltering
+                    else schema_name,
+                ):
+                    if add_to_status:
+                        self.status.filter(schema_fqn, "Schema Filtered Out")
+                    continue
+            yield schema_fqn if return_fqn else schema_name
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
