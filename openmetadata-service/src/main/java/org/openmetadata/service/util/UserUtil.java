@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -33,8 +34,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -88,10 +91,12 @@ public final class UserUtil {
         // user email
         updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
-        LOG.error(
-            String.format(
-                "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                originalUser.getName()));
+        if (Boolean.TRUE.equals(originalUser.getIsBot())) {
+          LOG.error(
+                  String.format(
+                          "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+                          originalUser.getName()));
+        }
       }
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
@@ -145,7 +150,7 @@ public final class UserUtil {
     return new User()
         .withId(UUID.randomUUID())
         .withName(name)
-        .withFullyQualifiedName(name)
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
