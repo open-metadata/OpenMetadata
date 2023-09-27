@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Dropdown,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
@@ -24,6 +33,7 @@ import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import StatusBadge from 'components/common/StatusBadge/StatusBadge.component';
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
@@ -39,6 +49,7 @@ import { Glossary } from 'generated/entity/data/glossary';
 import {
   EntityReference,
   GlossaryTerm,
+  Status,
 } from 'generated/entity/data/glossaryTerm';
 import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -51,6 +62,7 @@ import {
 } from 'rest/glossaryAPI';
 import { getCurrentUserId, getEntityDeleteMessage } from 'utils/CommonUtils';
 import { getEntityVoteStatus } from 'utils/EntityUtils';
+import { StatusClass } from 'utils/GlossaryUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
@@ -296,6 +308,25 @@ const GlossaryHeader = ({
       : []),
   ];
 
+  const statusBadge = useMemo(() => {
+    if (!isGlossary) {
+      const entityStatus =
+        (selectedData as GlossaryTerm).status ?? Status.Approved;
+
+      return (
+        <Space>
+          <Divider className="m-x-xs h-6" type="vertical" />
+          <StatusBadge
+            label={entityStatus}
+            status={StatusClass[entityStatus]}
+          />
+        </Space>
+      );
+    }
+
+    return null;
+  }, [isGlossary, selectedData]);
+
   const createButtons = useMemo(() => {
     if (permissions.Create) {
       return isGlossary ? (
@@ -373,14 +404,16 @@ const GlossaryHeader = ({
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col flex="auto">
+        <Col className="d-flex" flex="auto">
           <EntityHeader
+            badge={statusBadge}
             breadcrumb={breadcrumb}
             entityData={selectedData}
             entityType={EntityType.GLOSSARY_TERM}
             icon={
               isGlossary ? (
                 <GlossaryIcon
+                  className="align-middle"
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="folder"
@@ -388,6 +421,7 @@ const GlossaryHeader = ({
                 />
               ) : (
                 <IconTerm
+                  className="align-middle"
                   color={DE_ACTIVE_COLOR}
                   height={36}
                   name="doc"
