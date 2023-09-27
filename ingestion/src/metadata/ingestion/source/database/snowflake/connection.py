@@ -204,6 +204,7 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
                 engine_wrapper.database_name = database.name
                 break
 
+
 def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: str):
     """
     Method to test connection via inspector functions,
