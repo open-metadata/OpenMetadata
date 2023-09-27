@@ -12,9 +12,10 @@
 Helper module to handle data sampling
 for the profiler
 """
-from sqlalchemy import and_, inspect, text
+from sqlalchemy import inspect, or_, text
 
-from metadata.generated.schema.entity.data.table import TableData
+from metadata.profiler.orm.functions.modulo import ModuloFn
+from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import FLOAT_SET
 from metadata.profiler.processor.handle_partition import RANDOM_LABEL
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
@@ -26,23 +27,15 @@ class TrinoSampler(SQASampler):
     run the query in the whole table.
     """
 
-    def fetch_sample_data(self) -> TableData:
-        """
-        Use the sampler to retrieve sample data rows as per limit given by user
-        :return: TableData to be added to the Table Entity
-        """
-        if self._profile_sample_query:
-            return self._fetch_sample_data_from_user_query()
-
-        # Add new RandomNumFn column
-        rnd = self.get_sample_query()
-        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
-
-        sqa_sample = (
-            self.client.query(*sqa_columns)
-            .select_from(rnd)
+    def get_sample_percentage_cte(self):
+        sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]
+        return (
+            self.client.query(
+                self.table,
+                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+            )
             .where(
-                and_(
+                or_(
                     *[
                         text(f"is_nan({cols}) = False")
                         for cols in sqa_columns
@@ -50,10 +43,27 @@ class TrinoSampler(SQASampler):
                     ]
                 )
             )
-            .limit(self.sample_limit)
-            .all()
+            .cte(f"{self.table.__tablename__}_rnd")
         )
-        return TableData(
-            columns=[column.name for column in sqa_columns],
-            rows=[list(row) for row in sqa_sample],
+
+    def get_sample_rows_cte(self):
+        table_query = self.client.query(self.table)
+        sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]
+        return (
+            self.client.query(
+                self.table,
+                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+            )
+            .where(
+                or_(
+                    *[
+                        text(f"is_nan({cols}) = False")
+                        for cols in sqa_columns
+                        if type(cols.type) in FLOAT_SET
+                    ]
+                )
+            )
+            .order_by(RANDOM_LABEL)
+            .limit(self.profile_sample)
+            .cte(f"{self.table.__tablename__}_rnd")
         )

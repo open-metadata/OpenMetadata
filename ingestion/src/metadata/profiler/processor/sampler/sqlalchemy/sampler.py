@@ -63,26 +63,20 @@ class SQASampler(SamplerInterface):
     run the query in the whole table.
     """
 
-    @partition_filter_handler(build_sample=True)
-    def get_sample_query(self) -> Query:
-        """get query for sample data"""
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            rnd = (
-                self.client.query(
-                    self.table,
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-                )
-                .suffix_with(
-                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
-                    dialect=Dialects.Snowflake,
-                )
-                .cte(f"{self.table.__tablename__}_rnd")
+    def get_sample_percentage_cte(self):
+        return (
+            self.client.query(
+                self.table,
+                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
             )
-            session_query = self.client.query(rnd)
+            .suffix_with(
+                f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                dialect=Dialects.Snowflake,
+            )
+            .cte(f"{self.table.__tablename__}_rnd")
+        )
 
-            return session_query.where(rnd.c.random <= self.profile_sample).cte(
-                f"{self.table.__tablename__}_sample"
-            )
+    def get_sample_rows_cte(self):
         table_query = self.client.query(self.table)
         return (
             self.client.query(
@@ -93,6 +87,18 @@ class SQASampler(SamplerInterface):
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )
+
+    @partition_filter_handler(build_sample=True)
+    def get_sample_query(self) -> Query:
+        """get query for sample data"""
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            rnd = self.get_sample_percentage_cte()
+            session_query = self.client.query(rnd)
+
+            return session_query.where(rnd.c.random <= self.profile_sample).cte(
+                f"{self.table.__tablename__}_sample"
+            )
+        return self.get_sample_rows_cte()
 
     def random_sample(self) -> Union[DeclarativeMeta, AliasedClass]:
         """
