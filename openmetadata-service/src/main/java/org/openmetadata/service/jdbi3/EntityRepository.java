@@ -1357,6 +1357,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
   }
 
+  public EntityReference getContainer(UUID toId, String fromEntityType) {
+    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+  }
+
   public EntityReference getFromEntityRef(
       UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) {
     List<EntityRelationshipRecord> records = findFromRecords(toId, entityType, relationship, fromEntityType);
