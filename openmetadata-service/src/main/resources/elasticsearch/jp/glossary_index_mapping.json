@@ -79,13 +79,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer_jp"
       },
       "domain" : {
         "properties": {
@@ -243,13 +237,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer_jp"
           },
           "deleted": {
             "type": "text"
