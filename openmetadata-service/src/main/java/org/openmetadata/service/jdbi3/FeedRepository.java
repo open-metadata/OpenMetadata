@@ -115,7 +115,8 @@ public class FeedRepository {
     MENTIONS,
     FOLLOWS,
     ASSIGNED_TO,
-    ASSIGNED_BY
+    ASSIGNED_BY,
+    OWNER_OR_FOLLOWS
   }
 
   public enum PaginationType {
@@ -577,6 +578,8 @@ public class FeedRepository {
             filteredThreads = getThreadsByFollows(filter, userId, limit + 1);
           } else if (FilterType.MENTIONS.equals(filter.getFilterType())) {
             filteredThreads = getThreadsByMentions(filter, userId, limit + 1);
+          } else if (FilterType.OWNER_OR_FOLLOWS.equals(filter.getFilterType())) {
+            filteredThreads = getThreadsByOwnerOrFollows(filter, userId, limit + 1);
           } else {
             filteredThreads = getThreadsByOwner(filter, userId, limit + 1);
           }
@@ -966,6 +969,14 @@ public class FeedRepository {
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount =
         dao.feedDAO().listCountThreadsByFollows(userId, teamIds, Relationship.FOLLOWS.ordinal(), filter.getCondition());
+    return new FilteredThreads(threads, totalCount);
+  }
+
+  private FilteredThreads getThreadsByOwnerOrFollows(FeedFilter filter, UUID userId, int limit) {
+    List<String> teamIds = getTeamIds(userId);
+    List<String> jsons = dao.feedDAO().listThreadsByOwnerOrFollows(userId, teamIds, limit, filter.getCondition());
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+    int totalCount = dao.feedDAO().listCountThreadsByOwnerOrFollows(userId, teamIds, filter.getCondition());
     return new FilteredThreads(threads, totalCount);
   }
 

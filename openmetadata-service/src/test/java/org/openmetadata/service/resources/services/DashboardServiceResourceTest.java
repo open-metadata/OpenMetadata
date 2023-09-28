@@ -50,7 +50,6 @@ import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -59,7 +58,7 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
+public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardService, CreateDashboardService> {
   public DashboardServiceResourceTest() {
     super(
         Entity.DASHBOARD_SERVICE,
