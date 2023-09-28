@@ -13,9 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
@@ -30,17 +28,6 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (glossaryTerm.getOwner() != null) {
-      EntityReference owner = glossaryTerm.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      glossaryTerm.setOwner(owner);
-    }
-    if (glossaryTerm.getDomain() != null) {
-      EntityReference domain = glossaryTerm.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      glossaryTerm.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(glossaryTerm);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -53,6 +40,12 @@ public class GlossaryTermIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.GLOSSARY_TERM);
+    if (glossaryTerm.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(glossaryTerm.getOwner()));
+    }
+    if (glossaryTerm.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(glossaryTerm.getDomain()));
+    }
     return doc;
   }
 

@@ -72,7 +72,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -114,12 +114,12 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    SearchClient searchClient;
+    SearchRepository searchRepository;
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
-      ReportsHandler.initialize(daoCollection, searchClient);
+      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
+      ReportsHandler.initialize(daoCollection, searchRepository);
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
