@@ -94,6 +94,9 @@ const FeedsWidget = () => {
   };
 
   useEffect(() => {
+    setDefaultFilter(
+      currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
+    );
     getFeedsWithFilter(
       currentUser?.id,
       FeedFilter.OWNER,
@@ -183,7 +186,14 @@ const FeedsWidget = () => {
         ]}
         tabBarExtraContent={
           activeTab === ActivityFeedTabs.ALL && (
-            <FeedsFilterPopover onUpdate={onFilterUpdate} />
+            <FeedsFilterPopover
+              defaultFilter={
+                currentUser?.isAdmin
+                  ? FeedFilter.ALL
+                  : FeedFilter.OWNER_OR_FOLLOWS
+              }
+              onUpdate={onFilterUpdate}
+            />
           )
         }
         onChange={onTabChange}

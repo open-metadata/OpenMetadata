@@ -12,57 +12,66 @@
  */
 import { FilterOutlined } from '@ant-design/icons';
 import { Button, Checkbox, List, Popover, Space, Typography } from 'antd';
+import AppState from 'AppState';
 import { FeedFilter } from 'enums/mydata.enum';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './feeds-filter-popover.less';
 import { FeedsFilterPopoverProps } from './FeedsFilterPopover.interface';
 
-const FeedsFilterPopover = ({ onUpdate }: FeedsFilterPopoverProps) => {
+const FeedsFilterPopover = ({
+  defaultFilter,
+  onUpdate,
+}: FeedsFilterPopoverProps) => {
   const { t } = useTranslation();
-  const [popupVisible, setPopupVisible] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<FeedFilter>(
-    FeedFilter.ALL
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [selectedFilter, setSelectedFilter] =
+    useState<FeedFilter>(defaultFilter);
 
-  const items = [
-    {
-      title: t('label.all'),
-      key: FeedFilter.OWNER_OR_FOLLOWS,
-      description: 'All feeds',
-    },
-    {
-      title: t('label.my-data'),
-      key: FeedFilter.OWNER,
-      description: 'Owner',
-    },
-    {
-      title: t('label.following'),
-      key: FeedFilter.FOLLOWS,
-      description: t('label.following'),
-    },
-  ];
+  const items = useMemo(
+    () => [
+      {
+        title: t('label.all'),
+        key: currentUser?.isAdmin
+          ? FeedFilter.ALL
+          : FeedFilter.OWNER_OR_FOLLOWS,
+        description: t('message.feed-filter-all'),
+      },
+      {
+        title: t('label.my-data'),
+        key: FeedFilter.OWNER,
+        description: t('message.feed-filter-owner'),
+      },
+      {
+        title: t('label.following'),
+        key: FeedFilter.FOLLOWS,
+        description: t('message.feed-filter-following'),
+      },
+    ],
+    [currentUser]
+  );
 
   const onFilterUpdate = useCallback(() => {
     setPopupVisible(false);
     onUpdate(selectedFilter);
   }, [selectedFilter, onUpdate, setPopupVisible]);
 
-  const listElement = (
-    <List
-      bordered
-      dataSource={items}
-      footer={
-        <div className="d-flex justify-between">
-          <Button
-            color="primary"
-            data-testid="clear-all-button"
-            size="small"
-            type="text">
-            {t('label.clear-entity', { entity: t('label.all-lowercase') })}
-          </Button>
-          <Space className="m-l-auto text-right">
-            <Button color="primary" data-testid="cancel-button" size="small">
+  const listElement = useMemo(
+    () => (
+      <List
+        bordered
+        dataSource={items}
+        footer={
+          <Space className="w-full justify-end">
+            <Button
+              color="primary"
+              data-testid="cancel-button"
+              size="small"
+              onClick={() => setPopupVisible(false)}>
               {t('label.cancel')}
             </Button>
             <Button
@@ -73,32 +82,39 @@ const FeedsFilterPopover = ({ onUpdate }: FeedsFilterPopoverProps) => {
               {t('label.update')}
             </Button>
           </Space>
-        </div>
-      }
-      header={
-        <Typography.Text className="font-medium">
-          {t('label.feed-filter-plural')}
-        </Typography.Text>
-      }
-      renderItem={(item) => (
-        <List.Item
-          className="selectable-list-item cursor-pointer"
-          key={item.key}
-          title="All"
-          onClick={() => setSelectedFilter(item.key)}>
-          <Space align="start">
-            <Checkbox checked={selectedFilter === item.key} />
-            <Space direction="vertical" size={0}>
-              <Typography.Text>{item.title}</Typography.Text>
-              <Typography.Text className="text-muted text-xs">
-                {item.description}
-              </Typography.Text>
+        }
+        header={
+          <Typography.Text className="font-medium">
+            {t('label.feed-filter-plural')}
+          </Typography.Text>
+        }
+        renderItem={(item) => (
+          <List.Item
+            className="selectable-list-item cursor-pointer"
+            key={item.key}
+            title="All"
+            onClick={() => setSelectedFilter(item.key)}>
+            <Space align="start">
+              <Checkbox checked={selectedFilter === item.key} />
+              <Space direction="vertical" size={0}>
+                <Typography.Text className="font-medium">
+                  {item.title}
+                </Typography.Text>
+                <Typography.Text className="text-muted text-xs">
+                  {item.description}
+                </Typography.Text>
+              </Space>
             </Space>
-          </Space>
-        </List.Item>
-      )}
-    />
+          </List.Item>
+        )}
+      />
+    ),
+    [items, onFilterUpdate, selectedFilter, setSelectedFilter]
   );
+
+  useEffect(() => {
+    setSelectedFilter(defaultFilter);
+  }, [defaultFilter]);
 
   return (
     <Popover

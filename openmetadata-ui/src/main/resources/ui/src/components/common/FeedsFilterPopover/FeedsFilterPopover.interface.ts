@@ -13,5 +13,6 @@
 import { FeedFilter } from 'enums/mydata.enum';
 
 export interface FeedsFilterPopoverProps {
+  defaultFilter: FeedFilter;
   onUpdate: (value: FeedFilter) => void;
 }
