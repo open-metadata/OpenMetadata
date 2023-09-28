@@ -352,20 +352,22 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
         if self.complex_dataframe_sample:
-            df = self.complex_dataframe_sample[0]
-            for column_name in df.columns:
+            for column_name in self.complex_dataframe_sample[0].columns:
                 complex_col_name = None
                 if COMPLEX_COLUMN_SEPARATOR in column_name:
                     complex_col_name = ".".join(
                         column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
                     )
-                    for df in self.complex_dataframe_sample:
-                        df.rename(columns={column_name: complex_col_name}, inplace=True)
+                    if complex_col_name:
+                        for df in self.complex_dataframe_sample:
+                            df.rename(
+                                columns={column_name: complex_col_name}, inplace=True
+                            )
                 column_name = complex_col_name or column_name
                 sqalike_columns.append(
                     SQALikeColumn(
                         column_name,
-                        fetch_col_types(df, column_name),
+                        fetch_col_types(self.complex_dataframe_sample[0], column_name),
                     )
                 )
             return sqalike_columns

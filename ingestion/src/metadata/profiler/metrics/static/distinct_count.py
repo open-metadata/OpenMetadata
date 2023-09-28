@@ -15,7 +15,6 @@ Distinct Count Metric definition
 # pylint: disable=duplicate-code
 
 
-import pandas as pd
 from sqlalchemy import column, distinct, func
 
 from metadata.profiler.metrics.core import StaticMetric, _label
@@ -52,7 +51,9 @@ class DistinctCount(StaticMetric):
         """
         Distinct Count metric for Datalake
         """
-        from collections import Counter  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        import pandas as pd
+        from collections import Counter  
 
         try:
             counter = Counter()

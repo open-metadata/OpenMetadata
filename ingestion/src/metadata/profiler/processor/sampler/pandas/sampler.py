@@ -152,7 +152,8 @@ class DatalakeSampler(SamplerInterface):
         cols = row_df.columns.tolist()
         return cols, result_rows
 
-    def unflatten_dict(self, flat_dict):
+    @staticmethod
+    def unflatten_dict(flat_dict):
         unflattened_dict = {}
         for key, value in flat_dict.items():
             keys = key.split(".")
@@ -180,12 +181,14 @@ class DatalakeSampler(SamplerInterface):
         for complex_col in complex_columns or []:
             for df_col in data_frame.columns:
                 if complex_col in df_col:
-                    data_frame.rename(
-                        columns={
-                            df_col: ".".join(df_col.split(COMPLEX_COLUMN_SEPARATOR)[1:])
-                        },
-                        inplace=True,
+                    complex_col_name = ".".join(
+                        df_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
                     )
+                    if complex_col_name:
+                        data_frame.rename(
+                            columns={df_col: complex_col_name},
+                            inplace=True,
+                        )
         return pd.json_normalize(
             self.unflatten_dict(
                 json.loads(
