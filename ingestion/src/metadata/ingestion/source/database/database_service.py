@@ -429,7 +429,6 @@ class DatabaseServiceSource(
 
         self.database_source_state.add(table_fqn)
 
-
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
     ) -> Iterable[str]:
