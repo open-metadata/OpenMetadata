@@ -174,7 +174,7 @@ class DatalakeSampler(SamplerInterface):
         complex_columns = list(
             set(
                 _get_root_col(col)
-                for col in data_frame
+                for col in data_frame.columns
                 if COMPLEX_COLUMN_SEPARATOR in col
             )
         )
@@ -191,10 +191,10 @@ class DatalakeSampler(SamplerInterface):
                         )
         return pd.json_normalize(
             [
-                json.loads(row_values)
+                self.unflatten_dict(json.loads(row_values))
                 for row_values in data_frame.apply(
                     lambda row: row.to_json(), axis=1
-                ).values.tolist()
+                ).values
             ],
             max_level=0,
         ).replace(np.nan, None)
