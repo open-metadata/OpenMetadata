@@ -100,6 +100,10 @@ const Services = ({ serviceName }: ServicesProps) => {
         return SearchIndex.PIPELINE_SERVICE;
       case ServiceCategory.ML_MODEL_SERVICES:
         return SearchIndex.ML_MODEL_SERVICE;
+      case ServiceCategory.STORAGE_SERVICES:
+        return SearchIndex.STORAGE_SERVICE;
+      case ServiceCategory.SEARCH_SERVICES:
+        return SearchIndex.SEARCH_SERVICE;
     }
 
     return SearchIndex.DATABASE_SERVICE;
