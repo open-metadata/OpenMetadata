@@ -39,7 +39,7 @@
     },
     "layout": {
       "description": "Configuration for the Knowledge Panel.",
-      "type": "object"
+      "type": "string"
     },
     "persona": {
       "description": "Persona this page belongs to.",
@@ -54,6 +54,6 @@
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "pageType", "knowledgePanels"],
+  "required": ["pageType", "knowledgePanels"],
   "additionalProperties": false
 }
