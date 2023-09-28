@@ -34,9 +34,13 @@ const TagsV1 = ({
   startWith,
   className,
   showOnlyName = false,
+  isVersionPage = false,
 }: TagsV1Props) => {
   const history = useHistory();
-  const color = useMemo(() => tag.style?.color, [tag]);
+  const color = useMemo(
+    () => (isVersionPage ? undefined : tag.style?.color),
+    [tag]
+  );
 
   const isGlossaryTag = useMemo(
     () => tag.source === TagSource.Glossary,

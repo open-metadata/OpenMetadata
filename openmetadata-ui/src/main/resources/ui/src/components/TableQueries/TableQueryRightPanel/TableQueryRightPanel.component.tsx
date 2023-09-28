@@ -21,8 +21,7 @@ import Loader from 'components/Loader/Loader';
 import TagsInput from 'components/TagsInput/TagsInput.component';
 import { DE_ACTIVE_COLOR, getUserPath } from 'constants/constants';
 import { Query } from 'generated/entity/data/query';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
-import { EntityTags } from 'Models';
+import { TagLabel } from 'generated/type/tagLabel';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -57,19 +56,11 @@ const TableQueryRightPanel = ({
     await onQueryUpdate(updatedData, 'description');
     setIsEditDescription(false);
   };
-  const handleTagSelection = async (selectedTags?: EntityTags[]) => {
-    const newSelectedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
-    if (newSelectedTags) {
+  const handleTagSelection = async (tags?: TagLabel[]) => {
+    if (tags) {
       const updatedData = {
         ...query,
-        tags: newSelectedTags,
+        tags,
       };
       await onQueryUpdate(updatedData, 'tags');
     }

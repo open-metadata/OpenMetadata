@@ -24,14 +24,13 @@ import TableDescription from 'components/TableDescription/TableDescription.compo
 import TableTags from 'components/TableTags/TableTags.component';
 import { PRIMERY_COLOR } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { LabelType, State, TagSource } from 'generated/type/schema';
+import { TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
   groupBy,
   isEmpty,
   isUndefined,
   lowerCase,
-  reduce,
   set,
   sortBy,
   toLower,
@@ -53,6 +52,7 @@ import {
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
+  updateFieldTags,
 } from '../../utils/TableUtils';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
@@ -120,52 +120,6 @@ const SchemaTable = ({
     });
   };
 
-  const getUpdatedTags = (
-    column: Column,
-    newColumnTags: Array<EntityTags>
-  ): TagLabel[] => {
-    const prevTagsFqn = column?.tags?.map((tag) => tag.tagFQN);
-
-    return reduce(
-      newColumnTags,
-      (acc: Array<EntityTags>, cv: EntityTags) => {
-        if (prevTagsFqn?.includes(cv.tagFQN)) {
-          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
-
-          return [...acc, prev];
-        } else {
-          return [
-            ...acc,
-            {
-              ...cv,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ];
-        }
-      },
-      []
-    );
-  };
-
-  const updateColumnTags = (
-    tableCols: Column[],
-    changedColFQN: string,
-    newColumnTags: EntityTags[]
-  ) => {
-    tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
-        col.tags = getUpdatedTags(col, newColumnTags);
-      } else {
-        updateColumnTags(
-          col?.children as Column[],
-          changedColFQN,
-          newColumnTags
-        );
-      }
-    });
-  };
-
   const handleEditColumnChange = async (columnDescription: string) => {
     if (editColumn && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
@@ -188,10 +142,11 @@ const SchemaTable = ({
   ) => {
     if (selectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(
-        tableCols,
+
+      updateFieldTags<Column>(
         editColumnTag.fullyQualifiedName ?? '',
-        selectedTags
+        selectedTags,
+        tableCols
       );
       await onUpdate(tableCols);
     }

@@ -20,8 +20,8 @@ import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createTagObject } from 'utils/TagsUtils';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
-import { LabelType, State } from '../../generated/type/tagLabel';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { MlModelFeaturesListProp } from './MlModel.interface';
@@ -72,14 +72,7 @@ const MlModelFeaturesList = ({
     selectedTags: EntityTags[],
     targetFeature: MlFeature
   ) => {
-    const newSelectedTags = selectedTags.map((tag) => {
-      return {
-        tagFQN: tag.tagFQN,
-        source: tag.source,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const newSelectedTags = createTagObject(selectedTags);
 
     if (newSelectedTags && targetFeature) {
       const updatedFeatures = mlFeatures?.map((feature) => {

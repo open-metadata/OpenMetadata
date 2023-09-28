@@ -23,7 +23,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from 'constants/constants';
 import { Paging } from 'generated/type/paging';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
+import { TagSource } from 'generated/type/tagLabel';
 import { ServicesType } from 'interface/service.interface';
 import { isEmpty, isNil } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
@@ -33,6 +33,7 @@ import { useParams } from 'react-router-dom';
 import { getServiceMainTabColumns } from 'utils/ServiceMainTabContentUtils';
 import { getEntityTypeFromServiceCategory } from 'utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import { createTagObject } from 'utils/TagsUtils';
 import { ServicePageData } from './ServiceDetailsPage';
 
 interface ServiceMainTabContentProps {
@@ -94,18 +95,14 @@ function ServiceMainTabContent({
             .map((selTag) => selTag.tagFQN)
             .includes(tag?.tagFQN as string)
         ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
+      const newTags = createTagObject(
+        selectedTags.filter((tag) => {
           return !prevTags
             ?.map((prevTag) => prevTag.tagFQN)
             .includes(tag.tagFQN);
         })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
+
       await onTagUpdate([...prevTags, ...newTags]);
     }
   };

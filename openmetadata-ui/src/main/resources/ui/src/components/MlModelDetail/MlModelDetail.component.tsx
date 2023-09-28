@@ -34,6 +34,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { createTagObject } from 'utils/TagsUtils';
 import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -341,12 +342,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && mlModelDetail) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];

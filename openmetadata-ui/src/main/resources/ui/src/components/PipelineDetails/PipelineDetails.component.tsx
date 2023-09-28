@@ -34,8 +34,8 @@ import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { compare } from 'fast-json-patch';
 import { TagSource } from 'generated/type/schema';
-import { groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
+import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -43,6 +43,7 @@ import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import { createTagObject } from 'utils/TagsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
@@ -311,26 +312,16 @@ const PipelineDetails = ({
     selectedTags: EntityTags[],
     editColumnTag: Task
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-
     const prevTags = editColumnTag.tags?.filter((tag) =>
-      newSelectedTags.some((selectedTag) => selectedTag.fqn === tag.tagFQN)
+      selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
     );
 
-    const newTags = newSelectedTags
-      .filter(
+    const newTags = createTagObject(
+      selectedTags.filter(
         (selectedTag) =>
-          !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.fqn)
+          !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.tagFQN)
       )
-      .map((tag) => ({
-        labelType: 'Manual',
-        state: 'Confirmed',
-        source: tag.source,
-        tagFQN: tag.fqn,
-      }));
+    );
 
     const updatedTask = {
       ...editColumnTag,
@@ -504,12 +495,7 @@ const PipelineDetails = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && pipelineDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];

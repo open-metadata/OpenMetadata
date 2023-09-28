@@ -39,6 +39,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
 import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { createTagObject } from 'utils/TagsUtils';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -230,12 +231,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && topicDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];

@@ -68,6 +68,7 @@ import {
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { createTagObject } from 'utils/TagsUtils';
 import { default as appState } from '../../AppState';
 import {
   getDatabaseSchemaDetailsPath,
@@ -380,14 +381,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 

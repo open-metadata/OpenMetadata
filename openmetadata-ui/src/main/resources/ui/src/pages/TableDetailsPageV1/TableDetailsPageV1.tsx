@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags } from 'Models';
 import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from 'components/common/description/DescriptionV1';
+import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import DataProductsContainer from 'components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
@@ -27,8 +31,10 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import SampleDataTableComponent from 'components/SampleDataTable/SampleDataTable.component';
 import SchemaTab from 'components/SchemaTab/SchemaTab.component';
+import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
 import { QueryVote } from 'components/TableQueries/TableQueries.interface';
@@ -36,13 +42,6 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getTableTabPath, getVersionPath } from 'constants/constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
@@ -60,6 +59,7 @@ import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -85,10 +85,11 @@ import { defaultFields } from 'utils/DatasetDetailsUtils';
 import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import { createTagObject } from 'utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import TableConstraints from './TableConstraints/TableConstraints';
 import './table-details-page-v1.less';
+import TableConstraints from './TableConstraints/TableConstraints';
 
 const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -401,14 +402,7 @@ const TableDetailsPageV1 = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 

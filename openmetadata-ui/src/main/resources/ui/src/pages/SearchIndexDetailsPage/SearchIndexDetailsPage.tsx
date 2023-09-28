@@ -67,6 +67,7 @@ import { getEntityName } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { defaultFields, getSearchIndexTabPath } from 'utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import { createTagObject } from 'utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
@@ -300,14 +301,7 @@ function SearchIndexDetailsPage() {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 

@@ -24,8 +24,8 @@ import { EntityType } from 'enums/entity.enum';
 import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { TagSource } from 'generated/type/schema';
 import { TagLabel } from 'generated/type/tagLabel';
-import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { cloneDeep, isEmpty, isUndefined, toLower } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from 'utils/EntityUtils';
@@ -84,15 +84,11 @@ const SearchIndexFieldsTable = ({
     selectedTags: EntityTags[],
     editFieldTag: SearchIndexField
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-    if (newSelectedTags && editFieldTag) {
+    if (selectedTags && editFieldTag) {
       const fields = cloneDeep(searchIndexFields);
       updateFieldTags<SearchIndexField>(
         editFieldTag.fullyQualifiedName ?? '',
-        newSelectedTags,
+        selectedTags,
         fields
       );
       await onUpdate(fields);

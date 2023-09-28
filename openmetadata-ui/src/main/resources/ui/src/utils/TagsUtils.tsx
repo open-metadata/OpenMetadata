@@ -12,17 +12,19 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { EntityTags, TagOption } from 'Models';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from 'components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE, getExplorePath } from 'constants/constants';
+import { getExplorePath, PAGE_SIZE } from 'constants/constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { SearchIndex } from 'enums/search.enum';
+import { LabelType, State } from 'generated/type/tagLabel';
 import i18next from 'i18next';
+import { omit } from 'lodash';
+import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { searchQuery } from 'rest/searchAPI';
@@ -323,4 +325,14 @@ export const fetchTagsElasticSearch = async (
       total: res.hits.total.value,
     },
   };
+};
+
+export const createTagObject = (tags: EntityTags[]) => {
+  return tags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source,
+    tagFQN: tag.tagFQN,
+  }));
 };

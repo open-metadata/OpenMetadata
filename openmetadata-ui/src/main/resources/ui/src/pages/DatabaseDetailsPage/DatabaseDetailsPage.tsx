@@ -68,6 +68,7 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
+import { createTagObject } from 'utils/TagsUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -492,18 +493,13 @@ const DatabaseDetails: FunctionComponent = () => {
             .map((selTag) => selTag.tagFQN)
             .includes(tag?.tagFQN as string)
         ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
+      const newTags = createTagObject(
+        selectedTags.filter((tag) => {
           return !prevTags
             ?.map((prevTag) => prevTag.tagFQN)
             .includes(tag.tagFQN);
         })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
       await onTagUpdate([...prevTags, ...newTags]);
     }
   };

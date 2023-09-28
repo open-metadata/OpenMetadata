@@ -28,13 +28,14 @@ import { t } from 'i18next';
 import {
   isUndefined,
   lowerCase,
+  omit,
   reduce,
   toString,
   uniqBy,
   uniqueId,
   upperCase,
 } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
@@ -599,19 +600,18 @@ export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
 
   return reduce(
     newFieldTags,
-    (acc: Array<EntityTags>, cv: TagOption) => {
-      if (prevTagsFqn?.includes(cv.fqn)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+    (acc: Array<EntityTags>, cv: EntityTags) => {
+      if (prevTagsFqn?.includes(cv.tagFQN)) {
+        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
 
         return [...acc, prev];
       } else {
         return [
           ...acc,
           {
+            ...omit(cv, 'isRemovable'),
             labelType: LabelType.Manual,
             state: State.Confirmed,
-            source: cv.source,
-            tagFQN: cv.fqn,
           },
         ];
       }
@@ -640,7 +640,7 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 
 export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
-  newFieldTags: Array<TagOption>,
+  newFieldTags: EntityTags[],
   searchIndexFields?: Array<T>
 ) => {
   searchIndexFields?.forEach((field) => {
