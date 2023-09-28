@@ -494,7 +494,6 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-
       return listCount(getTableName(), getNameColumn(), sqlCondition);
     }
 
@@ -821,11 +820,7 @@ public interface CollectionDAO {
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFromPipleine(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
-
-    @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
-    @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFrom(@Bind("toId") String toId);
+    List<EntityRelationshipRecord> findFromPipeline(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT count(*) FROM entity_relationship " + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(@Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
@@ -1291,16 +1286,7 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @Deprecated
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(DISTINCT fromFQN, toFQN) FROM field_relationship",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT COUNT(*) FROM ( SELECT DISTINCT fromFQN, toFQN FROM field_relationship) AS subquery",
-        connectionType = POSTGRES)
-    int listDistinctCount();
-
-    @Deprecated
+    @Deprecated(since = "Release 1.1")
     @SqlQuery(
         "SELECT DISTINCT fromFQN, toFQN FROM field_relationship WHERE fromFQNHash = '' or fromFQNHash is null or toFQNHash = '' or toFQNHash is null LIMIT :limit")
     @RegisterRowMapper(FieldRelationShipMapper.class)
@@ -1595,22 +1581,27 @@ public interface CollectionDAO {
 
     @Override
     default int listCount(ListFilter filter) {
-      String serviceType = filter.getQueryParam("serviceType");
-      String service = filter.getQueryParam("service");
       String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-      String pipelineTypeCondition;
+
+      if (filter.getQueryParam("pipelineType") != null) {
+        String pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+        condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("service") != null) {
+        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
+        condition += serviceCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
+      String serviceType = filter.getQueryParam("serviceType");
       if (!CommonUtil.nullOrEmpty(serviceType)) {
-        if (filter.getQueryParam("pipelineType") != null) {
-          pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
-          condition += pipelineTypeCondition;
-        }
+
         condition =
             String.format(
-                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service",
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation",
                 condition);
         bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("service", service + ".%");
         bindMap.put("serviceType", serviceType);
         return listIngestionPipelineCount(condition, bindMap);
       }
@@ -1619,26 +1610,28 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
-      String serviceType = filter.getQueryParam("serviceType");
-      String service = filter.getQueryParam("service");
       String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-      String pipelineTypeCondition;
+
+      if (filter.getQueryParam("pipelineType") != null) {
+        String pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+        condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("service") != null) {
+        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
+        condition += serviceCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
+      String serviceType = filter.getQueryParam("serviceType");
       if (!CommonUtil.nullOrEmpty(serviceType)) {
-        if (filter.getQueryParam("pipelineType") != null) {
-          pipelineTypeCondition = filter.getPipelineTypeCondition(null);
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName > :after and %s order by ingestion_pipeline_entity.fullyQualifiedName ASC LIMIT :limit",
-                  condition, pipelineTypeCondition);
-        } else {
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName > :after order by ingestion_pipeline_entity.fullyQualifiedName ASC LIMIT :limit",
-                  condition);
-        }
+
+        condition =
+            String.format(
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name > :after order by ingestion_pipeline_entity.name ASC LIMIT :limit",
+                condition);
+
         bindMap.put("serviceType", serviceType);
-        bindMap.put("service", service + ".%");
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("after", after);
         bindMap.put("limit", limit);
@@ -1649,26 +1642,27 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
-      String service = filter.getQueryParam("service");
-      String serviceType = filter.getQueryParam("serviceType");
       String condition = "INNER JOIN entity_relationship ON ingestion_pipeline_entity.id = entity_relationship.toId";
-      String pipelineTypeCondition;
+
+      if (filter.getQueryParam("pipelineType") != null) {
+        String pipelineTypeCondition = String.format(" and %s", filter.getPipelineTypeCondition(null));
+        condition += pipelineTypeCondition;
+      }
+
+      if (filter.getQueryParam("service") != null) {
+        String serviceCondition = String.format(" and %s", filter.getServiceCondition(null));
+        condition += serviceCondition;
+      }
+
       Map<String, Object> bindMap = new HashMap<>();
+      String serviceType = filter.getQueryParam("serviceType");
       if (!CommonUtil.nullOrEmpty(serviceType)) {
-        if (filter.getQueryParam("pipelineType") != null) {
-          pipelineTypeCondition = filter.getPipelineTypeCondition(null);
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName < :before and %s order by ingestion_pipeline_entity.fullyQualifiedName DESC LIMIT :limit",
-                  condition, pipelineTypeCondition);
-        } else {
-          condition =
-              String.format(
-                  "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.fullyQualifiedName LIKE :service and ingestion_pipeline_entity.fullyQualifiedName < :before order by ingestion_pipeline_entity.fullyQualifiedName DESC LIMIT :limit",
-                  condition);
-        }
+        condition =
+            String.format(
+                "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name < :before order by ingestion_pipeline_entity.name DESC LIMIT :limit",
+                condition);
+
         bindMap.put("serviceType", serviceType);
-        bindMap.put("service", service + ".%");
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("before", before);
         bindMap.put("limit", limit);
@@ -1682,7 +1676,7 @@ public interface CollectionDAO {
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
     @SqlQuery(
-        "SELECT json FROM (SELECT ingestion_pipeline_entity.fullyQualifiedName, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
+        "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY fullyQualifiedName")
     List<String> listBeforeIngestionPipelineByserviceType(
         @Define("cond") String cond, @BindMap Map<String, Object> bindings);
 
@@ -1991,9 +1985,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @SqlUpdate("DELETE FROM tag where fqnHash LIKE CONCAT(:fqnHashPrefix, '.%')")
-    void deleteTagsByPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
-
     @Override
     default int listCount(ListFilter filter) {
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
@@ -2157,9 +2148,6 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
-    void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
-
     @SqlUpdate(
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@BindFQN("targetFQNHash") String targetFQNHash);
@@ -2233,13 +2221,13 @@ public interface CollectionDAO {
     @Setter
     @Deprecated(since = "Release 1.1")
     class TagLabelMigration {
-      public int source;
-      public String tagFQN;
-      public String targetFQN;
-      public int labelType;
-      public int state;
+      private int source;
+      private String tagFQN;
+      private String targetFQN;
+      private int labelType;
+      private int state;
       private String tagFQNHash;
-      public String targetFQNHash;
+      private String targetFQNHash;
     }
 
     @Deprecated(since = "Release 1.1")
@@ -3251,9 +3239,6 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "report_data_time_series";
     }
-
-    @SqlQuery("SELECT json FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
-    List<String> listReportDataAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
 
     @ConnectionAwareSqlUpdate(
         value = "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date",

@@ -375,10 +375,10 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         table_tag_labels = super().get_tag_labels(table_name) or []
         table_obj = self.get_table_obj(table_name=table_name)
         if table_obj.labels:
-            for key, _ in table_obj.labels.items():
+            for key, value in table_obj.labels.items():
                 tag_label = get_tag_label(
                     metadata=self.metadata,
-                    tag_name=key,
+                    tag_name=value,
                     classification_name=key,
                 )
                 if tag_label:

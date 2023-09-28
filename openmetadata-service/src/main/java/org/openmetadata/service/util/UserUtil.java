@@ -33,6 +33,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -40,6 +41,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public final class UserUtil {
@@ -87,10 +89,12 @@ public final class UserUtil {
         // user email
         updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
-        LOG.error(
-            String.format(
-                "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                originalUser.getName()));
+        if (Boolean.TRUE.equals(originalUser.getIsBot())) {
+          LOG.error(
+              String.format(
+                  "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+                  originalUser.getName()));
+        }
       }
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
@@ -128,7 +132,7 @@ public final class UserUtil {
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
@@ -136,7 +140,6 @@ public final class UserUtil {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception", exception);
       user.setAuthenticationMechanism(null);
-      LOG.debug("User entry: {} already exists.", user.getName());
     }
     return null;
   }
@@ -145,7 +148,7 @@ public final class UserUtil {
     return new User()
         .withId(UUID.randomUUID())
         .withName(name)
-        .withFullyQualifiedName(name)
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())

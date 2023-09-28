@@ -7,7 +7,6 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +22,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -31,8 +33,9 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -53,7 +56,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Authorizer authorizer;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  public static SearchClient searchClient;
+  public static SearchRepository searchRepository;
   public static ElasticSearchConfiguration esConfig;
 
   protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
@@ -62,16 +65,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     allowedFields = repository.getAllowedFields();
     this.repository = repository;
     this.authorizer = authorizer;
-    addViewOperation("owner,followers,votes,tags,extension", VIEW_BASIC);
+    addViewOperation("owner,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
     Entity.registerEntity(entityClass, entityType, repository, getEntitySpecificOperations());
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
-          InstantiationException, IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     esConfig = config.getElasticSearchConfiguration();
-    searchClient = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
+    searchRepository = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation
   }
 
@@ -79,7 +80,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
    * Method used for upgrading a resource such as adding new fields to entities, etc. that can't be done in bootstrap
    * migrate
    */
-  protected void upgrade() throws IOException {
+  public void upgrade() throws IOException {
     // Nothing to do in the default implementation
   }
 
@@ -220,7 +221,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     OperationContext operationContext = new OperationContext(entityType, CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    CreateResourceContext<T> createResourceContext = new CreateResourceContext<>(entityType, entity);
+    authorizer.authorize(securityContext, operationContext, createResourceContext);
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
     return Response.created(entity.getHref()).entity(entity).build();
   }
@@ -229,8 +231,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     repository.prepareInternal(entity, true);
 
     // If entity does not exist, this is a create operation, else update operation
-    ResourceContext resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
-    OperationContext operationContext = new OperationContext(entityType, createOrUpdateOperation(resourceContext));
+    ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
+    MetadataOperation operation = createOrUpdateOperation(resourceContext);
+    OperationContext operationContext = new OperationContext(entityType, operation);
+    if (operation == CREATE) {
+      CreateResourceContext<T> createResourceContext = new CreateResourceContext<>(entityType, entity);
+      authorizer.authorize(securityContext, operationContext, createResourceContext);
+      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      return new PutResponse<>(Response.Status.CREATED, entity, RestUtil.ENTITY_CREATED).toResponse();
+    }
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
@@ -307,16 +316,16 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return entity;
   }
 
-  protected ResourceContext getResourceContext() {
-    return new ResourceContext(entityType);
+  protected ResourceContext<T> getResourceContext() {
+    return new ResourceContext<>(entityType);
   }
 
-  protected ResourceContext getResourceContextById(UUID id) {
-    return new ResourceContext(entityType, id, null);
+  protected ResourceContext<T> getResourceContextById(UUID id) {
+    return new ResourceContext<>(entityType, id, null);
   }
 
-  protected ResourceContext getResourceContextByName(String name) {
-    return new ResourceContext(entityType, null, name);
+  protected ResourceContext<T> getResourceContextByName(String name) {
+    return new ResourceContext<>(entityType, null, name);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
@@ -353,7 +362,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owner,followers,votes,tags,extension".contains(field)) {
+      } else if (!"owner,followers,votes,tags,extension,domain,dataProducts,experts".contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }

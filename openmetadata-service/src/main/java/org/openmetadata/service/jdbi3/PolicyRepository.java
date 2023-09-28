@@ -14,7 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.lang.Boolean.FALSE;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
@@ -100,9 +100,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
   }
 
   public void validateRules(Policy policy) {
-    // Resolve JSON blobs into Rule object and perform schema based validation
     List<Rule> rules = policy.getRules();
-    if (listOrEmpty(rules).isEmpty()) {
+    if (nullOrEmpty(rules)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_RULES_IN_POLICY);
     }
 
@@ -124,7 +123,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
   public static List<String> filterRedundantResources(List<String> resources) {
     // If ALL_RESOURCES are in the resource list, remove redundant resources specifically mentioned
     boolean containsAllResources = resources.stream().anyMatch(ALL_RESOURCES::equalsIgnoreCase);
-    return containsAllResources ? List.of(ALL_RESOURCES) : resources;
+    return containsAllResources ? new ArrayList<>(List.of(ALL_RESOURCES)) : resources;
   }
 
   public static List<MetadataOperation> filterRedundantOperations(List<MetadataOperation> operations) {

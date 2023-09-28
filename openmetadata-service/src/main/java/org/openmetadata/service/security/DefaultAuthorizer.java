@@ -135,7 +135,7 @@ public class DefaultAuthorizer implements Authorizer {
     String updatedBy = subjectContext.getUser().getName();
     List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
     return !nullOrEmpty(reviewers)
-        ? reviewers.stream().anyMatch(e -> e.getName().equals(updatedBy) || e.getFullyQualifiedName().equals(updatedBy))
-        : false;
+        && reviewers.stream()
+            .anyMatch(e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
   }
 }

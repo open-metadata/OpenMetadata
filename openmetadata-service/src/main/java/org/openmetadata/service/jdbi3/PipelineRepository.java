@@ -63,7 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         dao,
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -245,6 +245,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
     applyTags(pipeline.getTasks());
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private void applyTags(List<Task> tasks) {

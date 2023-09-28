@@ -156,7 +156,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           return tabItem.count > 0 || tabItem.key === searchCriteria;
         })
       : items;
-  }, [tab, tabsInfo, tabCounts]);
+  }, [tabsInfo, tabCounts]);
 
   const activeTabKey = useMemo(() => {
     if (tab) {
