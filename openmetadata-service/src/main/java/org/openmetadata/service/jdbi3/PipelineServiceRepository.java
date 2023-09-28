@@ -31,5 +31,6 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
         dao.pipelineServiceDAO(),
         PipelineConnection.class,
         ServiceType.PIPELINE);
+    supportsSearch = true;
   }
 }
