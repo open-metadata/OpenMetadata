@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CustomPageSettings } from 'pages/CustomPageSettings/CustomPageSettings';
 import { PersonaPage } from 'pages/Persona/PersonaPage';
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -277,6 +278,14 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPageSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_PAGES
         )}
       />
 

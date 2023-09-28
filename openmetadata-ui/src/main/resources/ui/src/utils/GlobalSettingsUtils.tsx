@@ -43,6 +43,7 @@ import {
   ResourceEntity,
   UIPermission,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { PLACEHOLDER_ROUTE_FQN, ROUTES } from 'constants/constants';
 import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
 import { EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
@@ -436,4 +437,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
     default:
       return GlobalSettingOptions.TABLES;
   }
+};
+
+export const getCustomisePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMISE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, personaFqn)
+    .replace(':pageFqn', pageFqn);
 };
