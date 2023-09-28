@@ -239,6 +239,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Domain SUB_DOMAIN;
   public static DataProduct DOMAIN_DATA_PRODUCT;
   public static DataProduct SUB_DOMAIN_DATA_PRODUCT;
+  public static Domain DOMAIN1;
 
   // Users
   public static User USER1;
