@@ -53,7 +53,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao,
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override

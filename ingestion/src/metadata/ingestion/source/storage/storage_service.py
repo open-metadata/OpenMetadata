@@ -28,7 +28,11 @@ from metadata.generated.schema.entity.services.storageService import (
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
+from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+    ManifestMetadataConfig,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
+    NoMetadataConfigurationSource,
     StorageServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -51,6 +55,7 @@ from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
 from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.storage_metadata_config import get_manifest
 
 logger = ingestion_logger()
 
@@ -121,6 +126,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         # Flag the connection for the test connection
         self.connection_obj = self.connection
         self.test_connection()
+
+    def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
+        if self.source_config.storageMetadataConfigSource and not isinstance(
+            self.source_config.storageMetadataConfigSource,
+            NoMetadataConfigurationSource,
+        ):
+            return get_manifest(self.source_config.storageMetadataConfigSource)
+        return None
 
     @abstractmethod
     def get_containers(self) -> Iterable[Any]:

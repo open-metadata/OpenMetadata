@@ -29,12 +29,11 @@ import org.openmetadata.schema.services.connections.search.ElasticSearchConnecti
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class SearchServiceResourceTest extends EntityResourceTest<SearchService, CreateSearchService> {
+public class SearchServiceResourceTest extends ServiceResourceTest<SearchService, CreateSearchService> {
   public SearchServiceResourceTest() {
     super(
         Entity.SEARCH_SERVICE,

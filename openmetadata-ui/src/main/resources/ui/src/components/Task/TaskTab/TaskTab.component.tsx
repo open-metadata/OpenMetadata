@@ -141,6 +141,8 @@ export const TaskTab = ({
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
+  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
       <span>{`#${taskDetails?.id} `}</span>
@@ -165,7 +167,7 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
-    if (isEmpty(taskDetails?.suggestion)) {
+    if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
         t('message.field-text-is-required', {
           fieldText: isTaskTags
@@ -183,7 +185,10 @@ export const TaskTab = ({
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const data = { newValue: taskDetails?.suggestion };
+      const newValue = isTaskGlossaryApproval
+        ? 'approved'
+        : taskDetails?.suggestion;
+      const data = { newValue: newValue };
       updateTaskData(data as TaskDetails);
     }
   };
@@ -234,29 +239,63 @@ export const TaskTab = ({
   };
 
   const onTaskReject = () => {
-    if (comment && taskDetails?.id) {
-      updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
-        comment,
-      } as unknown as TaskDetails)
-        .then(() => {
-          showSuccessToast(t('server.task-closed-successfully'));
-          rest.onAfterClose?.();
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
+    if (!isTaskGlossaryApproval && isEmpty(comment)) {
       showErrorToast(t('server.task-closed-without-comment'));
+
+      return;
     }
+
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
+      .then(() => {
+        showSuccessToast(t('server.task-closed-successfully'));
+        rest.onAfterClose?.();
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
+
+  const approvalWorkflowActions = useMemo(() => {
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        {(isCreator || hasEditAccess) && (
+          <>
+            <Button data-testid="reject-task" onClick={onTaskReject}>
+              {t('label.reject')}
+            </Button>
+            {hasEditAccess && (
+              <Button
+                data-testid="approve-task"
+                type="primary"
+                onClick={onTaskResolve}>
+                {t('label.approve')}
+              </Button>
+            )}
+          </>
+        )}
+      </Space>
+    );
+  }, [taskDetails, onTaskResolve, hasEditAccess, isCreator]);
 
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
       return null;
     }
 
+    const taskType = taskDetails?.type ?? '';
+
+    if (isTaskGlossaryApproval) {
+      return approvalWorkflowActions;
+    }
+
     const parsedSuggestion = [
       'RequestDescription',
       'UpdateDescription',
-    ].includes(taskDetails?.type ?? '')
+    ].includes(taskType)
       ? taskDetails?.suggestion
       : JSON.parse(taskDetails?.suggestion || '[]');
 
@@ -270,9 +309,8 @@ export const TaskTab = ({
         )}
         {hasEditAccess ? (
           <>
-            {['RequestDescription', 'RequestTag'].includes(
-              taskDetails?.type ?? ''
-            ) && isEmpty(parsedSuggestion) ? (
+            {['RequestDescription', 'RequestTag'].includes(taskType) &&
+            isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>
@@ -310,7 +348,9 @@ export const TaskTab = ({
     handleMenuItemClick,
     taskAction,
     isTaskClosed,
+    isTaskGlossaryApproval,
     isCreator,
+    approvalWorkflowActions,
   ]);
 
   const initialFormValue = useMemo(() => {
