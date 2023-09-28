@@ -15,7 +15,6 @@ import os
 import traceback
 from typing import Iterable, List, Optional, Tuple
 
-from copy import deepcopy
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine.reflection import Inspector
