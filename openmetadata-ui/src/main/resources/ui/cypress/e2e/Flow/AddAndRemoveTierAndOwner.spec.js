@@ -88,7 +88,7 @@ describe('Add and Remove Owner', () => {
     });
   });
 
-  it.skip('databaseSchema details page', () => {
+  it('databaseSchema details page', () => {
     interceptURL('PATCH', '/api/v1/databaseSchemas/*', 'patchOwner');
     interceptURL('GET', '/api/v1/*/name/*', 'schemaDetails');
     const value = ENTITIES.table;
@@ -106,7 +106,7 @@ describe('Add and Remove Owner', () => {
     addRemoveOwner(OWNER, 'databaseSchemas');
   });
 
-  it.skip('database details page', () => {
+  it('database details page', () => {
     interceptURL('PATCH', '/api/v1/databases/*', 'patchOwner');
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
@@ -124,7 +124,7 @@ describe('Add and Remove Owner', () => {
     addRemoveOwner(OWNER, 'databases');
   });
 
-  it.skip('service details page', () => {
+  it('service details page', () => {
     interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'patchOwner');
     interceptURL(
       'GET',
@@ -341,7 +341,7 @@ describe('Add and Remove Tier', () => {
     });
   });
 
-  it.skip('database details page', () => {
+  it('database details page', () => {
     interceptURL('GET', '/api/v1/databases/name/*', 'databaseDetails');
     const value = ENTITIES.table;
     visitEntityDetailsPage(value.term, value.serviceName, value.entity);
