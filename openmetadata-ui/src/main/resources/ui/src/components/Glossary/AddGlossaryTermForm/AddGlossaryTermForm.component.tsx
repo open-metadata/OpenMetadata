@@ -24,7 +24,7 @@ import { EntityReference } from 'generated/entity/type';
 import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
 import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
-import { includes } from 'lodash';
+import { includes, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { searchData } from 'rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
@@ -102,11 +102,18 @@ const AddGlossaryTermForm = ({
       mutuallyExclusive = false,
       references = [],
       relatedTerms,
+      color,
+      iconURL,
     } = formObj;
 
     const selectedOwner = owner || {
       id: getCurrentUserId(),
       type: 'user',
+    };
+
+    const style = {
+      color,
+      iconURL,
     };
 
     const data = {
@@ -124,7 +131,9 @@ const AddGlossaryTermForm = ({
       mutuallyExclusive,
       tags: tags,
       owner: selectedOwner,
+      style: isEmpty(style) ? undefined : style,
     };
+
     onSave(data);
   };
 
@@ -258,6 +267,17 @@ const AddGlossaryTermForm = ({
           entity: t('label.related-term-plural'),
         }),
         fetchOptions: fetchGlossaryTerms,
+      },
+    },
+    {
+      name: 'iconURL',
+      id: 'root/iconURL',
+      label: t('label.icon-url'),
+      required: false,
+      placeholder: t('label.icon-url'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'icon-url',
       },
     },
     {
