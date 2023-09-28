@@ -94,7 +94,6 @@ class S3Source(StorageServiceSource):
         return cls(config, metadata_config)
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
-        global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()
         bucket_results = self.fetch_buckets()
 
         for bucket_response in bucket_results:
@@ -108,10 +107,10 @@ class S3Source(StorageServiceSource):
                 parent_entity: EntityReference = EntityReference(
                     id=self._bucket_cache[bucket_name].id.__root__, type="container"
                 )
-                if global_manifest:
+                if self.global_manifest:
                     manifest_entries_for_current_bucket = (
-                        self._manifest_entries_to_metadata_entries_by_bucket(
-                            bucket=bucket_name, manifest=global_manifest
+                        self._manifest_entries_to_metadata_entries_by_container(
+                            container_name=bucket_name, manifest=self.global_manifest
                         )
                     )
                     # Check if we have entries in the manifest file belonging to this bucket
@@ -119,8 +118,9 @@ class S3Source(StorageServiceSource):
                         # ingest all the relevant valid paths from it
                         yield from self._generate_structured_containers(
                             bucket_response=bucket_response,
-                            entries=self._manifest_entries_to_metadata_entries_by_bucket(
-                                bucket=bucket_name, manifest=global_manifest
+                            entries=self._manifest_entries_to_metadata_entries_by_container(
+                                container_name=bucket_name,
+                                manifest=self.global_manifest,
                             ),
                             parent=parent_entity,
                         )
@@ -333,25 +333,6 @@ class S3Source(StorageServiceSource):
             data_model=None,
             sourceUrl=self._get_bucket_source_url(bucket_name=bucket_response.name),
         )
-
-    @staticmethod
-    def _manifest_entries_to_metadata_entries_by_bucket(
-        bucket: str, manifest: ManifestMetadataConfig
-    ) -> List[MetadataEntry]:
-        """
-        Convert manifest entries(which have an extra bucket property) to bucket-level metadata entries, filtered by
-        a given bucket
-        """
-        return [
-            MetadataEntry(
-                dataPath=entry.dataPath,
-                structureFormat=entry.structureFormat,
-                isPartitioned=entry.isPartitioned,
-                partitionColumns=entry.partitionColumns,
-            )
-            for entry in manifest.entries
-            if entry.bucketName == bucket
-        ]
 
     def _get_sample_file_path(
         self, bucket_name: str, metadata_entry: MetadataEntry
