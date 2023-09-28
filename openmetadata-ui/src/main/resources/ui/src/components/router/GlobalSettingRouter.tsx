@@ -127,6 +127,12 @@ const CustomLogoConfigSettingsPage = withSuspenseFallback(
   )
 );
 
+const ApplicationPageV1 = withSuspenseFallback(
+  React.lazy(() => import('pages/Application/ApplicationPage'))
+);
+
+ApplicationPageV1;
+
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -363,6 +369,13 @@ const GlobalSettingRouter = () => {
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
         )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ApplicationPageV1}
+        hasPermission={false}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.WORKFLOW)}
       />
     </Switch>
   );

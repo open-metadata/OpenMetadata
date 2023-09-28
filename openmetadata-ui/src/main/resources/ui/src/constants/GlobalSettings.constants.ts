@@ -22,6 +22,7 @@ export enum GlobalSettingsMenuCategory {
   INTEGRATIONS = 'integrations',
   MEMBERS = 'members',
   SERVICES = 'services',
+  WORKFLOW = 'workflow',
 }
 
 export enum GlobalSettingOptions {

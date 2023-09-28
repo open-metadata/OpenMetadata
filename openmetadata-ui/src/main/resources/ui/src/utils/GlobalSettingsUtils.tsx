@@ -196,6 +196,23 @@ export const getGlobalSettingsMenuWithPermission = (
         },
       ],
     },
+
+    {
+      category: i18next.t('label.workflow-plural'),
+      key: 'workflow',
+      items: [
+        {
+          label: i18next.t('label.application-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.APPLICATION,
+            permissions
+          ),
+          key: 'workflow.application',
+          icon: <TableIcon className="side-panel-icons" />,
+        },
+      ],
+    },
+
     {
       category: i18next.t('label.notification-plural'),
       key: 'notifications',

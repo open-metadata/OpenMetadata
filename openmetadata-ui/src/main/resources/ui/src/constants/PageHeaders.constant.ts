@@ -156,4 +156,8 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.bot-plural'),
     subHeader: i18n.t('message.page-sub-header-for-bots'),
   },
+  APPLICATION: {
+    header: i18n.t('label.extend-open-meta-data'),
+    subHeader: i18n.t('message.tools-to-improve-workflow'),
+  },
 };
