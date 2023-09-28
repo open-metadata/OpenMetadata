@@ -10,15 +10,15 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
 
 @Slf4j
 public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
-  private final SearchClient client;
+  private final SearchRepository client;
 
-  public ElasticSearchIndexSink(SearchClient client) {
+  public ElasticSearchIndexSink(SearchRepository client) {
     this.client = client;
   }
 

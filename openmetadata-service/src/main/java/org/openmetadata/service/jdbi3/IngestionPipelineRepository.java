@@ -139,6 +139,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     pipelineServiceClient.deletePipeline(entity);
   }
 
+  @Override
+  public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+  }
+
   public void setPipelineServiceClient(PipelineServiceClient client) {
     pipelineServiceClient = client;
   }

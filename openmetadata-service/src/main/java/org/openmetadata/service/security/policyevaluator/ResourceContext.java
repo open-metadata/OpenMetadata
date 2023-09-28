@@ -29,14 +29,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private final String name;
   private T entity; // Will be lazily initialized
 
-  public ResourceContext(String resource) {
+  public ResourceContext(@NonNull String resource) {
     this.resource = resource;
     this.id = null;
     this.name = null;
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
   }
 
-  public ResourceContext(String resource, UUID id, String name) {
+  public ResourceContext(@NonNull String resource, UUID id, String name) {
     this.resource = resource;
     this.id = id;
     this.name = name;
@@ -44,7 +44,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @VisibleForTesting
-  public ResourceContext(String resource, T entity, EntityRepository<T> repository) {
+  public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
     this.resource = resource;
     this.id = null;
     this.name = null;
@@ -92,9 +92,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       Fields fieldList = entityRepository.getFields(fields);
       try {
         if (id != null) {
-          entity = entityRepository.get(null, id, fieldList, Include.NON_DELETED, true);
+          entity = entityRepository.get(null, id, fieldList, Include.ALL, true);
         } else if (name != null) {
-          entity = entityRepository.getByName(null, name, fieldList, Include.NON_DELETED, true);
+          entity = entityRepository.getByName(null, name, fieldList, Include.ALL, true);
         }
       } catch (EntityNotFoundException e) {
         entity = null;

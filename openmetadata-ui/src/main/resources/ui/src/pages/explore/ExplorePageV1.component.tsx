@@ -12,7 +12,6 @@
  */
 
 import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import { findActiveSearchIndex } from 'components/Explore/Explore.utils';
 
 import {
   ExploreProps,
@@ -25,7 +24,7 @@ import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockSearchData } from 'constants/mockTourData.constants';
 import { SORT_ORDER } from 'enums/common.enum';
-import { get, isEmpty, isNil, isString } from 'lodash';
+import { get, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -178,21 +177,12 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (searchHitCounts) {
-      const tabInfo = Object.entries(tabsInfo).find(
-        ([, tabInfo]) => tabInfo.path === tab
-      );
-      if (isNil(tabInfo)) {
-        const activeKey = findActiveSearchIndex(searchHitCounts);
+    const tabInfo = Object.entries(tabsInfo).find(
+      ([, tabInfo]) => tabInfo.path === tab
+    );
 
-        return activeKey ? activeKey : SearchIndex.TABLE;
-      }
-
-      return tabInfo[0] as ExploreSearchIndex;
-    }
-
-    return SearchIndex.TABLE;
-  }, [tab, searchHitCounts]);
+    return (tabInfo?.[0] as ExploreSearchIndex) ?? SearchIndex.TABLE;
+  }, [tab]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;

@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
@@ -49,7 +50,6 @@ import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -58,7 +58,7 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class DashboardServiceResourceTest extends EntityResourceTest<DashboardService, CreateDashboardService> {
+public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardService, CreateDashboardService> {
   public DashboardServiceResourceTest() {
     super(
         Entity.DASHBOARD_SERVICE,
@@ -183,21 +183,16 @@ public class DashboardServiceResourceTest extends EntityResourceTest<DashboardSe
 
   @Override
   public CreateDashboardService createRequest(String name) {
-    try {
-      return new CreateDashboardService()
-          .withName(name)
-          .withServiceType(DashboardServiceType.Metabase)
-          .withConnection(
-              new DashboardConnection()
-                  .withConfig(
-                      new MetabaseConnection()
-                          .withHostPort(new URI("http://localhost:8080"))
-                          .withUsername("admin")
-                          .withPassword("admin")));
-    } catch (URISyntaxException e) {
-      LOG.error("Failed to create CreateDashboardService request", e);
-    }
-    return null;
+    return new CreateDashboardService()
+        .withName(name)
+        .withServiceType(DashboardServiceType.Metabase)
+        .withConnection(
+            new DashboardConnection()
+                .withConfig(
+                    new MetabaseConnection()
+                        .withHostPort(CommonUtil.getUri("http://localhost:8080"))
+                        .withUsername("admin")
+                        .withPassword("admin")));
   }
 
   @Override

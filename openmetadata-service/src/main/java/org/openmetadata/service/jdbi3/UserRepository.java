@@ -77,10 +77,10 @@ public class UserRepository extends EntityRepository<User> {
     super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
     organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
     this.quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
-  // with the introduction of fqnhash we added case sensitivity to all of the entities
+  // with the introduction of fqnhash we added case sensitivity to all the entities
   // however usernames , emails cannot be case sensitive
   @Override
   public void setFullyQualifiedName(User user) {
