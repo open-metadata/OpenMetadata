@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, FormProps, Input, Modal, Select, Space, Typography } from 'antd';
+import { Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
 import {
   SUBSCRIPTION_WEBHOOK,
@@ -85,11 +85,11 @@ const TeamsSubscription = ({
     );
   }, [subscription]);
 
-  const handleSave: FormProps['onFinish'] = async (values) => {
+  const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);
 
     try {
-      await updateTeamSubscription(values as SubscriptionWebhook);
+      await updateTeamSubscription(values);
     } catch {
       // parent block will throw error
     } finally {

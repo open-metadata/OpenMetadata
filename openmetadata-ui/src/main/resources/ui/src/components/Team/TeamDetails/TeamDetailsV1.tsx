@@ -441,7 +441,7 @@ const TeamDetailsV1 = ({
           ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
-                parent.name || parent.fullyQualifiedName || ''
+                parent.name ?? parent.fullyQualifiedName ?? ''
               ),
             }))
           : [];
@@ -729,7 +729,7 @@ const TeamDetailsV1 = ({
 
   const rolesTabRender = useMemo(
     () =>
-      isEmpty(currentTeam.defaultRoles || []) ? (
+      isEmpty(currentTeam.defaultRoles ?? []) ? (
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
           heading: t('label.role'),
@@ -749,7 +749,7 @@ const TeamDetailsV1 = ({
               onClick={() =>
                 setAddAttribute({
                   type: EntityType.ROLE,
-                  selectedData: currentTeam.defaultRoles || [],
+                  selectedData: currentTeam.defaultRoles ?? [],
                 })
               }>
               {t('label.add')}
@@ -770,14 +770,14 @@ const TeamDetailsV1 = ({
             onClick={() =>
               setAddAttribute({
                 type: EntityType.ROLE,
-                selectedData: currentTeam.defaultRoles || [],
+                selectedData: currentTeam.defaultRoles ?? [],
               })
             }>
             {addRole}
           </Button>
           <ListEntities
             hasAccess={entityPermissions.EditAll}
-            list={currentTeam.defaultRoles || []}
+            list={currentTeam.defaultRoles ?? []}
             type={EntityType.ROLE}
             onDelete={(record) =>
               setEntity({ record, attribute: 'defaultRoles' })
@@ -808,7 +808,7 @@ const TeamDetailsV1 = ({
               onClick={() =>
                 setAddAttribute({
                   type: EntityType.POLICY,
-                  selectedData: currentTeam.policies || [],
+                  selectedData: currentTeam.policies ?? [],
                 })
               }>
               {t('label.add')}
@@ -829,14 +829,14 @@ const TeamDetailsV1 = ({
             onClick={() =>
               setAddAttribute({
                 type: EntityType.POLICY,
-                selectedData: currentTeam.policies || [],
+                selectedData: currentTeam.policies ?? [],
               })
             }>
             {addPolicy}
           </Button>
           <ListEntities
             hasAccess={entityPermissions.EditAll}
-            list={currentTeam.policies || []}
+            list={currentTeam.policies ?? []}
             type={EntityType.POLICY}
             onDelete={(record) => setEntity({ record, attribute: 'policies' })}
           />
@@ -1073,7 +1073,7 @@ const TeamDetailsV1 = ({
                       </Space>
                     }>
                     <Description
-                      description={currentTeam.description || ''}
+                      description={currentTeam.description ?? ''}
                       entityName={currentTeam.displayName ?? currentTeam.name}
                       isEdit={isDescriptionEditable}
                       onCancel={() => descriptionHandler(false)}
