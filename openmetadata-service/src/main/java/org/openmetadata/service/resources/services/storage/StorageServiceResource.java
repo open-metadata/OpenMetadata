@@ -45,15 +45,12 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -112,6 +109,9 @@ public class StorageServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(description = "Returns list of storage services before this cursor", schema = @Schema(type = "string"))
           @QueryParam("before")
@@ -125,17 +125,7 @@ public class StorageServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = getFields(fieldsParam);
-    ResultList<StorageService> storageServices;
-
-    ListFilter filter = new ListFilter(include);
-    if (before != null) {
-      storageServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else {
-      storageServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, decryptOrNullify(securityContext, storageServices));
+    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET

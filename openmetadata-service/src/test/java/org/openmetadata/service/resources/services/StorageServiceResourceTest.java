@@ -27,12 +27,11 @@ import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.storage.StorageServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class StorageServiceResourceTest extends EntityResourceTest<StorageService, CreateStorageService> {
+public class StorageServiceResourceTest extends ServiceResourceTest<StorageService, CreateStorageService> {
   public StorageServiceResourceTest() {
     super(
         Entity.STORAGE_SERVICE,

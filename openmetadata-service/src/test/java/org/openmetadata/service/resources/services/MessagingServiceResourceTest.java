@@ -44,7 +44,6 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.service.util.JsonUtils;
@@ -52,7 +51,7 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
+public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
 
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
   public static URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
