@@ -39,7 +39,6 @@ from metadata.generated.schema.metadataIngestion.storage.storageMetadataS3Config
     StorageMetadataS3Config,
 )
 from metadata.readers.file.config_source_factory import get_reader
-from metadata.readers.file.s3 import S3Reader
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()

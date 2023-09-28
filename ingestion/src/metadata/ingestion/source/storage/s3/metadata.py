@@ -37,9 +37,6 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
     MetadataEntry,
     StorageContainerConfig,
 )
-from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
-    ManifestMetadataConfig,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
