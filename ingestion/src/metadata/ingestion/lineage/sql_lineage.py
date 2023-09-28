@@ -188,7 +188,7 @@ def get_table_entities_from_query(
         metadata=metadata,
         service_name=service_name,
         database=database_name,
-        database_schema=database_schema,
+        database_schema=schema_query,
         table=table,
     )
 
