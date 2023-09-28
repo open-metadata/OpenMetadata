@@ -15,6 +15,7 @@ import AppState from 'AppState';
 import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import FeedsFilterPopover from 'components/common/FeedsFilterPopover/FeedsFilterPopover.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockFeedData } from 'constants/mockTourData.constants';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
@@ -42,16 +43,19 @@ const FeedsWidget = () => {
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+  const [defaultFilter, setDefaultFilter] = useState<FeedFilter>(
+    FeedFilter.OWNER_OR_FOLLOWS
+  );
 
   useEffect(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
-      getFeedData(FeedFilter.OWNER, undefined, ThreadType.Conversation);
+      getFeedData(defaultFilter, undefined, ThreadType.Conversation);
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
       getFeedData(FeedFilter.OWNER, undefined, ThreadType.Task);
     }
-  }, [activeTab]);
+  }, [activeTab, defaultFilter]);
 
   const countBadge = useMemo(() => {
     return getCountBadge(taskCount, '', activeTab === 'tasks');
@@ -85,6 +89,9 @@ const FeedsWidget = () => {
 
     return null;
   }, [loading, entityPaging, redirectToUserPage]);
+  const onFilterUpdate = (filter: FeedFilter) => {
+    setDefaultFilter(filter);
+  };
 
   useEffect(() => {
     getFeedsWithFilter(
@@ -174,6 +181,11 @@ const FeedsWidget = () => {
             ),
           },
         ]}
+        tabBarExtraContent={
+          activeTab === ActivityFeedTabs.ALL && (
+            <FeedsFilterPopover onUpdate={onFilterUpdate} />
+          )
+        }
         onChange={onTabChange}
       />
     </div>
