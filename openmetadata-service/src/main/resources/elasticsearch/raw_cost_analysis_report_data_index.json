@@ -1,0 +1,93 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "entity": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "href": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "text"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "deleted": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "text"
+              },
+              "displayName": {
+                "type": "text"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              }
+            }
+          },
+          "lifeCycle": {
+            "properties": {
+              "created": {
+                "properties": {
+                  "timestamp": {
+                    "type": "date"
+                  },
+                  "accessedBy": {
+                    "type": "keyword"
+                  },
+                  "accessedByAProcess": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "updated": {
+                "properties": {
+                  "timestamp": {
+                    "type": "date"
+                  },
+                  "accessedBy": {
+                    "type": "keyword"
+                  },
+                  "accessedByAProcess": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "accessed": {
+                "properties": {
+                  "timestamp": {
+                    "type": "date"
+                  },
+                  "accessedBy": {
+                    "type": "keyword"
+                  },
+                  "accessedByAProcess": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "sizeInByte": {
+            "type": "double"
+          }
+        }
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      }
+    }
+  }
+}
