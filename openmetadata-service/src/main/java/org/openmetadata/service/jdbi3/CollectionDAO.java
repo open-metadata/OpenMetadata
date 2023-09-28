@@ -63,6 +63,7 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -196,6 +197,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   ApplicationDAO applicationDAO();
+
+  @CreateSqlObject
+  ApplicationMarketPlaceDAO applicationMarketPlaceDAO();
 
   @CreateSqlObject
   PipelineDAO pipelineDAO();
@@ -1522,12 +1526,24 @@ public interface CollectionDAO {
   interface ApplicationDAO extends EntityDAO<Application> {
     @Override
     default String getTableName() {
-      return "application_entity";
+      return "installed_application";
     }
 
     @Override
     default Class<Application> getEntityClass() {
       return Application.class;
+    }
+  }
+
+  interface ApplicationMarketPlaceDAO extends EntityDAO<AppMarketPlaceDefinition> {
+    @Override
+    default String getTableName() {
+      return "app_marketplace";
+    }
+
+    @Override
+    default Class<AppMarketPlaceDefinition> getEntityClass() {
+      return AppMarketPlaceDefinition.class;
     }
   }
 

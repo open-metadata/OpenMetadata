@@ -1,42 +1,51 @@
 package org.openmetadata.service.apps;
 
+import static org.openmetadata.service.resources.teams.UserResource.getUser;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
-import org.openmetadata.schema.EntityInterface;
+import javax.ws.rs.InternalServerErrorException;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.Application;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
-import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.apps.AppResource;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.quartz.SchedulerException;
 
+@Slf4j
 public class AppRepository extends EntityRepository<Application> {
+  public static String APP_BOT_ROLE = "ApplicationBotRole";
   public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
-  public static String APP_SCHEDULE_INFO_SCHEMA = "scheduleInfo.json";
 
   public AppRepository(CollectionDAO dao) {
     super(AppResource.COLLECTION_PATH, Entity.APPLICATION, Application.class, dao.applicationDAO(), dao, "", "");
-    supportsSearchIndex = false;
+    supportsSearch = false;
   }
 
   @Override
   public Application setFields(Application entity, EntityUtil.Fields fields) {
-    entity.setSchedules(fields.contains("schedules") ? getApplicationSchedule(entity) : null);
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     return entity.withBot(getBotUser(entity));
   }
@@ -49,13 +58,82 @@ public class AppRepository extends EntityRepository<Application> {
         .collect(Collectors.toList());
   }
 
+  public AppMarketPlaceRepository getMarketPlace() {
+    return (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+  }
+
   @Override
   public Application clearFields(Application entity, EntityUtil.Fields fields) {
     return entity;
   }
 
   @Override
-  public void prepare(Application entity, boolean update) {}
+  public void prepare(Application entity, boolean update) {
+    if (entity.getBot() == null) {}
+  }
+
+  public EntityReference createNewAppBot(Application application) {
+    String botName = String.format("%sBot", application.getName());
+    BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    User botUser = null;
+    Bot bot = null;
+    try {
+      botUser = userRepository.findByName(botName, Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      // Get Bot Role
+      EntityReference roleRef = Entity.getEntityReferenceByName(Entity.ROLE, APP_BOT_ROLE, Include.NON_DELETED);
+      // Create Bot User
+      AuthenticationMechanism authMechanism =
+          new AuthenticationMechanism()
+              .withAuthType(AuthenticationMechanism.AuthType.JWT)
+              .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+      CreateUser createUser =
+          new CreateUser()
+              .withName(botName)
+              .withEmail(String.format("%s@openmetadata.org", botName))
+              .withIsAdmin(false)
+              .withIsBot(true)
+              .withAuthenticationMechanism(authMechanism)
+              .withRoles(List.of(roleRef.getId()));
+      User user = getUser("admin", createUser);
+
+      // Set User Ownership to the application creator
+      user.setOwner(application.getOwner());
+
+      // Set Auth Mechanism in Bot
+      JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
+      authMechanism.setConfig(
+          JWTTokenGenerator.getInstance().generateJWTToken(user, jwtAuthMechanism.getJWTTokenExpiry()));
+      user.setAuthenticationMechanism(authMechanism);
+
+      // Create User
+      botUser = userRepository.createInternal(user);
+    }
+
+    try {
+      bot = botRepository.findByName(botName, Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      Bot appBot =
+          new Bot()
+              .withId(UUID.randomUUID())
+              .withName(botUser.getName())
+              .withUpdatedBy("admin")
+              .withUpdatedAt(System.currentTimeMillis())
+              .withBotUser(botUser.getEntityReference())
+              .withProvider(ProviderType.USER)
+              .withFullyQualifiedName(botUser.getName());
+
+      // Create Bot with above user
+      bot = botRepository.createInternal(appBot);
+    }
+
+    if (bot != null) {
+      return bot.getEntityReference();
+    }
+    LOG.error("System Failed in Creating a Bot for the Application.");
+    return null;
+  }
 
   @Override
   public void storeEntity(Application entity, boolean update) {
@@ -70,92 +148,47 @@ public class AppRepository extends EntityRepository<Application> {
     entity.withBot(botUserRef).withOwner(ownerRef);
   }
 
+  @SuppressWarnings("unused")
+  protected void postCreate(Application entity) {
+    super.postCreate(entity);
+
+    // Send to app scheduler
+    // TODO: here we should handle Live as well
+    if (entity.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.scheduleApplication(
+          entity, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
+    }
+  }
+
+  @SuppressWarnings("unused")
+  protected void postUpdate(Application original, Application updated) {
+    super.postUpdate(original, updated);
+    // TODO: here we should handle Live as well
+
+    try {
+      AppScheduler.getInstance().deleteScheduledApplication(original);
+      if (updated.getScheduleType().equals(ScheduleType.Scheduled)) {
+        ApplicationHandler.scheduleApplication(
+            updated, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
+      }
+    } catch (SchedulerException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public void postDelete(Application entity) {
+    try {
+      AppScheduler.getInstance().deleteScheduledApplication(entity);
+    } catch (SchedulerException ex) {
+      LOG.error("Failed in delete Application from Scheduler.", ex);
+      throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
+    }
+  }
+
   public EntityReference getBotUser(Application application) {
     return application.getBot() != null
         ? application.getBot()
         : getToEntityRef(application.getId(), Relationship.HAS, Entity.BOT, false);
-  }
-
-  public RestUtil.PutResponse<?> addApplicationSchedule(UriInfo uriInfo, UUID appId, AppSchedule appScheduleInfo) {
-    // Get Application
-    Application application = get(uriInfo, appId, getFields("schedules"));
-    if (application.getSchedules() != null && !application.getSchedules().isEmpty()) {
-      throw new IllegalArgumentException("Job has already been Scheduled please remove any existing schedules.");
-    }
-
-    daoCollection
-        .entityExtensionDAO()
-        .insert(
-            appId,
-            String.format("%s.%s", APP_SCHEDULE_EXTENSION, appScheduleInfo.getScheduleId().toString()),
-            APP_SCHEDULE_INFO_SCHEMA,
-            JsonUtils.pojoToJson(appScheduleInfo));
-    application.getSchedules().add(appScheduleInfo);
-
-    ChangeDescription change = addScheduleChangeDescription(application.getVersion(), appScheduleInfo);
-    ChangeEvent changeEvent =
-        getChangeEvent(withHref(uriInfo, application), change, entityType, application.getVersion());
-
-    // Schedule the application to scheduler
-    ApplicationHandler.scheduleApplication(
-        application,
-        appScheduleInfo,
-        JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
-
-    // Response
-    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
-  }
-
-  public RestUtil.PutResponse<?> deleteApplicationSchedule(UriInfo uriInfo, UUID appId) throws SchedulerException {
-    // Get Application
-    Application application = get(uriInfo, appId, getFields("schedules"));
-    if (application.getSchedules() != null && !application.getSchedules().isEmpty()) {
-      // There is only one schedule per app
-      AppSchedule appSchedule = application.getSchedules().get(0);
-      daoCollection
-          .entityExtensionDAO()
-          .delete(appId, String.format("%s.%s", APP_SCHEDULE_EXTENSION, appSchedule.getScheduleId().toString()));
-
-      ChangeDescription change = removeScheduleChangeDescription(application.getVersion(), appSchedule);
-      ChangeEvent changeEvent =
-          getChangeEvent(withHref(uriInfo, application), change, entityType, application.getVersion());
-
-      // Delete the Application Schedule
-      AppScheduler.getInstance().deleteScheduledApplication(application);
-
-      // Response
-      return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
-    }
-    throw new IllegalArgumentException("No available schedule for the Job to remove.");
-  }
-
-  private ChangeDescription addScheduleChangeDescription(Double version, Object newValue) {
-    FieldChange fieldChange = new FieldChange().withName("schedules").withNewValue(newValue);
-    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsAdded().add(fieldChange);
-    return change;
-  }
-
-  private ChangeDescription removeScheduleChangeDescription(Double version, Object oldValue) {
-    FieldChange fieldChange = new FieldChange().withName("schedules").withOldValue(oldValue);
-    ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsDeleted().add(fieldChange);
-    return change;
-  }
-
-  private ChangeEvent getChangeEvent(
-      EntityInterface updated, ChangeDescription change, String entityType, Double prevVersion) {
-    return new ChangeEvent()
-        .withEntity(updated)
-        .withChangeDescription(change)
-        .withEventType(EventType.ENTITY_UPDATED)
-        .withEntityType(entityType)
-        .withEntityId(updated.getId())
-        .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
-        .withUserName(updated.getUpdatedBy())
-        .withTimestamp(System.currentTimeMillis())
-        .withCurrentVersion(updated.getVersion())
-        .withPreviousVersion(prevVersion);
   }
 
   @Override

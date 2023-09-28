@@ -61,7 +61,7 @@
       "type": "object"
     },
     "scheduleInfo": {
-      "$ref": "./appSchedule.json"
+      "$ref": "./application.json#/definitions/appSchedule"
     }
   },
   "additionalProperties": false

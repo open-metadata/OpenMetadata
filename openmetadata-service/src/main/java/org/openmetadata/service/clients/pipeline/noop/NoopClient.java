@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -45,6 +46,11 @@ public class NoopClient extends PipelineServiceClient {
 
   @Override
   public PipelineServiceClientResponse runApplicationFlow(Application application) {
+    return null;
+  }
+
+  @Override
+  public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app) {
     return null;
   }
 

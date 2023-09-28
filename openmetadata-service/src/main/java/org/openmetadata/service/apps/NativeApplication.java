@@ -1,6 +1,5 @@
 package org.openmetadata.service.apps;
 
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.quartz.Job;
@@ -11,7 +10,7 @@ public interface NativeApplication extends Job {
 
   void triggerOnDemand(Object requestObj);
 
-  void schedule(AppSchedule appSchedule);
+  void schedule();
 
   default void doExecute(JobExecutionContext jobExecutionContext) {}
 }

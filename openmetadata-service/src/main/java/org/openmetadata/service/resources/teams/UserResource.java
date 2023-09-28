@@ -483,7 +483,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response createUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
-    User user = getUser(securityContext, create);
+    User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(create.getIsAdmin())) {
       authorizer.authorizeAdmin(securityContext);
     }
@@ -543,7 +543,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response createOrUpdateUser(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateUser create) {
-    User user = getUser(securityContext, create);
+    User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.prepareInternal(user, true);
 
     ResourceContext resourceContext = getResourceContextByName(user.getFullyQualifiedName());
@@ -1204,7 +1204,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return importCsvInternal(securityContext, team, csv, dryRun);
   }
 
-  private User getUser(SecurityContext securityContext, CreateUser create) {
+  public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
         .withName(create.getName())
@@ -1216,7 +1216,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withIsAdmin(create.getIsAdmin())
         .withProfile(create.getProfile())
         .withTimezone(create.getTimezone())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
