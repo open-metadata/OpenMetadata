@@ -41,10 +41,6 @@ BIGQUERY_TEST_STATEMENT = textwrap.dedent(
     """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT limit 1"""
 )
 
-BIGQUERY_GET_SCHEMA = """
-select schema_name from region-{region}.INFORMATION_SCHEMA.SCHEMATA
-"""
-
 BIGQUERY_GET_SCHEMA_NAME = """
 select schema_name from {project_id}.INFORMATION_SCHEMA.SCHEMATA {schema_filter}
 """

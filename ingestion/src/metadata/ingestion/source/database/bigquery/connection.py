@@ -42,7 +42,7 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_SCHEMA,
+    BIGQUERY_GET_SCHEMA_NAME,
     BIGQUERY_TEST_STATEMENT,
 )
 from metadata.utils.credentials import set_google_credentials
@@ -120,8 +120,9 @@ def test_connection(
             "GetSchemas": partial(
                 test_query,
                 engine=engine,
-                statement=BIGQUERY_GET_SCHEMA.format(
-                    region=service_connection.usageLocation
+                statement=BIGQUERY_GET_SCHEMA_NAME.format(
+                    project_id=service_connection.credentials.gcpConfig.projectId.__root__,
+                    schema_filter="",
                 ),
             ),
             "GetTables": partial(execute_inspector_func, engine, "get_table_names"),
