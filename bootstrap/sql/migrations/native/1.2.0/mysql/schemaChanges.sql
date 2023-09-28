@@ -187,3 +187,8 @@ CREATE TABLE IF NOT EXISTS doc_store (
 );
 
 
+
+-- Remove Mark All Deleted Field
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceConfig.config.markAllDeletedTables')
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
