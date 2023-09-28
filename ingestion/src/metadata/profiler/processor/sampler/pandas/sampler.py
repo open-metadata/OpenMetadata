@@ -190,11 +190,12 @@ class DatalakeSampler(SamplerInterface):
                             inplace=True,
                         )
         return pd.json_normalize(
-            self.unflatten_dict(
-                json.loads(
-                    data_frame.apply(lambda row: row.to_json(), axis=1).values[0]
-                )
-            ),
+            [
+                json.loads(row_values)
+                for row_values in data_frame.apply(
+                    lambda row: row.to_json(), axis=1
+                ).values.tolist()
+            ],
             max_level=0,
         ).replace(np.nan, None)
 

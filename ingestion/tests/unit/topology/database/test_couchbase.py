@@ -134,6 +134,7 @@ MOCK_CREATE_TABLE = [
                 children=[
                     Column(
                         name="line",
+                        displayName="line",
                         dataType=DataType.STRING,
                         dataTypeDisplay=DataType.STRING.value,
                     )

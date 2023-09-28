@@ -16,6 +16,7 @@ from different auths and different file systems.
 import ast
 import json
 import traceback
+from functools import reduce
 from typing import List, Optional
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -103,8 +104,13 @@ def get_file_format_type(key_name, metadata_entry=None):
 def get_parent_col(data_frame, complex_cols, parent_col_fqn=""):
     """Get Complex Column Objects"""
     cols = []
-    parent_cols = {top_level[0] for top_level in complex_cols if len(top_level) > 0}
-    # ['metadata', 'nodes']
+    parent_cols = [top_level[0] for top_level in complex_cols if len(top_level) > 0]
+    filter_unique = (
+        lambda l, x: l  # pylint: disable=unnecessary-lambda-assignment
+        if x in l
+        else l + [x]
+    )
+    parent_cols = reduce(filter_unique, parent_cols, [])
     for top_level in parent_cols:
         if parent_col_fqn.startswith(COMPLEX_COLUMN_SEPARATOR) or not parent_col_fqn:
             col_fqn = COMPLEX_COLUMN_SEPARATOR.join([parent_col_fqn, top_level])
@@ -114,12 +120,11 @@ def get_parent_col(data_frame, complex_cols, parent_col_fqn=""):
             "name": truncate_column_name(top_level),
             "displayName": top_level,
         }
-        # child col
         leaf_node = [
             leaf_parse[1:] for leaf_parse in complex_cols if top_level == leaf_parse[0]
         ]
-        col_obj["children"] = []
         if any(leaf_node):
+            col_obj["children"] = []
             col_obj["dataTypeDisplay"] = DataType.RECORD.value
             col_obj["dataType"] = DataType.RECORD
             col_obj["children"].extend(get_parent_col(data_frame, leaf_node, col_fqn))
@@ -139,18 +144,10 @@ def get_columns(data_frame: "DataFrame"):
     method to process column details
     """
     cols = []
-    complex_cols = [
-        complex_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
-        for complex_col in json.loads(
-            data_frame.apply(lambda row: row.to_json(), axis=1).values[0]
-        ).keys()
-        if COMPLEX_COLUMN_SEPARATOR in complex_col
-    ]
-    cols.extend(get_parent_col(data_frame, complex_cols))
     if hasattr(data_frame, "columns"):
         df_columns = list(data_frame.columns)
         for column in df_columns:
-            if not COMPLEX_COLUMN_SEPARATOR in column:
+            if COMPLEX_COLUMN_SEPARATOR not in column:
                 # use String by default
                 data_type = DataType.STRING
                 try:
@@ -172,6 +169,14 @@ def get_columns(data_frame: "DataFrame"):
                     logger.warning(
                         f"Unexpected exception parsing column [{column}]: {exc}"
                     )
+    complex_cols = [
+        complex_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
+        for complex_col in json.loads(
+            data_frame.apply(lambda row: row.to_json(), axis=1).values[0]
+        ).keys()
+        if COMPLEX_COLUMN_SEPARATOR in complex_col
+    ]
+    cols.extend(get_parent_col(data_frame, complex_cols))
     return cols
 
 

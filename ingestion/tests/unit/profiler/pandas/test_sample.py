@@ -16,6 +16,7 @@ import os
 from unittest import TestCase, mock
 from uuid import uuid4
 
+import pandas as pd
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String
 from sqlalchemy.orm import declarative_base
@@ -221,7 +222,7 @@ class DatalakeSampleTest(TestCase):
         """
         sampler = DatalakeSampler(
             client=FakeConnection().client(),
-            table=[self.df1, self.df2],
+            table=[pd.concat([self.df1, self.df2])],
         )
         sample_data = sampler.fetch_sample_data()
 
