@@ -57,7 +57,8 @@ export type AssetsUnion =
   | EntityType.PIPELINE_SERVICE
   | EntityType.MLMODEL_SERVICE
   | EntityType.STORAGE_SERVICE
-  | EntityType.DATABASE_SERVICE;
+  | EntityType.DATABASE_SERVICE
+  | EntityType.SEARCH_SERVICE;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;

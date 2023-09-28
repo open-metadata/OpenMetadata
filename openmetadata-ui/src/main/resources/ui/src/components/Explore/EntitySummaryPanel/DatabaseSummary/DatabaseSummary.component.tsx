@@ -10,34 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Col, Divider, Row, Typography } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { CSMode } from 'enums/codemirror.enum';
+import { SummaryEntityType } from 'enums/EntitySummary.enum';
 import { ExplorePageTabs } from 'enums/Explore.enum';
-import { StoredProcedureCodeObject } from 'generated/entity/data/storedProcedure';
-import { isObject } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import { StoredProcedureSummaryProps } from './StoredProcedureSummary.interface';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { DatabaseSummaryProps } from './DatabaseSummary.interface';
 
-const StoredProcedureSummary = ({
+const DatabaseSummary = ({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
-}: StoredProcedureSummaryProps) => {
+}: DatabaseSummaryProps) => {
   const { t } = useTranslation();
-
   const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.STORED_PROCEDURE, entityDetails),
+    () => getEntityOverview(ExplorePageTabs.DATABASE, entityDetails),
+    [entityDetails]
+  );
+
+  const formattedSchemaData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        entityDetails.databaseSchemas
+      ),
     [entityDetails]
   );
 
@@ -59,37 +66,27 @@ const StoredProcedureSummary = ({
           entityDetail={entityDetails}
           tags={tags ?? entityDetails.tags ?? []}
         />
+
         <Divider className="m-y-xs" />
 
-        {isObject(entityDetails.storedProcedureCode) && (
-          <Row className="m-md" gutter={[0, 8]}>
-            <Col span={24}>
-              <Typography.Text
-                className="text-base text-grey-muted"
-                data-testid="column-header">
-                {t('label.code')}
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <SchemaEditor
-                editorClass="custom-code-mirror-theme custom-query-editor"
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  styleActiveLine: false,
-                  readOnly: 'nocursor',
-                }}
-                value={
-                  (
-                    entityDetails.storedProcedureCode as StoredProcedureCodeObject
-                  ).code ?? ''
-                }
-              />
-            </Col>
-          </Row>
-        )}
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="schema-header">
+              {t('label.schema')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList
+              entityType={SummaryEntityType.SCHEMAFIELD}
+              formattedEntityData={formattedSchemaData}
+            />
+          </Col>
+        </Row>
       </>
     </SummaryPanelSkeleton>
   );
 };
 
-export default StoredProcedureSummary;
+export default DatabaseSummary;

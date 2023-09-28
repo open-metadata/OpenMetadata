@@ -10,34 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Col, Divider, Row, Typography } from 'antd';
+import { Col, Divider, Row } from 'antd';
 import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { CSMode } from 'enums/codemirror.enum';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { StoredProcedureCodeObject } from 'generated/entity/data/storedProcedure';
-import { isObject } from 'lodash';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from 'utils/EntityUtils';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import { StoredProcedureSummaryProps } from './StoredProcedureSummary.interface';
+import { ServiceSummaryProps } from './ServiceSummary.interface';
 
-const StoredProcedureSummary = ({
+const ServiceSummary = ({
+  type,
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
-}: StoredProcedureSummaryProps) => {
-  const { t } = useTranslation();
-
+}: ServiceSummaryProps) => {
   const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.STORED_PROCEDURE, entityDetails),
+    () => getEntityOverview(type, entityDetails),
     [entityDetails]
   );
 
@@ -59,37 +51,9 @@ const StoredProcedureSummary = ({
           entityDetail={entityDetails}
           tags={tags ?? entityDetails.tags ?? []}
         />
-        <Divider className="m-y-xs" />
-
-        {isObject(entityDetails.storedProcedureCode) && (
-          <Row className="m-md" gutter={[0, 8]}>
-            <Col span={24}>
-              <Typography.Text
-                className="text-base text-grey-muted"
-                data-testid="column-header">
-                {t('label.code')}
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <SchemaEditor
-                editorClass="custom-code-mirror-theme custom-query-editor"
-                mode={{ name: CSMode.SQL }}
-                options={{
-                  styleActiveLine: false,
-                  readOnly: 'nocursor',
-                }}
-                value={
-                  (
-                    entityDetails.storedProcedureCode as StoredProcedureCodeObject
-                  ).code ?? ''
-                }
-              />
-            </Col>
-          </Row>
-        )}
       </>
     </SummaryPanelSkeleton>
   );
 };
 
-export default StoredProcedureSummary;
+export default ServiceSummary;

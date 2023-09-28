@@ -51,6 +51,7 @@ import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
+import { myDataSearchIndex } from 'constants/Mydata.constants';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
@@ -71,7 +72,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { addDataProducts } from 'rest/dataProductAPI';
 import { searchData } from 'rest/miscAPI';
 import { getEntityDeleteMessage, getIsErrorMatch } from 'utils/CommonUtils';
-import { DomainAssetsSearchIndex } from 'utils/DomainUtils';
 import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import {
@@ -257,7 +257,7 @@ const DomainDetailsPage = ({
           `(domain.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          DomainAssetsSearchIndex
+          myDataSearchIndex
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);

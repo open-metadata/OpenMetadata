@@ -93,7 +93,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       case ServiceCategory.DATABASE_SERVICES:
         return SearchIndex.DATABASE_SERVICE;
       case ServiceCategory.DASHBOARD_SERVICES:
-        return SearchIndex.DASHBOARD_SERCVICE;
+        return SearchIndex.DASHBOARD_SERVICE;
       case ServiceCategory.MESSAGING_SERVICES:
         return SearchIndex.MESSAGING_SERVICE;
       case ServiceCategory.PIPELINE_SERVICES:

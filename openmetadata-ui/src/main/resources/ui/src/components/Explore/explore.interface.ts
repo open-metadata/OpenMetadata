@@ -22,6 +22,12 @@ import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Glossary } from 'generated/entity/data/glossary';
 import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
 import { StoredProcedure } from 'generated/entity/data/storedProcedure';
+import { DashboardService } from 'generated/entity/services/dashboardService';
+import { DatabaseService } from 'generated/entity/services/databaseService';
+import { MessagingService } from 'generated/entity/services/messagingService';
+import { MlmodelService } from 'generated/entity/services/mlmodelService';
+import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -127,7 +133,13 @@ export type EntityUnion =
   | Tag
   | DashboardDataModel
   | StoredProcedure
-  | SearchIndexEntity;
+  | SearchIndexEntity
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | SearchService;
 
 export type EntityWithServices =
   | Topic
@@ -139,6 +151,14 @@ export type EntityWithServices =
   | Database
   | DatabaseSchema
   | SearchIndexEntity;
+
+export type EntityServiceUnion =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | SearchService;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];
