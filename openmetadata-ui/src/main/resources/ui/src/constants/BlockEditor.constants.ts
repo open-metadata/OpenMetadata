@@ -39,7 +39,11 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
       showOnlyCurrent: false,
       emptyEditorClass: 'is-editor-empty',
       emptyNodeClass: 'is-node-empty',
-      placeholder: () => {
+      placeholder: ({ editor: coreEditor }) => {
+        if (coreEditor.isDestroyed) {
+          return '';
+        }
+
         return 'Type "/" for commands...';
       },
     }),
