@@ -1,6 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchClient;
+import static org.openmetadata.service.resources.EntityResource.searchRepository;
 
 import java.util.UUID;
 import lombok.Getter;
@@ -38,7 +38,7 @@ public class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
 
   protected void postCreate(T entity) {
     if (supportsSearchIndex) {
-      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+      searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
     }
   }
 }

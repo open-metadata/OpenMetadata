@@ -129,6 +129,7 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
+    - "hello.world"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"

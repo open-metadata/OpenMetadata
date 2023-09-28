@@ -997,6 +997,50 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void list_threadsWithOwnerOrFollowerFilter() throws HttpResponseException {
+    int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+    String user1 = USER1.getId().toString(); // user1 is the owner of TABLE
+    // Get thread counts for user1 and user2
+    int user1ThreadCount = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
+
+    // create another thread on an entity with team2 as owner
+    String team2 = TABLE2.getOwner().getId().toString();
+    assertNotEquals(user1, team2);
+    createAndCheck(
+        create().withAbout(String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName())).withFrom(ADMIN_USER_NAME),
+        ADMIN_AUTH_HEADERS);
+
+    // user1 thread count remains the same as the newly created thread belongs to team2 and user1 is not part of it
+    ThreadList threads = listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS);
+    assertEquals(user1ThreadCount, threads.getPaging().getTotal());
+
+    String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
+    int initialThreadCount = listThreads(entityLink, null, USER_AUTH_HEADERS).getPaging().getTotal();
+
+    // Create threads
+    createAndCheck(create().withMessage("Message 1").withAbout(entityLink), ADMIN_AUTH_HEADERS);
+
+    createAndCheck(create().withMessage("Message 2").withAbout(entityLink), ADMIN_AUTH_HEADERS);
+
+    // Make the USER follow TABLE2
+    followTable(TABLE2.getId(), USER1.getId(), USER_AUTH_HEADERS);
+    with()
+        .pollInterval(ONE_SECOND)
+        .await("Threads With Follows")
+        .until(
+            () -> {
+              ThreadList followThreads =
+                  listThreadsWithFilter(USER.getId().toString(), FilterType.FOLLOWS, USER_AUTH_HEADERS);
+              return followThreads.getPaging().getTotal().equals(initialThreadCount + 3);
+            });
+
+    // filter by OWNER_OR_FOLLOWS we should list both team owned listing and followed table threads.
+    ThreadList ownerOrFollowTreads =
+        listThreadsWithFilter(USER.getId().toString(), FilterType.OWNER_OR_FOLLOWS, USER_AUTH_HEADERS);
+    assertEquals(threads.getPaging().getTotal() + 3, ownerOrFollowTreads.getPaging().getTotal());
+  }
+
+  @Test
   void list_threadsWithMentionsFilter() throws HttpResponseException {
     // Create a thread with user mention
     createAndCheck(

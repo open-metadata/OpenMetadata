@@ -18,5 +18,6 @@ public class MetadataServiceRepository extends ServiceEntityRepository<MetadataS
         MetadataConnection.class,
         UPDATE_FIELDS,
         ServiceType.METADATA);
+    supportsSearch = true;
   }
 }
