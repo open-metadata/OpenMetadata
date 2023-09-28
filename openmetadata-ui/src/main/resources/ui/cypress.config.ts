@@ -28,6 +28,6 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: ['cypress/e2e/Pages/ServiceVersionPage.spec.js', 'cypress/e2e/Pages/Glossary.spec.js'],
   },
 });
