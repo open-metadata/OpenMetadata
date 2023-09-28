@@ -52,8 +52,9 @@ class DistinctCount(StaticMetric):
         Distinct Count metric for Datalake
         """
         # pylint: disable=import-outside-toplevel
+        from collections import Counter
+
         import pandas as pd
-        from collections import Counter  
 
         try:
             counter = Counter()

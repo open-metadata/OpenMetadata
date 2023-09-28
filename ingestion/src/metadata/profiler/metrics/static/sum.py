@@ -50,7 +50,7 @@ class Sum(StaticMetric):
         """pandas function"""
         # pylint: disable=import-outside-toplevel
         import pandas as pd
-        
+
         if is_quantifiable(self.col.type):
             return sum(pd.to_numeric(df[self.col.name]).sum() for df in dfs)
         return None
