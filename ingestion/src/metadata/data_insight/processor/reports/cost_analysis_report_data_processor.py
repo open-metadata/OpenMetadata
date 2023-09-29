@@ -67,7 +67,7 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.RawCostAnalysisReportData.value,
                 data=value,
-            ) # type: ignore
+            )  # type: ignore
 
     def refine(self, entity: Table) -> None:
         """Aggregate data
@@ -91,7 +91,9 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
                 cost_analysis_data.sizeInByte = table_profile.profile.sizeInByte
 
             if cost_analysis_data.lifeCycle or cost_analysis_data.sizeInByte:
-                self._refined_data[entity.fullyQualifiedName.__root__] = cost_analysis_data
+                self._refined_data[
+                    entity.fullyQualifiedName.__root__
+                ] = cost_analysis_data
 
             self.processor_status.scanned(entity.name.__root__)
         except Exception as err:

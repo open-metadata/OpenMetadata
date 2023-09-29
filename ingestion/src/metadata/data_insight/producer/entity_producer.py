@@ -13,7 +13,7 @@ Producer class for data insight entity reports
 """
 
 import traceback
-from typing import Iterable, TypeVar
+from typing import Iterable
 
 from metadata.data_insight.producer.producer_interface import ProducerInterface
 from metadata.generated.schema.entity.data import (
@@ -34,6 +34,7 @@ logger = data_insight_logger()
 
 class EntityProducer(ProducerInterface):
     """entity producer class"""
+
     entities = [
         chart.Chart,
         dashboard.Dashboard,
@@ -64,4 +65,5 @@ class EntityProducer(ProducerInterface):
 
 class EntityProducerTable(EntityProducer):
     """entity producer class for table"""
+
     entities = [table.Table]

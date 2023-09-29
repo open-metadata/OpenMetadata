@@ -19,6 +19,10 @@ from typing import Dict, Iterable, Optional, Union, cast
 
 from pydantic import BaseModel
 
+from metadata.data_insight.processor.reports.cost_analysis_report_data_processor import (
+    AggregatedCostAnalysisReportDataProcessor,
+    RawCostAnalysisReportDataProcessor,
+)
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.data_insight.processor.reports.entity_report_data_processor import (
     EntityReportDataProcessor,
@@ -27,10 +31,6 @@ from metadata.data_insight.processor.reports.web_analytic_report_data_processor 
     WebAnalyticEntityViewReportDataProcessor,
     WebAnalyticUserActivityReportDataProcessor,
 )
-from metadata.data_insight.processor.reports.cost_analysis_report_data_processor import (
-     AggregatedCostAnalysisReportDataProcessor,
-     RawCostAnalysisReportDataProcessor,
- )
 from metadata.data_insight.producer.producer_factory import producer_factory
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.ingestion.api.models import Either, StackTraceError
