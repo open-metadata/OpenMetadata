@@ -34,7 +34,7 @@ public class DocumentRepository extends EntityRepository<Document> {
         dao,
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
-    supportsSearchIndex = false;
+    supportsSearch = false;
   }
 
   @Override
