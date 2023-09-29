@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { HTMLAttributes } from 'react';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
+  updateMlModelDetailsState?: (data: DataAssetWithDomains) => void;
   mlModelDetail: Mlmodel;
   fetchMlModel: () => void;
   followMlModelHandler: () => Promise<void>;
@@ -28,4 +31,5 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   createThread: (data: CreateThread) => void;
   handleToggleDelete: () => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

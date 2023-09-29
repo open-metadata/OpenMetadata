@@ -176,6 +176,7 @@ const mockProp = {
   version: '0.1',
   versionHandler: jest.fn(),
   handleToggleDelete: jest.fn(),
+  onUpdateVote: jest.fn(),
 };
 
 const mockParams = {

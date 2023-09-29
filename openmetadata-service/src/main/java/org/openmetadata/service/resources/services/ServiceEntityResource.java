@@ -14,15 +14,20 @@
 package org.openmetadata.service.resources.services;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.annotations.utils.AnnotationChecker;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -116,4 +121,22 @@ public abstract class ServiceEntityResource<
   protected abstract T nullifyConnection(T service);
 
   protected abstract String extractServiceType(T service);
+
+  protected ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      Include include,
+      String domain,
+      int limitParam,
+      String before,
+      String after) {
+    ListFilter filter = new ListFilter(include);
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference = Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", domainReference.getId().toString());
+    }
+    ResultList<T> services = listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return addHref(uriInfo, decryptOrNullify(securityContext, services));
+  }
 }

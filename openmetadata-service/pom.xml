@@ -15,8 +15,8 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.18.3</org.testcontainers.version>
-    <awssdk.version>2.20.130</awssdk.version>
+    <org.testcontainers.version>1.19.0</org.testcontainers.version>
+    <awssdk.version>2.20.143</awssdk.version>
     <expiring.map.version>0.5.10</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <quartz.version>2.3.2</quartz.version>
@@ -247,6 +247,16 @@
       <artifactId>ssm</artifactId>
       <version>${awssdk.version}</version>
     </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>rds</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sts</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
@@ -349,7 +359,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20230227</version>
+      <version>20230618</version>
     </dependency>
 
     <dependency>
@@ -414,7 +424,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.51.v20230217</version>
+      <version>9.4.52.v20230823</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -489,6 +499,12 @@
       <version>32.0.1-jre</version>
       <scope>compile</scope>
     </dependency>
+      <dependency>
+          <groupId>org.junit.platform</groupId>
+          <artifactId>junit-platform-commons</artifactId>
+          <version>1.9.3</version>
+          <scope>test</scope>
+      </dependency>
   </dependencies>
 
   <profiles>
@@ -731,7 +747,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.2.0-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.2.x-SNAPSHOT/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>

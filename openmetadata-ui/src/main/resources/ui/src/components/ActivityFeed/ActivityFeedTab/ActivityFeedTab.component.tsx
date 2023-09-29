@@ -89,7 +89,7 @@ export const ActivityFeedTab = ({
   } = useActivityFeedProvider();
 
   const isUserEntity = useMemo(
-    () => entityType === EntityType.USER_NAME,
+    () => entityType === EntityType.USER,
     [entityType]
   );
 
@@ -202,7 +202,7 @@ export const ActivityFeedTab = ({
       feedFilter:
         activeTab === 'mentions'
           ? FeedFilter.MENTIONS
-          : EntityType.USER_NAME === entityType
+          : EntityType.USER === entityType
           ? FeedFilter.OWNER
           : undefined,
     };

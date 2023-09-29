@@ -12,9 +12,13 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import { MOCK_TABLE } from 'mocks/TableData.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getLatestTableProfileByFqn } from 'rest/tableAPI';
+import {
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+} from 'rest/tableAPI';
 import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
@@ -39,6 +43,9 @@ jest.mock('rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest
     .fn()
     .mockImplementation(() => mockTableEntityDetails),
+  getTableDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>
@@ -155,10 +162,12 @@ describe('TableSummary component tests', () => {
   });
 
   it('Profiler data should be displayed for tables with profiler data available', async () => {
-    (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() => ({
-      ...mockTableEntityDetails,
-      profile: { rowCount: 30, columnCount: 2, timestamp: 38478857 },
-    }));
+    (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...mockTableEntityDetails,
+        profile: { rowCount: 30, columnCount: 2, timestamp: 38478857 },
+      })
+    );
 
     await act(async () => {
       render(<TableSummary entityDetails={mockTableEntityDetails} />);
@@ -174,8 +183,39 @@ describe('TableSummary component tests', () => {
     expect(testsPassedLabel).toBeInTheDocument();
     expect(testsAbortedLabel).toBeInTheDocument();
     expect(testsFailedLabel).toBeInTheDocument();
-    expect(testsPassedValue).toContainHTML('00');
-    expect(testsAbortedValue).toContainHTML('00');
-    expect(testsFailedValue).toContainHTML('00');
+    expect(testsPassedValue.textContent).toBe('00');
+    expect(testsAbortedValue.textContent).toBe('00');
+    expect(testsFailedValue.textContent).toBe('00');
+  });
+
+  it('column test case count should appear', async () => {
+    (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...mockTableEntityDetails,
+        profile: { rowCount: 30, timestamp: 38478857 },
+      })
+    );
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...MOCK_TABLE,
+        testSuite: {
+          summary: {
+            success: 3,
+            failed: 1,
+            aborted: 1,
+          },
+        },
+      })
+    );
+    await act(async () => {
+      render(<TableSummary entityDetails={mockTableEntityDetails} />);
+    });
+    const testsPassedValue = screen.getByTestId('test-passed-value');
+    const testsAbortedValue = screen.getByTestId('test-aborted-value');
+    const testsFailedValue = screen.getByTestId('test-failed-value');
+
+    expect(testsPassedValue.textContent).toBe('03');
+    expect(testsAbortedValue.textContent).toBe('01');
+    expect(testsFailedValue.textContent).toBe('01');
   });
 });

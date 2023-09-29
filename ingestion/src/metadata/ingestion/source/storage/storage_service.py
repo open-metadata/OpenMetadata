@@ -28,7 +28,11 @@ from metadata.generated.schema.entity.services.storageService import (
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
+from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
+    ManifestMetadataConfig,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
+    NoMetadataConfigurationSource,
     StorageServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -45,17 +49,18 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
-from metadata.utils.datalake.datalake_utils import fetch_dataframe
+from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.storage_metadata_config import get_manifest
 
 logger = ingestion_logger()
 
-OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 KEY_SEPARATOR = "/"
+OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
@@ -122,6 +127,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection_obj = self.connection
         self.test_connection()
 
+    def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:
+        if self.source_config.storageMetadataConfigSource and not isinstance(
+            self.source_config.storageMetadataConfigSource,
+            NoMetadataConfigurationSource,
+        ):
+            return get_manifest(self.source_config.storageMetadataConfigSource)
+        return None
+
     @abstractmethod
     def get_containers(self) -> Iterable[Any]:
         """
@@ -171,20 +184,23 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         sample_key: str,
         config_source: ConfigSource,
         client: Any,
+        metadata_entry: MetadataEntry,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
         data_structure_details = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=sample_key, bucket_name=bucket_name
+                key=sample_key,
+                bucket_name=bucket_name,
+                file_extension=SupportedTypes(metadata_entry.structureFormat),
             ),
         )
         columns = []
         if isinstance(data_structure_details, DataFrame):
-            columns = DatalakeSource.get_columns(data_structure_details)
+            columns = get_columns(data_structure_details)
         if isinstance(data_structure_details, list) and data_structure_details:
-            columns = DatalakeSource.get_columns(data_structure_details[0])
+            columns = get_columns(data_structure_details[0])
         return columns
 
     def _get_columns(
@@ -197,6 +213,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Optional[List[Column]]:
         """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
-            container_name, sample_key, config_source, client
+            container_name, sample_key, config_source, client, metadata_entry
         )
         return (metadata_entry.partitionColumns or []) + (extracted_cols or [])

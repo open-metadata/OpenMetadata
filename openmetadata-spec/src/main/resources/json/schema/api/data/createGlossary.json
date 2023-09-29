@@ -50,6 +50,10 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Glossary belongs to.",
       "type": "string"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": ["name", "description"],

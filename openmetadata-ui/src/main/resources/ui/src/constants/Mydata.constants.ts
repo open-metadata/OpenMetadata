@@ -14,7 +14,8 @@
 import { SearchIndex } from '../enums/search.enum';
 
 export const myDataSearchIndex =
-  `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL}` as SearchIndex;
+  // eslint-disable-next-line max-len
+  `${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.DASHBOARD},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.STORED_PROCEDURE},${SearchIndex.DASHBOARD_DATA_MODEL}` as SearchIndex;
 
 export const observerOptions = {
   root: null,

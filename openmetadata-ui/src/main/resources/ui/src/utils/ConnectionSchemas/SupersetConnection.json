@@ -66,6 +66,36 @@
               "description": "Password for Superset.",
               "type": "string",
               "format": "password"
+            },
+            "verifySSL": {
+              "title": "Verify SSL",
+              "default": "no-ssl",
+              "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+              "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+              "type": "string",
+              "enum": ["no-ssl", "ignore", "validate"]
+            },
+            "sslConfig": {
+              "description": "Client SSL configuration",
+              "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+              "oneOf": [
+                {
+                  "$id": "https://open-metadata.org/schema/security/ssl/validateSSLClientConfig.json",
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "title": "Validate SSL Client Config",
+                  "description": "OpenMetadata Client configured to validate SSL certificates.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                  "properties": {
+                    "certificatePath": {
+                      "title": "Certificate Path",
+                      "description": "CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.",
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
             }
           },
           "additionalProperties": false,

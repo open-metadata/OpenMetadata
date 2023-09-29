@@ -17,6 +17,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
@@ -31,7 +32,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ChartRepository extends EntityRepository<Chart> {
   public ChartRepository(CollectionDAO dao) {
     super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -91,6 +92,11 @@ public class ChartRepository extends EntityRepository<Chart> {
   @Override
   public EntityUpdater getUpdater(Chart original, Chart updated, Operation operation) {
     return new ChartUpdater(original, updated, operation);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Chart entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   public class ChartUpdater extends ColumnEntityUpdater {

@@ -21,16 +21,19 @@
     "includeLineage": {
       "description": "Optional configuration to turn off fetching lineage from pipelines.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Include Lineage"
     },
     "includeOwners": {
       "description": "Set the 'Include Owners' toggle to control whether to include owners to the ingested entity if the owner email matches with a user stored in the OM server as part of metadata ingestion. If the ingested entity already exists and has an owner, the owner will not be overwritten.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Include Owners"
     },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Pipeline Filter Pattern"
     },
     "dbServiceNames": {
       "title": "Database Service Names List",
@@ -43,12 +46,14 @@
     "markDeletedPipelines": {
       "description": "Optional configuration to soft delete Pipelines in OpenMetadata if the source Pipelines are deleted. Also, if the Pipeline is deleted, all the associated entities like lineage, etc., with that Pipeline will be deleted",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Mark Deleted Pipeline"
     },
     "includeTags": {
       "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Include Tags"
     }
   },
   "additionalProperties": false

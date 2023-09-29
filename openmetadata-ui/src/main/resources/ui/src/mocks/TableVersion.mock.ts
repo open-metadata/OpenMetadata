@@ -15,6 +15,7 @@ import { DatabaseServiceType, TableType } from 'generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
@@ -89,6 +90,7 @@ export const tableVersionMockProps: TableVersionProp = {
   currentVersionData: mockTableData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedTableName: [],
   datasetFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',

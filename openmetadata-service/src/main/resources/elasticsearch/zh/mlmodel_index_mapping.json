@@ -38,6 +38,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
@@ -88,7 +91,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -368,6 +371,9 @@
         "type": "keyword"
       },
       "entityType": {
+        "type": "keyword"
+      },
+      "lifeCycle": {
         "type": "keyword"
       },
       "suggest": {

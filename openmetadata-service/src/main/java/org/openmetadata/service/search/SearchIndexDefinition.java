@@ -1,7 +1,19 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.search.SearchRepository.CLASSIFICATION_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.DASHBOARD_SERVICE_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.DATABASE_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.DATABASE_SCHEMA_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.MESSAGING_SERVICE_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.MLMODEL_SERVICE_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.PIPELINE_SERVICE_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.STORAGE_SERVICE_ALIAS;
+import static org.openmetadata.service.search.SearchRepository.TEST_SUITE_ALIAS;
+
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -13,17 +25,50 @@ public class SearchIndexDefinition {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "aggregatedCostAnalysisReportData";
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
   public static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
+  public static final Map<String, List<String>> ENTITY_TO_SEARCH_ALIAS_MAPPING = new HashMap<>();
+  public static final Map<String, Object> ENTITY_TO_CHILDREN_MAPPING = new HashMap<>();
 
-  private final SearchClient searchClient;
+  private SearchRepository searchRepository;
 
-  public SearchIndexDefinition(SearchClient client) {
-    this.searchClient = client;
+  public SearchIndexDefinition(SearchRepository client) {
+    this.searchRepository = client;
     for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
       elasticSearchIndexes.put(elasticSearchIndexType, ElasticSearchIndexStatus.NOT_CREATED);
     }
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(
+        Entity.TABLE, List.of(DATABASE_ALIAS, DATABASE_SCHEMA_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(
+        Entity.STORED_PROCEDURE, List.of(DATABASE_ALIAS, DATABASE_SCHEMA_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.DATABASE, List.of(GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.DATABASE_SCHEMA, List.of(DATABASE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.TAG, List.of(CLASSIFICATION_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.DASHBOARD, List.of(DASHBOARD_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.CHART, List.of(DASHBOARD_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(
+        Entity.DASHBOARD_DATA_MODEL, List.of(DASHBOARD_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.TOPIC, List.of(MESSAGING_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.PIPELINE, List.of(PIPELINE_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.MLMODEL, List.of(MLMODEL_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.CONTAINER, List.of(STORAGE_SERVICE_ALIAS, GLOBAL_SEARCH_ALIAS));
+    ENTITY_TO_SEARCH_ALIAS_MAPPING.put(Entity.TEST_CASE, List.of(TEST_SUITE_ALIAS, GLOBAL_SEARCH_ALIAS));
+
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.DATABASE, DATABASE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.DATABASE_SCHEMA, DATABASE_SCHEMA_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.CLASSIFICATION, CLASSIFICATION_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.DASHBOARD_SERVICE, DASHBOARD_SERVICE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.MESSAGING_SERVICE, MESSAGING_SERVICE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.PIPELINE_SERVICE, PIPELINE_SERVICE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.MLMODEL_SERVICE, MLMODEL_SERVICE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.STORAGE_SERVICE, STORAGE_SERVICE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.TEST_SUITE, TEST_SUITE_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.TAG, GLOBAL_SEARCH_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.GLOSSARY_TERM, GLOBAL_SEARCH_ALIAS);
+    ENTITY_TO_CHILDREN_MAPPING.put(Entity.DOMAIN, GLOBAL_SEARCH_ALIAS);
   }
 
   public enum ElasticSearchIndexStatus {
@@ -57,6 +102,12 @@ public class SearchIndexDefinition {
         Entity.TEST_SUITE, "test_suite_search_index", "/elasticsearch/%s/test_suite_index_mapping.json"),
 
     CHART_INDEX_SEARCH_INDEX(Entity.CHART, "chart_search_index", "/elasticsearch/%s/chart_index_mapping.json"),
+    STORED_PROCEDURE_SEARCH_INDEX(
+        Entity.STORED_PROCEDURE,
+        "stored_procedure_search_index",
+        "/elasticsearch/%s/stored_procedure_index_mapping.json"),
+    DATA_PRODUCTS_SEARCH_INDEX(
+        Entity.DATA_PRODUCT, "data_products_search_index", "/elasticsearch/%s/data_products_index_mapping.json"),
 
     DASHBOARD_DATA_MODEL_SEARCH_INDEX(
         Entity.DASHBOARD_DATA_MODEL,
@@ -93,7 +144,17 @@ public class SearchIndexDefinition {
     SEARCH_SERVICE_SEARCH_INDEX(
         Entity.SEARCH_SERVICE, "search_service_search_index", "/elasticsearch/%s/search_service_index_mapping.json"),
 
-    SEARCH_INDEX_SEARCH(Entity.SEARCH_INDEX, "search_index", "/elasticsearch/%s/search_index_mapping.json"),
+    SEARCH_ENTITY_INDEX_SEARCH(
+        Entity.SEARCH_INDEX, "search_entity_index", "/elasticsearch/%s/search_entity_index_mapping.json"),
+    STORAGE_SERVICE_INDEX(
+        Entity.SEARCH_INDEX, "storage_service_search_index", "/elasticsearch/%s/storage_service_index_mapping.json"),
+
+    METADATA_SERVICE_INDEX(
+        Entity.METADATA_SERVICE,
+        "metadata_service_search_index",
+        "/elasticsearch/%s/metadata_service_index_mapping.json"),
+
+    DOMAIN_SEARCH_INDEX(Entity.DOMAIN, "domain_search_index", "/elasticsearch/%s/domain_index_mapping.json"),
     WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX(
         Entity.WEB_ANALYTIC_EVENT,
         "web_analytic_entity_view_report_data_index",
@@ -101,7 +162,15 @@ public class SearchIndexDefinition {
     WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
         WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
         "web_analytic_user_activity_report_data_index",
-        "/elasticsearch/web_analytic_user_activity_report_data_index.json");
+        "/elasticsearch/web_analytic_user_activity_report_data_index.json"),
+    RAW_COST_ANALYSIS_REPORT_DATA_INDEX(
+        RAW_COST_ANALYSIS_REPORT_DATA,
+        "raw_cost_analysis_report_data_index",
+        "/elasticsearch/raw_cost_analysis_report_data_index.json"),
+    AGGREGATED_COST_ANALYSIS_REPORT_DATA_INDEX(
+        AGGREGATED_COST_ANALYSIS_REPORT_DATA,
+        "aggregated_cost_analysis_report_data_index",
+        "/elasticsearch/aggregated_cost_analysis_report_data_index.json");
 
     public final String indexName;
     public final String indexMappingFile;
@@ -115,25 +184,25 @@ public class SearchIndexDefinition {
   }
 
   public void createIndexes(ElasticSearchConfiguration esConfig) {
-    if (searchClient != null) {
+    if (searchRepository != null) {
       for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        searchClient.createIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+        searchRepository.createIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
       }
     }
   }
 
   public void updateIndexes(ElasticSearchConfiguration esConfig) {
-    if (searchClient != null) {
+    if (searchRepository != null) {
       for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        searchClient.updateIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
+        searchRepository.updateIndex(elasticSearchIndexType, esConfig.getSearchIndexMappingLanguage().value());
       }
     }
   }
 
   public void dropIndexes() {
-    if (searchClient != null) {
+    if (searchRepository != null) {
       for (ElasticSearchIndexType elasticSearchIndexType : ElasticSearchIndexType.values()) {
-        searchClient.deleteIndex(elasticSearchIndexType);
+        searchRepository.deleteIndex(elasticSearchIndexType);
       }
     }
   }

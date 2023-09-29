@@ -14,13 +14,17 @@ Common NoSQL source methods.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from pandas import json_normalize
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,10 +43,13 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    QueryByProcedure,
+)
 from metadata.utils import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
+from metadata.utils.datalake.datalake_utils import get_columns
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -207,7 +214,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
             df = json_normalize(list(data), sep=COMPLEX_COLUMN_SEPARATOR)
-            columns = DatalakeSource.get_columns(df)
+            columns = get_columns(df)
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -245,6 +252,27 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         tags are not supported with NoSQL
         """
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
 
     def get_source_url(
         self,

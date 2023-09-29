@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -42,36 +41,27 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.socket.WebSocketManager;
 
 @Slf4j
 public class NotificationHandler {
   private final ObjectMapper mapper;
-
-  private final JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider;
   private final ExecutorService threadScheduler;
 
-  public NotificationHandler(JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider) {
+  public NotificationHandler() {
     this.mapper = new ObjectMapper();
     this.threadScheduler = Executors.newFixedThreadPool(1);
-    this.jdbiUnitOfWorkProvider = jdbiUnitOfWorkProvider;
   }
 
   public void processNotifications(ContainerResponseContext responseContext) {
     threadScheduler.submit(
         () -> {
           try {
-            Handle handle = jdbiUnitOfWorkProvider.getHandleManager().get();
-            handle.getConnection().setAutoCommit(true);
-            CollectionDAO collectionDAO =
-                (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
+            CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
             handleNotifications(responseContext, collectionDAO);
           } catch (Exception ex) {
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
-          } finally {
-            jdbiUnitOfWorkProvider.getHandleManager().clear();
           }
         });
   }
@@ -109,9 +99,7 @@ public class NotificationHandler {
             } else if (Entity.TEAM.equals(e.getType())) {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
-                  collectionDAO
-                      .relationshipDAO()
-                      .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                  collectionDAO.relationshipDAO().findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
               records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
@@ -158,7 +146,7 @@ public class NotificationHandler {
             Team team = collectionDAO.teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
-                collectionDAO.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
+                collectionDAO.relationshipDAO().findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
             WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }

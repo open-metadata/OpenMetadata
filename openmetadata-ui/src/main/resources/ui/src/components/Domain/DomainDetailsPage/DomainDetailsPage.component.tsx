@@ -31,7 +31,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
 import AssetsTabs, {
   AssetsTabRef,
 } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -47,10 +50,15 @@ import {
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from 'constants/constants';
+import { EntityField } from 'constants/Feeds.constants';
 import { EntityType } from 'enums/entity.enum';
+import { SearchIndex } from 'enums/search.enum';
 import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
 import { CreateDomain } from 'generated/api/domains/createDomain';
-import { cloneDeep, noop, toString } from 'lodash';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Domain } from 'generated/entity/domains/domain';
+import { ChangeDescription } from 'generated/entity/type';
+import { cloneDeep, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -61,9 +69,17 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { addDataProducts } from 'rest/dataProductAPI';
+import { searchData } from 'rest/miscAPI';
 import { getEntityDeleteMessage, getIsErrorMatch } from 'utils/CommonUtils';
+import { DomainAssetsSearchIndex } from 'utils/DomainUtils';
+import { getEntityVersionByField } from 'utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getDomainDetailsPath, getDomainPath } from 'utils/RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainDetailsPath,
+  getDomainPath,
+  getDomainVersionsPath,
+} from 'utils/RouterUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import Fqn from '../../../utils/Fqn';
 import AddDataProductModal from '../AddDataProductModal/AddDataProductModal.component';
@@ -80,11 +96,16 @@ const DomainDetailsPage = ({
   loading,
   onUpdate,
   onDelete,
+  isVersionsView = false,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const history = useHistory();
-  const { fqn, tab: activeTab } = useParams<{ fqn: string; tab: string }>();
+  const {
+    fqn,
+    tab: activeTab,
+    version,
+  } = useParams<{ fqn: string; tab: string; version: string }>();
   const domainFqn = fqn ? decodeURIComponent(fqn) : '';
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
@@ -96,6 +117,10 @@ const DomainDetailsPage = ({
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+  const [assetCount, setAssetCount] = useState<number>(0);
+  const [dataProductsCount, setDataProductsCount] = useState<number>(0);
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -123,6 +148,25 @@ const DomainDetailsPage = ({
     ];
   }, [domainFqn]);
 
+  const [name, displayName] = useMemo(() => {
+    if (isVersionsView) {
+      const updatedName = getEntityVersionByField(
+        domain.changeDescription as ChangeDescription,
+        EntityField.NAME,
+        domain.name
+      );
+      const updatedDisplayName = getEntityVersionByField(
+        domain.changeDescription as ChangeDescription,
+        EntityField.DISPLAYNAME,
+        domain.displayName
+      );
+
+      return [updatedName, updatedDisplayName];
+    } else {
+      return [domain.name, domain.displayName];
+    }
+  }, [domain, isVersionsView]);
+
   const editDisplayNamePermission = useMemo(() => {
     return domainPermission.EditAll || domainPermission.EditDisplayName;
   }, [domainPermission]);
@@ -148,10 +192,12 @@ const DomainDetailsPage = ({
       };
 
       try {
-        await addDataProducts(data as CreateDataProduct);
-        dataProductsTabRef.current?.refreshDataProducts();
-        activeTab !== DomainTabs.DATA_PRODUCTS &&
-          handleTabChange(DomainTabs.DATA_PRODUCTS);
+        const res = await addDataProducts(data as CreateDataProduct);
+        history.push(
+          getDataProductsDetailsPath(
+            encodeURIComponent(res.fullyQualifiedName ?? '')
+          )
+        );
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -173,7 +219,52 @@ const DomainDetailsPage = ({
   );
 
   const handleVersionClick = async () => {
-    history.push(getDomainPath());
+    const path = isVersionsView
+      ? getDomainPath(domainFqn)
+      : getDomainVersionsPath(
+          encodeURIComponent(domainFqn),
+          toString(domain.version)
+        );
+
+    history.push(path);
+  };
+
+  const fetchDataProducts = async () => {
+    try {
+      const res = await searchData(
+        '',
+        1,
+        0,
+        `(domain.fullyQualifiedName:"${domainFqn}")`,
+        '',
+        '',
+        SearchIndex.DATA_PRODUCT
+      );
+
+      setDataProductsCount(res.data.hits.total.value ?? 0);
+    } catch (error) {
+      setDataProductsCount(0);
+    }
+  };
+
+  const fetchDomainAssets = async () => {
+    if (fqn) {
+      try {
+        const res = await searchData(
+          '',
+          1,
+          0,
+          `(domain.fullyQualifiedName:"${fqn}")`,
+          '',
+          '',
+          DomainAssetsSearchIndex
+        );
+
+        setAssetCount(res.data.hits.total.value ?? 0);
+      } catch (error) {
+        setAssetCount(0);
+      }
+    }
   };
 
   const fetchDomainPermission = async () => {
@@ -189,6 +280,10 @@ const DomainDetailsPage = ({
   };
 
   const handleTabChange = (activeKey: string) => {
+    if (activeKey === 'assets') {
+      // refresh domain count when assets tab is selected
+      fetchDomainAssets();
+    }
     if (activeKey !== activeTab) {
       history.push(
         getDomainDetailsPath(encodeURIComponent(domainFqn), activeKey)
@@ -219,6 +314,16 @@ const DomainDetailsPage = ({
     onDelete(id);
     setIsDelete(false);
   };
+
+  const handleAssetSave = () => {
+    fetchDomainAssets();
+    assetTabRef.current?.refreshAssets();
+    activeTab !== 'assets' && handleTabChange('assets');
+  };
+
+  const handleAssetClick = useCallback((asset) => {
+    setPreviewAsset(asset);
+  }, []);
 
   const manageButtonContent: ItemType[] = [
     ...(editDisplayNamePermission
@@ -280,43 +385,85 @@ const DomainDetailsPage = ({
           />
         ),
         key: DomainTabs.DOCUMENTATION,
-        children: <DocumentationTab domain={domain} onUpdate={onUpdate} />,
-      },
-      {
-        label: (
-          <TabsLabel
-            id={DomainTabs.DATA_PRODUCTS}
-            name={t('label.data-product-plural')}
-          />
-        ),
-        key: DomainTabs.DATA_PRODUCTS,
         children: (
-          <DataProductsTab
-            permissions={domainPermission}
-            ref={dataProductsTabRef}
-            onAddDataProduct={onAddDataProduct}
+          <DocumentationTab
+            domain={domain}
+            isVersionsView={isVersionsView}
+            onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
       },
-      {
-        label: (
-          <TabsLabel id={DomainTabs.ASSETS} name={t('label.asset-plural')} />
-        ),
-        key: DomainTabs.ASSETS,
-        children: (
-          <AssetsTabs
-            isSummaryPanelOpen={false}
-            permissions={domainPermission}
-            ref={assetTabRef}
-            onAddAsset={() => setAssetModelVisible(true)}
-          />
-        ),
-      },
+      ...(!isVersionsView
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  count={dataProductsCount ?? 0}
+                  id={DomainTabs.DATA_PRODUCTS}
+                  isActive={activeTab === DomainTabs.DATA_PRODUCTS}
+                  name={t('label.data-product-plural')}
+                />
+              ),
+              key: DomainTabs.DATA_PRODUCTS,
+              children: (
+                <DataProductsTab
+                  permissions={domainPermission}
+                  ref={dataProductsTabRef}
+                  onAddDataProduct={onAddDataProduct}
+                />
+              ),
+            },
+            {
+              label: (
+                <TabsLabel
+                  count={assetCount ?? 0}
+                  id={DomainTabs.ASSETS}
+                  isActive={activeTab === DomainTabs.ASSETS}
+                  name={t('label.asset-plural')}
+                />
+              ),
+              key: DomainTabs.ASSETS,
+              children: (
+                <PageLayoutV1
+                  className="domain-asset-page-layout"
+                  pageTitle={t('label.domain')}
+                  rightPanel={
+                    previewAsset && (
+                      <EntitySummaryPanel
+                        entityDetails={previewAsset}
+                        handleClosePanel={() => setPreviewAsset(undefined)}
+                      />
+                    )
+                  }
+                  rightPanelWidth={400}>
+                  <AssetsTabs
+                    isSummaryPanelOpen={false}
+                    permissions={domainPermission}
+                    ref={assetTabRef}
+                    type={AssetsOfEntity.DOMAIN}
+                    onAddAsset={() => setAssetModelVisible(true)}
+                    onAssetClick={handleAssetClick}
+                  />
+                </PageLayoutV1>
+              ),
+            },
+          ]
+        : []),
     ];
-  }, [domain, domainPermission]);
+  }, [
+    domain,
+    domainPermission,
+    previewAsset,
+    handleAssetClick,
+    assetCount,
+    dataProductsCount,
+    activeTab,
+  ]);
 
   useEffect(() => {
     fetchDomainPermission();
+    fetchDomainAssets();
+    fetchDataProducts();
   }, [fqn]);
 
   if (loading) {
@@ -332,10 +479,11 @@ const DomainDetailsPage = ({
         <Col className="p-x-md" flex="auto">
           <EntityHeader
             breadcrumb={breadcrumbs}
-            entityData={domain}
+            entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}
             icon={
               <DomainIcon
+                className="align-middle"
                 color={DE_ACTIVE_COLOR}
                 height={36}
                 name="folder"
@@ -347,61 +495,65 @@ const DomainDetailsPage = ({
         </Col>
         <Col className="p-x-md" flex="280px">
           <div style={{ textAlign: 'right' }}>
-            <Dropdown
-              className="m-l-xs"
-              data-testid="domain-details-add-button-menu"
-              menu={{
-                items: addButtonContent,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Button data-testid="domain-details-add-button" type="primary">
-                <Space>
-                  {t('label.add')}
-                  <DownOutlined />
-                </Space>
-              </Button>
-            </Dropdown>
+            {!isVersionsView && domainPermission.Create && (
+              <Dropdown
+                className="m-l-xs"
+                data-testid="domain-details-add-button-menu"
+                menu={{
+                  items: addButtonContent,
+                }}
+                placement="bottomRight"
+                trigger={['click']}>
+                <Button data-testid="domain-details-add-button" type="primary">
+                  <Space>
+                    {t('label.add')}
+                    <DownOutlined />
+                  </Space>
+                </Button>
+              </Dropdown>
+            )}
 
             <ButtonGroup className="p-l-xs" size="small">
               {domain?.version && (
                 <Button
                   className={classNames('', {
-                    'text-primary border-primary': undefined,
+                    'text-primary border-primary': version,
                   })}
                   data-testid="version-button"
                   icon={<Icon component={VersionIcon} />}
                   onClick={handleVersionClick}>
                   <Typography.Text
                     className={classNames('', {
-                      'text-primary': undefined,
+                      'text-primary': version,
                     })}>
                     {toString(domain.version)}
                   </Typography.Text>
                 </Button>
               )}
 
-              <Dropdown
-                align={{ targetOffset: [-12, 0] }}
-                className="m-l-xs"
-                menu={{
-                  items: manageButtonContent,
-                }}
-                open={showActions}
-                overlayClassName="glossary-manage-dropdown-list-container"
-                overlayStyle={{ width: '350px' }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setShowActions}>
-                <Tooltip placement="right">
-                  <Button
-                    className="glossary-manage-dropdown-button tw-px-1.5"
-                    data-testid="manage-button"
-                    onClick={() => setShowActions(true)}>
-                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                  </Button>
-                </Tooltip>
-              </Dropdown>
+              {!isVersionsView && manageButtonContent.length > 0 && (
+                <Dropdown
+                  align={{ targetOffset: [-12, 0] }}
+                  className="m-l-xs"
+                  menu={{
+                    items: manageButtonContent,
+                  }}
+                  open={showActions}
+                  overlayClassName="domain-manage-dropdown-list-container"
+                  overlayStyle={{ width: '350px' }}
+                  placement="bottomRight"
+                  trigger={['click']}
+                  onOpenChange={setShowActions}>
+                  <Tooltip placement="right">
+                    <Button
+                      className="domain-manage-dropdown-button tw-px-1.5"
+                      data-testid="manage-button"
+                      onClick={() => setShowActions(true)}>
+                      <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                    </Button>
+                  </Tooltip>
+                </Dropdown>
+              )}
             </ButtonGroup>
           </div>
         </Col>
@@ -433,7 +585,7 @@ const DomainDetailsPage = ({
         open={assetModalVisible}
         type={AssetsOfEntity.DOMAIN}
         onCancel={() => setAssetModelVisible(false)}
-        onSave={noop}
+        onSave={handleAssetSave}
       />
       {domain && (
         <EntityDeleteModal

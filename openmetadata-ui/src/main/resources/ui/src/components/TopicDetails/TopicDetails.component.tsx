@@ -20,22 +20,24 @@ import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlac
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from 'components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
 import { withActivityFeed } from 'components/router/withActivityFeed';
-import SampleDataTopic from 'components/SampleDataTopic/SampleDataTopic';
+import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { TagLabel } from 'generated/type/schema';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -46,11 +48,11 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import TopicSchemaFields from './TopicSchema/TopicSchema';
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
+  updateTopicDetailsState,
   topicDetails,
   fetchTopic,
   followTopicHandler,
@@ -60,11 +62,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   onTopicUpdate,
   topicPermissions,
   handleToggleDelete,
+  onUpdateVote,
 }: TopicDetailsProps) => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ topicFQN: string; tab: EntityTabs }>();
+  const { fqn: topicFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const history = useHistory();
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -109,7 +112,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     await onTopicUpdate(updatedData, 'displayName');
   };
   const onExtensionUpdate = async (updatedData: Topic) => {
-    await onTopicUpdate(updatedData, 'extension');
+    await onTopicUpdate(
+      { ...topicDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -238,6 +244,19 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
 
+  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
+    const dataProductsEntity = updatedData?.map((item) => {
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
+    });
+
+    const updatedTopicDetails = {
+      ...topicDetails,
+      dataProducts: dataProductsEntity,
+    };
+
+    await onTopicUpdate(updatedTopicDetails, 'dataProducts');
+  };
+
   const getEntityFeedCount = () => {
     getFeedCounts(EntityType.TOPIC, topicFQN, setFeedCount);
   };
@@ -299,6 +318,15 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               data-testid="entity-right-panel"
               flex="320px">
               <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={topicDetails?.domain}
+                  dataProducts={topicDetails?.dataProducts ?? []}
+                  hasPermission={
+                    topicPermissions.EditAll && !topicDetails.deleted
+                  }
+                  onSave={onDataProductsUpdate}
+                />
+
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={topicFQN}
@@ -365,7 +393,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           </div>
         ) : (
-          <SampleDataTopic topicId={topicDetails.id} />
+          <SampleDataWithMessages
+            entityId={topicDetails.id}
+            entityType={EntityType.TOPIC}
+          />
         ),
       },
       {
@@ -401,7 +432,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
           <CustomPropertyTable
-            entityDetails={topicDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TOPIC}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
@@ -434,6 +464,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateTopicDetailsState}
             dataAsset={topicDetails}
             entityType={EntityType.TOPIC}
             permissions={topicPermissions}
@@ -442,6 +473,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreTopic}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

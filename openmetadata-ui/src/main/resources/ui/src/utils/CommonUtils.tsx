@@ -53,6 +53,7 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getDataModelDetailsPath,
+  getGlossaryTermDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
   getStoredProcedureDetailPath,
@@ -75,6 +76,7 @@ import { TagLabel } from '../generated/type/tagLabel';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
+import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -146,6 +148,11 @@ export const getPartialNameFromTableFQN = (
 
   if (fqnParts.includes(FqnPart.Topic)) {
     // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.SearchIndexField)) {
+    // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
@@ -820,6 +827,11 @@ export const getEntityDetailLink = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      path = getSearchIndexTabPath(fqn, tab, subTab);
+
+      break;
+
     case EntityType.DASHBOARD_DATA_MODEL:
       path = getDataModelDetailsPath(fqn, tab, subTab);
 
@@ -835,13 +847,18 @@ export const getEntityDetailLink = (
 
       break;
 
-    case EntityType.USER_NAME:
+    case EntityType.USER:
       path = getUserPath(fqn, tab, subTab);
 
       break;
 
     case EntityType.STORED_PROCEDURE:
       path = getStoredProcedureDetailPath(fqn, tab, subTab);
+
+      break;
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      path = getGlossaryTermDetailsPath(fqn, tab, subTab);
 
       break;
   }

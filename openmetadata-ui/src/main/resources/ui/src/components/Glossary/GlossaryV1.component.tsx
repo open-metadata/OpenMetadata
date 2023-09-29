@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
+import { withActivityFeed } from 'components/router/withActivityFeed';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
@@ -31,7 +32,6 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
@@ -57,6 +57,7 @@ const GlossaryV1 = ({
   selectedData,
   onGlossaryTermUpdate,
   updateGlossary,
+  updateVote,
   onGlossaryDelete,
   onGlossaryTermDelete,
   isVersionsView,
@@ -206,7 +207,7 @@ const GlossaryV1 = ({
     if (!isGlossaryActive && tab !== 'terms') {
       history.push(
         getGlossaryTermDetailsPath(
-          getEncodedFqn(selectedData.fullyQualifiedName || ''),
+          selectedData.fullyQualifiedName || '',
           'terms'
         )
       );
@@ -318,6 +319,7 @@ const GlossaryV1 = ({
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
             updateGlossary={updateGlossary}
+            updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term)
             }
@@ -336,6 +338,7 @@ const GlossaryV1 = ({
             permissions={glossaryTermPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
+            updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term)
             }
@@ -373,4 +376,4 @@ const GlossaryV1 = ({
   );
 };
 
-export default GlossaryV1;
+export default withActivityFeed(GlossaryV1);

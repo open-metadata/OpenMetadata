@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -545,6 +546,19 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Create a pipeline without domain and ensure it inherits domain from the parent
     CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent() throws IOException {
+    // Create a pipeline service with owner data consumer
+    PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
+    CreatePipelineService createPipelineService =
+        serviceTest.createRequest("testInheritedPermissions").withOwner(DATA_CONSUMER.getEntityReference());
+    PipelineService service = serviceTest.createEntity(createPipelineService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create pipeline under it
+    createEntity(
+        createRequest("pipeline").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override

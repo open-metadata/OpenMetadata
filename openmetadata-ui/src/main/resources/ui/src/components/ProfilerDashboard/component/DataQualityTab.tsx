@@ -392,7 +392,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   }, [testCaseEditPermission, testCaseDeletePermission, testCases]);
 
   return (
-    <Row gutter={16}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
         <Table
           bordered

@@ -87,6 +87,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkApplicationEventListener;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.migration.Migration;
@@ -120,6 +121,7 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
 
@@ -142,9 +144,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-    CollectionDAO daoObject =
-        (CollectionDAO) getWrappedInstanceForDaoClass(jdbiUnitOfWorkProvider, CollectionDAO.class);
-    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(jdbiUnitOfWorkProvider, new HashSet<>()));
+    CollectionDAO daoObject = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+    JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
+    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
@@ -272,6 +274,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
+    // Check for db auth providers.
+    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
+        .ifPresent(
+            databaseAuthenticationProvider -> {
+              String token =
+                  databaseAuthenticationProvider.authenticate(
+                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
+              dbFactory.setPassword(token);
+            });
+
     Jdbi jdbi = new JdbiFactory().build(environment, dbFactory, "database");
     SqlLogger sqlLogger =
         new SqlLogger() {

@@ -47,6 +47,7 @@ import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
 const DataModelDetails = ({
+  updateDataModelDetailsState,
   dataModelData,
   dataModelPermissions,
   fetchDataModel,
@@ -59,12 +60,13 @@ const DataModelDetails = ({
   handleColumnUpdateDataModel,
   onUpdateDataModel,
   handleToggleDelete,
+  onUpdateVote,
 }: DataModelDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { dashboardDataModelFQN, tab: activeTab } =
-    useParams<{ dashboardDataModelFQN: string; tab: EntityTabs }>();
+  const { fqn: dashboardDataModelFQN, tab: activeTab } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
 
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
@@ -353,6 +355,7 @@ const DataModelDetails = ({
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
             afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateDataModelDetailsState}
             dataAsset={dataModelData}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             permissions={dataModelPermissions}
@@ -361,6 +364,7 @@ const DataModelDetails = ({
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreDataModel}
             onTierUpdate={handleUpdateTier}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

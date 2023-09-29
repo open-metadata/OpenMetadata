@@ -43,6 +43,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         dao,
         UPDATE_FIELDS,
         UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override

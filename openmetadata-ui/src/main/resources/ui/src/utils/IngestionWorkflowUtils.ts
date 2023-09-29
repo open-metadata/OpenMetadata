@@ -24,6 +24,7 @@ import messagingMetadataPipeline from 'jsons/ingestionSchemas/messagingServiceMe
 import metadataToElasticSearchPipeline from 'jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
 import mlModelMetadataPipeline from 'jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
 import pipelineMetadataPipeline from 'jsons/ingestionSchemas/pipelineServiceMetadataPipeline.json';
+import searchMetadataPipeline from 'jsons/ingestionSchemas/searchServiceMetadataPipeline.json';
 import storageMetadataPipeline from 'jsons/ingestionSchemas/storageServiceMetadataPipeline.json';
 import testSuitePipeline from 'jsons/ingestionSchemas/testSuitePipeline.json';
 
@@ -43,6 +44,8 @@ export const getMetadataSchemaByServiceCategory = (
       return pipelineMetadataPipeline;
     case ServiceCategory.STORAGE_SERVICES:
       return storageMetadataPipeline;
+    case ServiceCategory.SEARCH_SERVICES:
+      return searchMetadataPipeline;
 
     default:
       return {};

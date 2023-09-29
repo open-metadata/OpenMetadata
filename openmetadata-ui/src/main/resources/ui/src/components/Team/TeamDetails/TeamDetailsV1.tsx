@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
+import Icon, {
+  CheckOutlined,
+  CloseOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -28,16 +32,25 @@ import {
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
+import {
+  ReactComponent as EditIcon,
+  ReactComponent as IconEdit,
+} from 'assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from 'assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from 'assets/svg/open-lock.svg';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
+import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
 import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
+import AssetsTabs from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { ROUTES } from 'constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -52,26 +65,18 @@ import {
   isEmpty,
   isNil,
   isUndefined,
+  last,
   lowerCase,
-  uniqueId,
 } from 'lodash';
-import { ExtraInfo } from 'Models';
 import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
 import Qs from 'qs';
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { getSuggestions } from 'rest/miscAPI';
 import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../../AppState';
-import { LIST_SIZE, ROUTES } from '../../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../../constants/docs.constants';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -82,14 +87,13 @@ import {
   User,
 } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { Paging } from '../../../generated/type/paging';
 import {
   AddAttribute,
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../../interface/teamsAndUsers.interface';
 import { getCountBadge, hasEditAccess } from '../../../utils/CommonUtils';
-import { filterEntityAssets, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getSettingsPathWithFqn,
@@ -102,9 +106,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Description from '../../common/description/Description';
 import ManageButton from '../../common/entityPageInfo/ManageButton/ManageButton';
-import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/next-previous/NextPrevious';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/title-breadcrumb/title-breadcrumb.interface';
@@ -120,7 +122,7 @@ import './teams.less';
 import { UserTab } from './UserTab/UserTab.component';
 
 const TeamDetailsV1 = ({
-  assets,
+  assetsCount,
   hasAccess,
   currentTeam,
   currentTeamUsers,
@@ -145,7 +147,6 @@ const TeamDetailsV1 = ({
   handleAddUser,
   removeUserFromTeam,
   afterDeleteAction,
-  onAssetsPaginate,
   parentTeams,
   entityPermissions,
   isFetchingAdvancedDetails,
@@ -200,6 +201,9 @@ const TeamDetailsV1 = ({
   }>();
   const [isModalLoading, setIsModalLoading] = useState<boolean>(false);
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+  const [showTypeSelector, setShowTypeSelector] = useState(false);
   const { showModal } = useEntityExportModalProvider();
 
   const addPolicy = t('label.add-entity', {
@@ -228,7 +232,8 @@ const TeamDetailsV1 = ({
       currentTeam,
       isGroupType,
       isOrganization,
-      teamCount
+      teamCount,
+      assetsCount
     ).map((tab) => ({
       ...tab,
       label: (
@@ -244,7 +249,14 @@ const TeamDetailsV1 = ({
     }));
 
     return allTabs;
-  }, [currentTeam, teamUserPaging, searchTerm, teamCount, currentTab]);
+  }, [
+    currentTeam,
+    teamUserPaging,
+    searchTerm,
+    teamCount,
+    currentTab,
+    assetsCount,
+  ]);
 
   const createTeamPermission = useMemo(
     () =>
@@ -299,17 +311,6 @@ const TeamDetailsV1 = ({
     ),
     []
   );
-
-  const extraInfo: ExtraInfo[] = [
-    ...(isOrganization
-      ? []
-      : [
-          {
-            key: 'TeamType',
-            value: currentTeam.teamType || '',
-          },
-        ]),
-  ];
 
   const searchTeams = async (text: string) => {
     try {
@@ -427,17 +428,16 @@ const TeamDetailsV1 = ({
     [currentTeam]
   );
 
-  const updateTeamType = (type: TeamType) => {
+  const updateTeamType = async (type: TeamType) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
         teamType: type,
       };
 
-      return updateTeamHandler(updatedData);
+      await updateTeamHandler(updatedData);
+      setShowTypeSelector(false);
     }
-
-    return;
   };
 
   const handleTeamSearch = (value: string) => {
@@ -709,55 +709,6 @@ const TeamDetailsV1 = ({
     ]
   );
 
-  /**
-   * Check for current team datasets and return the dataset cards
-   * @returns - dataset cards
-   */
-  const getAssetDetailCards = () => {
-    const ownData = filterEntityAssets(currentTeam?.owns || []);
-
-    if (isEmpty(ownData)) {
-      return fetchErrorPlaceHolder({
-        type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
-        heading: t('label.asset'),
-        permission: entityPermissions.EditAll,
-        button: (
-          <Button
-            ghost
-            className="p-x-lg"
-            data-testid="add-placeholder-button"
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={() => history.push(ROUTES.EXPLORE)}>
-            {t('label.add')}
-          </Button>
-        ),
-      });
-    }
-
-    return (
-      <div data-testid="table-container">
-        {assets.data.map(({ _source, _id = '' }, index) => (
-          <TableDataCardV2
-            className="m-b-sm cursor-pointer"
-            id={_id}
-            key={index}
-            source={_source}
-          />
-        ))}
-        {assets.total > LIST_SIZE && assets.data.length > 0 && (
-          <NextPrevious
-            isNumberBased
-            currentPage={assets.currPage}
-            pageSize={LIST_SIZE}
-            paging={{} as Paging}
-            pagingHandler={onAssetsPaginate}
-          />
-        )}
-      </div>
-    );
-  };
-
   const teamActionButton = (alreadyJoined: boolean, isJoinable: boolean) => {
     return alreadyJoined ? (
       isJoinable || hasAccess ? (
@@ -850,6 +801,65 @@ const TeamDetailsV1 = ({
     );
   };
 
+  const teamTypeElement = useMemo(() => {
+    if (currentTeam.teamType === TeamType.Organization) {
+      return null;
+    }
+
+    return (
+      <>
+        {t('label.type') + ' - '}
+        {currentTeam.teamType ? (
+          showTypeSelector ? (
+            <TeamTypeSelect
+              handleShowTypeSelector={setShowTypeSelector}
+              parentTeamType={
+                last(parentTeams)?.teamType ?? TeamType.Organization
+              }
+              showGroupOption={!childTeams.length}
+              teamType={currentTeam.teamType ?? TeamType.Department}
+              updateTeamType={
+                entityPermissions.EditAll ? updateTeamType : undefined
+              }
+            />
+          ) : (
+            <>
+              {currentTeam.teamType}
+              {entityPermissions.EditAll && (
+                <Icon
+                  className={classNames('vertical-middle m-l-xs', {
+                    'opacity-50': isGroupType,
+                  })}
+                  data-testid="edit-team-type-icon"
+                  title={
+                    isGroupType
+                      ? t('message.group-team-type-change-message')
+                      : t('label.edit-entity', {
+                          entity: t('label.team-type'),
+                        })
+                  }
+                  onClick={
+                    isGroupType ? undefined : () => setShowTypeSelector(true)
+                  }>
+                  <EditIcon />
+                </Icon>
+              )}
+            </>
+          )
+        ) : (
+          <span>{currentTeam.teamType}</span>
+        )}
+      </>
+    );
+  }, [
+    currentTeam,
+    showTypeSelector,
+    setShowTypeSelector,
+    parentTeams,
+    isGroupType,
+    childTeams,
+  ]);
+
   const emailElement = useMemo(
     () => (
       <Space align="start" className="m-y-xs">
@@ -934,16 +944,16 @@ const TeamDetailsV1 = ({
   }
 
   return (
-    <div
-      className="h-full d-flex flex-col flex-grow"
-      data-testid="team-details-container">
+    <Row className="h-full flex-grow" data-testid="team-details-container">
       {!isEmpty(currentTeam) ? (
-        <Fragment>
+        <Col span={previewAsset ? 18 : 24}>
           {!isOrganization && (
             <TitleBreadcrumb className="p-b-xs" titleLinks={slashedTeamName} />
           )}
           <div
-            className="d-flex justify-between items-center"
+            className={classNames('d-flex justify-between items-center', {
+              'm-r-xs': previewAsset,
+            })}
             data-testid="header">
             {getTeamHeading()}
             {!isOrganization ? (
@@ -992,27 +1002,7 @@ const TeamDetailsV1 = ({
               onUpdate={updateOwner}
             />
             {!isOrganization && <Divider type="vertical" />}
-
-            {extraInfo.map((info) => (
-              <Fragment key={uniqueId()}>
-                <EntitySummaryDetails
-                  allowTeamOwner={false}
-                  currentOwner={currentTeam.owner}
-                  data={info}
-                  isGroupType={isGroupType}
-                  showGroupOption={!childTeams.length}
-                  teamType={currentTeam.teamType}
-                  updateOwner={
-                    entityPermissions.EditAll || entityPermissions.EditOwner
-                      ? updateOwner
-                      : undefined
-                  }
-                  updateTeamType={
-                    entityPermissions.EditAll ? updateTeamType : undefined
-                  }
-                />
-              </Fragment>
-            ))}
+            {teamTypeElement}
           </Space>
           <div className="m-b-sm m-t-xs" data-testid="description-container">
             <Description
@@ -1118,7 +1108,15 @@ const TeamDetailsV1 = ({
                   />
                 )}
 
-                {currentTab === TeamsPageTab.ASSETS && getAssetDetailCards()}
+                {currentTab === TeamsPageTab.ASSETS && (
+                  <AssetsTabs
+                    isSummaryPanelOpen
+                    permissions={entityPermissions}
+                    type={AssetsOfEntity.TEAM}
+                    onAddAsset={() => history.push(ROUTES.EXPLORE)}
+                    onAssetClick={setPreviewAsset}
+                  />
+                )}
 
                 {currentTab === TeamsPageTab.ROLES &&
                   (isEmpty(currentTeam.defaultRoles || []) ? (
@@ -1239,7 +1237,7 @@ const TeamDetailsV1 = ({
               </div>
             )}
           </div>
-        </Fragment>
+        </Col>
       ) : (
         fetchErrorPlaceHolder({
           onClick: () => handleAddTeam(true),
@@ -1247,6 +1245,15 @@ const TeamDetailsV1 = ({
           heading: t('label.team-plural'),
           doc: TEAMS_DOCS,
         })
+      )}
+
+      {previewAsset && (
+        <Col className="border-left team-assets-right-panel" span={6}>
+          <EntitySummaryPanel
+            entityDetails={previewAsset}
+            handleClosePanel={() => setPreviewAsset(undefined)}
+          />
+        </Col>
       )}
 
       <ConfirmationModal
@@ -1299,7 +1306,7 @@ const TeamDetailsV1 = ({
           </Typography.Text>
         </Modal>
       )}
-    </div>
+    </Row>
   );
 };
 

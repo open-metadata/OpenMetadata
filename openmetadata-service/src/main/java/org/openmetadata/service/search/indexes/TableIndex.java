@@ -5,9 +5,9 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
@@ -15,9 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import org.openmetadata.common.utils.CommonUtil;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -41,11 +40,6 @@ public class TableIndex implements ColumnIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (table.getOwner() != null) {
-      EntityReference owner = table.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      table.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
@@ -66,11 +60,14 @@ public class TableIndex implements ColumnIndex {
     databaseSuggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
     schemaSuggest.add(SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
-
     doc.put("displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("service_suggest", serviceSuggest);
     doc.put("column_suggest", columnSuggest);
@@ -78,12 +75,20 @@ public class TableIndex implements ColumnIndex {
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
+    if (table.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(table.getOwner()));
+    }
+    if (table.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(table.getDomain()));
+    }
     return doc;
   }
 
   private void parseTableSuggest(List<SearchSuggest> suggest) {
     suggest.add(SearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(table.getName()).weight(10).build());
+    suggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
+    suggest.add(SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
     // Table FQN has 4 parts
     String[] fqnPartsWithoutService = table.getFullyQualifiedName().split(Pattern.quote(Entity.SEPARATOR), 2);
     if (fqnPartsWithoutService.length == 2) {
@@ -103,8 +108,8 @@ public class TableIndex implements ColumnIndex {
     fields.put(FIELD_NAME_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
+    fields.put(FULLY_QUALIFIED_NAME_PARTS, 1.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);
-    fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
     fields.put(COLUMNS_NAME_KEYWORD, 10.0f);
     fields.put("columns.name", 2.0f);
     fields.put("columns.name.ngram", 1.0f);

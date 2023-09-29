@@ -13,12 +13,13 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="Cypress" />
 
-import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
   createDataProducts,
   createDomain,
   deleteDomain,
+  removeAssets,
   renameDomain,
+  updateAssets,
   updateDomainDetails,
   verifyDomain,
 } from '../../common/DomainUtils';
@@ -27,8 +28,6 @@ import { DOMAIN_1, DOMAIN_2 } from '../../constants/constants';
 describe('Domain page should work properly', () => {
   beforeEach(() => {
     cy.login();
-
-    interceptURL('GET', '/api/v1/domains*', 'fetchDomains');
 
     cy.get('[data-testid="app-bar-item-domain"]')
       .should('be.visible')
@@ -48,6 +47,9 @@ describe('Domain page should work properly', () => {
   it('Create new data product should work properly', () => {
     DOMAIN_1.dataProducts.forEach((dataProduct) => {
       createDataProducts(dataProduct, DOMAIN_1);
+      cy.get('[data-testid="app-bar-item-domain"]')
+        .should('be.visible')
+        .click({ force: true });
     });
   });
 
@@ -55,12 +57,19 @@ describe('Domain page should work properly', () => {
     updateDomainDetails(DOMAIN_1);
   });
 
+  it.skip('Assets Tab should work properly', () => {
+    updateAssets(DOMAIN_1);
+  });
+
+  it.skip('Remove Domain from entity should work properly', () => {
+    removeAssets(DOMAIN_1);
+  });
+
   it('Rename domain name and display name should work properly', () => {
     renameDomain(DOMAIN_1);
   });
 
   it('Delete domain flow should work properly', () => {
-    verifyResponseStatusCode('@fetchDomains', 200);
     [DOMAIN_1, DOMAIN_2].forEach((domain) => {
       deleteDomain(domain);
     });

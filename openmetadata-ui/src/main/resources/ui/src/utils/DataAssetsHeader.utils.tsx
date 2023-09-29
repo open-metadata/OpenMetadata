@@ -32,6 +32,7 @@ import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
 import { Pipeline } from 'generated/entity/data/pipeline';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
@@ -44,6 +45,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MetadataService } from 'generated/entity/services/metadataService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
+import { SearchService } from 'generated/entity/services/searchService';
 import { StorageService } from 'generated/entity/services/storageService';
 import { t } from 'i18next';
 import { isObject, isUndefined } from 'lodash';
@@ -118,6 +120,15 @@ export const getDataAssetsHeaderInfo = (
               value={dashboardDetails.project}
             />
           )}
+          {dashboardDetails?.usageSummary && (
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                dashboardDetails.usageSummary?.weeklyStats?.percentileRank || 0,
+                false
+              )}
+            />
+          )}
         </>
       );
 
@@ -175,6 +186,15 @@ export const getDataAssetsHeaderInfo = (
               )}
               label={t('label.dashboard')}
               value={entityName}
+            />
+          )}
+          {mlModelDetail?.usageSummary && (
+            <ExtraInfoLabel
+              label={t('label.usage')}
+              value={getUsagePercentile(
+                mlModelDetail.usageSummary?.weeklyStats?.percentileRank || 0,
+                false
+              )}
             />
           )}
         </>
@@ -331,6 +351,22 @@ export const getDataAssetsHeaderInfo = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      const searchIndexDetails = dataAsset as SearchIndex;
+      returnData.breadcrumbs =
+        getBreadcrumbForEntitiesWithServiceOnly(searchIndexDetails);
+
+      break;
+
+    case EntityType.SEARCH_SERVICE:
+      const searchServiceDetails = dataAsset as SearchService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        searchServiceDetails,
+        EntityType.SEARCH_SERVICE
+      );
+
+      break;
     case EntityType.STORED_PROCEDURE:
       const storedProcedureDetails = dataAsset as StoredProcedure;
 

@@ -2,16 +2,15 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.USER;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -23,13 +22,17 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
   private static final String QUERY_USERS_FIELD = "users";
-  private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn";
-  private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn";
+
+  private static final String QUERY_USED_BY_FIELD = "usedBy";
+  private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
+  private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
 
   public QueryRepository(CollectionDAO dao) {
     super(
@@ -40,7 +43,12 @@ public class QueryRepository extends EntityRepository<Query> {
         dao,
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
+  }
+
+  @Override
+  public void setFullyQualifiedName(Query query) {
+    query.setFullyQualifiedName(FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
   }
 
   @Override
@@ -76,6 +84,8 @@ public class QueryRepository extends EntityRepository<Query> {
       entity.setName(checkSum);
     }
     entity.setUsers(EntityUtil.populateEntityReferences(entity.getUsers()));
+    DatabaseService service = Entity.getEntity(entity.getService(), "", Include.ALL);
+    entity.setService(service.getEntityReference());
   }
 
   @Override
@@ -100,6 +110,9 @@ public class QueryRepository extends EntityRepository<Query> {
 
     // Store Query Used in Relation
     storeQueryUsedIn(queryEntity.getId(), queryEntity.getQueryUsedIn(), null);
+    // The service contains the query
+    addRelationship(
+        queryEntity.getService().getId(), queryEntity.getId(), DATABASE_SERVICE, Entity.QUERY, Relationship.CONTAINS);
   }
 
   @Override
@@ -132,6 +145,18 @@ public class QueryRepository extends EntityRepository<Query> {
     Entity.withHref(uriInfo, query.getUsers());
     ChangeEvent changeEvent =
         getQueryChangeEvent(updatedBy, QUERY_USERS_FIELD, oldValue, query.getUsers(), withHref(uriInfo, query));
+    return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
+  }
+
+  public RestUtil.PutResponse<?> AddQueryUsedBy(
+      UriInfo uriInfo, String updatedBy, UUID queryId, List<String> userList) {
+    Query query = Entity.getEntity(Entity.QUERY, queryId, QUERY_UPDATE_FIELDS, Include.NON_DELETED);
+    Query oldQuery = JsonUtils.readValue(JsonUtils.pojoToJson(query), Query.class);
+    query.getUsedBy().addAll(userList);
+    ChangeEvent changeEvent =
+        getQueryChangeEvent(
+            updatedBy, QUERY_USERS_FIELD, oldQuery.getUsedBy(), query.getUsers(), withHref(uriInfo, query));
+    update(uriInfo, oldQuery, query);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -205,13 +230,19 @@ public class QueryRepository extends EntityRepository<Query> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+      // Store processed Lineage
+      recordChange("processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
       // Store Query Used in Relation
+      recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);
-      String originalChecksum = EntityUtil.hash(original.getQuery());
-      String updatedChecksum = EntityUtil.hash(updated.getQuery());
-      if (!originalChecksum.equals(updatedChecksum)) {
-        recordChange("query", original.getQuery(), updated.getQuery());
-        recordChange("checkSum", original.getChecksum(), updatedChecksum);
+      // Query is a required field. Cannot be removed.
+      if (updated.getQuery() != null) {
+        String originalChecksum = EntityUtil.hash(original.getQuery());
+        String updatedChecksum = EntityUtil.hash(updated.getQuery());
+        if (!originalChecksum.equals(updatedChecksum)) {
+          recordChange("query", original.getQuery(), updated.getQuery());
+          recordChange("checkSum", original.getChecksum(), updatedChecksum);
+        }
       }
     }
   }

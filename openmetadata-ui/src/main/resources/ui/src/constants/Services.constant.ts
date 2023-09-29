@@ -19,6 +19,7 @@ import { EntityType } from 'enums/entity.enum';
 import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from 'generated/entity/automations/workflow';
 import { StorageServiceType } from 'generated/entity/data/container';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { ServiceType } from 'generated/entity/services/serviceType';
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
@@ -84,10 +85,12 @@ import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
+import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
 import logo from '../assets/svg/logo-monogram.svg';
+import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
@@ -180,6 +183,8 @@ export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
 export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
+export const ELASTIC_SEARCH = elasticSearch;
+export const OPEN_SEARCH = openSearch;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
@@ -187,6 +192,7 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  SearchServiceType.OpenSearch,
 ];
 
 export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
@@ -213,6 +219,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
   storageServices: (Object.values(StorageServiceType) as string[]).sort(
     customServiceComparator
   ),
+  searchServices: (Object.values(SearchServiceType) as string[]).sort(
+    customServiceComparator
+  ),
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -232,6 +241,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   mlModels: ServiceCategory.ML_MODEL_SERVICES,
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
+  search: ServiceCategory.SEARCH_SERVICES,
 };
 
 export const SERVICE_CATEGORY_TYPE = {
@@ -242,6 +252,7 @@ export const SERVICE_CATEGORY_TYPE = {
   mlmodelServices: 'mlModels',
   metadataServices: 'metadata',
   storageServices: 'storages',
+  searchServices: 'search',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -265,6 +276,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   }),
   storageServices: i18n.t('label.entity-service', {
     entity: i18n.t('label.storage'),
+  }),
+  searchServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.search'),
   }),
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
@@ -381,6 +395,18 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.METADATA_SERVICES]: ServiceType.Metadata,
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
+  [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
+};
+
+export const SERVICE_TYPES_ENUM = {
+  [ServiceCategory.DASHBOARD_SERVICES]: DashboardServiceType,
+  [ServiceCategory.DATABASE_SERVICES]: DatabaseServiceType,
+  [ServiceCategory.MESSAGING_SERVICES]: MessagingServiceType,
+  [ServiceCategory.ML_MODEL_SERVICES]: MlModelServiceType,
+  [ServiceCategory.METADATA_SERVICES]: MetadataServiceType,
+  [ServiceCategory.STORAGE_SERVICES]: StorageServiceType,
+  [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
+  [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
 };
 
 export const BETA_SERVICES = [
@@ -389,6 +415,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MongoDB,
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
+  SearchServiceType.ElasticSearch,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -431,4 +458,5 @@ export const SERVICE_TYPES = [
   EntityType.MLMODEL_SERVICE,
   EntityType.METADATA_SERVICE,
   EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
 ];

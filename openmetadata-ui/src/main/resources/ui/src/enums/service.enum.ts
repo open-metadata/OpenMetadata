@@ -19,6 +19,7 @@ export enum ServiceCategory {
   ML_MODEL_SERVICES = 'mlmodelServices',
   METADATA_SERVICES = 'metadataServices',
   STORAGE_SERVICES = 'storageServices',
+  SEARCH_SERVICES = 'searchServices',
 }
 
 export enum ServiceCategoryPlural {
@@ -29,6 +30,7 @@ export enum ServiceCategoryPlural {
   mlmodelService = 'mlmodelServices',
   metadataService = 'metadataServices',
   storageService = 'storageServices',
+  searchService = 'searchServices',
 }
 
 export enum IngestionType {

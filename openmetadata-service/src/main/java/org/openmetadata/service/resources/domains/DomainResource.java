@@ -70,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "domains", order = 4) // initialize after user resource
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
-  static final String FIELDS = "children,owner,parent,experts";
+  static final String FIELDS = "children,owner,experts";
 
   public DomainResource(CollectionDAO dao, Authorizer authorizer) {
     super(Domain.class, new DomainRepository(dao), authorizer);
@@ -313,6 +313,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   private Domain getDomain(CreateDomain create, String user) {
     List<String> experts = create.getExperts();
     return copy(new Domain(), create, user)
+        .withStyle(create.getStyle())
         .withDomainType(create.getDomainType())
         .withFullyQualifiedName(create.getName())
         .withParent(
