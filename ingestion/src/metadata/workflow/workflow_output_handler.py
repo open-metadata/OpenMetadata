@@ -258,7 +258,7 @@ def print_data_insight_status(workflow) -> None:
     print_workflow_summary_legacy(
         workflow,
         processor=True,
-        processor_status=workflow.status,
+        processor_status=workflow.source.get_status(),
     )
 
     if workflow.source.get_status().source_start_time:
@@ -270,7 +270,6 @@ def print_data_insight_status(workflow) -> None:
         log_ansi_encoded_string(message=WORKFLOW_FAILURE_MESSAGE)
     elif (
         workflow.source.get_status().warnings
-        or workflow.status.warnings
         or (hasattr(workflow, "sink") and workflow.sink.get_status().warnings)
     ):
         log_ansi_encoded_string(message=WORKFLOW_WARNING_MESSAGE)
