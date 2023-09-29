@@ -126,7 +126,12 @@ class OpenMetadata(
     api_path = "api"
     data_path = "data"
 
-    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
+    def __init__(
+        self,
+        config: OpenMetadataConnection,
+        raw_data: bool = False,
+        skip_on_failure: bool = False,
+    ):
         self.config = config
 
         # Load the secrets' manager client
@@ -158,6 +163,7 @@ class OpenMetadata(
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
+        self._skip_on_failure = skip_on_failure
         if self.config.enableVersionValidation:
             self.validate_versions()
 
@@ -389,7 +395,17 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        entities = [entity(**t) for t in resp["data"]]
+        if self._skip_on_failure:
+            entities = []
+            for elmt in resp["data"]:
+                try:
+                    entities.append(entity(**elmt))
+                except Exception as exc:
+                    logger.error(f"Error creating entity. Failed with exception {exc}")
+                    continue
+        else:
+            entities = [entity(**elmt) for elmt in resp["data"]]
+
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
