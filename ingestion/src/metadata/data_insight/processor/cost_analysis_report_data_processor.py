@@ -19,7 +19,9 @@ import traceback
 from collections import defaultdict
 from typing import Iterable
 
-from metadata.data_insight.processor.data_processor import DataProcessor
+from metadata.data_insight.processor.cost_analysis_base import (
+    BaseCostAnalysisReportDataProcessor,
+)
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.reportDataType.aggregatedCostAnalysisReportData import (
     AggregatedCostAnalysisReportData,
@@ -27,26 +29,36 @@ from metadata.generated.schema.analytics.reportDataType.aggregatedCostAnalysisRe
 from metadata.generated.schema.analytics.reportDataType.rawCostAnalysisReportData import (
     RawCostAnalysisReportData,
 )
-from metadata.generated.schema.entity.data import table
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill
 
 logger = data_insight_logger()
 
 
-class RawCostAnalysisReportDataProcessor(DataProcessor):
+UNUSED_DATA_ASSETS = "unusedDataAssets"
+FREQUENTLY_USED_DATA_ASSETS = "frequentlyUsedDataAssets"
+TOTAL_SIZE = "totalSize"
+
+THREE_DAYS = "threeDays"
+SEVEN_DAYS = "sevenDays"
+FOURTEEN_DAYS = "fourteenDays"
+THIRTY_DAYS = "thirtyDays"
+SIXTY_DAYS = "sixtyDays"
+
+DAYS = [
+    (3, THREE_DAYS),
+    (7, SEVEN_DAYS),
+    (14, FOURTEEN_DAYS),
+    (30, THIRTY_DAYS),
+    (60, SIXTY_DAYS),
+]
+
+
+class RawCostAnalysisReportDataProcessor(BaseCostAnalysisReportDataProcessor):
     """Processor class used as a bridge to refine the data"""
 
     _data_processor_type = "RawCostAnalysisReportData"
-
-    def fetch_data(self) -> Iterable[table.Table]:
-        try:
-            yield from self.metadata.list_all_entities(
-                table.Table, limit=1000, fields=["*"]
-            )
-        except Exception as err:
-            logger.error(f"Error trying to fetch entity -- {err}")
-            logger.debug(traceback.format_exc())
 
     def refine(self) -> Iterable[ReportData]:
         """Aggregate data
@@ -82,26 +94,11 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
                 logger.debug(traceback.format_exc())
                 logger.error(f"Error trying fetch cost analysis data -- {err}")
 
-    def process(self) -> Iterable[ReportData]:
-        yield from self.refine()
 
-    def get_status(self):
-        return self.processor_status
-
-
-class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
+class AggregatedCostAnalysisReportDataProcessor(BaseCostAnalysisReportDataProcessor):
     """Processor class used as a bridge to refine the data"""
 
     _data_processor_type = "AggregatedCostAnalysisReportData"
-
-    def fetch_data(self) -> Iterable[table.Table]:
-        try:
-            yield from self.metadata.list_all_entities(
-                table.Table, limit=1000, fields=["*"]
-            )
-        except Exception as err:
-            logger.error(f"Error trying to fetch entity -- {err}")
-            logger.debug(traceback.format_exc())
 
     def refine(self) -> Iterable[ReportData]:
         """Aggregate data
@@ -131,25 +128,25 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
                         service_name
                     ):
                         refined_data[entity_type][service_type][service_name] = {
-                            "totalSize": size or 0,
-                            "unUsedDataAssets": {
-                                "threeDays": 0,
-                                "sevenDays": 0,
-                                "fourteenDays": 0,
-                                "thirtyDays": 0,
-                                "sixtyDays": 0,
+                            TOTAL_SIZE: size or 0,
+                            UNUSED_DATA_ASSETS: {
+                                THREE_DAYS: 0,
+                                SEVEN_DAYS: 0,
+                                FOURTEEN_DAYS: 0,
+                                THIRTY_DAYS: 0,
+                                SIXTY_DAYS: 0,
                             },
-                            "frequentlyUsedDataAssets": {
-                                "threeDays": 0,
-                                "sevenDays": 0,
-                                "fourteenDays": 0,
-                                "thirtyDays": 0,
-                                "sixtyDays": 0,
+                            FREQUENTLY_USED_DATA_ASSETS: {
+                                THREE_DAYS: 0,
+                                SEVEN_DAYS: 0,
+                                FOURTEEN_DAYS: 0,
+                                THIRTY_DAYS: 0,
+                                SIXTY_DAYS: 0,
                             },
                         }
                     else:
                         refined_data[entity_type][service_type][service_name][
-                            "totalSize"
+                            TOTAL_SIZE
                         ] += (size or 0)
 
                     self._get_data_assets_dict(
@@ -187,48 +184,23 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to yield report data -- {err}")
 
-    def _get_data_assets_dict(self, life_cycle, data: dict):
+    @staticmethod
+    def _get_data_assets_dict(life_cycle: LifeCycle, data: dict):
         """
         Helper method to calculate number of data assets within time period
         """
         try:
             if not life_cycle:
                 return
-            three_days_before_timestamp = get_end_of_day_timestamp_mill(days=3)
-            if life_cycle.accessed.timestamp.__root__ <= three_days_before_timestamp:
-                data["unUsedDataAssets"]["threeDays"] += 1
-            else:
-                data["frequentlyUsedDataAssets"]["threeDays"] += 1
 
-            seven_days_ago_timestamp = get_end_of_day_timestamp_mill(days=7)
-            if life_cycle.accessed.timestamp.__root__ <= seven_days_ago_timestamp:
-                data["unUsedDataAssets"]["sevenDays"] += 1
-            else:
-                data["frequentlyUsedDataAssets"]["sevenDays"] += 1
+            # Iterate over the different time periods and update the data
+            for days, key in DAYS:
+                days_before_timestamp = get_end_of_day_timestamp_mill(days=days)
+                if life_cycle.accessed.timestamp.__root__ <= days_before_timestamp:
+                    data[UNUSED_DATA_ASSETS][key] += 1
+                else:
+                    data[FREQUENTLY_USED_DATA_ASSETS][key] += 1
 
-            fourteen_days_ago_timestamp = get_end_of_day_timestamp_mill(days=14)
-            if life_cycle.accessed.timestamp.__root__ <= fourteen_days_ago_timestamp:
-                data["unUsedDataAssets"]["fourteenDays"] += 1
-            else:
-                data["frequentlyUsedDataAssets"]["fourteenDays"] += 1
-
-            thirty_days_ago_timestamp = get_end_of_day_timestamp_mill(days=30)
-            if life_cycle.accessed.timestamp.__root__ <= thirty_days_ago_timestamp:
-                data["unUsedDataAssets"]["thirtyDays"] += 1
-            else:
-                data["frequentlyUsedDataAssets"]["thirtyDays"] += 1
-
-            sixty_days_ago_timestamp = get_end_of_day_timestamp_mill(days=60)
-            if life_cycle.accessed.timestamp.__root__ <= sixty_days_ago_timestamp:
-                data["unUsedDataAssets"]["sixtyDays"] += 1
-            else:
-                data["frequentlyUsedDataAssets"]["sixtyDays"] += 1
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Error calculating data -- {err}")
-
-    def process(self) -> Iterable[ReportData]:
-        yield from self.refine()
-
-    def get_status(self):
-        return self.processor_status

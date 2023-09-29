@@ -37,7 +37,7 @@
     }
   },
   "properties": {
-    "unUsedDataAssets": {
+    "unusedDataAssets": {
       "description": "Number of unused Data Assets over a period of time",
       "$ref": "#/definitions/dataAssetCount"
     },
