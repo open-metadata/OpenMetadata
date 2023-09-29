@@ -54,6 +54,6 @@
       "$ref": "../../type/entityReferenceList.json"
     }
   },
-  "required": ["id", "name", "pageType", "knowledgePanels"],
+  "required": ["id", "entityType", "pageType", "knowledgePanels", "layout"],
   "additionalProperties": false
 }

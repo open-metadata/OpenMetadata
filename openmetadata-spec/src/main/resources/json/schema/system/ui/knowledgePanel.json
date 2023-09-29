@@ -16,6 +16,6 @@
       "type": "object"
     }
   },
-  "required": ["name"],
+  "required": ["entityType"],
   "additionalProperties": false
 }
