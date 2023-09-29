@@ -38,7 +38,7 @@ const SwaggerPage = () => {
         render-style="focused"
         show-header={false}
         show-method-in-nav-bar="as-colored-block"
-        spec-url="http://localhost:8585/swagger.json"
+        spec-url="./swagger.json"
         text-color={TEXT_BODY_COLOR}
         theme="light"
       />
