@@ -343,21 +343,14 @@ class OMetaTableTest(TestCase):
         updated_col = find_column_in_table(column_name="another", table=force_updated)
         assert updated_col.description.__root__ == "Forced new"
 
-    def test_patch_tag(self):
+    def test_patch_tags(self):
         """
         Update table tags
         """
-        updated: Table = self.metadata.patch_tag(
+        updated: Table = self.metadata.patch_tags(
             entity=Table,
             source=self.table,
-            tag_label=PII_TAG_LABEL,  # Shipped by default
-        )
-        assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
-
-        updated: Table = self.metadata.patch_tag(
-            entity=Table,
-            source=self.table,
-            tag_label=TIER_TAG_LABEL,  # Shipped by default
+            tag_labels=[PII_TAG_LABEL, TIER_TAG_LABEL],  # Shipped by default
         )
         assert updated.tags[0].tagFQN.__root__ == "PII.Sensitive"
         assert updated.tags[1].tagFQN.__root__ == "Tier.Tier2"
@@ -366,7 +359,7 @@ class OMetaTableTest(TestCase):
         """
         Update column tags
         """
-        updated: Table = self.metadata.patch_column_tag(
+        updated: Table = self.metadata.patch_column_tags(
             table=self.table,
             tag_label=PII_TAG_LABEL,  # Shipped by default
             column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
@@ -375,7 +368,7 @@ class OMetaTableTest(TestCase):
 
         assert updated_col.tags[0].tagFQN.__root__ == "PII.Sensitive"
 
-        updated_again: Table = self.metadata.patch_column_tag(
+        updated_again: Table = self.metadata.patch_column_tags(
             table=self.table,
             tag_label=TIER_TAG_LABEL,  # Shipped by default
             column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
@@ -558,7 +551,7 @@ class OMetaTableTest(TestCase):
         )
         created: Table = self.metadata.create_or_update(create)
 
-        with_tags: Table = self.metadata.patch_column_tag(
+        with_tags: Table = self.metadata.patch_column_tags(
             table=created,
             column_fqn=created.fullyQualifiedName.__root__ + ".struct.id",
             tag_label=TIER_TAG_LABEL,

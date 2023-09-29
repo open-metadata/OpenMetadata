@@ -320,7 +320,7 @@ class AtlasSource(Source):
                     tag_labels.extend(classification_tags)
 
         for tag_label in tag_labels:
-            self.metadata.patch_tag(
+            self.metadata.patch_tags(
                 entity=Table,
                 source=table_object,
                 tag_label=tag_label,
