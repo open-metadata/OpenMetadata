@@ -56,14 +56,13 @@ import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-public class PipelineServiceResourceTest extends EntityResourceTest<PipelineService, CreatePipelineService> {
+public class PipelineServiceResourceTest extends ServiceResourceTest<PipelineService, CreatePipelineService> {
   public PipelineServiceResourceTest() {
     super(
         Entity.PIPELINE_SERVICE,

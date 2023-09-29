@@ -30,6 +30,7 @@ import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
+import StatusBadge from 'components/common/StatusBadge/StatusBadge.component';
 import Loader from 'components/Loader/Loader';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { GLOSSARIES_DOCS } from 'constants/docs.constants';
@@ -39,6 +40,7 @@ import { compare } from 'fast-json-patch';
 import {
   EntityReference,
   GlossaryTerm,
+  Status,
 } from 'generated/entity/data/glossaryTerm';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,9 +51,9 @@ import { Link } from 'react-router-dom';
 import { patchGlossaryTerm } from 'rest/glossaryAPI';
 import { Transi18next } from 'utils/CommonUtils';
 import { getEntityName } from 'utils/EntityUtils';
-import { buildTree } from 'utils/GlossaryUtils';
+import { buildTree, StatusClass, StatusFilters } from 'utils/GlossaryUtils';
 import { getGlossaryPath } from 'utils/RouterUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+import { FilterIcon, getTableExpandableConfig } from 'utils/TableUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 import {
   DraggableBodyRowProps,
@@ -76,6 +78,7 @@ const GlossaryTermTab = ({
   const [glossaryTerms, setGlossaryTerms] = useState<ModifiedGlossaryTerm[]>(
     []
   );
+
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -123,6 +126,25 @@ const GlossaryTermTab = ({
         key: 'owner',
         render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
       },
+      {
+        title: t('label.status'),
+        dataIndex: 'status',
+        key: 'status',
+        filterIcon: FilterIcon,
+        filters: StatusFilters,
+        render: (_, record) => {
+          const status = record.status ?? Status.Approved;
+
+          return (
+            <StatusBadge
+              dataTestId={record.fullyQualifiedName + '-status'}
+              label={status}
+              status={StatusClass[status]}
+            />
+          );
+        },
+        onFilter: (value, record) => record.status === value,
+      },
     ];
     if (permissions.Create) {
       data.push({
@@ -165,7 +187,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [glossaryTerms]);
+  }, [glossaryTerms, permissions]);
 
   const handleAddGlossaryTermClick = () => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);

@@ -157,10 +157,10 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     USER2_REF = USER2.getEntityReference();
 
     create = createRequest("user-data-steward", "", "", null).withRoles(List.of(DATA_STEWARD_ROLE.getId()));
-    USER_WITH_DATA_STEWARD_ROLE = createEntity(create, ADMIN_AUTH_HEADERS);
+    DATA_STEWARD = createEntity(create, ADMIN_AUTH_HEADERS);
 
     create = createRequest("user-data-consumer", "", "", null).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
-    USER_WITH_DATA_CONSUMER_ROLE = createEntity(create, ADMIN_AUTH_HEADERS);
+    DATA_CONSUMER = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // USER_TEAM21 is part of TEAM21
     create = createRequest(test, 2).withTeams(List.of(TEAM21.getId()));
@@ -243,6 +243,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Creating another user with the same email address must fail
     create.withName("userEmailTest1");
     assertResponse(() -> createEntity(create, ADMIN_AUTH_HEADERS), CONFLICT, "Entity already exists");
+  }
+
+  @Test
+  void test_adminPrincipalsCreation() throws IOException {
+    // This is test is ensure adminPrincipals are getting created as expected
+    // we are hardcoding the usernames as they are passed in config
+    // Create user with different optional fields
+    User user = getEntityByName("admin", ADMIN_AUTH_HEADERS);
+    assertEquals("admin", user.getName());
+
+    user = getEntityByName("hello.world", ADMIN_AUTH_HEADERS);
+    assertEquals("hello.world", user.getName());
   }
 
   @Test

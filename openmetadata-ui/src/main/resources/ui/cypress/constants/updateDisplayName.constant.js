@@ -106,6 +106,18 @@ export const ENTITIES_DISPLAY_NAME = {
     serviceName: SERVICES.storageServices.name,
     breadcrumb: [SERVICES.storageServices.displayName],
   },
+  storedProcedure: {
+    name: 'update_dim_address_table',
+    oldDisplayName: 'update_dim_address_table',
+    displayName: 'Update_Dim_Address_Table',
+    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    serviceName: 'sample_data',
+    breadcrumb: [
+      DATABASE_AND_SCHEMA.schemaDisplayName,
+      DATABASE_AND_SCHEMA.databaseDisplayName,
+      SERVICES.databaseServices.displayName,
+    ],
+  },
 };
 export const DASHBOARD_DATA_MODEL = {
   service: SERVICES.dashboardServices,

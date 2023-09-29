@@ -95,6 +95,17 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
+  public static String entityRepositoryNotFound(String entityType) {
+    return String.format("Entity repository for %s not found. Is the ENTITY_TYPE_MAP initialized?", entityType);
+  }
+
+  public static String entityRelationshipNotFound(
+      String entityType, UUID id, String relationshipName, String toEntityType) {
+    return String.format(
+        "Entity type %s %s does not have expected relationship %s to/from entity type %s",
+        entityType, id, relationshipName, toEntityType);
+  }
+
   public static String resourceTypeNotFound(String resourceType) {
     return String.format("Resource type %s not found", resourceType);
   }

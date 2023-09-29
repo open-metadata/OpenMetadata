@@ -32,6 +32,7 @@ const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
   return (
     <Modal
       className="block-editor-link-modal"
+      maskClosable={false}
       okButtonProps={{
         htmlType: 'submit',
         id: 'link-form',

@@ -23,11 +23,11 @@ import {
 } from 'components/PermissionProvider/PermissionProvider.interface';
 import { TeamsPageTab } from 'components/Team/TeamDetails/team.interface';
 import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
+import { ASSETS_INDEXES } from 'constants/Assets.constants';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { AssetsDataType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -43,11 +43,9 @@ import { getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
-  LIST_SIZE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -56,7 +54,7 @@ import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { SearchResponse } from '../../interface/search.interface';
-import { formatUsersResponse, SearchEntityHits } from '../../utils/APIUtils';
+import { formatUsersResponse } from '../../utils/APIUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -83,11 +81,7 @@ const TeamsPage = () => {
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [assets, setAssets] = useState<AssetsDataType>({
-    data: [],
-    total: 0,
-    currPage: 1,
-  });
+  const [assets, setAssets] = useState<number>(0);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
 
   const [entityPermissions, setEntityPermissions] =
@@ -268,43 +262,23 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAssets = () => {
+  const fetchAssets = async () => {
     if (selectedTeam.id && isGroupType) {
-      searchData(
-        ``,
-        assets.currPage,
-        LIST_SIZE,
-        `owner.id:${selectedTeam.id}`,
-        '',
-        '',
-        myDataSearchIndex
-      )
-        .then((res) => {
-          const hits = res?.data?.hits?.hits as SearchEntityHits;
-          if (hits?.length > 0) {
-            const total = res.data.hits.total.value;
-            setAssets({
-              data: hits,
-              total,
-              currPage: assets.currPage,
-            });
-          } else {
-            const total = 0;
-            setAssets({
-              data: [],
-              total,
-              currPage: assets.currPage,
-            });
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.team-asset-plural'),
-            })
-          );
-        });
+      try {
+        const res = await searchData(
+          ``,
+          0,
+          0,
+          `owner.id:${selectedTeam.id}`,
+          '',
+          '',
+          ASSETS_INDEXES
+        );
+        const total = res?.data?.hits?.total.value ?? 0;
+        setAssets(total);
+      } catch (error) {
+        // Error
+      }
     }
   };
 
@@ -584,14 +558,6 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  const handleAssetsPaginate = ({ currentPage }: PagingHandlerParams) => {
-    setAssets((pre) => ({ ...pre, currPage: currentPage }));
-  };
-
-  useEffect(() => {
-    fetchAssets();
-  }, [assets.currPage]);
-
   useEffect(() => {
     if (hasViewPermission && currentFqn !== fqn) {
       if (fqn) {
@@ -642,7 +608,7 @@ const TeamsPage = () => {
     <>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
-        assets={assets}
+        assetsCount={assets}
         childTeams={allTeam}
         currentTeam={selectedTeam}
         currentTeamUserPage={currentUserPage}
@@ -667,7 +633,6 @@ const TeamsPage = () => {
         teamUserPagingHandler={userPagingHandler}
         teamUsersSearchText={userSearchValue}
         updateTeamHandler={updateTeamHandler}
-        onAssetsPaginate={handleAssetsPaginate}
         onDescriptionUpdate={onDescriptionUpdate}
         onShowDeletedTeamChange={toggleShowDeletedTeam}
         onTeamExpand={fetchAllTeamsAdvancedDetails}

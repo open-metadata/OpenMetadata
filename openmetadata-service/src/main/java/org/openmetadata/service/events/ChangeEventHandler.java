@@ -20,6 +20,7 @@ import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.g
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.SecurityContext;
@@ -121,8 +122,9 @@ public class ChangeEventHandler implements EventHandler {
     String entityId = entityInterface.getId().toString();
     List<String> threadIds = collectionDAO.feedDAO().findByEntityId(entityId);
     for (String threadId : threadIds) {
-      collectionDAO.relationshipDAO().deleteAll(threadId, Entity.THREAD);
-      collectionDAO.feedDAO().delete(threadId);
+      UUID id = UUID.fromString(threadId);
+      collectionDAO.relationshipDAO().deleteAll(id, Entity.THREAD);
+      collectionDAO.feedDAO().delete(id);
     }
   }
 

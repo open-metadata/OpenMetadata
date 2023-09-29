@@ -347,7 +347,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       importFailure(resultsPrinter, violations, csvRecord);
       return;
     }
-    if (Boolean.FALSE.equals(importResult.getDryRun())) {
+    if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
         repository.prepareInternal(entity, false);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
@@ -356,7 +356,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         return;
       }
-    } else {
+    } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
       responseStatus =
           repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED) == null
