@@ -145,7 +145,7 @@ class TestWebAnalyticProducer(TestCase):
 
         cls.producer = WebAnalyticsProducer(cls.metadata)
 
-    @pytest.mark.order(1)
+    @pytest.mark.order(10000)
     def test_fetch_data(self):
         """fetch data"""
         data = []
@@ -154,7 +154,7 @@ class TestWebAnalyticProducer(TestCase):
 
         self.assertGreaterEqual(len(data), 50)
 
-    @pytest.mark.order(2)
+    @pytest.mark.order(10001)
     def test_check_data_cached(self):
         """fetch data. Should have it cached"""
         new_producer = WebAnalyticsProducer(self.metadata)
