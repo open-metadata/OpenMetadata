@@ -317,7 +317,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
         # test data insight KPIs have been computed and can be retrieved
         # --------------------------------------------------------------
         kpi_result = self.metadata.get_kpi_result(
-            "CompletedDescription", self.start_ts, self.end_ts
+            "CompletedDescription__test_execute_method", self.start_ts, self.end_ts
         )
         assert kpi_result
 

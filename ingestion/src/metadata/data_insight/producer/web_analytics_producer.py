@@ -13,7 +13,7 @@ Producer class for data insight web analytics reports
 """
 
 
-from typing import Optional
+from typing import Dict, Optional
 
 from metadata.data_insight.producer.producer_interface import ProducerInterface
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -31,7 +31,7 @@ END_TS = str(get_end_of_day_timestamp_mill(days=1))
 
 # we'll cache events to avoid fetching them multiple times
 # the key will be the entity pagination after value
-CACHED_EVENTS: dict[str, EntityList[WebAnalyticEventData]] = {}
+CACHED_EVENTS: Dict[str, EntityList[WebAnalyticEventData]] = {}
 
 
 class WebAnalyticsProducer(ProducerInterface):
