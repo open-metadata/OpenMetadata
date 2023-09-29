@@ -33,6 +33,8 @@ public class IndexUtil {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "AggregatedCostAnalysisReportData";
   public static final String REPORT_DATA = "reportData";
   public static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
 
@@ -125,6 +127,10 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(RAW_COST_ANALYSIS_REPORT_DATA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.RAW_COST_ANALYSIS_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(AGGREGATED_COST_ANALYSIS_REPORT_DATA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.AGGREGATED_COST_ANALYSIS_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {

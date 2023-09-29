@@ -1627,4 +1627,3 @@ export const updateTableFieldDescription = (
 
   verifyResponseStatusCode('@updateDescription', 200);
 };
-

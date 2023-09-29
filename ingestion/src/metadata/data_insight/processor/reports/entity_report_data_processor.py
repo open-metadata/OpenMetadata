@@ -157,7 +157,7 @@ class EntityReportDataProcessor(DataProcessor):
             )  # type: ignore
 
     def refine(self, entity: Type[T]) -> None:
-        """Aggegate data. We'll return a dictionary of the following shape
+        """Aggregate data. We'll return a dictionary of the following shape
 
         {
             "entity_class": {
@@ -165,7 +165,7 @@ class EntityReportDataProcessor(DataProcessor):
                     "tier": {
                         "missingDescription": <int>,
                         "missingOwner": <int>,
-                        "hasOnwer": <int>,
+                        "hasOwner": <int>,
                         "completedDescription": <int>,
                     }
                 }
