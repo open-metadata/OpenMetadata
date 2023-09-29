@@ -43,9 +43,14 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -60,6 +65,11 @@ public final class Entity {
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
   @Getter @Setter private static FeedRepository feedRepository;
+  @Getter @Setter private static LineageRepository lineageRepository;
+  @Getter @Setter private static UsageRepository usageRepository;
+  @Getter @Setter private static SystemRepository systemRepository;
+  @Getter @Setter private static ChangeEventRepository changeEventRepository;
+  @Getter @Setter private static TokenRepository tokenRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -222,35 +232,32 @@ public final class Entity {
   private Entity() {}
 
   public static <T extends EntityInterface> void registerEntity(
-      Class<T> clazz,
-      String entity,
-      EntityRepository<T> entityRepository,
-      List<MetadataOperation> entitySpecificOperations) {
+      Class<T> clazz, String entity, EntityRepository<T> entityRepository) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    // Set up entity operations for permissions
-    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
     LOG.info("Registering entity {} {}", clazz, entity);
   }
 
   public static <T extends EntityTimeSeriesInterface> void registerEntity(
-      Class<T> clazz,
-      String entity,
-      EntityTimeSeriesRepository<T> entityRepository,
-      List<MetadataOperation> entitySpecificOperations) {
+      Class<T> clazz, String entity, EntityTimeSeriesRepository<T> entityRepository) {
     ENTITY_TS_REPOSITORY_MAP.put(entity, entityRepository);
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
+    LOG.info("Registering entity time series {} {}", clazz, entity);
+  }
+
+  public static <T extends EntityTimeSeriesInterface> void registerResourcePermissions(
+      String entity, List<MetadataOperation> entitySpecificOperations) {
     // Set up entity operations for permissions
+    Class<? extends EntityInterface> clazz = getEntityClassFromType(entity);
     ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
-    LOG.info("Registering entity {} {}", clazz, entity);
   }
 
   public static List<String> getEntityList() {

@@ -43,7 +43,7 @@ public class MigrationUtil {
    */
   public static void fixTestSuites(CollectionDAO collectionDAO) {
     // Fix any FQN issues for executable TestSuite
-    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
+    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
     List<TestSuite> testSuites =
         testSuiteRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {

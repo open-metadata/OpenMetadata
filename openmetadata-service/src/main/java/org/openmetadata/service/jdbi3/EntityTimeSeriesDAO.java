@@ -292,14 +292,10 @@ public interface EntityTimeSeriesDAO {
       @Bind("extension") String extension,
       @Bind("startTs") Long startTs,
       @Bind("endTs") long endTs,
-      @Define("orderBy") CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy);
+      @Define("orderBy") OrderBy orderBy);
 
   default List<String> listBetweenTimestampsByOrder(
-      String entityFQNHash,
-      String extension,
-      Long startTs,
-      long endTs,
-      CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+      String entityFQNHash, String extension, Long startTs, long endTs, OrderBy orderBy) {
     return listBetweenTimestampsByOrder(getTimeSeriesTableName(), entityFQNHash, extension, startTs, endTs, orderBy);
   }
 

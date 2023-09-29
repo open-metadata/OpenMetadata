@@ -169,6 +169,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
     this.dao = dao;
   }
 
+  @Override
   public CollectionDAO getDao() {
     return dao;
   }
@@ -1039,12 +1040,6 @@ public class ElasticSearchClientImpl implements SearchRepository {
     }
   }
 
-  /**
-   * @param entity
-   * @param delete
-   * @param field
-   * @param alias
-   */
   @Override
   public void softDeleteOrRestoreChildren(EntityInterface entity, boolean delete, String field, String alias) {
     if (entity != null) {

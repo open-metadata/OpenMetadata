@@ -26,6 +26,7 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -56,7 +57,7 @@ public class ReportsHandler {
 
   private ReportsHandler(CollectionDAO dao, SearchRepository searchRepository) throws SchedulerException {
     this.searchRepository = searchRepository;
-    this.chartRepository = new DataInsightChartRepository(dao);
+    this.chartRepository = (DataInsightChartRepository) Entity.getEntityRepository(Entity.DATA_INSIGHT_CHART);
     this.reportScheduler.start();
   }
 

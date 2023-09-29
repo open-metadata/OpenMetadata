@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -74,8 +73,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   public static final String COLLECTION_PATH = "v1/glossaries/";
   static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain,extension";
 
-  public GlossaryResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Glossary.class, new GlossaryRepository(dao), authorizer);
+  public GlossaryResource(Authorizer authorizer) {
+    super(Entity.GLOSSARY, authorizer);
   }
 
   @Override

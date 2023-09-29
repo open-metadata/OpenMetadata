@@ -19,6 +19,7 @@ import io.swagger.annotations.Api;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -56,6 +58,7 @@ import org.reflections.util.ConfigurationBuilder;
 @Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
+  private volatile boolean initializedRepositories = false;
   private static volatile boolean initialized = false;
 
   /** Map of collection endpoint path to collection details */
@@ -101,6 +104,25 @@ public final class CollectionRegistry {
 
   public Map<String, CollectionDetails> getCollectionMap() {
     return Collections.unmodifiableMap(collectionMap);
+  }
+
+  public void initializeRepositories(CollectionDAO daoObject) {
+    if (!initializedRepositories) {
+      // Check Collection DAO
+      Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
+      Set<Class<?>> repositories = getRepositories();
+      for (Class<?> clz : repositories) {
+        if (Modifier.isAbstract(clz.getModifiers())) {
+          continue; // Don't instantiate abstract classes
+        }
+        try {
+          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(daoObject);
+        } catch (Exception e) {
+          LOG.warn("Exception encountered", e);
+        }
+      }
+      initializedRepositories = true;
+    }
   }
 
   /**
@@ -165,6 +187,7 @@ public final class CollectionRegistry {
       CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
+    initializeRepositories(daoObject);
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -211,6 +234,13 @@ public final class CollectionRegistry {
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
+  private static Set<Class<?>> getRepositories() {
+    // Get classes marked with @Repository annotation
+    Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
+    return reflections.getTypesAnnotatedWith(Repository.class);
+  }
+
+  /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.service.resources");
     // Get classes marked with @Collection annotation
@@ -241,7 +271,7 @@ public final class CollectionRegistry {
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
 
-    // Decorate Collection DAO
+    // Check Collection DAO
     Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
 
     Object resource = null;
@@ -249,12 +279,12 @@ public final class CollectionRegistry {
 
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
+      resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
     } catch (NoSuchMethodException e) {
       try {
         resource =
-            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, AuthenticatorHandler.class)
-                .newInstance(daoObject, authorizer, authHandler);
+            clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
+                .newInstance(authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
         try {
           resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
@@ -263,7 +293,7 @@ public final class CollectionRegistry {
         }
       }
     } catch (Exception ex) {
-      LOG.warn("Exception encountered", ex);
+      LOG.warn("Exception encountered while creating resource for {}", clz, ex);
     }
 
     // Call initialize method, if it exists
@@ -273,7 +303,7 @@ public final class CollectionRegistry {
     } catch (NoSuchMethodException ignored) {
       // Method does not exist and initialize is not called
     } catch (Exception ex) {
-      LOG.warn("Encountered exception ", ex);
+      LOG.warn("Encountered exception while initializing resource for {}", clz, ex);
     }
 
     // Call upgrade method, if it exists
