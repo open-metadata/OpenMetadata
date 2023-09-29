@@ -1,0 +1,72 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "data": {
+        "properties": {
+          "totalSize": {
+            "type": "double"
+          },
+          "entityType": {
+            "type": "keyword"
+          },
+          "serviceName": {
+            "type": "keyword"
+          },
+          "serviceType": {
+            "type": "keyword"
+          },
+          "serviceOwner": {
+            "type": "keyword"
+          },
+          "unusedDataAssets": {
+            "properties": {
+              "sevenDays": {
+                "type": "double"
+              },
+              "sixtyDays": {
+                "type": "double"
+              },
+              "threeDays": {
+                "type": "double"
+              },
+              "thirtyDays": {
+                "type": "double"
+              },
+              "fourteenDays": {
+                "type": "double"
+              }
+            }
+          },
+          "frequentlyUsedDataAssets": {
+            "properties": {
+              "sevenDays": {
+                "type": "double"
+              },
+              "sixtyDays": {
+                "type": "double"
+              },
+              "threeDays": {
+                "type": "double"
+              },
+              "thirtyDays": {
+                "type": "double"
+              },
+              "fourteenDays": {
+                "type": "double"
+              }
+            }
+          }
+        }
+      },
+      "timestamp": {
+        "type": "date"
+      },
+      "reportDataType": {
+        "type": "keyword"
+      }
+    }
+  }
+}
