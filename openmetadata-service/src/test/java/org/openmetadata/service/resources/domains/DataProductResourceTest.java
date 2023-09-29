@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -8,6 +9,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response.Status;
@@ -113,6 +115,32 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     change = getChangeDescription(product.getVersion());
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
     patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void test_listWithDomainFilter(TestInfo test) throws HttpResponseException {
+    DomainResourceTest domainTest = new DomainResourceTest();
+    String domain1 =
+        domainTest.createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+    String domain2 =
+        domainTest.createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+    DataProduct p1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
+    DataProduct p2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
+    DataProduct p3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
+    DataProduct p4 = createEntity(createRequest(test, 4).withDomain(domain2), ADMIN_AUTH_HEADERS);
+
+    Map<String, String> params = new HashMap<>();
+    params.put("domain", domain1);
+    List<DataProduct> list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
+    assertEquals(2, list.size());
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p1.getName())));
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p2.getName())));
+
+    params.put("domain", domain2);
+    list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
+    assertEquals(2, list.size());
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p3.getName())));
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p4.getName())));
   }
 
   private void entityInDataProduct(EntityInterface entity, EntityInterface product, boolean inDataProduct)

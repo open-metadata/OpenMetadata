@@ -85,7 +85,7 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         BAD_REQUEST,
         "[serviceType must not be null]");
 
-    // Create metadata with mandatory brokers field empty
+    // Create metadata with mandatory "brokers" field empty
     assertResponse(
         () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
