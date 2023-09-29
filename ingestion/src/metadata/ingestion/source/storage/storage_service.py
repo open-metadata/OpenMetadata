@@ -55,7 +55,10 @@ from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.models import ConfigSource
 from metadata.utils.datalake.datalake_utils import fetch_dataframe, get_columns
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.storage_metadata_config import get_manifest
+from metadata.utils.storage_metadata_config import (
+    StorageMetadataConfigException,
+    get_manifest,
+)
 
 logger = ingestion_logger()
 
@@ -139,7 +142,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             self.source_config.storageMetadataConfigSource,
             NoMetadataConfigurationSource,
         ):
-            return get_manifest(self.source_config.storageMetadataConfigSource)
+            try:
+                return get_manifest(self.source_config.storageMetadataConfigSource)
+            except StorageMetadataConfigException as exc:
+                logger.warning(f"Could no get global manifest due to [{exc}]")
         return None
 
     @abstractmethod

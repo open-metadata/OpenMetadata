@@ -91,8 +91,6 @@ def _(config: StorageMetadataHttpConfig) -> ManifestMetadataConfig:
                 "Manifest file not found in file server"
             )
         return ManifestMetadataConfig.parse_obj(http_manifest.json())
-    except StorageMetadataConfigException as exc:
-        raise exc
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
