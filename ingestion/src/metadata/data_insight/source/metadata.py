@@ -27,6 +27,10 @@ from metadata.data_insight.processor.reports.web_analytic_report_data_processor 
     WebAnalyticEntityViewReportDataProcessor,
     WebAnalyticUserActivityReportDataProcessor,
 )
+from metadata.data_insight.processor.reports.cost_analysis_report_data_processor import (
+     AggregatedCostAnalysisReportDataProcessor,
+     RawCostAnalysisReportDataProcessor,
+ )
 from metadata.data_insight.producer.producer_factory import producer_factory
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.ingestion.api.models import Either, StackTraceError
@@ -76,6 +80,8 @@ class DataInsightSource(Source):
                 EntityReportDataProcessor,
                 WebAnalyticEntityViewReportDataProcessor,
                 WebAnalyticUserActivityReportDataProcessor,
+                AggregatedCostAnalysisReportDataProcessor,
+                RawCostAnalysisReportDataProcessor,
             ],
         ] = MappingProxyType(
             _processors

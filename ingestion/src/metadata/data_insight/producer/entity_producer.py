@@ -32,27 +32,23 @@ from metadata.utils.logger import data_insight_logger
 logger = data_insight_logger()
 
 
-ENTITIES = [
-    chart.Chart,
-    dashboard.Dashboard,
-    database.Database,
-    databaseSchema.DatabaseSchema,
-    mlmodel.MlModel,
-    pipeline.Pipeline,
-    table.Table,
-    topic.Topic,
-    container.Container,
-]
-
-T = TypeVar("T", *ENTITIES)  # type: ignore
-
-
 class EntityProducer(ProducerInterface):
     """entity producer class"""
+    entities = [
+        chart.Chart,
+        dashboard.Dashboard,
+        database.Database,
+        databaseSchema.DatabaseSchema,
+        mlmodel.MlModel,
+        pipeline.Pipeline,
+        table.Table,
+        topic.Topic,
+        container.Container,
+    ]
 
     # pylint: disable=protected-access,dangerous-default-value
-    def fetch_data(self, limit=100, fields=["*"]) -> Iterable[T]:
-        for entity in ENTITIES:
+    def fetch_data(self, limit=100, fields=["*"]) -> Iterable:
+        for entity in self.entities:
             # we want to skip the entity if it fails to fetch
             # and continue with the rest of the entities vs failing the whole workflow
             self.metadata._skip_on_failure = True
@@ -64,3 +60,8 @@ class EntityProducer(ProducerInterface):
                 logger.error(f"Error trying to fetch entity -- {err}")
                 logger.debug(traceback.format_exc())
             self.metadata._skip_on_failure = False
+
+
+class EntityProducerTable(EntityProducer):
+    """entity producer class for table"""
+    entities = [table.Table]
