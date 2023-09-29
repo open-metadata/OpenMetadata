@@ -15,18 +15,25 @@ Base source for the data quality used to instantiate a data quality runner with 
 from copy import deepcopy
 from typing import Optional, cast
 
+from sqlalchemy import MetaData
+
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.interface.test_suite_interface_factory import (
     test_suite_interface_factory,
 )
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
 
 class BaseTestSuiteSource:
@@ -42,6 +49,7 @@ class BaseTestSuiteSource:
         self.entity = entity
         self.service_conn_config = self._copy_service_config(config, self.entity.database)  # type: ignore
         self.ometa_client = ometa_client
+        self.sqa_metadata = self._set_sqa_metadata()
 
     @property
     def interface(self) -> Optional[TestSuiteInterface]:
@@ -79,6 +87,12 @@ class BaseTestSuiteSource:
 
         return config_copy
 
+    def _set_sqa_metadata(self):
+        """Set sqlalchemy metadata"""
+        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
+            return MetaData()
+        return None
+
     def create_data_quality_interface(self) -> TestSuiteInterface:
         """Create data quality interface
 
@@ -87,7 +101,10 @@ class BaseTestSuiteSource:
         """
         data_quality_interface: TestSuiteInterface = (
             test_suite_interface_factory.create(
-                self.service_conn_config, self.ometa_client, self.entity
+                self.service_conn_config,
+                self.ometa_client,
+                self.entity,
+                sqa_metadata=self.sqa_metadata,
             )
         )
         self.interface = data_quality_interface
