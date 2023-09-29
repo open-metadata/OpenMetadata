@@ -50,9 +50,10 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 
 public final class TablesInitializer {
   private static final String DEBUG_MODE_ENABLED = "debug_mode";
@@ -183,9 +184,21 @@ public final class TablesInitializer {
     if (dataSourceFactory == null) {
       throw new RuntimeException("No database in config file");
     }
+
+    // Check for db auth providers.
+    DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl())
+        .ifPresent(
+            databaseAuthenticationProvider -> {
+              String token =
+                  databaseAuthenticationProvider.authenticate(
+                      dataSourceFactory.getUrl(), dataSourceFactory.getUser(), dataSourceFactory.getPassword());
+              dataSourceFactory.setPassword(token);
+            });
+
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
+
     boolean disableValidateOnMigrate = commandLine.hasOption(DISABLE_VALIDATE_ON_MIGRATE);
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
@@ -253,7 +266,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchClient searchClient =
+    SearchRepository searchRepository =
         IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
     SearchIndexDefinition esIndexDefinition;
 
@@ -313,15 +326,15 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new SearchIndexDefinition(searchClient);
+        esIndexDefinition = new SearchIndexDefinition(searchRepository);
         esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new SearchIndexDefinition(searchClient);
+        esIndexDefinition = new SearchIndexDefinition(searchRepository);
         esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
         break;
       case ES_DROP:
-        esIndexDefinition = new SearchIndexDefinition(searchClient);
+        esIndexDefinition = new SearchIndexDefinition(searchRepository);
         esIndexDefinition.dropIndexes();
         break;
       default:

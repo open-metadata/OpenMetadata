@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// eslint-disable-next-line spaced-comment
+/// <reference types="Cypress" />
 
 import {
   addOwner,
@@ -24,10 +26,34 @@ import {
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_UPDATED_DESCRIPTION,
+  DOMAIN_CREATION_DETAILS,
   OWNER,
   SERVICE_DETAILS_FOR_VERSION_TEST,
   TIER,
 } from '../../constants/Version.constants';
+
+let domainId;
+
+describe('Common prerequisite for service version test', () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('Domain creation for service version test', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'PUT',
+      url: `/api/v1/domains`,
+      headers: { Authorization: `Bearer ${token}` },
+      body: DOMAIN_CREATION_DETAILS,
+    }).then((response) => {
+      expect(response.status).to.eq(201);
+
+      domainId = response.body.id;
+    });
+  });
+});
 
 Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
   ([serviceType, serviceDetails]) => {
@@ -60,7 +86,19 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json-patch+json',
             },
-            body: serviceDetails.entityPatchPayload,
+            body: [
+              ...serviceDetails.entityPatchPayload,
+              {
+                op: 'add',
+                path: '/domain',
+                value: {
+                  id: domainId,
+                  type: 'domain',
+                  name: DOMAIN_CREATION_DETAILS.name,
+                  description: DOMAIN_CREATION_DETAILS.description,
+                },
+              },
+            ],
           }).then((response) => {
             expect(response.status).to.eq(200);
           });
@@ -96,6 +134,12 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
           verifyResponseStatusCode(`@getServiceDetails`, 200);
           verifyResponseStatusCode('@getVersionsList', 200);
           verifyResponseStatusCode('@getSelectedVersionDetails', 200);
+
+          cy.get(
+            `[data-testid="domain-link"] [data-testid="diff-added-${DOMAIN_CREATION_DETAILS.name}"]`
+          )
+            .scrollIntoView()
+            .should('be.visible');
 
           cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
             .scrollIntoView()
@@ -323,3 +367,21 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
     });
   }
 );
+
+describe('Common cleanup for service version test', () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('Domain deletion for service version test', () => {
+    const token = localStorage.getItem('oidcIdToken');
+
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/domains/name/${DOMAIN_CREATION_DETAILS.name}`,
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((response) => {
+      expect(response.status).to.eq(200);
+    });
+  });
+});

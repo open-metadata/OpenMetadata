@@ -15,10 +15,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.EntityReference;
@@ -29,14 +29,12 @@ import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
   public DatabaseRepository(CollectionDAO dao) {
     super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -77,26 +75,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public void deleteFromSearch(Database entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Database.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "database.fullyQualifiedName");
-      } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Database.class), "", "database.fullyQualifiedName");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Database entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
-    }
+  public EntityInterface getParentEntity(Database entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   public Database setFields(Database database, Fields fields) {

@@ -63,7 +63,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         dao,
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {
@@ -232,6 +232,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   @Override
   public EntityUpdater getUpdater(MlModel original, MlModel updated, Operation operation) {
     return new MlModelUpdater(original, updated, operation);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(MlModel entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   @Override
