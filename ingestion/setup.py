@@ -46,13 +46,13 @@ VERSIONS = {
     "packaging": "packaging==21.3",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
-    "sqlalchemy-databricks":"sqlalchemy-databricks~=0.1",
+    "sqlalchemy-databricks": "sqlalchemy-databricks~=0.1",
     "databricks-sdk": "databricks-sdk~=0.1",
     "google": "google>=3.0.0",
-    "trino":"trino[sqlalchemy]",
+    "trino": "trino[sqlalchemy]",
     "spacy": "spacy==3.5.0",
-    "looker-sdk":"looker-sdk>=22.20.0",
-    "lkml":"lkml~=1.3",
+    "looker-sdk": "looker-sdk>=22.20.0",
+    "lkml": "lkml~=1.3",
     "tableau": "tableau-api-lib~=0.1",
     "pyhive": "pyhive~=0.6",
     "mongo": "pymongo~=4.3",
@@ -291,7 +291,7 @@ test = {
     VERSIONS["mongo"],
     VERSIONS["redshift"],
     VERSIONS["snowflake"],
-    VERSIONS["elasticsearch8"]
+    VERSIONS["elasticsearch8"],
 }
 
 e2e_test = {

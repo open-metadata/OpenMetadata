@@ -69,7 +69,7 @@ class DataInsightSource(Source):
         self.date = datetime.utcnow().strftime("%Y-%m-%d")
 
         _processors = self._instantiate_processors()
-        self._processors: MappingProxyType[
+        self._processors: Dict[
             str,
             Union[
                 DataProcessor,
@@ -82,7 +82,7 @@ class DataInsightSource(Source):
         )  # make an immutable copy of the dict
 
     @property
-    def processors(self) -> MappingProxyType[str, Optional[DataProcessor]]:
+    def processors(self) -> Dict[str, Optional[DataProcessor]]:
         """dictionnaray of processors"""
         return self._processors
 
