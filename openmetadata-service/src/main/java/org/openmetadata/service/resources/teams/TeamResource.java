@@ -296,7 +296,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificRoleVersion",
+      operationId = "getSpecificTeamVersion",
       summary = "Get a version of the team",
       description = "Get a version of the team by given `id`",
       responses = {
