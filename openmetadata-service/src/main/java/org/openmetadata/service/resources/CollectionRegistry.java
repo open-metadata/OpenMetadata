@@ -108,6 +108,7 @@ public final class CollectionRegistry {
 
   public void initializeRepositories(CollectionDAO daoObject) {
     if (!initializedRepositories) {
+      System.out.println("XXX initializing repositories");
       // Check Collection DAO
       Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
       Set<Class<?>> repositories = getRepositories();
@@ -122,6 +123,7 @@ public final class CollectionRegistry {
         }
       }
       initializedRepositories = true;
+      System.out.println("XXX initializing repositories done");
     }
   }
 

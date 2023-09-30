@@ -358,8 +358,6 @@ public final class TablesInitializer {
       Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    CollectionRegistry.initialize(null);
-    CollectionRegistry.getInstance().initializeRepositories(jdbi.onDemand(CollectionDAO.class));
     workflow.runMigrationWorkflows();
   }
 

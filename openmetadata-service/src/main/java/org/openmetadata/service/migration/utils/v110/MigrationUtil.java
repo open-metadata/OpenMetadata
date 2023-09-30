@@ -442,7 +442,7 @@ public class MigrationUtil {
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());
     if (create.getExecutableEntityReference() != null) {
-      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+      TableRepository tableRepository = new TableRepository(dao);
       Table table =
           JsonUtils.readValue(
               tableRepository.getDao().findJsonByFqn(create.getExecutableEntityReference(), Include.ALL), Table.class);
@@ -484,7 +484,7 @@ public class MigrationUtil {
     migrateExistingTestSuitesToLogical(collectionDAO);
 
     // create native test suites
-    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
+    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
     Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable(collectionDAO);
     for (String tableFQN : testCasesByTable.keySet()) {
       String nativeTestSuiteFqn = tableFQN + ".testSuite";
@@ -528,9 +528,8 @@ public class MigrationUtil {
   }
 
   private static void migrateExistingTestSuitesToLogical(CollectionDAO collectionDAO) {
-    IngestionPipelineRepository ingestionPipelineRepository =
-        (IngestionPipelineRepository) Entity.getEntityRepository(INGESTION_PIPELINE);
-    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
+    IngestionPipelineRepository ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO);
+    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
     ListFilter filter = new ListFilter(Include.ALL);
     List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
     for (TestSuite testSuite : testSuites) {
@@ -550,7 +549,7 @@ public class MigrationUtil {
 
   public static Map<String, ArrayList<TestCase>> groupTestCasesByTable(CollectionDAO collectionDAO) {
     Map<String, ArrayList<TestCase>> testCasesByTable = new HashMap<>();
-    TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+    TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
     List<TestCase> testCases = testCaseRepository.listAll(new Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestCase testCase : testCases) {
       // Create New Executable Test Suites
