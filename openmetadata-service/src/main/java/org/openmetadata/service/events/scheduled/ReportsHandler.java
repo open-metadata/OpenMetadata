@@ -28,7 +28,6 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.DataInsightJobException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobBuilder;
@@ -55,7 +54,7 @@ public class ReportsHandler {
   private final Scheduler reportScheduler = new StdSchedulerFactory().getScheduler();
   private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap = new ConcurrentHashMap<>();
 
-  private ReportsHandler(CollectionDAO dao, SearchRepository searchRepository) throws SchedulerException {
+  private ReportsHandler(SearchRepository searchRepository) throws SchedulerException {
     this.searchRepository = searchRepository;
     this.chartRepository = (DataInsightChartRepository) Entity.getEntityRepository(Entity.DATA_INSIGHT_CHART);
     this.reportScheduler.start();
@@ -70,9 +69,9 @@ public class ReportsHandler {
     return reportJobKeyMap;
   }
 
-  public static void initialize(CollectionDAO dao, SearchRepository searchRepository) throws SchedulerException {
+  public static void initialize(SearchRepository searchRepository) throws SchedulerException {
     if (!initialized) {
-      instance = new ReportsHandler(dao, searchRepository);
+      instance = new ReportsHandler(searchRepository);
       initialized = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");

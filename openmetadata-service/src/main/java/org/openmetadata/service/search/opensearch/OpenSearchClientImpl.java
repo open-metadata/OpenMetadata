@@ -1171,7 +1171,7 @@ public class OpenSearchClientImpl implements SearchRepository {
     if (updateByQueryRequest != null) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<BulkByScrollResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
               LOG.info("Update by query succeeded: " + response.toString());

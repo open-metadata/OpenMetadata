@@ -62,6 +62,7 @@ import org.reflections.Reflections;
 @Slf4j
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
+  @Getter private static volatile CollectionDAO collectionDAO;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
@@ -238,6 +239,7 @@ public final class Entity {
 
   public static void initializeRepositories(CollectionDAO collectionDAO) {
     if (!initializedRepositories) {
+      Entity.collectionDAO = collectionDAO;
       tokenRepository = new TokenRepository(collectionDAO);
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");

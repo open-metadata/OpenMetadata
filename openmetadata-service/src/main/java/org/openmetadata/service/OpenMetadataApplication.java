@@ -52,7 +52,6 @@ import javax.servlet.ServletRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
-import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -131,7 +130,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
-  @Getter private static CollectionDAO collectionDAO;
+  private static CollectionDAO collectionDAO;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -198,7 +197,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    registerResources(catalogConfig, environment, jdbi, jdbiUnitOfWorkProvider, collectionDAO);
+    registerResources(catalogConfig, environment, jdbi, collectionDAO);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbiUnitOfWorkProvider);
@@ -452,17 +451,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(
-      OpenMetadataApplicationConfig config,
-      Environment environment,
-      Jdbi jdbi,
-      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
-      CollectionDAO daoObject) {
+      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi, CollectionDAO daoObject) {
     List<String> extensionResources =
         config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance()
-        .registerResources(
-            jdbi, jdbiUnitOfWorkProvider, environment, config, daoObject, authorizer, authenticatorHandler);
+        .registerResources(jdbi, environment, config, daoObject, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

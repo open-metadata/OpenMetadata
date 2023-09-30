@@ -49,7 +49,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.service.OpenMetadataApplication;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
@@ -74,8 +74,7 @@ public class SearchResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
-      searchRepository =
-          IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), OpenMetadataApplication.getCollectionDAO());
+      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), Entity.getCollectionDAO());
       ReIndexingHandler.initialize(searchRepository);
     }
   }
@@ -366,7 +365,7 @@ public class SearchResource {
     // Check if there is a running job for reindex for requested entity
     String jobRecord;
     jobRecord =
-        OpenMetadataApplication.getCollectionDAO()
+        Entity.getCollectionDAO()
             .entityExtensionTimeSeriesDao()
             .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {

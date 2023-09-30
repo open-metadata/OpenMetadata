@@ -119,7 +119,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
       searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
-      ReportsHandler.initialize(daoCollection, searchRepository);
+      ReportsHandler.initialize(searchRepository);
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail

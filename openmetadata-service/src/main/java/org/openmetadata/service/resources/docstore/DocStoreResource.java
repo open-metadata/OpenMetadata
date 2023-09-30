@@ -142,7 +142,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   @Operation(
       operationId = "listAllDocumentVersion",
       summary = "List Document versions",
-      description = "Get a list of all the versions of a Dcouemtn identified by `id`",
+      description = "Get a list of all the versions of a Document identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",

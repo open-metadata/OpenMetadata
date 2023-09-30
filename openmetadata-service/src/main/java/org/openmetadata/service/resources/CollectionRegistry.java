@@ -41,7 +41,6 @@ import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.reflections.Reflections;
@@ -160,7 +159,6 @@ public final class CollectionRegistry {
   /** Register resources from CollectionRegistry */
   public void registerResources(
       Jdbi jdbi,
-      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider,
       Environment environment,
       OpenMetadataApplicationConfig config,
       CollectionDAO daoObject,

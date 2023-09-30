@@ -38,8 +38,6 @@ public class MigrationUtil {
    * relationships Step 7: Iterate through the testSuite relation to check if the executableTestSuite FQN matches. If it
    * matches there exists a relation from testCase to a executable Test suite Step 8: If we can't find a match, create a
    * relationship.
-   *
-   * @param collectionDAO
    */
   public static void fixTestSuites(CollectionDAO collectionDAO) {
     // Fix any FQN issues for executable TestSuite
@@ -59,7 +57,7 @@ public class MigrationUtil {
     }
     // Let's iterate through the test cases and make sure there exists a relationship between testcases and its native
     // TestSuite
-    Map<String, ArrayList<TestCase>> testCasesGroupByTable = groupTestCasesByTable(collectionDAO);
+    Map<String, ArrayList<TestCase>> testCasesGroupByTable = groupTestCasesByTable();
     for (String tableFQN : testCasesGroupByTable.keySet()) {
       try {
         List<TestCase> testCases = testCasesGroupByTable.get(tableFQN);
