@@ -19,7 +19,6 @@ import io.swagger.annotations.Api;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,9 +38,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -58,7 +57,6 @@ import org.reflections.util.ConfigurationBuilder;
 @Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
-  private volatile boolean initializedRepositories = false;
   private static volatile boolean initialized = false;
 
   /** Map of collection endpoint path to collection details */
@@ -104,27 +102,6 @@ public final class CollectionRegistry {
 
   public Map<String, CollectionDetails> getCollectionMap() {
     return Collections.unmodifiableMap(collectionMap);
-  }
-
-  public void initializeRepositories(CollectionDAO daoObject) {
-    if (!initializedRepositories) {
-      System.out.println("XXX initializing repositories");
-      // Check Collection DAO
-      Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-      Set<Class<?>> repositories = getRepositories();
-      for (Class<?> clz : repositories) {
-        if (Modifier.isAbstract(clz.getModifiers())) {
-          continue; // Don't instantiate abstract classes
-        }
-        try {
-          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(daoObject);
-        } catch (Exception e) {
-          LOG.warn("Exception encountered", e);
-        }
-      }
-      initializedRepositories = true;
-      System.out.println("XXX initializing repositories done");
-    }
   }
 
   /**
@@ -189,7 +166,7 @@ public final class CollectionRegistry {
       CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
-    initializeRepositories(daoObject);
+    Entity.initializeRepositories(daoObject);
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -233,13 +210,6 @@ public final class CollectionRegistry {
     CollectionDescriptor cd = new CollectionDescriptor();
     cd.setCollection(collectionInfo);
     return new CollectionDetails(cd, cl.getCanonicalName(), order);
-  }
-
-  /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
-  private static Set<Class<?>> getRepositories() {
-    // Get classes marked with @Repository annotation
-    Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
-    return reflections.getTypesAnnotatedWith(Repository.class);
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */

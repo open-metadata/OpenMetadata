@@ -154,6 +154,7 @@ import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
+// Not tagged with Repository annotation as it is programmatically initialized
 public class ElasticSearchClientImpl implements SearchRepository {
 
   @SuppressWarnings("deprecated")

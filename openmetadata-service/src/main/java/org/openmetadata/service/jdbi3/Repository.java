@@ -9,4 +9,7 @@ import java.lang.annotation.Target;
 @Inherited
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.CONSTRUCTOR})
-public @interface Repository {}
+public @interface Repository {
+  /** Order of initialization of repository starting from 0. Only order from 0 to 9 (inclusive) are allowed */
+  int order() default 9;
+}
