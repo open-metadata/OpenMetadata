@@ -143,6 +143,7 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String PERSONA = "persona";
   public static final String BOT = "bot";
 
   //
@@ -184,6 +185,7 @@ public final class Entity {
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
+  public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
 
@@ -214,7 +216,8 @@ public final class Entity {
           DASHBOARD_SERVICE,
           MESSAGING_SERVICE,
           WORKFLOW,
-          TEST_SUITE);
+          TEST_SUITE,
+          DOCUMENT);
 
   private Entity() {}
 

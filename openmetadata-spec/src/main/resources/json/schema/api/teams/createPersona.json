@@ -1,0 +1,33 @@
+{
+  "$id": "https://open-metadata.org/schema/api/teams/createPersona.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreatePersonaRequest",
+  "description": "Persona entity",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.teams.CreatePersona",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Optional name used for display purposes. Example 'Data Steward'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the team.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "users": {
+      "description": "Optional IDs of users that are going to assign a Persona.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": null
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}
