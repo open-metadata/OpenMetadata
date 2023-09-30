@@ -1,7 +1,5 @@
 package org.openmetadata.service.resources;
 
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -27,12 +25,10 @@ public abstract class EntityTimeSeriesResource<
     this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     this.repository = (K) Entity.getEntityTimeSeriesRepository(entityType);
     this.authorizer = authorizer;
-    //    Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerTimeSeriesResourcePermissions(entityType);
   }
 
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws IOException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException,
-          InstantiationException, IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) {
     esConfig = config.getElasticSearchConfiguration();
     searchRepository = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation

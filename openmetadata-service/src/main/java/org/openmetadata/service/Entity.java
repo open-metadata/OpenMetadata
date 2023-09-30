@@ -287,8 +287,14 @@ public final class Entity {
 
   public static void registerResourcePermissions(String entity, List<MetadataOperation> entitySpecificOperations) {
     // Set up entity operations for permissions
-    Class<? extends EntityInterface> clazz = getEntityClassFromType(entity);
+    Class<?> clazz = getEntityClassFromType(entity);
     ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
+  }
+
+  public static void registerTimeSeriesResourcePermissions(String entity) {
+    // Set up entity operations for permissions
+    Class<?> clazz = getEntityTimeSeriesClassFromType(entity);
+    ResourceRegistry.addResource(entity, null, getEntityFields(clazz));
   }
 
   public static List<String> getEntityList() {
@@ -439,6 +445,10 @@ public final class Entity {
 
   public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
     return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
+  }
+
+  public static Class<? extends EntityTimeSeriesInterface> getEntityTimeSeriesClassFromType(String entityType) {
+    return EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
   /**
