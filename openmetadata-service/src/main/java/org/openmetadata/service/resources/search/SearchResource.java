@@ -49,8 +49,8 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchRepository;
@@ -65,18 +65,16 @@ import org.openmetadata.service.util.ReIndexingHandler;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "elasticsearch")
 public class SearchResource {
-  private final CollectionDAO dao;
   private final Authorizer authorizer;
   private SearchRepository searchRepository;
 
-  public SearchResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = dao;
+  public SearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
-      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
+      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), Entity.getCollectionDAO());
       ReIndexingHandler.initialize(searchRepository);
     }
   }
@@ -367,7 +365,8 @@ public class SearchResource {
     // Check if there is a running job for reindex for requested entity
     String jobRecord;
     jobRecord =
-        dao.entityExtensionTimeSeriesDao()
+        Entity.getCollectionDAO()
+            .entityExtensionTimeSeriesDao()
             .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)
