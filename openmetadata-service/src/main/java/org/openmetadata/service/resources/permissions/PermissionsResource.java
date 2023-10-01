@@ -29,12 +29,10 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
-import lombok.NonNull;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -51,7 +49,7 @@ public class PermissionsResource {
   private final Authorizer authorizer;
 
   @SuppressWarnings("unused")
-  public PermissionsResource(CollectionDAO dao, @NonNull Authorizer authorizer) {
+  public PermissionsResource(Authorizer authorizer) {
     this.authorizer = authorizer;
   }
 

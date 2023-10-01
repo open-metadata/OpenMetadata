@@ -19,7 +19,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
-import org.openmetadata.annotations.utils.AnnotationChecker;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -35,7 +34,6 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 public abstract class ServiceEntityResource<
@@ -48,11 +46,10 @@ public abstract class ServiceEntityResource<
 
   private final ServiceType serviceType;
 
-  protected ServiceEntityResource(
-      Class<T> entityClass, R serviceRepository, Authorizer authorizer, ServiceType serviceType) {
-    super(entityClass, serviceRepository, authorizer);
-    this.serviceEntityRepository = serviceRepository;
+  protected ServiceEntityResource(String entityType, Authorizer authorizer, ServiceType serviceType) {
+    super(entityType, authorizer);
     this.serviceType = serviceType;
+    serviceEntityRepository = (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
   }
 
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
@@ -82,19 +79,10 @@ public abstract class ServiceEntityResource<
     return services;
   }
 
-  protected T nullifyRequiredConnectionParameters(T service) {
-    Object connectionConfig = retrieveServiceConnectionConfig(service, true);
-    if (AnnotationChecker.isExposedFieldPresent(connectionConfig.getClass())) {
-      service.getConnection().setConfig(JsonUtils.toExposedEntity(connectionConfig, connectionConfig.getClass()));
-      return service;
-    }
-    return nullifyConnection(service);
-  }
-
   protected T unmask(T service) {
     // TODO move this functionality to repository
-    serviceEntityRepository.setFullyQualifiedName(service);
-    T originalService = serviceEntityRepository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
+    repository.setFullyQualifiedName(service);
+    T originalService = repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
     try {
       if (originalService != null && originalService.getConnection() != null) {

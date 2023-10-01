@@ -5,9 +5,11 @@ import static org.openmetadata.service.resources.EntityResource.searchRepository
 import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.JsonUtils;
 
-public class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
+@Repository
+public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
   @Getter protected final String collectionPath;
   @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
   @Getter protected final CollectionDAO daoCollection;
@@ -27,6 +29,7 @@ public class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
     this.daoCollection = daoCollection;
     this.entityClass = entityClass;
     this.entityType = entityType;
+    Entity.registerEntity(entityClass, entityType, this);
   }
 
   public T createNewRecord(T record, String extension, String recordFQN) {
