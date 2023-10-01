@@ -1,0 +1,70 @@
+
+{
+  "$id": "https://open-metadata.org/schema/analytics/aggregatedCostAnalysisReportData.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "aggregatedCostAnalysisReportData",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.analytics.AggregatedCostAnalysisReportData.json",
+  "description": "Aggregated data for Cost Analysis Report.",
+  "definitions": {
+    "dataAssetCount": {
+      "description": "Count of Data Assets over a time period",
+      "type": "object",
+      "properties": {
+        "threeDays": {
+          "description": "Data Asset Count for 3 days",
+          "type": "number"
+        },
+        "sevenDays": {
+          "description": "Data Asset Count for 7 days",
+          "type": "number"
+        },
+        "fourteenDays": {
+          "description": "Data Asset Count for 14 days",
+          "type": "number"
+        },
+        "thirtyDays": {
+          "description": "Data Asset Count for 30 days",
+          "type": "number"
+        },
+        "sixtyDays": {
+          "description": "Data Asset Count for 60 days",
+          "type": "number"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["entity"]
+    }
+  },
+  "properties": {
+    "unusedDataAssets": {
+      "description": "Number of unused Data Assets over a period of time",
+      "$ref": "#/definitions/dataAssetCount"
+    },
+    "frequentlyUsedDataAssets": {
+      "description": "Number of frequently used Data Assets over a period of time",
+      "$ref": "#/definitions/dataAssetCount"
+    },
+    "totalSize": {
+      "description": "Total Size based in Bytes",
+      "type": "number"
+    },
+    "serviceName": {
+      "type": "string",
+      "description": "Name of the service"
+    },
+    "serviceType": {
+      "description": "Type of the service",
+      "type": "string"
+    },
+    "entityType": {
+      "type": "string",
+      "description": "Type of the entity"
+    },
+    "serviceOwner": {
+      "description": "Name of the service owner",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

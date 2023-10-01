@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -118,8 +117,8 @@ public class MetadataServiceResource
     return service;
   }
 
-  public MetadataServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
+  public MetadataServiceResource(Authorizer authorizer) {
+    super(Entity.METADATA_SERVICE, authorizer, ServiceType.METADATA);
   }
 
   @Override

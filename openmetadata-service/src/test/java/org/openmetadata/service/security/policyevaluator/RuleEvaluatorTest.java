@@ -46,7 +46,7 @@ class RuleEvaluatorTest {
   @BeforeAll
   public static void setup() {
     TeamRepository teamRepository = mock(TeamRepository.class);
-    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository, null);
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
     Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
         .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
     Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
@@ -66,7 +66,7 @@ class RuleEvaluatorTest {
         .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     TableRepository tableRepository = mock(TableRepository.class);
-    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository, null);
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
 

@@ -44,7 +44,7 @@ import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
 import org.openmetadata.service.resources.Collection;
@@ -66,8 +66,8 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
   static final String FIELDS = "owner,usageSummary";
 
-  public ReportResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Report.class, new ReportRepository(dao), authorizer);
+  public ReportResource(Authorizer authorizer) {
+    super(Entity.REPORT, authorizer);
   }
 
   @Override

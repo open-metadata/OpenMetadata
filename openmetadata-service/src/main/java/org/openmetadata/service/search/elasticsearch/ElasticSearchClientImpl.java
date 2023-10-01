@@ -154,6 +154,7 @@ import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
+// Not tagged with Repository annotation as it is programmatically initialized
 public class ElasticSearchClientImpl implements SearchRepository {
 
   @SuppressWarnings("deprecated")
@@ -169,6 +170,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
     this.dao = dao;
   }
 
+  @Override
   public CollectionDAO getDao() {
     return dao;
   }
@@ -1039,12 +1041,6 @@ public class ElasticSearchClientImpl implements SearchRepository {
     }
   }
 
-  /**
-   * @param entity
-   * @param delete
-   * @param field
-   * @param alias
-   */
   @Override
   public void softDeleteOrRestoreChildren(EntityInterface entity, boolean delete, String field, String alias) {
     if (entity != null) {

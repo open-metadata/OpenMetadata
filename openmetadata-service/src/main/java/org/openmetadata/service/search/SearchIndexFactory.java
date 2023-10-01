@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
@@ -53,6 +54,7 @@ import org.openmetadata.service.search.indexes.MlModelServiceIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
+import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
 import org.openmetadata.service.search.indexes.StorageServiceIndex;
@@ -139,6 +141,10 @@ public class SearchIndexFactory {
         return new WebAnalyticEntityViewReportDataIndex((ReportData) entity);
       case Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA:
         return new WebAnalyticUserActivityReportDataIndex((ReportData) entity);
+      case Entity.RAW_COST_ANALYSIS_REPORT_DATA:
+        return new RawCostAnalysisReportDataIndex((ReportData) entity);
+      case Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA:
+        return new AggregatedCostAnalysisReportDataIndex((ReportData) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
