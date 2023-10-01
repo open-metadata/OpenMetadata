@@ -74,10 +74,8 @@ import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -107,7 +105,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private final MetadataServiceRepository metadataServiceRepository;
   static final String FIELDS = FIELD_OWNER;
 
   @Override
@@ -117,9 +114,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
-    this.metadataServiceRepository = new MetadataServiceRepository(dao);
+  public IngestionPipelineResource(Authorizer authorizer) {
+    super(Entity.INGESTION_PIPELINE, authorizer);
   }
 
   @Override
@@ -137,9 +133,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     if (config.getElasticSearchConfiguration() != null) {
       try {
         EntityReference metadataService =
-            this.metadataServiceRepository
-                .getByName(null, OPENMETADATA_SERVICE, repository.getFields("id"))
-                .getEntityReference();
+            this.repository.getByName(null, OPENMETADATA_SERVICE, repository.getFields("id")).getEntityReference();
         // Create Data Insights Pipeline
         CreateIngestionPipeline createPipelineRequest =
             new CreateIngestionPipeline()

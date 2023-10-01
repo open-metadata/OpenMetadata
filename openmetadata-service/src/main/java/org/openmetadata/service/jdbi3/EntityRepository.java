@@ -179,6 +179,7 @@ import org.openmetadata.service.util.ResultList;
  * information does not become stale.
  */
 @Slf4j
+@Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
@@ -210,6 +211,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
+  @Getter protected final boolean supportsExperts;
   protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
@@ -273,6 +275,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_REVIEWERS);
       this.putFields.addField(allowedFields, FIELD_REVIEWERS);
     }
+    this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
+    if (supportsExperts) {
+      this.patchFields.addField(allowedFields, FIELD_EXPERTS);
+      this.putFields.addField(allowedFields, FIELD_EXPERTS);
+    }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     if (supportsDataProducts) {
       this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
@@ -288,6 +295,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
       this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
     }
+    Entity.registerEntity(entityClass, entityType, this);
   }
 
   /**
@@ -1532,7 +1540,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityReference getDomain(T entity) {
-    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
+    return supportsDomain ? getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false) : null;
   }
 
   private List<EntityReference> getDataProducts(T entity) {
@@ -1552,11 +1560,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getReviewers(T entity) {
-    return findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER);
+    return supportsReviewers ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER) : null;
   }
 
   protected List<EntityReference> getExperts(T entity) {
-    return findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER);
+    return supportsExperts ? findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER) : null;
   }
 
   public EntityReference getOwner(EntityReference ref) {

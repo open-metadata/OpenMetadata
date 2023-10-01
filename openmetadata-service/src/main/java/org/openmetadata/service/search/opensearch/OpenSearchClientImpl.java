@@ -154,6 +154,7 @@ import org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
+// Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClientImpl implements SearchRepository {
   private final RestHighLevelClient client;
   private final CollectionDAO dao;
@@ -1170,7 +1171,7 @@ public class OpenSearchClientImpl implements SearchRepository {
     if (updateByQueryRequest != null) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<BulkByScrollResponse>() {
+          new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
               LOG.info("Update by query succeeded: " + response.toString());

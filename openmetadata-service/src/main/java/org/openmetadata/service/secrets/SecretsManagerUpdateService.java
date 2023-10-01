@@ -178,8 +178,7 @@ public class SecretsManagerUpdateService {
   private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(CollectionDetails collectionDetails) {
     Class<?> collectionDetailsClass = extractCollectionDetailsClass(collectionDetails);
     if (ServiceEntityResource.class.isAssignableFrom(collectionDetailsClass)) {
-      return Optional.of(
-          ((ServiceEntityResource<?, ?, ?>) collectionDetails.getResource()).getServiceEntityRepository());
+      return Optional.of(((ServiceEntityResource<?, ?, ?>) collectionDetails.getResource()).getRepository());
     }
     return Optional.empty();
   }

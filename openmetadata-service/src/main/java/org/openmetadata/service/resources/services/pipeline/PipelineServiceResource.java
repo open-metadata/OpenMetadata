@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -82,8 +81,8 @@ public class PipelineServiceResource
     return service;
   }
 
-  public PipelineServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(PipelineService.class, new PipelineServiceRepository(dao), authorizer, ServiceType.PIPELINE);
+  public PipelineServiceResource(Authorizer authorizer) {
+    super(Entity.PIPELINE_SERVICE, authorizer, ServiceType.PIPELINE);
   }
 
   @Override
