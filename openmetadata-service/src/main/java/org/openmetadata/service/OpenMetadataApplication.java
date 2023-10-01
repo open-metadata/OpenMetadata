@@ -158,7 +158,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
-
     // init Secret Manager
     final SecretsManager secretsManager =
         SecretsManagerFactory.createSecretsManager(
@@ -202,7 +201,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EventPubSub.start();
 
     registerResources(catalogConfig, environment, jdbi, collectionDAO);
-
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbiUnitOfWorkProvider);
