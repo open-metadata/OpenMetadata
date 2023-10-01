@@ -153,7 +153,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Fernet.getInstance().setFernetKey(catalogConfig);
 
     // Init Settings Cache
-    SettingsCache.initialize(catalogConfig);
+    SettingsCache.initialize(catalogConfig, collectionDAO);
 
     // init Secret Manager
     final SecretsManager secretsManager =
