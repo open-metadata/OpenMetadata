@@ -57,6 +57,7 @@ from metadata.generated.schema.type.tagLabel import (
     TagLabel,
     TagSource,
 )
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import find_column_in_table
 
@@ -361,8 +362,12 @@ class OMetaTableTest(TestCase):
         """
         updated: Table = self.metadata.patch_column_tags(
             table=self.table,
-            tag_label=PII_TAG_LABEL,  # Shipped by default
-            column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
+            column_tags=[
+                ColumnTag(
+                    column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
+                    tag_label=PII_TAG_LABEL,  # Shipped by default
+                )
+            ],
         )
         updated_col = find_column_in_table(column_name="id", table=updated)
 
@@ -370,8 +375,12 @@ class OMetaTableTest(TestCase):
 
         updated_again: Table = self.metadata.patch_column_tags(
             table=self.table,
-            tag_label=TIER_TAG_LABEL,  # Shipped by default
-            column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
+            column_tags=[
+                ColumnTag(
+                    column_fqn=self.table.fullyQualifiedName.__root__ + ".id",
+                    tag_label=TIER_TAG_LABEL,  # Shipped by default
+                )
+            ],
         )
         updated_again_col = find_column_in_table(column_name="id", table=updated_again)
 
@@ -553,8 +562,12 @@ class OMetaTableTest(TestCase):
 
         with_tags: Table = self.metadata.patch_column_tags(
             table=created,
-            column_fqn=created.fullyQualifiedName.__root__ + ".struct.id",
-            tag_label=TIER_TAG_LABEL,
+            column_tags=[
+                ColumnTag(
+                    column_fqn=created.fullyQualifiedName.__root__ + ".struct.id",
+                    tag_label=TIER_TAG_LABEL,
+                )
+            ],
         )
 
         self.assertEqual(
