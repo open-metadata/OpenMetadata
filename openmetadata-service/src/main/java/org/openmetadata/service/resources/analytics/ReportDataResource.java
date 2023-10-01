@@ -28,7 +28,6 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.ReportData.ReportDataType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
@@ -48,8 +47,8 @@ import org.openmetadata.service.util.ResultList;
 public class ReportDataResource extends EntityTimeSeriesResource<ReportData, ReportDataRepository> {
   public static final String COLLECTION_PATH = "v1/analytics/dataInsights/data";
 
-  public ReportDataResource(CollectionDAO repository, Authorizer authorizer) {
-    super(ReportData.class, new ReportDataRepository(repository), authorizer);
+  public ReportDataResource(Authorizer authorizer) {
+    super(Entity.ENTITY_REPORT_DATA, authorizer);
   }
 
   public static class ReportDataResultList extends ResultList<ReportData> {

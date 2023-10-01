@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -78,8 +77,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   static final String FIELDS = "domain,owner,experts,assets";
 
-  public DataProductResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DataProduct.class, new DataProductRepository(dao), authorizer);
+  public DataProductResource(Authorizer authorizer) {
+    super(Entity.DATA_PRODUCT, authorizer);
   }
 
   @Override
