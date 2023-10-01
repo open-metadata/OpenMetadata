@@ -29,7 +29,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.processor.models import ProfilerDef
 
