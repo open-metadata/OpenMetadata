@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.resources.types.TypeResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
@@ -47,8 +48,16 @@ public class TypeRepository extends EntityRepository<Type> {
   private static final String UPDATE_FIELDS = "customProperties";
   private static final String PATCH_FIELDS = "customProperties";
 
-  public TypeRepository(CollectionDAO dao) {
-    super(TypeResource.COLLECTION_PATH, Entity.TYPE, Type.class, dao.typeEntityDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public TypeRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        TypeResource.COLLECTION_PATH,
+        Entity.TYPE,
+        Type.class,
+        dao.typeEntityDAO(),
+        dao,
+        searchRepository,
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
   }
 
   @Override

@@ -31,6 +31,7 @@ import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.quartz.SchedulerException;
 
@@ -42,13 +43,14 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
   static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
 
-  public EventSubscriptionRepository(CollectionDAO dao) {
+  public EventSubscriptionRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         EventSubscriptionResource.COLLECTION_PATH,
         Entity.EVENT_SUBSCRIPTION,
         EventSubscription.class,
         dao.eventSubscriptionDAO(),
         dao,
+        searchRepository,
         ALERT_PATCH_FIELDS,
         ALERT_UPDATE_FIELDS);
   }

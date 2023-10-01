@@ -76,6 +76,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -106,13 +107,14 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
 
-  public TableRepository(CollectionDAO daoCollection) {
+  public TableRepository(CollectionDAO daoCollection, SearchRepository searchRepository) {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
         daoCollection.tableDAO(),
         daoCollection,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

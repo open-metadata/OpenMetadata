@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -52,13 +53,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String RUN_ID_EXTENSION_KEY = "runId";
   private PipelineServiceClient pipelineServiceClient;
 
-  public IngestionPipelineRepository(CollectionDAO dao) {
+  public IngestionPipelineRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         IngestionPipelineResource.COLLECTION_PATH,
         Entity.INGESTION_PIPELINE,
         IngestionPipeline.class,
         dao.ingestionPipelineDAO(),
         dao,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
   }

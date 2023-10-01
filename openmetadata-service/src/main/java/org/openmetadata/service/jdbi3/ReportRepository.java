@@ -19,13 +19,14 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.reports.ReportResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
-  public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", "");
+  public ReportRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, searchRepository, "", "");
   }
 
   @Override

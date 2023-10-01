@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.reflections.Reflections;
@@ -162,9 +163,10 @@ public final class CollectionRegistry {
       Environment environment,
       OpenMetadataApplicationConfig config,
       CollectionDAO daoObject,
+      SearchRepository searchRepository,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
-    Entity.initializeRepositories(daoObject);
+    Entity.initializeRepositories(daoObject, searchRepository);
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();

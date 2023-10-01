@@ -17,6 +17,7 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -28,7 +29,7 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
 
-  public SystemRepository(CollectionDAO dao) {
+  public SystemRepository(CollectionDAO dao, SearchRepository searchRepository) {
     this.dao = dao.systemDAO();
     Entity.setSystemRepository(this);
   }

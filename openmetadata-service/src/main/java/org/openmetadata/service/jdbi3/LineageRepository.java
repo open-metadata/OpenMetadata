@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -36,7 +37,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO dao) {
+  public LineageRepository(CollectionDAO dao, SearchRepository searchRepository) {
     this.dao = dao;
     Entity.setLineageRepository(this);
   }

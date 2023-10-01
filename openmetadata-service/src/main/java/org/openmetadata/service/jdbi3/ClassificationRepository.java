@@ -33,17 +33,19 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
-  public ClassificationRepository(CollectionDAO dao) {
+  public ClassificationRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
         Entity.CLASSIFICATION,
         Classification.class,
         dao.classificationDAO(),
         dao,
+        searchRepository,
         "",
         "");
     quoteFqn = true;

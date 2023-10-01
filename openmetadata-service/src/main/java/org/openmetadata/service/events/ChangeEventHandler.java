@@ -35,6 +35,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FeedUtils;
 import org.openmetadata.service.util.JsonUtils;
@@ -45,9 +46,12 @@ public class ChangeEventHandler implements EventHandler {
   private ObjectMapper mapper;
   private NotificationHandler notificationHandler;
 
-  public void init(OpenMetadataApplicationConfig config) {
+  private SearchRepository searchRepository;
+
+  public void init(OpenMetadataApplicationConfig config, SearchRepository searchRepository) {
     this.mapper = new ObjectMapper();
     this.notificationHandler = new NotificationHandler();
+    this.searchRepository = searchRepository;
   }
 
   @SneakyThrows
@@ -58,7 +62,7 @@ public class ChangeEventHandler implements EventHandler {
     try {
       CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-      FeedRepository feedRepository = new FeedRepository(collectionDAO);
+      FeedRepository feedRepository = new FeedRepository(collectionDAO, searchRepository);
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext);

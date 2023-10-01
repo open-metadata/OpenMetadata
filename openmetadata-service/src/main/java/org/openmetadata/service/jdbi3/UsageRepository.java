@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -54,7 +55,7 @@ public class UsageRepository {
   private static final String POST = "createNew";
   private final CollectionDAO dao;
 
-  public UsageRepository(CollectionDAO dao) {
+  public UsageRepository(CollectionDAO dao, SearchRepository searchRepository) {
     this.dao = dao;
     Entity.setUsageRepository(this);
   }

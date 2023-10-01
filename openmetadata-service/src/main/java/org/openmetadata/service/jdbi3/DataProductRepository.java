@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -34,13 +35,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS = "experts,assets"; // Domain field can't be updated
 
-  public DataProductRepository(CollectionDAO dao) {
+  public DataProductRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         DataProductResource.COLLECTION_PATH,
         Entity.DATA_PRODUCT,
         DataProduct.class,
         dao.dataProductDAO(),
         dao,
+        searchRepository,
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

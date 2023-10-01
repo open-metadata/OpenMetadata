@@ -22,13 +22,22 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.metrics.MetricsResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  public MetricsRepository(CollectionDAO dao) {
-    super(MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, dao.metricsDAO(), dao, "", "");
+  public MetricsRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        MetricsResource.COLLECTION_PATH,
+        Entity.METRICS,
+        Metrics.class,
+        dao.metricsDAO(),
+        dao,
+        searchRepository,
+        "",
+        "");
   }
 
   @Override

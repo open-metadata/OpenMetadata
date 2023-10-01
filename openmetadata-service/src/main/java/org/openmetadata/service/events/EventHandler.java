@@ -16,9 +16,10 @@ package org.openmetadata.service.events;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.search.SearchRepository;
 
 public interface EventHandler {
-  void init(OpenMetadataApplicationConfig config);
+  void init(OpenMetadataApplicationConfig config, SearchRepository searchRepository);
 
   Void process(ContainerRequestContext requestContext, ContainerResponseContext responseContext);
 

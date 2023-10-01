@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
@@ -59,8 +60,16 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "PageViewsByEntities",
           "MostViewedEntities");
 
-  public DataInsightChartRepository(CollectionDAO dao) {
-    super(COLLECTION_PATH, DATA_INSIGHT_CHART, DataInsightChart.class, dao.dataInsightChartDAO(), dao, "", "");
+  public DataInsightChartRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        COLLECTION_PATH,
+        DATA_INSIGHT_CHART,
+        DataInsightChart.class,
+        dao.dataInsightChartDAO(),
+        dao,
+        searchRepository,
+        "",
+        "");
   }
 
   @Override

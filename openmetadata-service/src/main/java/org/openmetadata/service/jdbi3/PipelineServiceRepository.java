@@ -19,15 +19,17 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
+import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class PipelineServiceRepository extends ServiceEntityRepository<PipelineService, PipelineConnection> {
 
-  public PipelineServiceRepository(CollectionDAO dao) {
+  public PipelineServiceRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         PipelineServiceResource.COLLECTION_PATH,
         Entity.PIPELINE_SERVICE,
         dao,
+        searchRepository,
         dao.pipelineServiceDAO(),
         PipelineConnection.class,
         "",

@@ -293,6 +293,7 @@ public final class TablesInitializer {
         flyway.migrate();
         validateAndRunSystemDataMigrations(
             jdbi,
+            searchRepository,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             forceMigrations);
@@ -302,6 +303,7 @@ public final class TablesInitializer {
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
             jdbi,
+            searchRepository,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             forceMigrations);
@@ -355,10 +357,14 @@ public final class TablesInitializer {
   }
 
   public static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
+      Jdbi jdbi,
+      SearchRepository searchRepository,
+      ConnectionType connType,
+      String nativeMigrationSQLPath,
+      boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(jdbi.onDemand(CollectionDAO.class), searchRepository);
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }

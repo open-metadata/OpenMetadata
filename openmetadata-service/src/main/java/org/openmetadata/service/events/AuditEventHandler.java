@@ -20,6 +20,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AuditLog;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.search.SearchRepository;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
@@ -27,7 +28,7 @@ import org.slf4j.MarkerFactory;
 public class AuditEventHandler implements EventHandler {
   private final Marker auditMarker = MarkerFactory.getMarker("AUDIT");
 
-  public void init(OpenMetadataApplicationConfig config) {
+  public void init(OpenMetadataApplicationConfig config, SearchRepository searchRepository) {
     // Nothing to do
   }
 

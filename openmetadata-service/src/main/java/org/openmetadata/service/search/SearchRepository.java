@@ -79,6 +79,9 @@ public interface SearchRepository {
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
+  String CLIENT_NOT_CONFIGURED =
+      "Search Configuration is not provided, client is not initialized. Please check your OpenMetadata Configuration";
+
   default void handleOwnerUpdates(EntityInterface original, EntityInterface updated, String eventType) {
     switch (eventType) {
       case ADD:

@@ -56,6 +56,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.reflections.Reflections;
 
@@ -237,10 +238,10 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(CollectionDAO collectionDAO) {
+  public static void initializeRepositories(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     if (!initializedRepositories) {
       Entity.collectionDAO = collectionDAO;
-      tokenRepository = new TokenRepository(collectionDAO);
+      tokenRepository = new TokenRepository(collectionDAO, searchRepository);
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
       Set<Class<?>> repositories = getRepositories();
@@ -249,7 +250,8 @@ public final class Entity {
           continue; // Don't instantiate abstract classes
         }
         try {
-          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
+          clz.getDeclaredConstructor(CollectionDAO.class, SearchRepository.class)
+              .newInstance(collectionDAO, searchRepository);
         } catch (Exception e) {
           LOG.warn("Exception encountered", e);
         }

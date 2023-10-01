@@ -62,6 +62,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -73,13 +74,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
-  public GlossaryTermRepository(CollectionDAO dao) {
+  public GlossaryTermRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
         dao.glossaryTermDAO(),
         dao,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

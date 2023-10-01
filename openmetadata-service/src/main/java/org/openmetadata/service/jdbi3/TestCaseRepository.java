@@ -38,6 +38,7 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -53,8 +54,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
-  public TestCaseRepository(CollectionDAO dao) {
-    super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public TestCaseRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        COLLECTION_PATH,
+        TEST_CASE,
+        TestCase.class,
+        dao.testCaseDAO(),
+        dao,
+        searchRepository,
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 

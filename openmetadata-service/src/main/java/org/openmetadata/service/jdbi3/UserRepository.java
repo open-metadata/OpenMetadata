@@ -57,6 +57,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
@@ -77,8 +78,16 @@ public class UserRepository extends EntityRepository<User> {
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   private volatile EntityReference organization;
 
-  public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
+  public UserRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        UserResource.COLLECTION_PATH,
+        USER,
+        User.class,
+        dao.userDAO(),
+        dao,
+        searchRepository,
+        USER_PATCH_FIELDS,
+        USER_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
   }

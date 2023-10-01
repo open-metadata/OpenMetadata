@@ -57,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -65,13 +66,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
 
-  public GlossaryRepository(CollectionDAO dao) {
+  public GlossaryRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         GlossaryResource.COLLECTION_PATH,
         Entity.GLOSSARY,
         Glossary.class,
         dao.glossaryDAO(),
         dao,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = true;

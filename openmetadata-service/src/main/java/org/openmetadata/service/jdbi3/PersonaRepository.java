@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.teams.PersonaResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -31,13 +32,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
   static final String PERSONA_PATCH_FIELDS = "users";
   static final String FIELD_USERS = "users";
 
-  public PersonaRepository(CollectionDAO dao) {
+  public PersonaRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         PersonaResource.COLLECTION_PATH,
         PERSONA,
         Persona.class,
         dao.personaDAO(),
         dao,
+        searchRepository,
         PERSONA_PATCH_FIELDS,
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;

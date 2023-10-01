@@ -69,6 +69,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.TeamResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -83,8 +84,16 @@ public class TeamRepository extends EntityRepository<Team> {
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
-  public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
+  public TeamRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        TeamResource.COLLECTION_PATH,
+        TEAM,
+        Team.class,
+        dao.teamDAO(),
+        dao,
+        searchRepository,
+        TEAM_PATCH_FIELDS,
+        TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
   }

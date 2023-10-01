@@ -82,6 +82,7 @@ import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -106,7 +107,7 @@ public class FeedRepository {
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER = new FeedMessageDecorator();
 
-  public FeedRepository(CollectionDAO dao) {
+  public FeedRepository(CollectionDAO dao, SearchRepository searchRepository) {
     this.dao = dao;
     Entity.setFeedRepository(this);
     ResourceRegistry.addResource("feed", null, Entity.getEntityFields(Thread.class));

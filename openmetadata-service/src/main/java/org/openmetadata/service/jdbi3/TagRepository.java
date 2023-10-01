@@ -32,13 +32,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
-  public TagRepository(CollectionDAO dao) {
-    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
+  public TagRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, searchRepository, "", "");
     supportsSearch = true;
   }
 

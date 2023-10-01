@@ -26,14 +26,23 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatabaseResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
-  public DatabaseRepository(CollectionDAO dao) {
-    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
+  public DatabaseRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        DatabaseResource.COLLECTION_PATH,
+        Entity.DATABASE,
+        Database.class,
+        dao.databaseDAO(),
+        dao,
+        searchRepository,
+        "",
+        "");
     supportsSearch = true;
   }
 

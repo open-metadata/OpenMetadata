@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -44,13 +45,14 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_URL = "sourceUrl";
 
-  public DashboardRepository(CollectionDAO dao) {
+  public DashboardRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         DashboardResource.COLLECTION_PATH,
         Entity.DASHBOARD,
         Dashboard.class,
         dao.dashboardDAO(),
         dao,
+        searchRepository,
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;

@@ -19,16 +19,18 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
+import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class MessagingServiceRepository extends ServiceEntityRepository<MessagingService, MessagingConnection> {
   private static final String UPDATE_FIELDS = "owner, connection";
 
-  public MessagingServiceRepository(CollectionDAO dao) {
+  public MessagingServiceRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         MessagingServiceResource.COLLECTION_PATH,
         Entity.MESSAGING_SERVICE,
         dao,
+        searchRepository,
         dao.messagingServiceDAO(),
         MessagingConnection.class,
         UPDATE_FIELDS,

@@ -42,7 +42,6 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
 import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_CHILDREN_MAPPING;
 import static org.openmetadata.service.search.SearchRepository.ADD;
 import static org.openmetadata.service.search.SearchRepository.DEFAULT_UPDATE_SCRIPT;
@@ -137,6 +136,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -199,6 +199,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   @Getter protected final CollectionDAO daoCollection;
+  @Getter protected final SearchRepository searchRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -228,6 +229,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
       CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
       String patchFields,
       String putFields) {
     this.collectionPath = collectionPath;
@@ -235,6 +237,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
     this.daoCollection = collectionDAO;
+    this.searchRepository = searchRepository;
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);

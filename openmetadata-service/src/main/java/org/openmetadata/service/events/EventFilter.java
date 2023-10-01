@@ -26,7 +26,7 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
@@ -38,13 +38,13 @@ public class EventFilter implements ContainerResponseFilter {
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public EventFilter(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
+  public EventFilter(OpenMetadataApplicationConfig config, SearchRepository searchRepository) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
-    registerEventHandlers(config, provider);
+    registerEventHandlers(config, searchRepository);
   }
 
-  private void registerEventHandlers(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
+  private void registerEventHandlers(OpenMetadataApplicationConfig config, SearchRepository searchRepository) {
     try {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
@@ -52,7 +52,7 @@ public class EventFilter implements ContainerResponseFilter {
         @SuppressWarnings("unchecked")
         EventHandler eventHandler =
             ((Class<EventHandler>) Class.forName(eventHandlerClassName)).getConstructor().newInstance();
-        eventHandler.init(config);
+        eventHandler.init(config, searchRepository);
         eventHandlers.add(eventHandler);
         LOG.info("Added event handler {}", eventHandlerClassName);
       }

@@ -25,6 +25,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -32,8 +33,16 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
-  public DomainRepository(CollectionDAO dao) {
-    super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
+  public DomainRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        DomainResource.COLLECTION_PATH,
+        DOMAIN,
+        Domain.class,
+        dao.domainDAO(),
+        dao,
+        searchRepository,
+        UPDATE_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 

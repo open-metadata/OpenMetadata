@@ -46,6 +46,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -54,9 +55,16 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
-  public SearchIndexRepository(CollectionDAO dao) {
+  public SearchIndexRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
-        SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+        SearchIndexResource.COLLECTION_PATH,
+        Entity.SEARCH_INDEX,
+        SearchIndex.class,
+        dao.searchIndexDAO(),
+        dao,
+        searchRepository,
+        "",
+        "");
     supportsSearch = true;
   }
 

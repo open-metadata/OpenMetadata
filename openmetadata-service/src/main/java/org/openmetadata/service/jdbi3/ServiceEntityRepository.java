@@ -20,6 +20,7 @@ import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil;
@@ -35,11 +36,12 @@ public abstract class ServiceEntityRepository<
       String collectionPath,
       String service,
       CollectionDAO dao,
+      SearchRepository searchRepository,
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
       String updateFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, searchRepository, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
     quoteFqn = true;

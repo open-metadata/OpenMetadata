@@ -37,6 +37,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -44,13 +45,14 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
-  public DashboardDataModelRepository(CollectionDAO dao) {
+  public DashboardDataModelRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
         dao.dashboardDataModelDAO(),
         dao,
+        searchRepository,
         "",
         "");
     supportsSearch = true;

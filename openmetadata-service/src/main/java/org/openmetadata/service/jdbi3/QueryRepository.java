@@ -21,6 +21,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -32,13 +33,14 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
 
-  public QueryRepository(CollectionDAO dao) {
+  public QueryRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         QueryResource.COLLECTION_PATH,
         Entity.QUERY,
         Query.class,
         dao.queryDAO(),
         dao,
+        searchRepository,
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
     supportsSearch = true;

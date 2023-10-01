@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.TEST_CONNECTION_DEFINITION;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.service.resources.services.connections.TestConnectionDefinitionResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /*
@@ -16,13 +17,14 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   private static final String UPDATE_FIELDS = "steps";
   private static final String PATCH_FIELDS = "";
 
-  public TestConnectionDefinitionRepository(CollectionDAO dao) {
+  public TestConnectionDefinitionRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         TestConnectionDefinitionResource.COLLECTION_PATH,
         TEST_CONNECTION_DEFINITION,
         TestConnectionDefinition.class,
         dao.testConnectionDefinitionDAO(),
         dao,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
   }

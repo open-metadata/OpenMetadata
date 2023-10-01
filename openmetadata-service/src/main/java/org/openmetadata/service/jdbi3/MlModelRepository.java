@@ -44,6 +44,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.mlmodels.MlModelResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -54,13 +55,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
 
-  public MlModelRepository(CollectionDAO dao) {
+  public MlModelRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         MlModelResource.COLLECTION_PATH,
         Entity.MLMODEL,
         MlModel.class,
         dao.mlModelDAO(),
         dao,
+        searchRepository,
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
     supportsSearch = true;

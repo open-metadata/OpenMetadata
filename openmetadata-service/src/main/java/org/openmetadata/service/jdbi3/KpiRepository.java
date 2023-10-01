@@ -25,6 +25,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -38,8 +39,9 @@ public class KpiRepository extends EntityRepository<Kpi> {
       "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
-  public KpiRepository(CollectionDAO dao) {
-    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public KpiRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, searchRepository, PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override

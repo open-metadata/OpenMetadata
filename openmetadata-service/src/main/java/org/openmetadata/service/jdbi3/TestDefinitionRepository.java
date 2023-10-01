@@ -5,16 +5,18 @@ import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
-  public TestDefinitionRepository(CollectionDAO dao) {
+  public TestDefinitionRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         TestDefinitionResource.COLLECTION_PATH,
         TEST_DEFINITION,
         TestDefinition.class,
         dao.testDefinitionDAO(),
         dao,
+        searchRepository,
         "",
         "");
   }

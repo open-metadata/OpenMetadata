@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -54,13 +55,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
-  public PipelineRepository(CollectionDAO dao) {
+  public PipelineRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         PipelineResource.COLLECTION_PATH,
         Entity.PIPELINE,
         Pipeline.class,
         dao.pipelineDAO(),
         dao,
+        searchRepository,
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
     supportsSearch = true;

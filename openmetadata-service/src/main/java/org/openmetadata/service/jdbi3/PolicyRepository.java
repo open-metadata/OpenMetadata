@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.policies.PolicyResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -45,8 +46,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PolicyRepository extends EntityRepository<Policy> {
   public static final String ENABLED = "enabled";
 
-  public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, dao.policyDAO(), dao, "", "");
+  public PolicyRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, dao.policyDAO(), dao, searchRepository, "", "");
   }
 
   @Override

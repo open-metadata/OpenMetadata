@@ -165,9 +165,12 @@ public class ElasticSearchClientImpl implements SearchRepository {
   private static final EnumMap<SearchIndexDefinition.ElasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus>
       elasticSearchIndexes = new EnumMap<>(SearchIndexDefinition.ElasticSearchIndexType.class);
 
+  private final boolean isClientConfigured;
+
   public ElasticSearchClientImpl(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     this.client = createElasticSearchClient(esConfig);
     this.dao = dao;
+    this.isClientConfigured = this.client != null;
   }
 
   @Override
@@ -184,110 +187,129 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public boolean createIndex(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
-      gRequest.local(false);
-      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
-      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
-          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
-      if (!exists) {
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.source(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
-        // creating alias for indexes
-        createAliases(elasticSearchIndexType);
+    if (isClientConfigured) {
+      try {
+        GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+        gRequest.local(false);
+        boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+        ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+            elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
+        if (!exists) {
+          CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+          request.source(elasticSearchIndexMapping, XContentType.JSON);
+          CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+          LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
+          // creating alias for indexes
+          createAliases(elasticSearchIndexType);
+        }
+        elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
+      } catch (Exception e) {
+        elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
+        updateElasticSearchFailureStatus(
+            IndexUtil.getContext("Creating Index", elasticSearchIndexType.indexName),
+            String.format(IndexUtil.REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
+        LOG.error("Failed to create Elastic Search indexes due to", e);
+        return false;
       }
-      elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
-    } catch (Exception e) {
-      elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
-      updateElasticSearchFailureStatus(
-          IndexUtil.getContext("Creating Index", elasticSearchIndexType.indexName),
-          String.format(IndexUtil.REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
-      LOG.error("Failed to create Elastic Search indexes due to", e);
+      return true;
+    } else {
+      LOG.warn(CLIENT_NOT_CONFIGURED);
       return false;
     }
-    return true;
   }
 
   private void createAliases(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType) {
-    ActionListener<AcknowledgedResponse> listener =
-        new ActionListener<>() {
-          @Override
-          public void onResponse(AcknowledgedResponse acknowledgedResponse) {
-            LOG.info("Created successfully: " + acknowledgedResponse.toString());
-          }
+    if (isClientConfigured) {
+      ActionListener<AcknowledgedResponse> listener =
+          new ActionListener<>() {
+            @Override
+            public void onResponse(AcknowledgedResponse acknowledgedResponse) {
+              LOG.info("Created successfully: " + acknowledgedResponse.toString());
+            }
 
-          @Override
-          public void onFailure(Exception e) {
-            LOG.error("Creation failed: " + e.getMessage());
-          }
-        };
-    IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-    IndicesAliasesRequest.AliasActions aliasAction;
-    if (!CommonUtil.nullOrEmpty(
-        ENTITY_TO_SEARCH_ALIAS_MAPPING.getOrDefault(elasticSearchIndexType.entityType, new ArrayList<>()))) {
-      List<String> aliases = ENTITY_TO_SEARCH_ALIAS_MAPPING.get(elasticSearchIndexType.entityType);
-      aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(elasticSearchIndexType.indexName)
-              .aliases(aliases.toArray(new String[0]));
+            @Override
+            public void onFailure(Exception e) {
+              LOG.error("Creation failed: " + e.getMessage());
+            }
+          };
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      IndicesAliasesRequest.AliasActions aliasAction;
+      if (!CommonUtil.nullOrEmpty(
+          ENTITY_TO_SEARCH_ALIAS_MAPPING.getOrDefault(elasticSearchIndexType.entityType, new ArrayList<>()))) {
+        List<String> aliases = ENTITY_TO_SEARCH_ALIAS_MAPPING.get(elasticSearchIndexType.entityType);
+        aliasAction =
+            IndicesAliasesRequest.AliasActions.add()
+                .index(elasticSearchIndexType.indexName)
+                .aliases(aliases.toArray(new String[0]));
+      } else {
+        aliasAction =
+            IndicesAliasesRequest.AliasActions.add()
+                .index(elasticSearchIndexType.indexName)
+                .aliases(GLOBAL_SEARCH_ALIAS);
+      }
+      aliasesRequest.addAliasAction(aliasAction);
+      client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
     } else {
-      aliasAction =
-          IndicesAliasesRequest.AliasActions.add().index(elasticSearchIndexType.indexName).aliases(GLOBAL_SEARCH_ALIAS);
+      LOG.warn(CLIENT_NOT_CONFIGURED);
     }
-    aliasesRequest.addAliasAction(aliasAction);
-    client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
   }
 
   public void updateIndex(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType, String lang) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
-      gRequest.local(false);
-      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
-      ENTITY_TO_MAPPING_SCHEMA_MAP.put(
-          elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
-      // creating alias for indexes
-      createAliases(elasticSearchIndexType);
-      if (exists) {
-        PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
-        request.source(elasticSearchIndexMapping, XContentType.JSON);
-        AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
-        LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
-      } else {
-        CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
-        request.source(elasticSearchIndexMapping, XContentType.JSON);
-        CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
+    if (isClientConfigured) {
+      try {
+        GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+        gRequest.local(false);
+        boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+        String elasticSearchIndexMapping = getIndexMapping(elasticSearchIndexType, lang);
+        ENTITY_TO_MAPPING_SCHEMA_MAP.put(
+            elasticSearchIndexType.entityType, JsonUtils.getMap(JsonUtils.readJson(elasticSearchIndexMapping)));
+        // creating alias for indexes
+        createAliases(elasticSearchIndexType);
+        if (exists) {
+          PutMappingRequest request = new PutMappingRequest(elasticSearchIndexType.indexName);
+          request.source(elasticSearchIndexMapping, XContentType.JSON);
+          AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
+          LOG.info("{} Updated {}", elasticSearchIndexType.indexName, putMappingResponse.isAcknowledged());
+        } else {
+          CreateIndexRequest request = new CreateIndexRequest(elasticSearchIndexType.indexName);
+          request.source(elasticSearchIndexMapping, XContentType.JSON);
+          CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
+          LOG.info("{} Created {}", elasticSearchIndexType.indexName, createIndexResponse.isAcknowledged());
+        }
+        elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
+      } catch (Exception e) {
+        elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.FAILED);
+        updateElasticSearchFailureStatus(
+            IndexUtil.getContext("Updating Index", elasticSearchIndexType.indexName),
+            String.format(IndexUtil.REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
+        LOG.error("Failed to update Elastic Search indexes due to", e);
       }
-      elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.CREATED);
-    } catch (Exception e) {
-      elasticSearchIndexes.put(elasticSearchIndexType, IndexUtil.ElasticSearchIndexStatus.FAILED);
-      updateElasticSearchFailureStatus(
-          IndexUtil.getContext("Updating Index", elasticSearchIndexType.indexName),
-          String.format(IndexUtil.REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
-      LOG.error("Failed to update Elastic Search indexes due to", e);
+    } else {
+      LOG.warn(CLIENT_NOT_CONFIGURED);
     }
   }
 
   @Override
   public void deleteIndex(SearchIndexDefinition.ElasticSearchIndexType elasticSearchIndexType) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
-      gRequest.local(false);
-      boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
-      if (exists) {
-        DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
-        AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-        LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
+    if (isClientConfigured) {
+      try {
+        GetIndexRequest gRequest = new GetIndexRequest(elasticSearchIndexType.indexName);
+        gRequest.local(false);
+        boolean exists = client.indices().exists(gRequest, RequestOptions.DEFAULT);
+        if (exists) {
+          DeleteIndexRequest request = new DeleteIndexRequest(elasticSearchIndexType.indexName);
+          AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
+          LOG.info("{} Deleted {}", elasticSearchIndexType.indexName, deleteIndexResponse.isAcknowledged());
+        }
+      } catch (IOException e) {
+        updateElasticSearchFailureStatus(
+            IndexUtil.getContext("Deleting Index", elasticSearchIndexType.indexName),
+            String.format(IndexUtil.REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
+        LOG.error("Failed to delete Elastic Search indexes due to", e);
       }
-    } catch (IOException e) {
-      updateElasticSearchFailureStatus(
-          IndexUtil.getContext("Deleting Index", elasticSearchIndexType.indexName),
-          String.format(IndexUtil.REASON_TRACE, e.getMessage(), ExceptionUtils.getStackTrace(e)));
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
+    } else {
+      LOG.error(CLIENT_NOT_CONFIGURED);
     }
   }
 
@@ -938,63 +960,61 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public void createTimeSeriesEntity(EntityTimeSeriesInterface entity) {
-    if (entity == null) {
-      LOG.error("Entity is null");
-      return;
-    }
-    String contextInfo = String.format("Entity Info : %s", entity);
-    String entityTimeSeriesType;
-    if (entity instanceof ReportData) {
-      // Report data type is an entity itself where each report data type has its own index
-      entityTimeSeriesType = ((ReportData) entity).getReportDataType().toString();
-    } else {
-      entityTimeSeriesType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-    }
-    SearchIndexDefinition.ElasticSearchIndexType indexType =
-        IndexUtil.getIndexMappingByEntityType(entityTimeSeriesType);
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
-    ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityTimeSeriesType, entity);
-    updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    try {
-      updateElasticSearch(updateRequest);
-    } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
-    } catch (ElasticsearchException e) {
-      handleElasticsearchException(contextInfo, e);
-    } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
+    if (entity != null && isClientConfigured) {
+      String contextInfo = String.format("Entity Info : %s", entity);
+      String entityTimeSeriesType;
+      if (entity instanceof ReportData) {
+        // Report data type is an entity itself where each report data type has its own index
+        entityTimeSeriesType = ((ReportData) entity).getReportDataType().toString();
+      } else {
+        entityTimeSeriesType = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+      }
+      SearchIndexDefinition.ElasticSearchIndexType indexType =
+          IndexUtil.getIndexMappingByEntityType(entityTimeSeriesType);
+      UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
+      ElasticSearchIndex index = SearchIndexFactory.buildIndex(entityTimeSeriesType, entity);
+      updateRequest.doc(JsonUtils.pojoToJson(index.buildESDoc()), XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      try {
+        updateElasticSearch(updateRequest);
+      } catch (DocumentMissingException ex) {
+        handleDocumentMissingException(contextInfo, ex);
+      } catch (ElasticsearchException e) {
+        handleElasticsearchException(contextInfo, e);
+      } catch (IOException ie) {
+        handleIOException(contextInfo, ie);
+      }
     }
   }
 
   @Override
   public void deleteByScript(String index, String scriptTxt, HashMap<String, Object> params) {
-    if (index == null) {
-      LOG.error("Index is null");
-      return;
-    }
-    String contextInfo = String.format("Index Info : %s", index);
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(index);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
-    ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
-    DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
-    deleteByQueryRequest.setQuery(scriptQuery);
-    deleteByQueryRequest.setRefresh(true);
-    try {
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    } catch (DocumentMissingException ex) {
-      handleDocumentMissingException(contextInfo, ex);
-    } catch (ElasticsearchException e) {
-      handleElasticsearchException(contextInfo, e);
-    } catch (IOException ie) {
-      handleIOException(contextInfo, ie);
+    if (isClientConfigured && index != null) {
+      String contextInfo = String.format("Index Info : %s", index);
+      SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(index);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
+      ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
+      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexType.indexName);
+      deleteByQueryRequest.setQuery(scriptQuery);
+      deleteByQueryRequest.setRefresh(true);
+      try {
+        deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      } catch (DocumentMissingException ex) {
+        handleDocumentMissingException(contextInfo, ex);
+      } catch (ElasticsearchException e) {
+        handleElasticsearchException(contextInfo, e);
+      } catch (IOException ie) {
+        handleIOException(contextInfo, ie);
+      }
+    } else {
+      LOG.error(CLIENT_NOT_CONFIGURED);
     }
   }
 
   @Override
   public void deleteEntity(EntityInterface entity, String scriptTxt, String field, String alias) {
-    if (entity != null) {
+    if (isClientConfigured && entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
       DeleteRequest deleteRequest = new DeleteRequest(indexType.indexName, entity.getId().toString());
@@ -1021,7 +1041,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public void softDeleteOrRestoreEntity(EntityInterface entity, boolean delete) {
-    if (entity != null) {
+    if (isClientConfigured && entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
       UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
@@ -1043,7 +1063,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public void softDeleteOrRestoreChildren(EntityInterface entity, boolean delete, String field, String alias) {
-    if (entity != null) {
+    if (isClientConfigured && entity != null) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, entity.getId().toString()));
       String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
@@ -1063,7 +1083,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public void updateEntity(EntityInterface entity, String scriptTxt, String field) {
-    if (entity != null) {
+    if (isClientConfigured && entity != null) {
       String entityType = entity.getEntityReference().getType();
       SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
       UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, entity.getId().toString());
@@ -1093,7 +1113,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   @Override
   public void updateChildren(
       EntityInterface entity, String scriptTxt, String field, String value, String alias, Object data) {
-    if (entity != null) {
+    if (isClientConfigured && entity != null) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(alias);
       updateByQueryRequest.setQuery(new MatchQueryBuilder(field, value));
       updateByQueryRequest.setRefresh(true);
@@ -1118,7 +1138,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public void updateElasticSearch(UpdateRequest updateRequest) throws IOException {
-    if (updateRequest != null) {
+    if (isClientConfigured && updateRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       ActionListener<UpdateResponse> listener =
           new ActionListener<>() {
@@ -1137,7 +1157,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) throws IOException {
-    if (updateByQueryRequest != null) {
+    if (isClientConfigured && updateByQueryRequest != null) {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       ActionListener<BulkByScrollResponse> listener =
           new ActionListener<>() {
@@ -1166,7 +1186,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) throws IOException {
-    if (deleteRequest != null) {
+    if (isClientConfigured && deleteRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       ActionListener<DeleteResponse> listener =
           new ActionListener<>() {
@@ -1186,7 +1206,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) throws IOException {
-    if (deleteRequest != null) {
+    if (isClientConfigured && deleteRequest != null) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       ActionListener<BulkByScrollResponse> listener =
@@ -1213,8 +1233,6 @@ public class ElasticSearchClientImpl implements SearchRepository {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldParams = new HashMap<>();
 
-    // TODO : Make it return
-
     // Populate Script Text
     getScriptWithParams(entity, scriptTxt, fieldParams);
     if (!CommonUtil.nullOrEmpty(scriptTxt)) {
@@ -1229,7 +1247,11 @@ public class ElasticSearchClientImpl implements SearchRepository {
 
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    return client.bulk(data, RequestOptions.DEFAULT);
+    if (isClientConfigured) {
+      return client.bulk(data, RequestOptions.DEFAULT);
+    } else {
+      return null;
+    }
   }
 
   @Override
@@ -1296,7 +1318,6 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   public void handleElasticsearchException(Object entity, ElasticsearchException e) {
-    LOG.debug(e.getMessage());
     if (e.status() == RestStatus.GATEWAY_TIMEOUT || e.status() == RestStatus.REQUEST_TIMEOUT) {
       LOG.error("Error in publishing to ElasticSearch");
       SearchEventPublisher.updateElasticSearchFailureStatus(
@@ -1556,36 +1577,40 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   public static RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
-    try {
-      RestClientBuilder restClientBuilder =
-          RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
-      if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(
-            AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-        SSLContext sslContext = createElasticSearchSSLContext(esConfig);
-        restClientBuilder.setHttpClientConfigCallback(
-            httpAsyncClientBuilder -> {
-              httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-              if (sslContext != null) {
-                httpAsyncClientBuilder.setSSLContext(sslContext);
-              }
-              // Enable TCP keep alive strategy
-              if (esConfig.getKeepAliveTimeoutSecs() != null && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                httpAsyncClientBuilder.setKeepAliveStrategy(
-                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-              }
-              return httpAsyncClientBuilder;
-            });
+    if (esConfig != null) {
+      try {
+        RestClientBuilder restClientBuilder =
+            RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+        if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
+          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+          credentialsProvider.setCredentials(
+              AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
+          SSLContext sslContext = createElasticSearchSSLContext(esConfig);
+          restClientBuilder.setHttpClientConfigCallback(
+              httpAsyncClientBuilder -> {
+                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                if (sslContext != null) {
+                  httpAsyncClientBuilder.setSSLContext(sslContext);
+                }
+                // Enable TCP keep alive strategy
+                if (esConfig.getKeepAliveTimeoutSecs() != null && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                  httpAsyncClientBuilder.setKeepAliveStrategy(
+                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+                }
+                return httpAsyncClientBuilder;
+              });
+        }
+        restClientBuilder.setRequestConfigCallback(
+            requestConfigBuilder ->
+                requestConfigBuilder
+                    .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
+                    .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+        return new RestHighLevelClient(restClientBuilder);
+      } catch (Exception e) {
+        return null;
       }
-      restClientBuilder.setRequestConfigCallback(
-          requestConfigBuilder ->
-              requestConfigBuilder
-                  .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
-                  .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-      return new RestHighLevelClient(restClientBuilder);
-    } catch (Exception e) {
-      throw new ElasticsearchException("Failed to create elastic search client ", e);
+    } else {
+      return null;
     }
   }
 }

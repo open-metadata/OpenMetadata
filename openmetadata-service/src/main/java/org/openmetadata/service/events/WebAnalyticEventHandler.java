@@ -7,6 +7,7 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 
 @Slf4j
@@ -16,7 +17,7 @@ public class WebAnalyticEventHandler implements EventHandler {
   public static final String WEB_ANALYTIC_ENDPOINT = "v1/analytics/web/events/collect";
   private static final String COUNTER_NAME = "web.analytics.events";
 
-  public void init(OpenMetadataApplicationConfig config) {
+  public void init(OpenMetadataApplicationConfig config, SearchRepository searchRepository) {
     this.prometheusMeterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
     this.clusterName = config.getClusterName();
   }

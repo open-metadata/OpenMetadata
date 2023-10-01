@@ -5,6 +5,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -13,7 +14,7 @@ public class TokenRepository {
   static final String TOKEN_NOT_PRESENT_MSG = "Token not present for the user";
   private final CollectionDAO dao;
 
-  public TokenRepository(CollectionDAO dao) {
+  public TokenRepository(CollectionDAO dao, SearchRepository searchRepository) {
     this.dao = dao;
   }
 

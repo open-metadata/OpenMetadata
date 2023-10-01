@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -32,13 +33,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
-  public TestSuiteRepository(CollectionDAO dao) {
+  public TestSuiteRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         TestSuiteResource.COLLECTION_PATH,
         TEST_SUITE,
         TestSuite.class,
         dao.testSuiteDAO(),
         dao,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;

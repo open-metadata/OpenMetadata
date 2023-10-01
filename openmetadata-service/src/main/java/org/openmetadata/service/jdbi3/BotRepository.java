@@ -21,14 +21,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.bots.BotResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+  public BotRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, searchRepository, "", BOT_UPDATE_FIELDS);
     quoteFqn = true;
   }
 

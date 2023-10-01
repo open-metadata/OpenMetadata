@@ -19,14 +19,16 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource;
+import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
-  public DatabaseServiceRepository(CollectionDAO dao) {
+  public DatabaseServiceRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
         Entity.DATABASE_SERVICE,
         dao,
+        searchRepository,
         dao.dbServiceDAO(),
         DatabaseConnection.class,
         "",

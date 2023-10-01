@@ -13,6 +13,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.StoredProcedureResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -20,13 +21,14 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
-  public StoredProcedureRepository(CollectionDAO dao) {
+  public StoredProcedureRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         StoredProcedureResource.COLLECTION_PATH,
         STORED_PROCEDURE,
         StoredProcedure.class,
         dao.storedProcedureDAO(),
         dao,
+        searchRepository,
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

@@ -28,13 +28,22 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
-  public RoleRepository(CollectionDAO dao) {
-    super(RoleResource.COLLECTION_PATH, Entity.ROLE, Role.class, dao.roleDAO(), dao, POLICIES, POLICIES);
+  public RoleRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(
+        RoleResource.COLLECTION_PATH,
+        Entity.ROLE,
+        Role.class,
+        dao.roleDAO(),
+        dao,
+        searchRepository,
+        POLICIES,
+        POLICIES);
   }
 
   @Override

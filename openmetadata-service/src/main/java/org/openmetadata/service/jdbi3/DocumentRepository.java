@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.DOCUMENT;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -25,13 +26,14 @@ public class DocumentRepository extends EntityRepository<Document> {
   static final String DOCUMENT_UPDATE_FIELDS = "data";
   static final String DOCUMENT_PATCH_FIELDS = "data";
 
-  public DocumentRepository(CollectionDAO dao) {
+  public DocumentRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         DocStoreResource.COLLECTION_PATH,
         DOCUMENT,
         Document.class,
         dao.docStoreDAO(),
         dao,
+        searchRepository,
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
     supportsSearch = false;

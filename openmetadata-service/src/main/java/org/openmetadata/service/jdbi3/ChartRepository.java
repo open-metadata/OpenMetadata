@@ -25,13 +25,14 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  public ChartRepository(CollectionDAO dao) {
-    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
+  public ChartRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, searchRepository, "", "");
     supportsSearch = true;
   }
 

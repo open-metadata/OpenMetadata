@@ -48,6 +48,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.topics.TopicResource;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -55,17 +56,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
+
+  public TopicRepository(CollectionDAO dao, SearchRepository searchRepository) {
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, searchRepository, "", "");
+    supportsSearch = true;
+  }
+
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
     if (topic.getMessageSchema() != null) {
       setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }
-  }
-
-  public TopicRepository(CollectionDAO dao) {
-    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
-    supportsSearch = true;
   }
 
   @Override

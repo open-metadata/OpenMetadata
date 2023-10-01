@@ -19,15 +19,17 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource;
+import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class DashboardServiceRepository extends ServiceEntityRepository<DashboardService, DashboardConnection> {
 
-  public DashboardServiceRepository(CollectionDAO dao) {
+  public DashboardServiceRepository(CollectionDAO dao, SearchRepository searchRepository) {
     super(
         DashboardServiceResource.COLLECTION_PATH,
         Entity.DASHBOARD_SERVICE,
         dao,
+        searchRepository,
         dao.dashboardServiceDAO(),
         DashboardConnection.class,
         "",
