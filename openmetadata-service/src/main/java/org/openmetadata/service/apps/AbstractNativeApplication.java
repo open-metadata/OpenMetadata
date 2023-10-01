@@ -3,14 +3,15 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.Application;
-import org.openmetadata.schema.entity.app.RuntimeContext;
+import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
@@ -28,37 +29,39 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand(Object requestObj) {
     // Validate Native Application
-    validateServerExecutableApp(app.getExecutionContext().getOnDemand());
-
-    // Trigger the application
-    AppScheduler.getInstance().triggerOnDemandApplication(app);
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      AppRuntime runtime = getAppRuntime(app);
+      validateServerExecutableApp(runtime);
+      // Trigger the application
+      AppScheduler.getInstance().triggerOnDemandApplication(app);
+    } else {
+      throw new IllegalArgumentException("Live Application cannot scheduled.");
+    }
   }
 
   @Override
-  public void schedule(AppSchedule schedule) {
+  public void schedule() {
     // Validate Native Application
-    validateServerExecutableApp(app.getExecutionContext().getOnDemand());
-    // Schedule New Application Run
-    AppScheduler.getInstance().addApplicationSchedule(app, schedule);
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      AppRuntime runtime = JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
+      validateServerExecutableApp(runtime);
+      // Schedule New Application Run
+      AppScheduler.getInstance().addApplicationSchedule(app);
+    } else {
+      throw new IllegalArgumentException("Live Application cannot scheduled.");
+    }
   }
 
-  protected void validateServerExecutableApp(RuntimeContext context) {
+  protected void validateServerExecutableApp(AppRuntime context) {
     // Server apps are native
-    if (!app.getAppType().equals(AppType.Native)) {
+    if (!app.getAppType().equals(AppType.Internal)) {
       throw new IllegalArgumentException("Application Type is not Native.");
     }
 
     // Check OnDemand Execution is supported
-    if (!(context != null
-        && Boolean.TRUE.equals(context.getEnabled())
-        && context.getExecutionType().equals(RuntimeContext.ExecutionType.Internal))) {
+    if (!(context != null && Boolean.TRUE.equals(context.getEnabled()))) {
       throw new IllegalArgumentException(
           "Applications does not support on demand execution or the context is not Internal.");
-    }
-
-    // Check Language execution
-    if (!Objects.equals(context.getLanguage(), "java")) {
-      throw new IllegalArgumentException("Configured Language is not supported for Native Application.");
     }
   }
 
@@ -72,5 +75,9 @@ public class AbstractNativeApplication implements NativeApplication {
 
     // Trigger
     this.doExecute(jobExecutionContext);
+  }
+
+  public static AppRuntime getAppRuntime(Application app) {
+    return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 }

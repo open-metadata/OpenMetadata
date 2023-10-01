@@ -112,6 +112,7 @@ public final class Entity {
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
   public static final String APPLICATION = "application";
+  public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
@@ -144,6 +145,7 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String PERSONA = "persona";
   public static final String BOT = "bot";
 
   //
@@ -168,6 +170,8 @@ public final class Entity {
   public static final String ENTITY_REPORT_DATA = "EntityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "WebAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "WebAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "RawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "AggregatedCostAnalysisReportData";
 
   //
   // Reserved names in OpenMetadata
@@ -183,6 +187,7 @@ public final class Entity {
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
+  public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
 
@@ -213,7 +218,8 @@ public final class Entity {
           DASHBOARD_SERVICE,
           MESSAGING_SERVICE,
           WORKFLOW,
-          TEST_SUITE);
+          TEST_SUITE,
+          DOCUMENT);
 
   private Entity() {}
 

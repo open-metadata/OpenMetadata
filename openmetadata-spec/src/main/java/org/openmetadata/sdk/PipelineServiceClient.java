@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -71,7 +72,8 @@ public abstract class PipelineServiceClient {
   public static final String HEALTHY_STATUS = "healthy";
   public static final String UNHEALTHY_STATUS = "unhealthy";
   public static final String STATUS_KEY = "status";
-
+  public static final String APP_TRIGGER = "run_application";
+  public static final String APP_VALIDATE = "validate_registration";
   public static final Map<String, String> TYPE_TO_TASK =
       Map.of(
           PipelineType.METADATA.toString(),
@@ -234,6 +236,8 @@ public abstract class PipelineServiceClient {
   public abstract PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow);
 
   public abstract PipelineServiceClientResponse runApplicationFlow(Application application);
+
+  public abstract PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app);
 
   /* Deploy a pipeline to the pipeline service */
   public abstract PipelineServiceClientResponse deployPipeline(

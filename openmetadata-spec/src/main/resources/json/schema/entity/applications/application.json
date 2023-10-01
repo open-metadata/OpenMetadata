@@ -7,41 +7,41 @@
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
   "definitions": {
-    "appRuntimeContext": {
-      "description": "Configuration Schedule",
-      "javaType": "org.openmetadata.schema.entity.app.RuntimeContext",
-      "type": "object",
+    "scheduleType": {
+      "javaType": "org.openmetadata.schema.entity.app.ScheduleType",
+      "description": "This schema defines the type of application.",
+      "type": "string",
+      "enum": [
+        "Live",
+        "Scheduled"
+      ],
+      "javaEnums": [
+        {
+          "name": "Live"
+        },
+        {
+          "name": "Scheduled"
+        }
+      ]
+    },
+    "scheduleTimeline": {
+      "type": "string",
+      "enum": ["Daily", "Weekly", "Monthly", "Custom"],
+      "default": "Weekly"
+    },
+    "appSchedule": {
+      "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
+      "description": "This schema defines the type of application.",
       "properties": {
-        "enabled": {
-          "description": "If Enabled",
-          "type": "boolean"
+        "scheduleType": {
+          "$ref": "#/definitions/scheduleTimeline"
         },
-        "language": {
-          "description": "Language for the executable",
+        "cronExpression": {
+          "description": "Cron Expression in case of Custom scheduled Trigger",
           "type": "string"
-        },
-        "className": {
-          "description": "Full Qualified ClassName for the Schedule",
-          "type": "string"
-        },
-        "executionType": {
-          "description": "This schema defines the Context Type.",
-          "type": "string",
-          "enum": [
-            "Internal",
-            "External"
-          ],
-          "javaEnums": [
-            {
-              "name": "Internal"
-            },
-            {
-              "name": "External"
-            }
-          ]
         }
       },
-      "required": ["enabled", "language", "className", "context"],
+      "required": ["scheduleType"],
       "additionalProperties": false
     },
     "appType": {
@@ -49,36 +49,41 @@
       "description": "This schema defines the type of application.",
       "type": "string",
       "enum": [
-        "Native",
-        "External"
+        "internal",
+        "external"
       ],
       "javaEnums": [
         {
-          "name": "Native"
+          "name": "Internal"
         },
         {
           "name": "External"
         }
       ]
     },
+    "permissions": {
+      "javaType": "org.openmetadata.schema.entity.app.NativeAppPermission",
+      "description": "This schema defines the Permission used by Native Application.",
+      "type": "string",
+      "enum": [
+        "All"
+      ],
+      "javaEnums": [
+        {
+          "name": "All"
+        }
+      ]
+    },
     "executionContext": {
       "description": "Execution Configuration.",
-      "javaType": "org.openmetadata.schema.entity.app.AppExecutionContext",
-      "type": "object",
-      "properties": {
-        "onDemand": {
-          "description": "OnDemand Configuration.",
-          "$ref": "#/definitions/appRuntimeContext"
+      "oneOf": [
+        {
+          "$ref": "./liveExecutionContext.json"
         },
-        "scheduled": {
-          "description": "Scheduled Configuration.",
-          "$ref": "#/definitions/appRuntimeContext"
-        },
-        "live": {
-          "description": "Live Schedule Configuration.",
-          "$ref": "#/definitions/appRuntimeContext"
+        {
+          "$ref": "./scheduledExecutionContext.json"
         }
-      },
+      ],
       "additionalProperties": false
     }
   },
@@ -136,10 +141,6 @@
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
-    "appType": {
-      "description": "This schema defines the type of application.",
-      "$ref": "#/definitions/appType"
-    },
     "developer": {
       "description": "Developer For the Application.",
       "type": "string"
@@ -148,37 +149,54 @@
       "description": "Url for the developer",
       "type": "string"
     },
+    "privacyPolicyUrl": {
+      "description": "Privacy Policy for the developer",
+      "type": "string"
+    },
+    "supportEmail": {
+      "description": "Support Email for the application",
+      "type": "string"
+    },
+    "className": {
+      "description": "Full Qualified ClassName for the Schedule",
+      "type": "string"
+    },
+    "appType": {
+      "description": "This schema defines the type of application.",
+      "$ref": "#/definitions/appType"
+    },
+    "scheduleType": {
+      "description": "This schema defines the Schedule Type of Application.",
+      "$ref": "#/definitions/scheduleType"
+    },
+    "permission": {
+      "description": "Permission used by Native Applications.",
+      "$ref": "#/definitions/permissions"
+    },
     "bot": {
       "description": "Bot User Associated with this application.",
       "$ref": "../../type/entityReference.json",
       "default": null
     },
-    "executionContext": {
+    "runtime": {
       "description": "Execution Configuration.",
       "$ref": "#/definitions/executionContext"
     },
-    "configuration": {
-      "description": "Configuration object.",
-      "$ref": "./appConfig.json#/definitions/configuration"
+    "appConfiguration": {
+      "description": "Application Configuration object."
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "schedules": {
+    "appSchedule": {
       "description": "In case the app supports scheduling, list of different app schedules",
-      "type": "array",
-      "items": {
-        "$ref": "./appSchedule.json"
-      }
+      "$ref": "#/definitions/appSchedule"
     },
     "openMetadataServerConnection": {
       "$ref": "../services/connections/metadata/openMetadataConnection.json"
-    },
-    "installed": {
-      "description": "if the application is installed on OM",
-      "type": "boolean"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime", "appSchedule"]
 }

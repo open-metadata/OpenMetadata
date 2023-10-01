@@ -1,11 +1,9 @@
 package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_SCHEDULE_INFO;
 
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppRunType;
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
@@ -31,7 +29,6 @@ public class OmAppJobListener implements JobListener {
 
   @Override
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
-    AppSchedule appSchedule = (AppSchedule) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_SCHEDULE_INFO);
     AppRunType runType =
         AppRunType.fromValue((String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
     Application jobApp = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO);
@@ -44,7 +41,7 @@ public class OmAppJobListener implements JobListener {
             .withTimestamp(jobStartTime)
             .withRunType(runType)
             .withStatus(AppRunRecord.Status.RUNNING)
-            .withScheduleInfo(appSchedule);
+            .withScheduleInfo(jobApp.getAppSchedule());
 
     // Put the Context in the Job Data Map
     dataMap.put(SCHEDULED_APP_RUN_EXTENSION, runRecord);

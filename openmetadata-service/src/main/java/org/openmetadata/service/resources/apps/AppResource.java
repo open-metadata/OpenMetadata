@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -33,15 +34,18 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.Application;
-import org.openmetadata.schema.entity.app.CreateAppSchedule;
 import org.openmetadata.schema.entity.app.CreateApplication;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppRepository;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -53,12 +57,11 @@ import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
-import org.quartz.SchedulerException;
 
 @Path("/v1/apps")
 @Tag(name = "Apps", description = "Apps are internal/external apps used to something on top of Open-metadata.")
@@ -70,7 +73,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
-  private SearchClient searchClient;
+  private SearchRepository searchRepository;
 
   @Override
   @SneakyThrows
@@ -81,8 +84,8 @@ public class AppResource extends EntityResource<Application, AppRepository> {
 
     // Create an On Demand DAO
     CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
-    searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
-    AppScheduler.initialize(dao, searchClient);
+    searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
+    AppScheduler.initialize(dao, searchRepository);
   }
 
   public AppResource(CollectionDAO dao, Authorizer authorizer) {
@@ -104,7 +107,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of KPIs",
+            description = "List of Installed Applications",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppList.class)))
       })
   public ResultList<Application> list(
@@ -245,6 +248,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
   }
 
   @POST
+  @Path("/install/{appName}")
   @Operation(
       operationId = "createApplication",
       summary = "Create a Application",
@@ -257,8 +261,16 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApplication create) {
-    Application app = getApplication(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("appName")
+          String appName,
+      @Valid CreateApplication create) {
+    AppMarketPlaceDefinition definition =
+        repository
+            .getMarketPlace()
+            .getByName(uriInfo, appName, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+    Application app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, app);
   }
 
@@ -298,15 +310,22 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApplication create) {
-    Application app = getApplication(create, securityContext.getUserPrincipal().getName());
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("appId") UUID appId,
+      @Valid CreateApplication create) {
+    AppMarketPlaceDefinition definition =
+        repository
+            .getMarketPlace()
+            .get(uriInfo, appId, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+    Application app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
   @DELETE
   @Path("/name/{name}")
   @Operation(
-      operationId = "deleteAppByName",
+      operationId = "uninstallAppByName",
       summary = "Delete a App by name",
       description = "Delete a App by `name`.",
       responses = {
@@ -327,7 +346,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteApp",
+      operationId = "uninstallAppByName",
       summary = "Delete a App by Id",
       description = "Delete a App by `Id`.",
       responses = {
@@ -363,7 +382,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
   }
 
   @POST
-  @Path("/schedule/{id}")
+  @Path("/schedule/{name}")
   @Operation(
       operationId = "scheduleApplication",
       summary = "Schedule an Application",
@@ -377,67 +396,21 @@ public class AppResource extends EntityResource<Application, AppRepository> {
       })
   public Response scheduleApplication(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Application", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Context SecurityContext securityContext,
-      @Valid CreateAppSchedule create) {
-    AppSchedule appSchedule =
-        new AppSchedule()
-            .withScheduleId(UUID.randomUUID())
-            .withScheduleType(create.getScheduleType())
-            .withCronExpression(create.getCronExpression());
-    return repository.addApplicationSchedule(uriInfo, id, appSchedule).toResponse();
-  }
-
-  @DELETE
-  @Path("/schedule/{appId}")
-  @Operation(
-      operationId = "deleteApplicationSchedule",
-      summary = "Delete an Application Schedule",
-      description = "Schedule a application to be run on demand.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The Application",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
-        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
-      })
-  public Response deleteApplicationSchedule(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Application", schema = @Schema(type = "UUID")) @PathParam("appId") UUID appId,
-      @Context SecurityContext securityContext)
-      throws SchedulerException {
-    return repository.deleteApplicationSchedule(uriInfo, appId).toResponse();
-  }
-
-  @POST
-  @Path("/onDemand/{id}")
-  @Operation(
-      operationId = "triggerApplication",
-      summary = "Trigger an Application on demand",
-      description = "Trigger a application to be run on demand.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The Application",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Response.class))),
-        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
-      })
-  public Response triggerApplicationOnDemand(
-      @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Application pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Context SecurityContext securityContext) {
-    EntityUtil.Fields fields = getFields(FIELD_OWNER);
-    Application application = repository.get(uriInfo, id, fields);
-    ApplicationHandler.triggerApplicationOnDemand(
-        application, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
-    return Response.status(Response.Status.CREATED).entity(null).build();
+    Application app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.scheduleApplication(
+          app, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
+      Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
+    }
+    throw new IllegalArgumentException("App is not of schedule type Scheduled.");
   }
 
   @POST
-  @Path("/trigger/{id}")
+  @Path("/trigger/{appType}/{name}")
   @Operation(
-      operationId = "triggerApplicationExternal",
+      operationId = "triggerApplicationRun",
       summary = "Trigger an Application run",
       description = "Trigger a Application run by id.",
       responses = {
@@ -447,24 +420,60 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             content = @Content(mediaType = "application/json")),
         @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
       })
-  public PipelineServiceClientResponse runAutomationsWorkflow(
+  public Response triggerApplicationRun(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "App Type", schema = @Schema(type = "UUID")) @PathParam("appType") String appType,
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
-    Application app = repository.get(uriInfo, id, fields);
-    app.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
-    return pipelineServiceClient.runApplicationFlow(app);
+    Application app = repository.getByName(uriInfo, name, fields);
+    AppType applicationType = AppType.fromValue(appType);
+    if (applicationType.equals(AppType.Internal)) {
+      ApplicationHandler.triggerApplicationOnDemand(
+          app, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
+      return Response.status(Response.Status.OK).entity(null).build();
+    } else {
+      app.setOpenMetadataServerConnection(
+          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+      return Response.status(Response.Status.OK).entity(pipelineServiceClient.runApplicationFlow(app)).build();
+    }
   }
 
-  private Application getApplication(CreateApplication create, String updatedBy) {
-    return copy(new Application(), create, updatedBy)
-        .withDeveloper(create.getDeveloper())
-        .withDeveloperUrl(create.getDeveloperUrl())
-        .withAppType(create.getAppType())
-        .withExecutionContext(create.getExecutionContext())
-        .withConfiguration(create.getConfiguration())
-        .withBot(create.getBot());
+  private Application getApplication(
+      AppMarketPlaceDefinition marketPlaceDefinition, CreateApplication createAppRequest, String updatedBy) {
+    EntityReference owner = repository.validateOwner(createAppRequest.getOwner());
+    Application app =
+        new Application()
+            .withId(UUID.randomUUID())
+            .withName(marketPlaceDefinition.getName())
+            .withDisplayName(marketPlaceDefinition.getDisplayName())
+            .withDescription(marketPlaceDefinition.getDescription())
+            .withOwner(owner)
+            .withUpdatedBy(updatedBy)
+            .withUpdatedAt(System.currentTimeMillis())
+            .withDeveloper(marketPlaceDefinition.getDeveloper())
+            .withDeveloperUrl(marketPlaceDefinition.getDeveloperUrl())
+            .withPrivacyPolicyUrl(marketPlaceDefinition.getPrivacyPolicyUrl())
+            .withSupportEmail(marketPlaceDefinition.getSupportEmail())
+            .withClassName(marketPlaceDefinition.getClassName())
+            .withAppType(marketPlaceDefinition.getAppType())
+            .withScheduleType(marketPlaceDefinition.getScheduleType())
+            .withAppConfiguration(createAppRequest.getAppConfiguration())
+            .withRuntime(marketPlaceDefinition.getRuntime())
+            .withPermission(marketPlaceDefinition.getPermission())
+            .withAppSchedule(createAppRequest.getAppSchedule());
+
+    // validate Bot if provided
+    validateAndAddBot(app, createAppRequest.getBot());
+
+    return app;
+  }
+
+  private void validateAndAddBot(Application app, String botName) {
+    if (!CommonUtil.nullOrEmpty(botName)) {
+      app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
+    } else {
+      app.setBot(repository.createNewAppBot(app));
+    }
   }
 }
