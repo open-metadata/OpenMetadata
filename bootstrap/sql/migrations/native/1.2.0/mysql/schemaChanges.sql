@@ -1,3 +1,5 @@
+-- noinspection SqlNoDataSourceInspectionForFile
+
 -- column deleted not needed for entities that don't support soft delete
 ALTER TABLE query_entity DROP COLUMN deleted;
 ALTER TABLE event_subscription_entity DROP COLUMN deleted;
@@ -136,6 +138,7 @@ ALTER TABLE kpi_entity   add index  kpi_entity_name_index(name);
 ALTER TABLE messaging_service_entity add index  messaing_service_entity_name_index(name);
 ALTER TABLE metadata_service_entity add index  metadata_service_entity_name_index(name);
 ALTER TABLE metric_entity add index  metric_entity_name_index(name);
+
 ALTER TABLE ml_model_entity add index  ml_model_entity_name_index(name);
 ALTER TABLE mlmodel_service_entity add index  mlmodel_service_entity_name_index(name);
 ALTER TABLE pipeline_entity add index  pipeline_entity_name_index(name);
@@ -157,3 +160,30 @@ ALTER TABLE type_entity add index type_entity_name_index(name);
 ALTER TABLE user_entity add index user_entity_name_index(name);
 ALTER TABLE web_analytic_event add index web_analytic_event_name_index(name);
 ALTER TABLE automations_workflow add index automations_workflow_name_index(name);
+
+CREATE TABLE IF NOT EXISTS persona_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    nameHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash),
+    INDEX persona_name_index(name)
+);
+
+CREATE TABLE IF NOT EXISTS doc_store (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash),
+    INDEX doc_store_name_index(name)
+);
+
+
