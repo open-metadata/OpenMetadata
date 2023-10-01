@@ -149,11 +149,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
+    // as first step register all the repositories
+    Entity.initializeRepositories(collectionDAO);
+
+    // Init Settings Cache after repositories
+    SettingsCache.initialize(catalogConfig);
+
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
 
-    // Init Settings Cache
-    SettingsCache.initialize(catalogConfig, collectionDAO);
 
     // init Secret Manager
     final SecretsManager secretsManager =
@@ -198,6 +202,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EventPubSub.start();
 
     registerResources(catalogConfig, environment, jdbi, collectionDAO);
+
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbiUnitOfWorkProvider);
