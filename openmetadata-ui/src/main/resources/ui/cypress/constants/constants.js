@@ -42,6 +42,7 @@ export const SEARCH_INDEX = {
   dashboards: 'dashboard_search_index',
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
+  containers: 'container_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {

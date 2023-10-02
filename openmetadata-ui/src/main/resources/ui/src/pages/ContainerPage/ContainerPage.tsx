@@ -79,7 +79,7 @@ const ContainerPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { fqn: containerName, tab = EntityTabs.SCHEMA } =
+  const { fqn: containerName, tab } =
     useParams<{ fqn: string; tab: EntityTabs }>();
 
   // Local states
