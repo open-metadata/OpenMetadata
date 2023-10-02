@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Loader from 'components/Loader/Loader';
@@ -39,7 +38,7 @@ import {
   patchTeamDetail,
 } from 'rest/teamsAPI';
 import { getUsers, updateUserDetail } from 'rest/userAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
 import {
   INITIAL_PAGING_VALUE,
@@ -52,7 +51,6 @@ import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
 import { SearchResponse } from '../../interface/search.interface';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -64,8 +62,6 @@ const TeamsPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const { fqn } = useParams<{ fqn: string }>();
   const [currentFqn, setCurrentFqn] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
@@ -223,7 +219,7 @@ const TeamsPage = () => {
     getUsers({
       fields: 'teams,roles',
       limit: PAGE_SIZE_BASE,
-      team,
+      team: getDecodedFqn(team),
       ...paging,
     })
       .then((res) => {
@@ -285,7 +281,11 @@ const TeamsPage = () => {
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(name, ['owner', 'parents'], 'all');
+      const data = await getTeamByName(
+        name,
+        ['owner', 'parents', 'profile'],
+        'all'
+      );
 
       setSelectedTeam(data);
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -621,7 +621,6 @@ const TeamsPage = () => {
         handleJoinTeamClick={handleJoinTeamClick}
         handleLeaveTeamClick={handleLeaveTeamClick}
         handleTeamUsersSearchAction={handleUsersSearchAction}
-        hasAccess={isAuthDisabled || isAdminUser}
         isDescriptionEditable={isDescriptionEditable}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
