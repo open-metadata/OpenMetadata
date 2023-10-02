@@ -38,7 +38,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.Authorizer;
@@ -164,7 +163,6 @@ public final class CollectionRegistry {
       CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
-    Entity.initializeRepositories(daoObject);
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
