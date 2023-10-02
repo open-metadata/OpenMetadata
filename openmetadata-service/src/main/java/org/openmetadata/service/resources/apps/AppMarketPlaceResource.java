@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppMarketPlaceRepository;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -78,8 +79,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
     AppScheduler.initialize(dao, searchRepository);
   }
 
-  public AppMarketPlaceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(AppMarketPlaceDefinition.class, new AppMarketPlaceRepository(dao), authorizer);
+  public AppMarketPlaceResource(Authorizer authorizer) {
+    super(Entity.APP_MARKET_PLACE_DEF, authorizer);
   }
 
   public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {
