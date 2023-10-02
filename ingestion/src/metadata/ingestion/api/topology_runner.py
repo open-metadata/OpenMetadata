@@ -33,7 +33,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.logger import get_log_name, ingestion_logger
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
