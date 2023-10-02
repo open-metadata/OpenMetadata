@@ -15,15 +15,23 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './color-picker.style.less';
 
-const ColorPicker = (pros: InputProps) => {
+const ColorPicker = (props: InputProps) => {
   const { t } = useTranslation();
+  const { id, ...rest } = props;
 
   return (
     <Input.Group compact>
-      <Input {...pros} className="style-color-picker" type="color" />
       <Input
-        {...pros}
+        {...rest}
+        className="style-color-picker"
+        data-testid="color-picker"
+        type="color"
+      />
+      <Input
+        {...rest}
         className="style-color-input"
+        data-testid="color-input"
+        id={id}
         placeholder={t('message.hex-code-placeholder')}
       />
     </Input.Group>
