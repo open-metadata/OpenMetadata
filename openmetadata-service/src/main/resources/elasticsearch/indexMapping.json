@@ -101,10 +101,10 @@
     "alias": "domain",
     "parentAliases": []
   },
-  "glossary": {
-    "indexName": "glossary_search_index",
-    "indexMappingFile": "/elasticsearch/%s/glossary_index_mapping.json",
-    "alias": "glossary",
+  "glossaryTerm": {
+    "indexName": "glossary_term_search_index",
+    "indexMappingFile": "/elasticsearch/%s/glossary_term_index_mapping.json",
+    "alias": "glossaryTerm",
     "parentAliases": ["all"]
   },
   "tag": {
