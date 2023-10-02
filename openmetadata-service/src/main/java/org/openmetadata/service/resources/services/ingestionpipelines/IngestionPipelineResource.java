@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
-import static org.openmetadata.service.resources.services.metadata.MetadataServiceResource.OPENMETADATA_SERVICE;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -61,23 +60,16 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
-import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -87,7 +79,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.IngestionPipelineUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 
@@ -107,7 +98,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private final MetadataServiceRepository metadataServiceRepository;
   static final String FIELDS = FIELD_OWNER;
 
   @Override
@@ -117,9 +107,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
-    this.metadataServiceRepository = new MetadataServiceRepository(dao);
+  public IngestionPipelineResource(Authorizer authorizer) {
+    super(Entity.INGESTION_PIPELINE, authorizer);
   }
 
   @Override
@@ -129,53 +118,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
     repository.setPipelineServiceClient(pipelineServiceClient);
-    createIndexAndInsightPipeline(config);
-  }
-
-  private void createIndexAndInsightPipeline(OpenMetadataApplicationConfig config) {
-    // Metadata Service is created only when ES config is present
-    if (config.getElasticSearchConfiguration() != null) {
-      try {
-        EntityReference metadataService =
-            this.metadataServiceRepository
-                .getByName(null, OPENMETADATA_SERVICE, repository.getFields("id"))
-                .getEntityReference();
-        // Create Data Insights Pipeline
-        CreateIngestionPipeline createPipelineRequest =
-            new CreateIngestionPipeline()
-                .withName(DEFAULT_INSIGHT_PIPELINE)
-                .withDisplayName(DEFAULT_INSIGHT_PIPELINE)
-                .withDescription("Data Insights Pipeline")
-                .withPipelineType(PipelineType.DATA_INSIGHT)
-                .withSourceConfig(
-                    new SourceConfig()
-                        .withConfig(
-                            new MetadataToElasticSearchPipeline()
-                                .withType(
-                                    MetadataToElasticSearchPipeline.MetadataToESConfigType.METADATA_TO_ELASTIC_SEARCH)))
-                .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
-                .withService(metadataService);
-        // Get Pipeline
-        IngestionPipeline dataInsightPipeline =
-            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-        repository.setFullyQualifiedName(dataInsightPipeline);
-        repository.initializeEntity(dataInsightPipeline);
-
-        // Create Reindex Pipeline
-        createPipelineRequest
-            .withName(DEFAULT_REINDEX_PIPELINE)
-            .withDisplayName(DEFAULT_REINDEX_PIPELINE)
-            .withDescription("Elastic Search Reindexing Pipeline")
-            .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
-        // Get Pipeline
-        IngestionPipeline elasticSearchPipeline =
-            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-        repository.setFullyQualifiedName(elasticSearchPipeline);
-        repository.initializeEntity(elasticSearchPipeline);
-      } catch (Exception ex) {
-        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
-      }
-    }
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {

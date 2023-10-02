@@ -42,7 +42,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.type.EntityLineage;
@@ -50,7 +49,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -71,8 +69,8 @@ public class LineageResource {
   private final LineageRepository dao;
   private final Authorizer authorizer;
 
-  public LineageResource(@NonNull CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new LineageRepository(dao);
+  public LineageResource(Authorizer authorizer) {
+    this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
   }
 

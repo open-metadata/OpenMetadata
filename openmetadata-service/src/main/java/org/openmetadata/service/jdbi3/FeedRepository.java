@@ -101,12 +101,14 @@ import org.openmetadata.service.util.ResultList;
  * - 'thread' --- isAbout ---> 'entity' in entity_relationship
  */
 @Slf4j
+@Repository
 public class FeedRepository {
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER = new FeedMessageDecorator();
 
   public FeedRepository(CollectionDAO dao) {
     this.dao = dao;
+    Entity.setFeedRepository(this);
     ResourceRegistry.addResource("feed", null, Entity.getEntityFields(Thread.class));
   }
 

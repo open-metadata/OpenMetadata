@@ -30,6 +30,7 @@ public class DashboardServiceRepository extends ServiceEntityRepository<Dashboar
         dao,
         dao.dashboardServiceDAO(),
         DashboardConnection.class,
+        "",
         ServiceType.DASHBOARD);
     supportsSearch = true;
   }
