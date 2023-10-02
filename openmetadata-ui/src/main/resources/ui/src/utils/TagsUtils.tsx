@@ -38,7 +38,6 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
-import { formatSearchTagsResponse } from './APIUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 
 export const getClassifications = async (
@@ -316,10 +315,10 @@ export const fetchTagsElasticSearch = async (
   });
 
   return {
-    data: formatSearchTagsResponse(res.hits.hits ?? []).map((item) => ({
-      label: item.fullyQualifiedName ?? '',
-      value: item.fullyQualifiedName ?? '',
-      data: item,
+    data: res.hits.hits.map(({ _source }) => ({
+      label: _source.fullyQualifiedName ?? '',
+      value: _source.fullyQualifiedName ?? '',
+      data: _source,
     })),
     paging: {
       total: res.hits.total.value,

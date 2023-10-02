@@ -18,6 +18,7 @@ import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
 import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
+import { ReactComponent as StyleIcon } from 'assets/svg/style.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
@@ -38,6 +39,7 @@ import {
 } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
+import StyleModal from 'components/Modals/StyleModal/StyleModal.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -54,7 +56,8 @@ import {
 } from 'generated/entity/domains/dataProduct';
 import { Domain } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
-import { cloneDeep, toString } from 'lodash';
+import { Style } from 'generated/type/tagLabel';
+import { cloneDeep, isEmpty, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -107,6 +110,7 @@ const DataProductsDetailsPage = ({
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -155,54 +159,57 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct, isVersionsView]);
 
-  const { editDisplayNamePermission, deleteDataProductPermision } =
-    useMemo(() => {
-      if (isVersionsView) {
-        return {
-          editDescriptionPermission: false,
-          editOwnerPermission: false,
-          editAllPermission: false,
-        };
-      }
-
-      const editDescription = checkPermission(
-        Operation.EditDescription,
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      );
-
-      const editOwner = checkPermission(
-        Operation.EditOwner,
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      );
-
-      const editAll = checkPermission(
-        Operation.EditAll,
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      );
-
-      const editDisplayName = checkPermission(
-        Operation.EditDisplayName,
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      );
-
-      const deleteDataProduct = checkPermission(
-        Operation.Delete,
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      );
-
+  const {
+    editDisplayNamePermission,
+    editAllPermission,
+    deleteDataProductPermision,
+  } = useMemo(() => {
+    if (isVersionsView) {
       return {
-        editDescriptionPermission: editDescription || editAll,
-        editOwnerPermission: editOwner || editAll,
-        editAllPermission: editAll,
-        editDisplayNamePermission: editDisplayName || editAll,
-        deleteDataProductPermision: deleteDataProduct,
+        editDescriptionPermission: false,
+        editOwnerPermission: false,
+        editAllPermission: false,
       };
-    }, [permissions, isVersionsView]);
+    }
+
+    const editDescription = checkPermission(
+      Operation.EditDescription,
+      ResourceEntity.DATA_PRODUCT,
+      permissions
+    );
+
+    const editOwner = checkPermission(
+      Operation.EditOwner,
+      ResourceEntity.DATA_PRODUCT,
+      permissions
+    );
+
+    const editAll = checkPermission(
+      Operation.EditAll,
+      ResourceEntity.DATA_PRODUCT,
+      permissions
+    );
+
+    const editDisplayName = checkPermission(
+      Operation.EditDisplayName,
+      ResourceEntity.DATA_PRODUCT,
+      permissions
+    );
+
+    const deleteDataProduct = checkPermission(
+      Operation.Delete,
+      ResourceEntity.DATA_PRODUCT,
+      permissions
+    );
+
+    return {
+      editDescriptionPermission: editDescription || editAll,
+      editOwnerPermission: editOwner || editAll,
+      editAllPermission: editAll,
+      editDisplayNamePermission: editDisplayName || editAll,
+      deleteDataProductPermision: deleteDataProduct,
+    };
+  }, [permissions, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
     if (fqn) {
@@ -259,6 +266,28 @@ const DataProductsDetailsPage = ({
           },
         ] as ItemType[])
       : []),
+    ...(editAllPermission
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-entity-style-description', {
+                  entity: t('label.data-product'),
+                })}
+                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="rename-button"
+                name={t('label.style')}
+              />
+            ),
+            key: 'edit-style-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(deleteDataProductPermision
       ? ([
           {
@@ -305,6 +334,20 @@ const DataProductsDetailsPage = ({
       onUpdate(updatedDetails);
       setIsNameEditing(false);
     }
+  };
+
+  const onStyleSave = (data: Style) => {
+    const style: Style = {
+      color: data.color ? data.color : undefined,
+      iconURL: data.iconURL ? data.iconURL : undefined,
+    };
+    const updatedDetails = {
+      ...dataProduct,
+      style: isEmpty(style) ? undefined : style,
+    };
+
+    onUpdate(updatedDetails);
+    setIsStyleEditing(false);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -416,13 +459,23 @@ const DataProductsDetailsPage = ({
             entityData={{ ...dataProduct, displayName, name }}
             entityType={EntityType.DATA_PRODUCT}
             icon={
-              <DataProductIcon
-                className="align-middle"
-                color={DE_ACTIVE_COLOR}
-                height={36}
-                name="folder"
-                width={32}
-              />
+              dataProduct.style?.iconURL ? (
+                <img
+                  className="align-middle"
+                  data-testid="icon"
+                  height={36}
+                  src={dataProduct.style.iconURL}
+                  width={32}
+                />
+              ) : (
+                <DataProductIcon
+                  className="align-middle"
+                  color={DE_ACTIVE_COLOR}
+                  height={36}
+                  name="folder"
+                  width={32}
+                />
+              )
             }
             serviceName=""
           />
@@ -523,6 +576,13 @@ const DataProductsDetailsPage = ({
         type={AssetsOfEntity.DATA_PRODUCT}
         onCancel={() => setAssetModelVisible(false)}
         onSave={handleAssetSave}
+      />
+
+      <StyleModal
+        open={isStyleEditing}
+        style={dataProduct.style}
+        onCancel={() => setIsStyleEditing(false)}
+        onSubmit={onStyleSave}
       />
     </>
   );

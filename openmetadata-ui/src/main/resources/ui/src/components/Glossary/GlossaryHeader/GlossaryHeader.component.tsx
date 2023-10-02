@@ -199,9 +199,7 @@ const GlossaryHeader = ({
       color: data.color ? data.color : undefined,
       iconURL: data.iconURL ? data.iconURL : undefined,
     };
-    let updatedDetails = cloneDeep(selectedData);
-
-    updatedDetails = {
+    const updatedDetails = {
       ...selectedData,
       style: isEmpty(style) ? undefined : style,
     };
@@ -463,6 +461,7 @@ const GlossaryHeader = ({
                 />
               ) : (selectedData as GlossaryTerm).style?.iconURL ? (
                 <img
+                  className="align-middle"
                   data-testid="icon"
                   height={36}
                   src={(selectedData as GlossaryTerm).style?.iconURL}

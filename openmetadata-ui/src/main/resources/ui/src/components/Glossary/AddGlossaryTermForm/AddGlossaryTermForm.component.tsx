@@ -153,6 +153,7 @@ const AddGlossaryTermForm = ({
         reviewers,
         owner,
         relatedTerms,
+        style,
       } = glossaryTerm;
 
       form.setFieldsValue({
@@ -168,6 +169,12 @@ const AddGlossaryTermForm = ({
 
       if (reviewers) {
         form.setFieldValue('reviewers', reviewers);
+      }
+      if (style?.color) {
+        form.setFieldValue('color', style.color);
+      }
+      if (style?.iconURL) {
+        form.setFieldValue('iconURL', style.iconURL);
       }
 
       if (owner) {
