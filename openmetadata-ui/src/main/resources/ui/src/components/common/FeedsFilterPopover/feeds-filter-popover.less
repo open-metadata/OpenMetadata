@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,18 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.feeds-filter-popover {
+  width: 300px;
+  padding-top: 0;
+  .ant-popover-inner-content {
+    padding: 0;
+  }
+  .dropdown-control-bar {
+    padding: 8px;
+  }
 
-export enum Ownership {
-  OWNER = 'owner.id',
-  FOLLOWERS = 'followers',
-}
-
-export enum FeedFilter {
-  ALL = 'ALL',
-  OWNER = 'OWNER',
-  FOLLOWS = 'FOLLOWS',
-  MENTIONS = 'MENTIONS',
-  ASSIGNED_BY = 'ASSIGNED_BY',
-  ASSIGNED_TO = 'ASSIGNED_TO',
-  OWNER_OR_FOLLOWS = 'OWNER_OR_FOLLOWS',
+  .ant-list-header,
+  .ant-list-footer {
+    padding: 12px;
+  }
+  .selectable-list-item {
+    padding: 12px;
+  }
 }
