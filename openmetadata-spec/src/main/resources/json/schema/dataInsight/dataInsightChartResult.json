@@ -21,7 +21,7 @@
         "PercentageOfServicesWithDescription",
         "PercentageOfServicesWithOwner",
         "UnusedAssets",
-        "TotalUnusedAssets"
+        "AggregatedUnusedAssets"
       ]
     }
   },
@@ -49,7 +49,8 @@
           {"$ref": "type/mostViewedEntities.json"},
           {"$ref": "type/percentageOfServicesWithDescription.json"},
           {"$ref": "type/percentageOfServicesWithOwner.json"},
-          {"$ref": "type/unusedAssets.json"}
+          {"$ref": "type/unusedAssets.json"},
+          {"$ref": "type/aggregatedUnusedAsserts.json"}
         ]
       }
     }

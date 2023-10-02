@@ -1366,6 +1366,8 @@ public class OpenSearchClientImpl implements SearchRepository {
         return new OsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
       case UNUSED_ASSETS:
         return new OsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
+      case AGGREGATED_UNUSED_ASSETS:
+        return new OsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
@@ -1480,6 +1482,23 @@ public class OpenSearchClientImpl implements SearchRepository {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case AGGREGATED_UNUSED_ASSETS:
+        SumAggregationBuilder threeDaysAgg =
+            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+        SumAggregationBuilder sevenDaysAgg =
+            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+        SumAggregationBuilder fourteenDaysAgg =
+            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+        SumAggregationBuilder thirtyDaysAgg =
+            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+        SumAggregationBuilder sixtyDaysAgg =
+            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+        return dateHistogramAggregationBuilder
+            .subAggregation(threeDaysAgg)
+            .subAggregation(sevenDaysAgg)
+            .subAggregation(fourteenDaysAgg)
+            .subAggregation(thirtyDaysAgg)
+            .subAggregation(sixtyDaysAgg);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
