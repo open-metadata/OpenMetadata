@@ -21,6 +21,11 @@ import {
 } from '../generated/entity/teams/team';
 import { getEntityIdArray } from './CommonUtils';
 
+import { SUBSCRIPTION_WEBHOOK } from 'constants/Teams.constants';
+import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
+import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+
 /**
  * To get filtered list of non-deleted(active) users
  * @param users List of users
@@ -86,6 +91,23 @@ export const getMovedTeamData = (team: Team, parents: string[]): CreateTeam => {
   } as CreateTeam;
 };
 
+/**
+ * To get webhook svg icon
+ * @param item webhook key
+ * @returns SvgComponent
+ */
+export const getWebhookIcon = (item: SUBSCRIPTION_WEBHOOK): SvgComponent => {
+  switch (item) {
+    case SUBSCRIPTION_WEBHOOK.SLACK:
+      return SlackIcon;
+
+    case SUBSCRIPTION_WEBHOOK.G_CHAT:
+      return GChatIcon;
+
+    default:
+      return MsTeamsIcon;
+  }
+};
 export const getTeamOptionsFromType = (parentType: TeamType) => {
   switch (parentType) {
     case TeamType.Organization:
