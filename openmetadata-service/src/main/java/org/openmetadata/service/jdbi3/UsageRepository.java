@@ -48,6 +48,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
+@Repository
 public class UsageRepository {
   private static final String PUT = "createOrUpdate";
   private static final String POST = "createNew";
@@ -55,6 +56,7 @@ public class UsageRepository {
 
   public UsageRepository(CollectionDAO dao) {
     this.dao = dao;
+    Entity.setUsageRepository(this);
   }
 
   public EntityUsage get(String entityType, UUID id, String date, int days) {

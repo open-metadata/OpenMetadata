@@ -29,6 +29,7 @@ public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseS
         dao,
         dao.dbServiceDAO(),
         DatabaseConnection.class,
+        "",
         ServiceType.DATABASE);
     supportsSearch = true;
   }

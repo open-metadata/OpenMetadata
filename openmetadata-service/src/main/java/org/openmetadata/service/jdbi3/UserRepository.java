@@ -75,13 +75,19 @@ public class UserRepository extends EntityRepository<User> {
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
-  private final EntityReference organization;
+  private volatile EntityReference organization;
 
   public UserRepository(CollectionDAO dao) {
     super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
-    organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
     this.quoteFqn = true;
     supportsSearch = true;
+  }
+
+  private EntityReference getOrganization() {
+    if (organization == null) {
+      organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
+    }
+    return organization;
   }
 
   // with the introduction of fqnHash we added case sensitivity to all the entities
@@ -236,7 +242,7 @@ public class UserRepository extends EntityRepository<User> {
       }
       teams.sort(EntityUtil.compareEntityReference);
     } else {
-      user.setTeams(new ArrayList<>(List.of(organization))); // Organization is a default team
+      user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
     }
   }
 
@@ -287,7 +293,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) {
-    if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
+    if (teamId.equals(getOrganization().getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
@@ -327,7 +333,7 @@ public class UserRepository extends EntityRepository<User> {
     teams = listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
     // If there are no teams that a user belongs to then return organization as the default team
     if (listOrEmpty(teams).isEmpty()) {
-      return new ArrayList<>(List.of(organization));
+      return new ArrayList<>(List.of(getOrganization()));
     }
     return teams;
   }
@@ -350,14 +356,14 @@ public class UserRepository extends EntityRepository<User> {
   private void assignTeams(User user, List<EntityReference> teams) {
     teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
-      if (team.getId().equals(organization.getId())) {
+      if (team.getId().equals(getOrganization().getId())) {
         continue; // Default relationship user to organization team is not stored
       }
       addRelationship(team.getId(), user.getId(), Entity.TEAM, USER, Relationship.HAS);
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
-      teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
+      teams = teams.stream().filter(t -> !t.getId().equals(getOrganization().getId())).collect(Collectors.toList());
       user.setTeams(teams);
     }
   }

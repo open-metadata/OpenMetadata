@@ -35,6 +35,7 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -65,8 +66,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.userRepository = new UserRepository(collectionDAO);
-    this.tokenRepository = new TokenRepository(collectionDAO);
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();

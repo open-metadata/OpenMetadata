@@ -46,7 +46,7 @@ import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
 import org.openmetadata.service.resources.Collection;
@@ -67,8 +67,8 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public static final String COLLECTION_PATH = "/v1/metrics/";
   static final String FIELDS = "owner,usageSummary,domain";
 
-  public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Metrics.class, new MetricsRepository(dao), authorizer);
+  public MetricsResource(Authorizer authorizer) {
+    super(Entity.METRICS, authorizer);
   }
 
   @Override

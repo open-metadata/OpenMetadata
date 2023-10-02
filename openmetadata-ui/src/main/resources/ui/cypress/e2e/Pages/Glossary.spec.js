@@ -721,7 +721,7 @@ describe('Glossary page should work properly', () => {
     voteGlossary(true);
   });
 
-  it.skip('Update glossary term', () => {
+  it('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
@@ -758,7 +758,7 @@ describe('Glossary page should work properly', () => {
     voteGlossary();
   });
 
-  it.skip('Assets Tab should work properly', () => {
+  it('Assets Tab should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
     const glossary = NEW_GLOSSARY.name;
     const term1 = NEW_GLOSSARY_TERMS.term_1.name;
@@ -889,7 +889,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it.skip('Remove Glossary term from entity should work properly', () => {
+  it('Remove Glossary term from entity should work properly', () => {
     const glossaryName = NEW_GLOSSARY_1.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
     const entity = SEARCH_ENTITY_TABLE.table_3;
