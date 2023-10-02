@@ -25,6 +25,8 @@ public class SearchIndexDefinition {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "aggregatedCostAnalysisReportData";
   final EnumMap<ElasticSearchIndexType, ElasticSearchIndexStatus> elasticSearchIndexes =
       new EnumMap<>(ElasticSearchIndexType.class);
   public static final Map<String, Object> ENTITY_TO_MAPPING_SCHEMA_MAP = new HashMap<>();
@@ -160,7 +162,15 @@ public class SearchIndexDefinition {
     WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX(
         WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
         "web_analytic_user_activity_report_data_index",
-        "/elasticsearch/web_analytic_user_activity_report_data_index.json");
+        "/elasticsearch/web_analytic_user_activity_report_data_index.json"),
+    RAW_COST_ANALYSIS_REPORT_DATA_INDEX(
+        RAW_COST_ANALYSIS_REPORT_DATA,
+        "raw_cost_analysis_report_data_index",
+        "/elasticsearch/raw_cost_analysis_report_data_index.json"),
+    AGGREGATED_COST_ANALYSIS_REPORT_DATA_INDEX(
+        AGGREGATED_COST_ANALYSIS_REPORT_DATA,
+        "aggregated_cost_analysis_report_data_index",
+        "/elasticsearch/aggregated_cost_analysis_report_data_index.json");
 
     public final String indexName;
     public final String indexMappingFile;

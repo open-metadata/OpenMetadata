@@ -40,7 +40,9 @@
         "EditTests",
         "EditUsage",
         "EditUsers",
-        "EditLifeCycle"
+        "EditLifeCycle",
+        "EditKnowledgePanel",
+        "EditPage"
       ]
     }
   },

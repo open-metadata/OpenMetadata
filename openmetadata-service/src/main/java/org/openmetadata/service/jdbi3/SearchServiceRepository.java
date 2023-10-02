@@ -14,6 +14,7 @@ public class SearchServiceRepository extends ServiceEntityRepository<SearchServi
         dao,
         dao.searchServiceDAO(),
         SearchConnection.class,
+        "",
         ServiceType.SEARCH);
     supportsSearch = true;
   }
