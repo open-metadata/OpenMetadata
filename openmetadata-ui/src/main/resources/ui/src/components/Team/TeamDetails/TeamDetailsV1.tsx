@@ -930,8 +930,14 @@ const TeamDetailsV1 = ({
       parentTeams,
       childTeams,
       currentTeam,
+      isOrganization,
+      slashedTeamName,
       entityPermissions,
+      teamActionButton,
+      extraDropdownContent,
       updateTeamHandler,
+      afterDeleteAction,
+      getDeleteMessagePostFix,
     ]
   );
 

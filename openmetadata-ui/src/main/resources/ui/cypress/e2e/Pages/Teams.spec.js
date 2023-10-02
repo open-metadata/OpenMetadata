@@ -125,6 +125,7 @@ describe('Teams flow should work properly', () => {
       .contains(TEAM_DETAILS.name)
       .click();
     verifyResponseStatusCode('@permissions', 200);
+    cy.get('[data-testid="users"]').click();
     cy.get('[data-testid="add-new-user"]').scrollIntoView().click();
     verifyResponseStatusCode('@getUsers', 200);
     cy.get('[data-testid="selectable-list"] [data-testid="searchbar"]').type(
@@ -151,6 +152,7 @@ describe('Teams flow should work properly', () => {
     cy.get(`[data-row-key="${TEAM_DETAILS.name}"]`)
       .contains(TEAM_DETAILS.name)
       .click();
+    cy.get('[data-testid="users"]').click();
     verifyResponseStatusCode('@getUserDetails', 200);
     verifyResponseStatusCode('@permissions', 200);
     cy.get('[data-testid="add-new-user"]').should('be.visible').click();
@@ -173,10 +175,15 @@ describe('Teams flow should work properly', () => {
       .contains(TEAM_DETAILS.name)
       .click();
 
+    cy.get('[data-testid="users"]').click();
+
     verifyResponseStatusCode('@getUsers', 200);
 
     // Click on join teams button
-    cy.get('[data-testid="join-teams"]').should('be.visible').click();
+    cy.get('[data-testid="join-teams"]')
+      .scrollIntoView()
+      .should('be.visible')
+      .click();
 
     // Verify toast notification
     toastNotification('Team joined successfully!');
@@ -220,10 +227,9 @@ describe('Teams flow should work properly', () => {
       cy.wrap($el).should('have.text', TEAM_DETAILS.updatedName);
     });
 
-    cy.get('[data-testid="inactive-link"]').should(
-      'contain',
-      TEAM_DETAILS.updatedName
-    );
+    cy.get('[data-testid="inactive-link"]')
+      .scrollIntoView()
+      .should('contain', TEAM_DETAILS.updatedName);
   });
 
   it('Update description for created team', () => {
