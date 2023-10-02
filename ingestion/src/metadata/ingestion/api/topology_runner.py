@@ -33,7 +33,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
+from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
 
@@ -224,7 +224,7 @@ class TopologyRunnerMixin(Generic[C]):
         if stage.must_return and entity is None:
             # Safe access to Entity Request name
             raise MissingExpectedEntityAckException(
-                f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
+                f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
                 "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
                 "for the service connection."
             )
