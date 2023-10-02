@@ -59,6 +59,14 @@ export const TAGS_ADD_REMOVE_ENTITIES = [
     permissionApi: '/api/v1/permissions/*/*',
   },
   {
+    term: 'engineering',
+    displayName: 'Engineering department',
+    entity: 'containers',
+    serviceName: 's3_storage_sample',
+    tags: ['PersonalData.Personal', 'PII.Sensitive'],
+    permissionApi: '/api/v1/permissions/*/name/*',
+  },
+  {
     term: 'update_orders_table',
     displayName: 'update_orders_table',
     entity: 'storedProcedures',
