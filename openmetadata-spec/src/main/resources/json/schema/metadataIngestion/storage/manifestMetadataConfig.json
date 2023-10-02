@@ -10,9 +10,9 @@
       "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestMetadataEntry",
       "type": "object",
       "properties": {
-        "bucketName": {
-          "title": "Bucket Name",
-          "description": "The bucket name containing the data path to be ingested",
+        "containerName": {
+          "title": "Container Name",
+          "description": "The top-level container name containing the data path to be ingested",
           "type": "string"
         },
         "dataPath": {
@@ -43,7 +43,7 @@
         }
       },
       "required": [
-        "bucketName" ,"dataPath"
+        "containerName" ,"dataPath"
       ]
     }
   },

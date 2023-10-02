@@ -43,10 +43,12 @@
         },
         {
           "$ref": "./storage/storageMetadataS3Config.json"
+        },
+        {
+          "$ref": "./storage/storageMetadataADLSConfig.json"
         }
       ]
     }
   },
-  "additionalProperties": false,
-  "required": ["storageMetadataConfigSource"]
+  "additionalProperties": false
 }

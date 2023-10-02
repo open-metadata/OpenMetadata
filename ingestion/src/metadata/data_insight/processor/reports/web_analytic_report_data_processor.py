@@ -19,7 +19,7 @@ import re
 from collections import namedtuple
 from typing import Generator, Iterable, Optional
 
-from metadata.data_insight.processor.data_processor import DataProcessor
+from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.reportDataType.webAnalyticEntityViewReportData import (
     WebAnalyticEntityViewReportData,
@@ -43,6 +43,7 @@ from metadata.generated.schema.entity.data import (
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import get_entity_tier_from_tags
 from metadata.utils.logger import data_insight_logger
 from metadata.utils.time_utils import (
@@ -72,25 +73,17 @@ END_TS = str(get_end_of_day_timestamp_mill(days=1))
 class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = "WebAnalyticEntityViewReportData"
+    _data_processor_type = ReportDataType.WebAnalyticEntityViewReportData.value
 
-    def fetch_data(self) -> Iterable[WebAnalyticEventData]:
-        if CACHED_EVENTS:
-            for event in CACHED_EVENTS:
-                yield event
-        else:
-            CACHED_EVENTS.extend(
-                self.metadata.list_entities(
-                    entity=WebAnalyticEventData,
-                    params={
-                        "startTs": START_TS,
-                        "endTs": END_TS,
-                        "eventType": "PageView",
-                    },
-                ).entities
-            )
-            for event in CACHED_EVENTS:
-                yield event
+    def __init__(self, metadata: OpenMetadata):
+        super().__init__(metadata)
+        self.pre_hook = self._pre_hook_fn
+
+    def _pre_hook_fn(self):
+        """Start our generator function"""
+        # pylint: disable=attribute-defined-outside-init
+        self.refine_entity_event = self._refine_entity_event()
+        next(self.refine_entity_event)
 
     def _refine_entity_event(self) -> Generator[dict, WebAnalyticEventData, None]:
         """Coroutine to process entity web analytic event
@@ -198,7 +191,17 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 
             self.processor_status.scanned(ENTITIES[entity_type].__name__)
 
-    def refine(self):
+    def yield_refined_data(self) -> Iterable[ReportData]:
+        for data in self._refined_data:
+            yield ReportData(
+                timestamp=self.timestamp,
+                reportDataType=ReportDataType.WebAnalyticEntityViewReportData.value,
+                data=WebAnalyticEntityViewReportData.parse_obj(
+                    self._refined_data[data]
+                ),
+            )  # type: ignore
+
+    def refine(self, entity: WebAnalyticEventData):
         """Aggregates data. It will return a dictionary of the following shape
 
         {
@@ -215,24 +218,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
             ...
         }
         """
-        entity_refined_data = {}
-        refine_entity_event = self._refine_entity_event()
-        next(refine_entity_event)  # pylint: disable=stop-iteration-return
-
-        for event in self.fetch_data():
-            entity_refined_data = refine_entity_event.send(event)
-
-        for entity_data in entity_refined_data:
-            yield ReportData(
-                timestamp=self.timestamp,
-                reportDataType=ReportDataType.WebAnalyticEntityViewReportData.value,
-                data=WebAnalyticEntityViewReportData.parse_obj(
-                    entity_refined_data[entity_data]
-                ),
-            )  # type: ignore
-
-    def process(self) -> Iterable[ReportData]:
-        yield from self.refine()
+        self._refined_data = self.refine_entity_event.send(entity)
 
     def get_status(self) -> Status:
         return self.processor_status
@@ -241,7 +227,29 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
     """Data processor for user scoped web analytic events"""
 
-    _data_processor_type = "WebAnalyticUserActivityReportData"
+    _data_processor_type = ReportDataType.WebAnalyticUserActivityReportData.value
+
+    def __init__(self, metadata: OpenMetadata):
+        super().__init__(metadata)
+        self.pre_hook = self._pre_hook_fn
+        self.post_hook = self._post_hook_fn
+
+    def _pre_hook_fn(self):
+        """Start our generator function"""
+        # pylint: disable=attribute-defined-outside-init
+        self.refine_user_event = self._refine_user_event()
+        next(self.refine_user_event)
+
+    def _post_hook_fn(self):
+        """Post hook function"""
+        for user_id in self._refined_data:
+            session_metrics = self._compute_session_metrics(
+                self._refined_data[user_id].pop("sessions")
+            )
+            self._refined_data[user_id] = {
+                **self._refined_data[user_id],
+                **session_metrics,
+            }
 
     @staticmethod
     def _compute_session_metrics(sessions: dict[str, list]):
@@ -289,10 +297,9 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             Generator[dict, WebAnalyticEventData, None]: _description_
         """
         user_details = {}
-        refined_data = {}
 
         while True:
-            event = yield refined_data
+            event = yield self._refined_data
 
             user_id = str(event.eventData.userId.__root__)  # type: ignore
             session_id = str(event.eventData.sessionId.__root__)  # type: ignore
@@ -302,8 +309,8 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
                 user_details_data = self._get_user_details(user_id)
                 user_details[user_id] = user_details_data
 
-            if not refined_data.get(user_id):
-                refined_data[user_id] = {
+            if not self._refined_data.get(user_id):
+                self._refined_data[user_id] = {
                     "userName": user_details[user_id].get("user_name"),
                     "userId": user_id,
                     "team": user_details[user_id].get("team"),
@@ -316,7 +323,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
                 }
 
             else:
-                user_data = refined_data[user_id]
+                user_data = self._refined_data[user_id]
                 if user_data["sessions"].get(session_id):
                     user_data["sessions"][session_id].append(timestamp)
                 else:
@@ -348,32 +355,20 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
             for event in CACHED_EVENTS:
                 yield event
 
-    def refine(self) -> Iterable[ReportData]:
-        user_refined_data = {}
-        refine_user_event = self._refine_user_event()
-        next(refine_user_event)  # pylint: disable=stop-iteration-return
-
-        for event in self.fetch_data():
-            user_refined_data = refine_user_event.send(event)
-
-        for user_id, _ in user_refined_data.items():
-            session_metrics = self._compute_session_metrics(
-                user_refined_data[user_id].pop("sessions")
-            )
-            user_refined_data[user_id] = {
-                **user_refined_data[user_id],
-                **session_metrics,
-            }
+    def yield_refined_data(self) -> Iterable[ReportData]:
+        """Yield refined data"""
+        for user_id in self._refined_data:
             yield ReportData(
                 timestamp=self.timestamp,
                 reportDataType=ReportDataType.WebAnalyticUserActivityReportData.value,
                 data=WebAnalyticUserActivityReportData.parse_obj(
-                    user_refined_data[user_id]
+                    self._refined_data[user_id]
                 ),
             )  # type: ignore
 
-    def process(self) -> Iterable:
-        yield from self.refine()
+    def refine(self, entity: WebAnalyticEventData) -> None:
+        """Refine data"""
+        self._refined_data = self.refine_user_event.send(entity)
 
     def get_status(self) -> ProcessorStatus:
         return self.processor_status

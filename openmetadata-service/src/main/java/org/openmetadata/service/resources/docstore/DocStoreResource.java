@@ -52,7 +52,7 @@ import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -81,8 +81,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
-  public DocStoreResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Document.class, new DocumentRepository(dao), authorizer);
+  public DocStoreResource(Authorizer authorizer) {
+    super(Entity.DOCUMENT, authorizer);
   }
 
   public static class DocumentList extends ResultList<Document> {
@@ -142,7 +142,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   @Operation(
       operationId = "listAllDocumentVersion",
       summary = "List Document versions",
-      description = "Get a list of all the versions of a Dcouemtn identified by `id`",
+      description = "Get a list of all the versions of a Document identified by `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",

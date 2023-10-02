@@ -59,14 +59,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public static SearchRepository searchRepository;
   public static ElasticSearchConfiguration esConfig;
 
-  protected EntityResource(Class<T> entityClass, K repository, Authorizer authorizer) {
-    this.entityClass = entityClass;
-    entityType = repository.getEntityType();
+  protected EntityResource(String entityType, Authorizer authorizer) {
+    this.entityType = entityType;
+    this.repository = (K) Entity.getEntityRepository(entityType);
+    this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     allowedFields = repository.getAllowedFields();
-    this.repository = repository;
     this.authorizer = authorizer;
     addViewOperation("owner,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
-    Entity.registerEntity(entityClass, entityType, repository, getEntitySpecificOperations());
+    Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
