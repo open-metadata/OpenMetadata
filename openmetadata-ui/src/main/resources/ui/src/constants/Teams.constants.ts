@@ -31,6 +31,10 @@ export enum SUBSCRIPTION_WEBHOOK {
 
 export const SUBSCRIPTION_WEBHOOK_OPTIONS = [
   {
+    label: t('label.none'),
+    value: '',
+  },
+  {
     label: t('label.ms-team-plural'),
     value: SUBSCRIPTION_WEBHOOK.MS_TEAMS,
   },
