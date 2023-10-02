@@ -23,7 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import ValidationError
 
-from metadata.generated.schema.analytics.reportData import ReportDataType, ReportData
+from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -1393,10 +1393,12 @@ class SampleDataSource(
             i = 0
             for report_datum in report_data:
                 if report_type == ReportDataType.RawCostAnalysisReportData.value:
-                    start_ts = int((datetime.utcnow() - timedelta(days=60)).timestamp()*1000)
-                    end_ts = int(datetime.utcnow().timestamp()*1000)
-                    ts = random.randint(start_ts, end_ts)
-                    report_datum["data"]["lifeCycle"]["accessed"]["timestamp"] = ts
+                    start_ts = int(
+                        (datetime.utcnow() - timedelta(days=60)).timestamp() * 1000
+                    )
+                    end_ts = int(datetime.utcnow().timestamp() * 1000)
+                    tmstp = random.randint(start_ts, end_ts)
+                    report_datum["data"]["lifeCycle"]["accessed"]["timestamp"] = tmstp
                 record = OMetaDataInsightSample(
                     record=ReportData(
                         id=report_datum["id"],
