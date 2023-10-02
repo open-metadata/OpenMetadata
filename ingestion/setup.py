@@ -255,7 +255,7 @@ plugins: Dict[str, Set[str]] = {
 
 dev = {
     "black==22.3.0",
-    "datamodel-code-generator==0.15.0",
+    "datamodel-code-generator==0.22.0",
     "docker",
     "isort",
     "pre-commit",
