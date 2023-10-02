@@ -12,6 +12,7 @@
  */
 
 import { Container } from 'generated/entity/data/container';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
@@ -24,7 +25,8 @@ export type EntityDetails = Table &
   Dashboard &
   Pipeline &
   Mlmodel &
-  Container;
+  Container &
+  StoredProcedure;
 
 export interface CustomPropertyProps {
   isVersionView?: boolean;

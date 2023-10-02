@@ -218,7 +218,6 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
             pageSize={PAGE_SIZE}
             paging={testSuites.paging}
             pagingHandler={handlePagingClick}
-            totalCount={testSuites.paging.total}
           />
         )}
       </Col>

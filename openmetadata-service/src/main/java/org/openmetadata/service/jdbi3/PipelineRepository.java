@@ -16,15 +16,16 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.json.JsonPatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -34,11 +35,13 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -71,30 +74,55 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public void update(TaskDetails task, MessageParser.EntityLink entityLink, String newValue, String user) {
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals(TASKS_FIELD)) {
-      Pipeline pipeline = getByName(null, entityLink.getEntityFQN(), getFields("tasks,tags"), Include.ALL, false);
-      String oldJson = JsonUtils.pojoToJson(pipeline);
-      Task pipelineTask =
-          pipeline.getTasks().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("task", entityLink.getArrayFieldName())));
-      if (EntityUtil.isDescriptionTask(task.getType())) {
-        pipelineTask.setDescription(newValue);
-      } else if (EntityUtil.isTagTask(task.getType())) {
-        List<TagLabel> tags = JsonUtils.readObjects(newValue, TagLabel.class);
-        pipelineTask.setTags(tags);
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (EntityUtil.isDescriptionTask(taskType)) {
+        return new TaskDescriptionWorkflow(threadContext);
+      } else if (EntityUtil.isTagTask(taskType)) {
+        return new TaskTagWorkflow(threadContext);
+      } else {
+        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
       }
-      String updatedEntityJson = JsonUtils.pojoToJson(pipeline);
-      JsonPatch patch = JsonUtils.getJsonPatch(oldJson, updatedEntityJson);
-      patch(null, pipeline.getId(), user, patch);
-      return;
     }
-    super.update(task, entityLink, newValue, user);
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class TaskDescriptionWorkflow extends DescriptionTaskWorkflow {
+    private final Task task;
+
+    TaskDescriptionWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Pipeline pipeline = Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks", ALL);
+      threadContext.setAboutEntity(pipeline);
+      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      task.setDescription(resolveTask.getNewValue());
+      return threadContext.getAboutEntity();
+    }
+  }
+
+  static class TaskTagWorkflow extends TagTaskWorkflow {
+    private final Task task;
+
+    TaskTagWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Pipeline pipeline = Entity.getEntity(CONTAINER, threadContext.getAboutEntity().getId(), "tasks,tags", ALL);
+      threadContext.setAboutEntity(pipeline);
+      task = findTask(pipeline.getTasks(), threadContext.getAbout().getArrayFieldName());
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
+      task.setTags(tags);
+      return threadContext.getAboutEntity();
+    }
   }
 
   @Override
@@ -360,5 +388,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             "tasks." + origTask.getName() + ".description", origTask.getDescription(), updatedTask.getDescription());
       }
     }
+  }
+
+  public static Task findTask(List<Task> tasks, String taskName) {
+    return tasks.stream()
+        .filter(c -> c.getName().equals(taskName))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("task", taskName)));
   }
 }

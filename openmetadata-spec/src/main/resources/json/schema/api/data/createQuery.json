@@ -38,6 +38,14 @@
       "description": "SQL Query definition.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
+    "query_type": {
+      "description": "SQL query type",
+      "type": "string"
+    },
+    "exclude_usage": {
+      "description": "Flag to check if query is to be excluded while processing usage",
+      "type": "boolean"
+    },
     "duration": {
       "description": "How long did the query took to run in seconds.",
       "type": "number"

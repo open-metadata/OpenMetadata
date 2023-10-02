@@ -58,6 +58,8 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         databaseName=record.databaseName,
         databaseSchema=record.databaseSchema,
         sql=record.query,
+        query_type=record.query_type,
+        exclude_usage=record.exclude_usage,
         userName=record.userName,
         date=int(start_date.__root__.timestamp()),
         serviceName=record.serviceName,
@@ -89,15 +91,13 @@ class QueryParserProcessor(Processor):
         connection_type = kwargs.pop("connection_type", "")
         return cls(config, metadata_config, connection_type)
 
-    def _run(  # pylint: disable=arguments-differ
-        self, queries: TableQueries
-    ) -> Optional[Either[QueryParserData]]:
-        if queries and queries.queries:
+    def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
+        if record and record.queries:
             data = []
-            for record in queries.queries:
+            for table_query in record.queries:
                 try:
                     parsed_sql = parse_sql_statement(
-                        record,
+                        table_query,
                         ConnectionTypeDialectMapper.dialect_of(self.connection_type),
                     )
                     if parsed_sql:
@@ -106,7 +106,7 @@ class QueryParserProcessor(Processor):
                     return Either(
                         left=StackTraceError(
                             name="Query",
-                            error=f"Error processing query [{record.query}]: {exc}",
+                            error=f"Error processing query [{table_query.query}]: {exc}",
                             stack_trace=traceback.format_exc(),
                         )
                     )

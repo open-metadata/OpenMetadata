@@ -94,6 +94,8 @@ class TableUsageStage(Stage):
             self.table_queries[(table, record.date)].append(
                 CreateQueryRequest(
                     query=record.sql,
+                    query_type=record.query_type,
+                    exclude_usage=record.exclude_usage,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,
@@ -103,15 +105,15 @@ class TableUsageStage(Stage):
             self.table_queries[(table, record.date)] = [
                 CreateQueryRequest(
                     query=record.sql,
+                    query_type=record.query_type,
+                    exclude_usage=record.exclude_usage,
                     users=self._get_user_entity(record.userName),
                     queryDate=record.date,
                     duration=record.duration,
                 )
             ]
 
-    def _run(  # pylint: disable=arguments-differ
-        self, record: QueryParserData, *_, **__
-    ) -> Iterable[Either[str]]:
+    def _run(self, record: QueryParserData) -> Iterable[Either[str]]:
         """
         Process the parsed data and store it in a file
         """
