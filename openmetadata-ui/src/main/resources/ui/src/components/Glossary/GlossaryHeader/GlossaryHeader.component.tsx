@@ -196,8 +196,8 @@ const GlossaryHeader = ({
 
   const onStyleSave = (data: Style) => {
     const style: Style = {
-      color: data.color ? data.color : undefined,
-      iconURL: data.iconURL ? data.iconURL : undefined,
+      color: data?.color,
+      iconURL: data?.iconURL,
     };
     const updatedDetails = {
       ...selectedData,

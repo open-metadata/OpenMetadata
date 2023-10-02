@@ -110,7 +110,7 @@ const TagsV1 = ({
               className="m-r-xss"
               data-testid="icon"
               height={12}
-              src={tag.style?.iconURL}
+              src={tag.style.iconURL}
               width={12}
             />
           ) : (
