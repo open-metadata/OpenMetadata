@@ -71,10 +71,10 @@
     "alias": "query",
     "parentAliases": ["all"]
   },
-  "mlModel": {
+  "mlmodel": {
     "indexName": "mlmodel_search_index",
     "indexMappingFile": "/elasticsearch/%s/mlmodel_index_mapping.json",
-    "alias": "mlModel",
+    "alias": "mlmodel",
     "parentAliases": ["all"]
   },
   "testCase": {

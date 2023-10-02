@@ -43,9 +43,11 @@ public interface SearchClient {
   String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
   String PROPAGATE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
-  String REMOVE_PROPAGATED_FIELD_SCRIPT = "if(ctx._source.%s.id == '%s'){ ctx._source.remove('%s')}";
-  String UPDATE_PROPAGATED_FIELD_SCRIPT = "if(ctx._source.%s.id == '%s'){ ctx._source.put('%s', params)}";
-  String SOFT_DELETE_RESTORE_SCRIPT = "if(ctx._source.domain.id == '%s'){ ctx._source.put('domain', params)}";
+  String REMOVE_PROPAGATED_FIELD_SCRIPT =
+      "if((ctx._source.%s == null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
+  String UPDATE_PROPAGATED_FIELD_SCRIPT =
+      "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
+  String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == '%s') { ctx._source.tags.remove(i) }}";
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =

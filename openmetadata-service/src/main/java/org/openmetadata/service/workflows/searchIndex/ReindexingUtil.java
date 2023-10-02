@@ -31,7 +31,7 @@ public class ReindexingUtil {
   }
 
   public static boolean isDataInsightIndex(String entityType) {
-    return Entity.getSearchRepository().getDataInsightReports().contains(entityType.toLowerCase());
+    return Entity.getSearchRepository().getDataInsightReports().contains(entityType);
   }
 
   public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
