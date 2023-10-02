@@ -224,6 +224,12 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=16 %}
+
+**storageMetadataConfigSource**: Path to the `openmetadata_storage_manifest.json` global manifest file. It can be located in S3, a local path or as a URL to the file.
+
+{% /codeInfo %}
+
 #### Sink Configuration
 
 {% codeInfo srNumber=14 %}
@@ -306,6 +312,21 @@ source:
           #   excludes:
           #     - container3
           #     - container4
+```
+```yaml {% srNumber=16 %}
+          # storageMetadataConfigSource:
+          ## For S3
+          #   securityConfig:
+          #     awsAccessKeyId: ...
+          #     awsSecretAccessKey: ...
+          #     awsRegion: ...
+          #   prefixConfig:
+          #     containerName: om-glue-test
+          #     objectPrefix: <optional prefix>
+          ## For HTTP
+          #   manifestHttpPath: http://...
+          ## For Local
+          #   manifestFilePath: /path/to/openmetadata_storage_manifest.json
 ```
 
 ```yaml {% srNumber=14 %}

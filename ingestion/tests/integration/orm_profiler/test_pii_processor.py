@@ -62,9 +62,10 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse
 
 table_data = TableData(
     columns=[
@@ -117,7 +118,7 @@ table_data = TableData(
 
 
 EXPECTED_COLUMN_TAGS = [
-    PatchColumnTagResponse(
+    ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
         tag_label=TagLabel(
             tagFQN=TagFQN(__root__="PII.Sensitive"),
@@ -126,7 +127,7 @@ EXPECTED_COLUMN_TAGS = [
             state="Suggested",
         ),
     ),
-    PatchColumnTagResponse(
+    ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
         tag_label=TagLabel(
             tagFQN=TagFQN(__root__="PII.NonSensitive"),
@@ -135,7 +136,7 @@ EXPECTED_COLUMN_TAGS = [
             state="Suggested",
         ),
     ),
-    PatchColumnTagResponse(
+    ColumnTag(
         column_fqn="test-service-table-patch.test-db.test-schema.customers.random",
         tag_label=TagLabel(
             tagFQN=TagFQN(__root__="PII.Sensitive"),
