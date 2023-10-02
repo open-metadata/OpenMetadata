@@ -39,5 +39,44 @@ UPDATE dbservice_entity
 SET json = json #-'{connection,config,keyfile}'
 WHERE serviceType = 'Clickhouse';
 
+-- create app_marketplace
+CREATE TABLE IF NOT EXISTS app_marketplace (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+-- create installed_applications
+CREATE TABLE IF NOT EXISTS installed_application (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+-- create app_extension_time_series
+CREATE TABLE IF NOT EXISTS app_extension_time_series (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
 -- Clean old test connections
 TRUNCATE automations_workflow;
