@@ -406,6 +406,11 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @NonNull
           @QueryParam("dataInsightChartName")
           DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      @Parameter(description = "Query filter for the aggregation") @QueryParam("queryFilter") String queryFilter,
+      @Parameter(description = "Limit the number of results returned.") @DefaultValue("10") @QueryParam("size")
+          Integer size,
+      @Parameter(description = "Offset the results returned. (default = 0)") @DefaultValue("0") @QueryParam("from")
+          Integer from,
       @Parameter(
               description = "Specify the elasticsearch index to fetch data from",
               schema = @Schema(implementation = DataReportIndex.class))
@@ -428,18 +433,16 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
           @QueryParam("organization")
           String organization,
       @Parameter(description = "Filter after the given start timestamp", schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("startTs")
           Long startTs,
       @Parameter(description = "Filter before the given end timestamp", schema = @Schema(type = "number"))
-          @NonNull
           @QueryParam("endTs")
           Long endTs)
       throws IOException, ParseException {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     return searchRepository.listDataInsightChartResult(
-        startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) {
