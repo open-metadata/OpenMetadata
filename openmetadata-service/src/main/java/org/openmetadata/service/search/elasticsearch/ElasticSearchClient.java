@@ -25,8 +25,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
@@ -206,11 +208,11 @@ public class ElasticSearchClient implements SearchClient {
               LOG.error("Creation failed: " + e.getMessage());
             }
           };
-      List<String> aliases = indexMapping.getParentAliases();
+      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases());
       aliases.add(indexMapping.getAlias());
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexMappingFile())
+              .index(indexMapping.getIndexName())
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
@@ -955,13 +957,14 @@ public class ElasticSearchClient implements SearchClient {
   public void updateChildren(
       String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates) {
     UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-    updateByQueryRequest.setQuery(new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()));
+    updateByQueryRequest.setQuery(
+        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
     Script script =
         new Script(
             ScriptType.INLINE,
             Script.DEFAULT_SCRIPT_LANG,
             updates.getKey(),
-            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : JsonUtils.getMap(updates.getValue())));
     updateByQueryRequest.setScript(script);
     updateElasticSearchByQuery(updateByQueryRequest);
   }

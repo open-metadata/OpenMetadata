@@ -151,11 +151,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
+    // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
+    // repository
+    searchRepository = new SearchRepository(catalogConfig.getElasticSearchConfiguration(), collectionDAO);
+
     // as first step register all the repositories
     Entity.initializeRepositories(collectionDAO);
-	
-	// initialize Search Repository
-	searchRepository = new SearchRepository(catalogConfig.getElasticSearchConfiguration(), collectionDAO);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
