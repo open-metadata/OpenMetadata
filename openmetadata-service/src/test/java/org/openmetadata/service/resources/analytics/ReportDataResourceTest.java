@@ -4,11 +4,16 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
+import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -17,6 +22,9 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.Response;
+import org.elasticsearch.client.RestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -31,11 +39,13 @@ import org.openmetadata.service.util.TestUtils;
 
 class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
+  public static final String JSON_QUERY =
+      "{\"query\":{\"bool\":{\"filter\":{\"script\":{\"script\":"
+          + "{\"source\":\"doc['timestamp'].value.toLocalDate() == LocalDate.parse(params.now);\",\"lang\":\"painless\",\"params\":{\"now\":\"%s\"}}}}}}}";
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void report_data_admin_200() throws HttpResponseException, ParseException {
+  void report_data_admin_200() throws HttpResponseException, ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -53,6 +63,11 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     ResultList<ReportData> reportDataList =
         getReportData("2022-10-10", "2022-10-12", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
+      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.indexName, 1);
+    }
 
     assertNotEquals(0, reportDataList.getData().size());
   }
@@ -105,7 +120,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws HttpResponseException, ParseException {
+  void delete_endpoint_200() throws HttpResponseException, ParseException, IOException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data
@@ -151,12 +166,26 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             ADMIN_AUTH_HEADERS);
     assertNotEquals(0, entityReportDataList.getData().size());
     assertNotEquals(0, webAnalyticsReportDataList.getData().size());
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      List<String> indices = new ArrayList<>();
+      indices.add(ENTITY_REPORT_DATA_INDEX.indexName);
+      indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.indexName);
+      for (String index : indices) {
+        String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+        assertDocumentCountEquals(jsonQuery, index, 1);
+      }
+    }
 
     // delete the entity report data and check that it has been deleted
     deleteReportData(ReportData.ReportDataType.ENTITY_REPORT_DATA.value(), "2022-10-15", ADMIN_AUTH_HEADERS);
     entityReportDataList =
         getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
     assertEquals(0, entityReportDataList.getData().size());
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      // Check document has been deleted from elasticsearch
+      String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.indexName, 0);
+    }
     webAnalyticsReportDataList =
         getReportData(
             "2022-10-15",
@@ -186,5 +215,24 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     String path = String.format("/%s/%s", reportDataType, date);
     WebTarget target = getResource(collectionName).path(path);
     TestUtils.delete(target, authHeader);
+  }
+
+  private JsonNode runSearchQuery(String query, String index) throws IOException {
+    RestClient searchClient = getSearchClient();
+    Response response;
+    Request request = new Request("POST", String.format("/%s/_search", index));
+    request.setJsonEntity(query);
+    try {
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+    return new ObjectMapper().readTree(response.getEntity().getContent());
+  }
+
+  private void assertDocumentCountEquals(String query, String index, Integer count) throws IOException {
+    JsonNode json = runSearchQuery(query, index);
+    Integer docCount = json.get("hits").get("total").get("value").asInt();
+    assertEquals(count, docCount);
   }
 }

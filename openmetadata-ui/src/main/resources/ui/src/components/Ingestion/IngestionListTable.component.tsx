@@ -14,9 +14,9 @@
 import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
 import Table from 'components/common/Table/Table';
 import cronstrue from 'cronstrue';
-import { Paging } from 'generated/type/paging';
 import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,14 +50,16 @@ function IngestionListTable({
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${paging[cursorType as keyof Paging]}`;
+  const ingestionPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
-    onIngestionWorkflowsUpdate(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
+      onIngestionWorkflowsUpdate(pagingString);
+      setIngestionCurrentPage(currentPage);
+    }
   };
 
   const renderNameField = (text: string, record: IngestionPipeline) => {

@@ -33,9 +33,9 @@ export const FrequentlyJoinedTables = ({
   const { t } = useTranslation();
 
   return (
-    <Row className="m-x-xs" gutter={[0, 16]}>
+    <Row className="m-b-lg" gutter={[0, 8]}>
       <Col className="m-b" span={24}>
-        <Typography.Text>
+        <Typography.Text className="right-panel-label">
           {t('label.frequently-joined-table-plural')}
         </Typography.Text>
       </Col>

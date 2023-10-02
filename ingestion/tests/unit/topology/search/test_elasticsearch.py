@@ -41,7 +41,7 @@ mock_es_config = {
                     "username": "username",
                     "password": "password",
                 },
-                "hostPort": "localhost:9200",
+                "hostPort": "http://localhost:9200",
             }
         },
         "sourceConfig": {"config": {"type": "SearchMetadata"}},

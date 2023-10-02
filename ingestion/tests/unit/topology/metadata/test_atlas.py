@@ -280,6 +280,7 @@ EXPTECTED_TABLE = Table(
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
+            name="atlas_table",
             description="test tag",
             source="Classification",
             labelType="Automated",

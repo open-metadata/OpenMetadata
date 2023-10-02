@@ -12,8 +12,10 @@
  */
 
 import {
+  deleteUser,
   interceptURL,
   login,
+  signupAndLogin,
   uuid,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
@@ -49,42 +51,47 @@ const ID = {
   teams: {
     testid: '[data-menu-id*="teams"]',
     button: 'add-team',
+    api: '/api/v1/teams/name/Organization?*',
   },
   users: {
     testid: '[data-menu-id*="users"]',
     button: 'add-user',
+    api: '/api/v1/users?*',
   },
   admins: {
     testid: '[data-menu-id*="admins"]',
     button: 'add-user',
-  },
-  roles: {
-    testid: '[data-menu-id*="roles"]',
-    button: 'add-role',
-  },
-  policies: {
-    testid: '[data-menu-id*="policies"]',
-    button: 'add-policy',
+    api: '/api/v1/users?*',
   },
   databases: {
     testid: '[data-menu-id*="databases"]',
     button: 'add-service-button',
+    api: '/api/v1/services/databaseServices?*',
   },
   messaging: {
     testid: '[data-menu-id*="messaging"]',
     button: 'add-service-button',
+    api: '/api/v1/services/messagingServices?*',
   },
   dashboard: {
     testid: '[data-menu-id*="services.dashboards"]',
     button: 'add-service-button',
+    api: '/api/v1/services/dashboardServices?*',
   },
   pipelines: {
     testid: '[data-menu-id*="services.pipelines"]',
     button: 'add-service-button',
+    api: '/api/v1/services/pipelineServices?*',
   },
   mlmodels: {
     testid: '[data-menu-id*="services.mlModels"]',
     button: 'add-service-button',
+    api: '/api/v1/services/mlmodelServices?*',
+  },
+  storage: {
+    testid: '[data-menu-id*="services.storages"]',
+    button: 'add-service-button',
+    api: '/api/v1/services/storageServices?*',
   },
 };
 const PERMISSIONS = {
@@ -113,68 +120,17 @@ const PERMISSIONS = {
 
 describe('DataConsumer Edit policy should work properly', () => {
   it('Create a new account and assign Data consumer role to the user', () => {
-    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
-    cy.visit('/');
-    verifyResponseStatusCode('@getLoginPage', 200);
-    // Click on create account button
-    cy.get('[data-testid="signup"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-    // Enter first name
-    cy.get('[id="firstName"]').should('be.visible').type(CREDENTIALS.firstName);
-    cy.get('[id="firstName"]').should('have.value', CREDENTIALS.firstName);
-    // Enter last name
-    cy.get('[id="lastName"]').should('be.visible').type(CREDENTIALS.lastName);
-    cy.get('[id="lastName"]').should('have.value', CREDENTIALS.lastName);
-    // Enter email
-    cy.get('[id="email"]').should('be.visible').type(CREDENTIALS.email);
-    cy.get('[id="email"]').should('have.value', CREDENTIALS.email);
-    // Enter password
-    cy.get('[id="password"]').should('be.visible').type(CREDENTIALS.password);
-    cy.get('[id="password"]')
-      .should('have.attr', 'type')
-      .should('eq', 'password');
-
-    // Confirm password
-    cy.get('[id="confirmPassword"]')
-      .should('be.visible')
-      .type(CREDENTIALS.password);
-    // Click on create account button
-    cy.get('.ant-btn').contains('Create Account').should('be.visible').click();
-    cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
-
-    // Login with the created user
-
-    login(CREDENTIALS.email, CREDENTIALS.password);
-    cy.goToHomePage(true);
-    cy.url().should('eq', `${BASE_URL}/my-data`);
-
-    // Verify user profile
-    cy.get('[data-testid="avatar"]')
-      .first()
-      .should('be.visible')
-      .trigger('mouseover')
-      .click();
-
-    cy.get('[data-testid="user-name"]')
-      .should('be.visible')
-      .invoke('text')
-      .should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
-    interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
-    cy.get('[data-testid="user-name"]')
-      .should('be.visible')
-      .click({ force: true });
-    cy.wait('@getUserPage').then((response) => {
-      CREDENTIALS.id = response.response.body.id;
+    signupAndLogin(
+      CREDENTIALS.email,
+      CREDENTIALS.password,
+      CREDENTIALS.firstName,
+      CREDENTIALS.lastName
+    ).then((id) => {
+      CREDENTIALS.id = id;
+      cy.get(
+        '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
+      ).should('contain', policy);
     });
-    cy.get(
-      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
-    ).should('contain', `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`);
-
-    cy.get(
-      '[data-testid="user-profile"] [data-testid="user-profile-inherited-roles"]'
-    ).should('contain', policy);
   });
 
   it('Check if the new user has only edit access on description and tags', () => {
@@ -273,7 +229,15 @@ describe('DataConsumer Edit policy should work properly', () => {
     // Navigate to settings
     cy.get(NAVBAR_DETAILS.settings.testid).should('be.visible').click();
     Object.values(ID).forEach((id) => {
+      if (id?.api) {
+        interceptURL('GET', id.api, 'getTabDetails');
+      }
+
       cy.get(id.testid).should('be.visible').click();
+      if (id?.api) {
+        verifyResponseStatusCode('@getTabDetails', 200);
+      }
+
       cy.get(`[data-testid="${id.button}"]`).should('not.be.exist');
     });
 
@@ -294,14 +258,6 @@ describe('Cleanup', () => {
   });
 
   it('delete user', () => {
-    const token = localStorage.getItem('oidcIdToken');
-
-    cy.request({
-      method: 'DELETE',
-      url: `/api/v1/users/${CREDENTIALS.id}?hardDelete=true&recursive=false`,
-      headers: { Authorization: `Bearer ${token}` },
-    }).then((response) => {
-      expect(response.status).to.eq(200);
-    });
+    deleteUser(CREDENTIALS.id);
   });
 });

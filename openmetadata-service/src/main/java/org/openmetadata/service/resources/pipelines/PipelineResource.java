@@ -47,6 +47,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -56,7 +57,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.resources.Collection;
@@ -85,8 +85,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
-  public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Pipeline.class, new PipelineRepository(dao), authorizer);
+  public PipelineResource(Authorizer authorizer) {
+    super(Entity.PIPELINE, authorizer);
   }
 
   @Override
@@ -457,6 +457,27 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           @PathParam("userId")
           UUID userId) {
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @DELETE

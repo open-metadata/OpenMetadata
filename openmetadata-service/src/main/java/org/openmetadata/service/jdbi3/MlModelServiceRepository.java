@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource;
 
+@Slf4j
 public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
@@ -31,5 +33,6 @@ public class MlModelServiceRepository extends ServiceEntityRepository<MlModelSer
         MlModelConnection.class,
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);
+    supportsSearch = true;
   }
 }

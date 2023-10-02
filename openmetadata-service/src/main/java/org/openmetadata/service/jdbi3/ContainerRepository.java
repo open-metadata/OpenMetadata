@@ -46,6 +46,7 @@ public class ContainerRepository extends EntityRepository<Container> {
         dao,
         CONTAINER_PATCH_FIELDS,
         CONTAINER_UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -179,6 +180,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (container.getDataModel() != null) {
       applyTags(container.getDataModel().getColumns());
     }
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Container entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private void applyTags(List<Column> columns) {

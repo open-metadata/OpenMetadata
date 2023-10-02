@@ -95,11 +95,9 @@ class MessagingServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=TopicSampleData,
-                context="topic_sample_data",
                 processor="yield_topic_sample_data",
                 consumer=["messaging_service"],
                 nullable=True,
-                ack_sink=False,
             ),
         ],
     )

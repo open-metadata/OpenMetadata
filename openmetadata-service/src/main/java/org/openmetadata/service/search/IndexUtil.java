@@ -19,8 +19,8 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.elasticSearch.ElasticSearchClientImpl;
-import org.openmetadata.service.search.openSearch.OpenSearchClientImpl;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClientImpl;
+import org.openmetadata.service.search.opensearch.OpenSearchClientImpl;
 import org.openmetadata.service.util.SSLUtil;
 
 @Slf4j
@@ -33,6 +33,8 @@ public class IndexUtil {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "AggregatedCostAnalysisReportData";
   public static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
 
   private static final Map<SearchIndexDefinition.ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
@@ -57,7 +59,7 @@ public class IndexUtil {
     FAILED
   }
 
-  public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
+  public static SearchRepository getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     if (esConfig != null) {
       return esConfig.getSearchType().equals(SearchType.OPENSEARCH)
           ? new OpenSearchClientImpl(esConfig, dao)
@@ -88,10 +90,20 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.TABLE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DASHBOARD)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.CHART)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.CHART_INDEX_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DASHBOARD_DATA_MODEL)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_DATA_MODEL_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DASHBOARD_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.PIPELINE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.PIPELINE_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TOPIC)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TOPIC_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.MESSAGING_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.USER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.USER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TEAM)) {
@@ -100,22 +112,52 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.MLMODEL)) {
       return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.MLMODEL_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.MLMODEL_SERVICE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
       return SearchIndexDefinition.ElasticSearchIndexType.GLOSSARY_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.TAG)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TAG_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.CLASSIFICATION)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.CLASSIFICATION_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(ENTITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(RAW_COST_ANALYSIS_REPORT_DATA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.RAW_COST_ANALYSIS_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(AGGREGATED_COST_ANALYSIS_REPORT_DATA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.AGGREGATED_COST_ANALYSIS_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return SearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE) || type.equalsIgnoreCase(Entity.TEST_CASE)) {
+    } else if (type.equalsIgnoreCase(Entity.TEST_CASE)) {
       return SearchIndexDefinition.ElasticSearchIndexType.TEST_CASE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.TEST_SUITE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.TEST_SUITE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATABASE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATABASE_SCHEMA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SCHEMA_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATABASE_SERVICE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.SEARCH_INDEX)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_ENTITY_INDEX_SEARCH;
+    } else if (type.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.SEARCH_SERVICE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DOMAIN)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DOMAIN_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.STORED_PROCEDURE_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.DATA_PRODUCT)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.DATA_PRODUCTS_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.STORAGE_SERVICE_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.METADATA_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.METADATA_SERVICE_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }

@@ -37,7 +37,6 @@ from metadata.ingestion.ometa.mixins.glossary_mixin import GlossaryMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
-from metadata.ingestion.ometa.mixins.life_cycle_mixin import LifeCycleMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
@@ -108,7 +107,6 @@ class OpenMetadata(
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
     OMetaSearchIndexMixin,
-    LifeCycleMixin,
     Generic[T, C],
 ):
     """
@@ -128,7 +126,11 @@ class OpenMetadata(
     api_path = "api"
     data_path = "data"
 
-    def __init__(self, config: OpenMetadataConnection, raw_data: bool = False):
+    def __init__(
+        self,
+        config: OpenMetadataConnection,
+        raw_data: bool = False,
+    ):
         self.config = config
 
         # Load the secrets' manager client
@@ -368,6 +370,7 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
+    # pylint: disable=too-many-locals
     def list_entities(
         self,
         entity: Type[T],
@@ -375,6 +378,7 @@ class OpenMetadata(
         after: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -391,7 +395,17 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        entities = [entity(**t) for t in resp["data"]]
+        if skip_on_failure:
+            entities = []
+            for elmt in resp["data"]:
+                try:
+                    entities.append(entity(**elmt))
+                except Exception as exc:
+                    logger.error(f"Error creating entity. Failed with exception {exc}")
+                    continue
+        else:
+            entities = [entity(**elmt) for elmt in resp["data"]]
+
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
         return EntityList(entities=entities, total=total, after=after)
@@ -402,6 +416,7 @@ class OpenMetadata(
         fields: Optional[List[str]] = None,
         limit: int = 1000,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -415,7 +430,11 @@ class OpenMetadata(
 
         # First batch of Entities
         entity_list = self.list_entities(
-            entity=entity, fields=fields, limit=limit, params=params
+            entity=entity,
+            fields=fields,
+            limit=limit,
+            params=params,
+            skip_on_failure=skip_on_failure,
         )
         for elem in entity_list.entities:
             yield elem
@@ -423,7 +442,12 @@ class OpenMetadata(
         after = entity_list.after
         while after:
             entity_list = self.list_entities(
-                entity=entity, fields=fields, limit=limit, params=params, after=after
+                entity=entity,
+                fields=fields,
+                limit=limit,
+                params=params,
+                after=after,
+                skip_on_failure=skip_on_failure,
             )
             for elem in entity_list.entities:
                 yield elem

@@ -95,11 +95,12 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
     String nameHashColumn = dao.getNameHashColumn();
-    if (dao instanceof CollectionDAO.TestSuiteDAO) {
-      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
-      // the migrations here
-      nameHashColumn = "nameHash";
-    }
+    updateFQNHashForEntity(handle, clazz, dao, limitParam, nameHashColumn);
+  }
+
+  @SneakyThrows
+  public static <T extends EntityInterface> void updateFQNHashForEntity(
+      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
           handle,
@@ -107,7 +108,8 @@ public class MigrationUtil {
           clazz,
           dao,
           false,
-          limitParam);
+          limitParam,
+          nameHashColumn);
     } else {
       readAndProcessEntity(
           handle,
@@ -115,7 +117,8 @@ public class MigrationUtil {
           clazz,
           dao,
           false,
-          limitParam);
+          limitParam,
+          nameHashColumn);
     }
   }
 
@@ -123,14 +126,21 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam) {
     String nameHashColumn = dao.getNameHashColumn();
-    if (dao instanceof CollectionDAO.TestSuiteDAO) {
-      // We have to do this since this column in changed in the dao in latest version after this , and this will fail
-      // the migrations here
-      nameHashColumn = "nameHash";
-    }
+    updateFQNHashForEntityWithName(handle, clazz, dao, limitParam, nameHashColumn);
+  }
+
+  @SneakyThrows
+  public static <T extends EntityInterface> void updateFQNHashForEntityWithName(
+      Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       readAndProcessEntity(
-          handle, String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn), clazz, dao, true, limitParam);
+          handle,
+          String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+          clazz,
+          dao,
+          true,
+          limitParam,
+          nameHashColumn);
     } else {
       readAndProcessEntity(
           handle,
@@ -138,14 +148,20 @@ public class MigrationUtil {
           clazz,
           dao,
           true,
-          limitParam);
+          limitParam,
+          nameHashColumn);
     }
   }
 
   public static <T extends EntityInterface> void readAndProcessEntity(
-      Handle handle, String updateSql, Class<T> clazz, EntityDAO<T> dao, boolean withName, int limitParam) {
+      Handle handle,
+      String updateSql,
+      Class<T> clazz,
+      EntityDAO<T> dao,
+      boolean withName,
+      int limitParam,
+      String nameHashColumn) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
-    String nameHashColumn = dao.getNameHashColumn();
     if (dao instanceof CollectionDAO.TestSuiteDAO) {
       // We have to do this since this column in changed in the dao in latest version after this , and this will fail
       // the migrations here
@@ -210,20 +226,6 @@ public class MigrationUtil {
     return result;
   }
 
-  public static List<MigrationDAO.ServerMigrationSQLTable> addInListIfToBeExecuted(
-      String version, Set<String> lookUp, List<String> queries) {
-    List<MigrationDAO.ServerMigrationSQLTable> result = new ArrayList<>();
-    for (String query : queries) {
-      MigrationDAO.ServerMigrationSQLTable tableContent = buildServerMigrationTable(version, query);
-      if (!lookUp.contains(tableContent.getCheckSum())) {
-        result.add(tableContent);
-      } else {
-        LOG.debug("Query will be skipped in Migration Step , as this has already been executed");
-      }
-    }
-    return result;
-  }
-
   public static void dataMigrationFQNHashing(Handle handle, CollectionDAO collectionDAO, int limitParam) {
     // Migration for Entities with Name as their FQN
     // We need to quote the FQN, if these entities have "." in their name we are storing it as it is
@@ -247,7 +249,7 @@ public class MigrationUtil {
     updateFQNHashForEntity(handle, Database.class, collectionDAO.databaseDAO(), limitParam);
     updateFQNHashForEntity(handle, DatabaseSchema.class, collectionDAO.databaseSchemaDAO(), limitParam);
     updateFQNHashForEntity(handle, Table.class, collectionDAO.tableDAO(), limitParam);
-    updateFQNHashForEntity(handle, Query.class, collectionDAO.queryDAO(), limitParam);
+    updateFQNHashForEntity(handle, Query.class, collectionDAO.queryDAO(), limitParam, "nameHash");
     updateFQNHashForEntity(handle, Topic.class, collectionDAO.topicDAO(), limitParam);
     updateFQNHashForEntity(handle, Dashboard.class, collectionDAO.dashboardDAO(), limitParam);
     updateFQNHashForEntity(handle, DashboardDataModel.class, collectionDAO.dashboardDataModelDAO(), limitParam);
@@ -272,7 +274,7 @@ public class MigrationUtil {
     updateFQNHashForEntity(
         handle, TestConnectionDefinition.class, collectionDAO.testConnectionDefinitionDAO(), limitParam);
     updateFQNHashForEntity(handle, TestDefinition.class, collectionDAO.testDefinitionDAO(), limitParam);
-    updateFQNHashForEntity(handle, TestSuite.class, collectionDAO.testSuiteDAO(), limitParam);
+    updateFQNHashForEntity(handle, TestSuite.class, collectionDAO.testSuiteDAO(), limitParam, "nameHash");
 
     // Update Misc
     updateFQNHashForEntity(handle, Policy.class, collectionDAO.policyDAO(), limitParam);
@@ -426,7 +428,7 @@ public class MigrationUtil {
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());
     if (create.getExecutableEntityReference() != null) {
-      TableRepository tableRepository = new TableRepository(dao);
+      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
       Table table =
           JsonUtils.readValue(
               tableRepository.getDao().findJsonByFqn(create.getExecutableEntityReference(), Include.ALL), Table.class);
@@ -458,8 +460,6 @@ public class MigrationUtil {
    * to System created native TestSuite Per Table 2. Our Goal with this migration is to list all the test cases and
    * create .testSuite with executable set to true and associate all of the respective test cases with new native test
    * suite.
-   *
-   * @param collectionDAO
    */
   @SneakyThrows
   public static void testSuitesMigration(CollectionDAO collectionDAO) {
@@ -468,8 +468,8 @@ public class MigrationUtil {
     migrateExistingTestSuitesToLogical(collectionDAO);
 
     // create native test suites
-    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
-    Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable(collectionDAO);
+    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
+    Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable();
     for (String tableFQN : testCasesByTable.keySet()) {
       String nativeTestSuiteFqn = tableFQN + ".testSuite";
       List<TestCase> testCases = testCasesByTable.get(tableFQN);
@@ -512,8 +512,9 @@ public class MigrationUtil {
   }
 
   private static void migrateExistingTestSuitesToLogical(CollectionDAO collectionDAO) {
-    IngestionPipelineRepository ingestionPipelineRepository = new IngestionPipelineRepository(collectionDAO);
-    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(INGESTION_PIPELINE);
+    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
     ListFilter filter = new ListFilter(Include.ALL);
     List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
     for (TestSuite testSuite : testSuites) {
@@ -521,19 +522,19 @@ public class MigrationUtil {
       List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
           collectionDAO
               .relationshipDAO()
-              .findTo(testSuite.getId().toString(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
+              .findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS.ordinal(), INGESTION_PIPELINE);
       for (CollectionDAO.EntityRelationshipRecord ingestionRecord : ingestionPipelineRecords) {
         // remove relationship
-        collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId().toString(), INGESTION_PIPELINE);
+        collectionDAO.relationshipDAO().deleteAll(ingestionRecord.getId(), INGESTION_PIPELINE);
         // Cannot use Delete directly it uses other repos internally
-        ingestionPipelineRepository.getDao().delete(ingestionRecord.getId().toString());
+        ingestionPipelineRepository.getDao().delete(ingestionRecord.getId());
       }
     }
   }
 
-  public static Map<String, ArrayList<TestCase>> groupTestCasesByTable(CollectionDAO collectionDAO) {
+  public static Map<String, ArrayList<TestCase>> groupTestCasesByTable() {
     Map<String, ArrayList<TestCase>> testCasesByTable = new HashMap<>();
-    TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
+    TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
     List<TestCase> testCases = testCaseRepository.listAll(new Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestCase testCase : testCases) {
       // Create New Executable Test Suites

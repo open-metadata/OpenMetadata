@@ -21,10 +21,14 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -49,6 +53,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao,
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -182,6 +187,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Dashboard entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {

@@ -12,14 +12,17 @@
  */
 
 import { Col, Row, Space, Table, Tooltip } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
 import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
+import { TableConstraint } from 'generated/api/data/createTable';
+import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { Column, TableConstraint } from '../../generated/entity/data/table';
+import { Column } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -34,7 +37,7 @@ import Searchbar from '../common/searchbar/Searchbar';
 import TagsViewer from '../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
 
-const VersionTable = ({
+function VersionTable<T extends Column | SearchIndexField>({
   columnName,
   columns,
   joins,
@@ -43,16 +46,16 @@ const VersionTable = ({
   deletedColumnConstraintDiffs,
   addedTableConstraintDiffs,
   deletedTableConstraintDiffs,
-}: VersionTableProps) => {
-  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
+}: VersionTableProps<T>) {
+  const [searchedColumns, setSearchedColumns] = useState<Array<T>>([]);
   const { t } = useTranslation();
 
   const [searchText, setSearchText] = useState('');
 
-  const data = useMemo(() => makeData(searchedColumns), [searchedColumns]);
+  const data = useMemo(() => makeData<T>(searchedColumns), [searchedColumns]);
 
   const renderColumnName = useCallback(
-    (name: Column['name'], record: Column) => {
+    (name: T['name'], record: T) => {
       const addedColumnConstraint = addedColumnConstraintDiffs?.find((diff) =>
         diff.name?.includes(name)
       );
@@ -95,7 +98,8 @@ const VersionTable = ({
 
       addedConstraintIcon = prepareConstraintIcon({
         columnName: name,
-        columnConstraint: addedColumnConstraint?.newValue ?? record.constraint,
+        columnConstraint:
+          addedColumnConstraint?.newValue ?? (record as Column).constraint,
         tableConstraints: addedTableConstraint ?? existingAddedTableConstraint,
         isColumnConstraintAdded: !isUndefined(addedColumnConstraint),
         isTableConstraintAdded: !isUndefined(addedTableConstraint),
@@ -122,6 +126,7 @@ const VersionTable = ({
       );
     },
     [
+      columns,
       tableConstraints,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
@@ -130,7 +135,7 @@ const VersionTable = ({
     ]
   );
 
-  const versionTableColumns = useMemo(
+  const versionTableColumns: ColumnsType<T> = useMemo(
     () => [
       {
         title: t('label.name'),
@@ -147,7 +152,7 @@ const VersionTable = ({
         accessor: 'dataTypeDisplay',
         ellipsis: true,
         width: 200,
-        render: (dataTypeDisplay: Column['dataTypeDisplay']) => {
+        render: (dataTypeDisplay: T['dataTypeDisplay']) => {
           return dataTypeDisplay ? (
             <Tooltip
               title={
@@ -173,7 +178,7 @@ const VersionTable = ({
         key: 'description',
         accessor: 'description',
         width: 400,
-        render: (description: Column['description']) =>
+        render: (description: T['description']) =>
           description ? (
             <>
               <RichTextEditorPreviewer markdown={description} />
@@ -197,7 +202,7 @@ const VersionTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (tags: Column['tags']) => (
+        render: (tags: T['tags']) => (
           <TagsViewer
             sizeCap={-1}
             tags={getFilterTags(tags ?? []).Classification}
@@ -210,7 +215,7 @@ const VersionTable = ({
         key: 'tags',
         accessor: 'tags',
         width: 272,
-        render: (tags: Column['tags']) => (
+        render: (tags: T['tags']) => (
           <TagsViewer sizeCap={-1} tags={getFilterTags(tags ?? []).Glossary} />
         ),
       },
@@ -226,7 +231,7 @@ const VersionTable = ({
     if (!searchText) {
       setSearchedColumns(columns);
     } else {
-      const searchCols = searchInColumns(columns, searchText);
+      const searchCols = searchInColumns<T>(columns, searchText);
       setSearchedColumns(searchCols);
     }
   }, [searchText, columns]);
@@ -248,7 +253,7 @@ const VersionTable = ({
           data-testid="entity-table"
           dataSource={data}
           expandable={{
-            ...getTableExpandableConfig<Column>(),
+            ...getTableExpandableConfig<T>(),
             defaultExpandAllRows: true,
           }}
           key={`${String(data)}`} // Necessary for working of the default auto expand all rows functionality.
@@ -263,6 +268,6 @@ const VersionTable = ({
       </Col>
     </Row>
   );
-};
+}
 
 export default VersionTable;

@@ -24,15 +24,12 @@ import static org.openmetadata.service.Entity.SEARCH_SERVICE;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.SearchIndex;
@@ -60,6 +57,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public SearchIndexRepository(CollectionDAO dao) {
     super(
         SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+    supportsSearch = true;
   }
 
   @Override
@@ -152,7 +150,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
     SearchIndexSampleData sampleData =
         JsonUtils.readValue(
-            daoCollection.entityExtensionDAO().getExtension(searchIndex.getId().toString(), "searchIndex.sampleData"),
+            daoCollection.entityExtensionDAO().getExtension(searchIndex.getId(), "searchIndex.sampleData"),
             SearchIndexSampleData.class);
     searchIndex.setSampleData(sampleData);
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
@@ -167,18 +165,13 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     return searchIndex;
   }
 
-  @Transaction
   public SearchIndex addSampleData(UUID searchIndexId, SearchIndexSampleData sampleData) {
     // Validate the request content
     SearchIndex searchIndex = daoCollection.searchIndexDAO().findEntityById(searchIndexId);
 
     daoCollection
         .entityExtensionDAO()
-        .insert(
-            searchIndexId.toString(),
-            "searchIndex.sampleData",
-            "searchIndexSampleData",
-            JsonUtils.pojoToJson(sampleData));
+        .insert(searchIndexId, "searchIndex.sampleData", "searchIndexSampleData", JsonUtils.pojoToJson(sampleData));
     setFieldsInternal(searchIndex, Fields.EMPTY_FIELDS);
     return searchIndex.withSampleData(sampleData);
   }
@@ -370,17 +363,6 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       }
     }
     return childrenSchemaField;
-  }
-
-  public static Set<TagLabel> getAllFieldTags(SearchIndexField field) {
-    Set<TagLabel> tags = new HashSet<>();
-    if (!listOrEmpty(field.getTags()).isEmpty()) {
-      tags.addAll(field.getTags());
-    }
-    for (SearchIndexField c : listOrEmpty(field.getChildren())) {
-      tags.addAll(getAllFieldTags(c));
-    }
-    return tags;
   }
 
   public class SearchIndexUpdater extends EntityUpdater {

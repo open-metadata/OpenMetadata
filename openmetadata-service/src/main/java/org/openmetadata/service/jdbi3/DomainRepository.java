@@ -16,12 +16,12 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
@@ -34,11 +34,12 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   public DomainRepository(CollectionDAO dao) {
     super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
   public Domain setFields(Domain entity, Fields fields) {
-    return entity.withParent(fields.contains("parent") ? getParent(entity) : entity.getParent());
+    return entity.withParent(getParent(entity));
   }
 
   @Override
@@ -55,7 +56,6 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void storeEntity(Domain entity, boolean update) {
     EntityReference parent = entity.getParent();
-    List<EntityReference> children = entity.getChildren();
     entity.withParent(null);
     store(entity, update);
     entity.withParent(parent);
@@ -105,6 +105,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
+  @Override
+  public EntityInterface getParentEntity(Domain entity, String fields) {
+    return entity.getParent() != null ? Entity.getEntity(entity.getParent(), fields, Include.NON_DELETED) : null;
+  }
+
   public class DomainUpdater extends EntityUpdater {
     public DomainUpdater(Domain original, Domain updated, Operation operation) {
       super(original, updated, operation);
@@ -112,21 +117,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     @Override
     public void entitySpecificUpdate() {
-      updateExperts();
-    }
-
-    private void updateExperts() {
-      List<EntityReference> origExperts = listOrEmpty(original.getExperts());
-      List<EntityReference> updatedExperts = listOrEmpty(updated.getExperts());
-      updateToRelationships(
-          FIELD_EXPERTS,
-          DOMAIN,
-          original.getId(),
-          Relationship.EXPERT,
-          Entity.USER,
-          origExperts,
-          updatedExperts,
-          false);
+      recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
   }
 }

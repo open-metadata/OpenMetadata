@@ -17,6 +17,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,7 +74,7 @@ public final class CommonUtil {
         String fileName = e.nextElement().getName();
         if (pattern.matcher(fileName).matches()) {
           retval.add(fileName);
-          LOG.info("Adding file from jar {}", fileName);
+          LOG.debug("Adding file from jar {}", fileName);
         }
       }
     } catch (Exception ignored) {
@@ -90,7 +92,7 @@ public final class CommonUtil {
           .map(
               path -> {
                 String relativePath = root.relativize(path).toString();
-                LOG.info("Adding directory file {}", relativePath);
+                LOG.debug("Adding directory file {}", relativePath);
                 return relativePath;
               })
           .collect(Collectors.toSet());
@@ -178,5 +180,14 @@ public final class CommonUtil {
       return Collections.emptyList();
     }
     return new ArrayList<>(Arrays.asList(entries));
+  }
+
+  public static URI getUri(String uri) {
+    try {
+      return new URI(uri);
+    } catch (URISyntaxException e) {
+      LOG.error("Error creating URI ", e);
+    }
+    return null;
   }
 }

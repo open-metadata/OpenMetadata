@@ -10,6 +10,7 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -100,6 +103,10 @@ public class AlertsRuleEvaluator {
     }
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
+      if (changeEvent.getEntityType().equals(TEST_CASE)
+          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink()).getEntityFQN().equals(name))) {
+        return true;
+      }
       if (entity.getFullyQualifiedName().equals(name)) {
         return true;
       }
@@ -159,7 +166,14 @@ public class AlertsRuleEvaluator {
       // in case the entity is not test case return since the filter doesn't apply
       return true;
     }
-    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+
+    // we need to handle both fields updated and fields added
+    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
+    if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
+      fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
+    }
+
+    for (FieldChange fieldChange : fieldChanges) {
       if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
         TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
         TestCaseStatus status = testCaseResult.getTestCaseStatus();

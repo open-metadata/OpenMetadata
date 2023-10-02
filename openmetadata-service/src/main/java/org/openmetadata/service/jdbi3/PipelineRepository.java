@@ -23,7 +23,6 @@ import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -64,6 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         dao,
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -145,7 +145,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  @Transaction
   public Pipeline addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
@@ -156,17 +155,29 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    storeTimeSeries(
-        pipeline.getFullyQualifiedName(),
-        PIPELINE_STATUS_EXTENSION,
-        "pipelineStatus",
-        JsonUtils.pojoToJson(pipelineStatus),
-        pipelineStatus.getTimestamp());
-
+    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it is unrelated to
+    // workflow execution. We should bring back the old behavior for this one.
+    String storedPipelineStatus =
+        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              pipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus),
+              pipelineStatus.getTimestamp());
+    } else {
+      storeTimeSeries(
+          pipeline.getFullyQualifiedName(),
+          PIPELINE_STATUS_EXTENSION,
+          "pipelineStatus",
+          JsonUtils.pojoToJson(pipelineStatus),
+          pipelineStatus.getTimestamp());
+    }
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 
-  @Transaction
   public Pipeline deletePipelineStatus(String fqn, Long timestamp) {
     // Validate the request content
     Pipeline pipeline = dao.findEntityByName(fqn);
@@ -247,6 +258,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(pipeline);
     applyTags(pipeline.getTasks());
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Pipeline entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private void applyTags(List<Task> tasks) {

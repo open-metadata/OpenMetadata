@@ -17,6 +17,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { EntityType } from 'enums/entity.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { StorageServiceType } from 'generated/entity/data/container';
+import { SearchServiceType } from 'generated/entity/services/searchService';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -44,6 +45,7 @@ import {
   DOMO,
   DRUID,
   DYNAMODB,
+  ELASTIC_SEARCH,
   FIVETRAN,
   GLUE,
   HIVE,
@@ -63,6 +65,7 @@ import {
   MSSQL,
   MYSQL,
   NIFI,
+  OPEN_SEARCH,
   ORACLE,
   PINOT,
   PIPELINE_DEFAULT,
@@ -79,6 +82,7 @@ import {
   SAP_HANA,
   SCIKIT,
   serviceTypes,
+  SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
   SINGLESTORE,
   SNOWFLAKE,
@@ -306,6 +310,12 @@ export const serviceTypeLogo = (type: string) => {
     case StorageServiceType.S3:
       return AMAZON_S3;
 
+    case SearchServiceType.ElasticSearch:
+      return ELASTIC_SEARCH;
+
+    case SearchServiceType.OpenSearch:
+      return OPEN_SEARCH;
+
     default: {
       let logo;
       if (serviceTypes.messagingServices.includes(type)) {
@@ -376,6 +386,12 @@ export const shouldTestConnection = (serviceType: string) => {
 
 export const getServiceType = (serviceCat: ServiceCategory) =>
   SERVICE_TYPE_MAP[serviceCat];
+
+export const getServiceTypesFromServiceCategory = (
+  serviceCat: ServiceCategory
+) => {
+  return SERVICE_TYPES_ENUM[serviceCat];
+};
 
 export const getServiceCreatedLabel = (serviceCategory: ServiceCategory) => {
   let serviceCat;
@@ -601,6 +617,9 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   if (type === 'storageServices') {
     return GlobalSettingOptions.STORAGES;
   }
+  if (type === 'searchServices') {
+    return GlobalSettingOptions.SEARCH;
+  }
 
   return GlobalSettingOptions.DATABASES;
 };
@@ -653,6 +672,8 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return t('label.ml-model-plural');
     case ServiceCategory.STORAGE_SERVICES:
       return t('label.container-plural');
+    case ServiceCategory.SEARCH_SERVICES:
+      return t('label.search-index-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return t('label.database-plural');
@@ -664,6 +685,26 @@ export const getTestConnectionName = (connectionType: string) => {
     length: 8,
     type: 'alphanumeric',
   })}`;
+};
+
+export const getServiceCategoryFromEntityType = (
+  entityType: EntityType
+): string => {
+  switch (entityType) {
+    case EntityType.DASHBOARD_SERVICE:
+      return ServiceCategory.DASHBOARD_SERVICES;
+    case EntityType.MESSAGING_SERVICE:
+      return ServiceCategory.MESSAGING_SERVICES;
+    case EntityType.PIPELINE_SERVICE:
+      return ServiceCategory.PIPELINE_SERVICES;
+    case EntityType.MLMODEL_SERVICE:
+      return ServiceCategory.ML_MODEL_SERVICES;
+    case EntityType.STORAGE_SERVICE:
+      return ServiceCategory.STORAGE_SERVICES;
+    case EntityType.DATABASE_SERVICE:
+    default:
+      return ServiceCategory.DATABASE_SERVICES;
+  }
 };
 
 export const getEntityTypeFromServiceCategory = (
@@ -682,6 +723,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.METADATA_SERVICE;
     case ServiceCategory.STORAGE_SERVICES:
       return EntityType.STORAGE_SERVICE;
+    case ServiceCategory.SEARCH_SERVICES:
+      return EntityType.SEARCH_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;
@@ -704,6 +747,9 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
 
     case ServiceCategory.STORAGE_SERVICES:
       return getEntityLink(EntityType.CONTAINER, fqn);
+
+    case ServiceCategory.SEARCH_SERVICES:
+      return getEntityLink(EntityType.SEARCH_INDEX, fqn);
 
     case ServiceCategory.DATABASE_SERVICES:
     default:

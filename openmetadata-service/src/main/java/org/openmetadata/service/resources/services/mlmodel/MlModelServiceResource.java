@@ -58,8 +58,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -85,8 +83,8 @@ public class MlModelServiceResource
     return service;
   }
 
-  public MlModelServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MlModelService.class, new MlModelServiceRepository(dao), authorizer, ServiceType.ML_MODEL);
+  public MlModelServiceResource(Authorizer authorizer) {
+    super(Entity.MLMODEL_SERVICE, authorizer, ServiceType.ML_MODEL);
   }
 
   @Override
@@ -121,6 +119,9 @@ public class MlModelServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
           @DefaultValue("10")
           @Min(0)
@@ -139,10 +140,7 @@ public class MlModelServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include);
-    ResultList<MlModelService> mlModelServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    return addHref(uriInfo, decryptOrNullify(securityContext, mlModelServices));
+    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET

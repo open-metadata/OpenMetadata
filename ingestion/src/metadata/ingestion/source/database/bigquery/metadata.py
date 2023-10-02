@@ -17,7 +17,6 @@ from typing import Iterable, List, Optional, Tuple
 
 from google import auth
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
-from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql.sqltypes import Interval
 from sqlalchemy.types import String
@@ -27,7 +26,11 @@ from sqlalchemy_bigquery._types import _get_sqla_column_type
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
+from metadata.generated.schema.entity.data.database import Database, EntityName
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
     TablePartition,
@@ -44,14 +47,21 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
-    MultipleProjectId,
-    SingleProjectId,
 )
+from metadata.generated.schema.type.basic import SourceUrl
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
+from metadata.ingestion.source.database.bigquery.models import (
+    STORED_PROC_LANGUAGE_MAP,
+    BigQueryStoredProcedure,
+)
 from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
+    BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
 )
@@ -60,10 +70,14 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
+)
 from metadata.utils import fqn
-from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
 from metadata.utils.tag_utils import (
@@ -178,7 +192,7 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 )
 
 
-class BigquerySource(CommonDbSourceService):
+class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -201,9 +215,15 @@ class BigquerySource(CommonDbSourceService):
         return cls(config, metadata_config)
 
     @staticmethod
-    def set_project_id():
+    def set_project_id() -> List[str]:
         _, project_ids = auth.default()
-        return project_ids
+        return project_ids if isinstance(project_ids, list) else [project_ids]
+
+    def test_connection(self) -> None:
+        for project_id in self.set_project_id():
+            self.set_inspector(project_id)
+            test_connection_fn = get_test_connection_fn(self.service_connection)
+            test_connection_fn(self.metadata, self.engine, self.service_connection)
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -223,7 +243,9 @@ class BigquerySource(CommonDbSourceService):
                 type_=_bigquery_table_types.get(table_type, TableType.Regular),
             )
             for table_name, table_type in self.engine.execute(
-                BIGQUERY_TABLE_AND_TYPE.format(schema_name)
+                BIGQUERY_TABLE_AND_TYPE.format(
+                    project_id=self.client.project, schema_name=schema_name
+                )
             )
             or []
         ]
@@ -327,12 +349,41 @@ class BigquerySource(CommonDbSourceService):
                 )
         yield Either(right=database_schema_request_obj)
 
+    def get_table_obj(self, table_name: str):
+        schema_name = self.context.database_schema.name.__root__
+        database = self.context.database.name.__root__
+        bq_table_fqn = fqn._build(database, schema_name, table_name)
+        return self.client.get_table(bq_table_fqn)
+
+    def yield_table_tag_details(self, table_name_and_type: Tuple[str, str]):
+        table_name, _ = table_name_and_type
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, value in table_obj.labels.items():
+                yield from get_ometa_tag_and_classification(
+                    tags=[value],
+                    classification_name=key,
+                    tag_description="Bigquery Table Label",
+                    classification_description="",
+                )
+
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
         """
         This will only get executed if the tags context
         is properly informed
         """
-        return []
+        table_tag_labels = super().get_tag_labels(table_name) or []
+        table_obj = self.get_table_obj(table_name=table_name)
+        if table_obj.labels:
+            for key, value in table_obj.labels.items():
+                tag_label = get_tag_label(
+                    metadata=self.metadata,
+                    tag_name=value,
+                    classification_name=key,
+                )
+                if tag_label:
+                    table_tag_labels.append(tag_label)
+        return table_tag_labels
 
     def get_column_tag_labels(
         self, table_name: str, column: dict
@@ -351,68 +402,36 @@ class BigquerySource(CommonDbSourceService):
         return None
 
     def set_inspector(self, database_name: str):
-        # TODO support location property in JSON Schema
-        # TODO support OAuth 2.0 scopes
-        kwargs = {}
-        if isinstance(
-            self.service_connection.credentials.gcpConfig, GcpCredentialsValues
-        ):
-            self.service_connection.credentials.gcpConfig.projectId = SingleProjectId(
-                __root__=database_name
-            )
-            if self.service_connection.credentials.gcpImpersonateServiceAccount:
-                kwargs[
-                    "impersonate_service_account"
-                ] = (
-                    self.service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-                )
+        inspector_details = get_inspector_details(
+            database_name=database_name, service_connection=self.service_connection
+        )
 
-                kwargs[
-                    "lifetime"
-                ] = (
-                    self.service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-                )
-
-        self.client = get_bigquery_client(project_id=database_name, **kwargs)
-        self.inspector = inspect(self.engine)
+        self.client = inspector_details.client
+        self.engine = inspector_details.engine
+        self.inspector = inspector_details.inspector
 
     def get_database_names(self) -> Iterable[str]:
-        if hasattr(
-            self.service_connection.credentials.gcpConfig, "projectId"
-        ) and isinstance(
-            self.service_connection.credentials.gcpConfig.projectId, MultipleProjectId
-        ):
-            for project_id in self.project_ids:
-                database_name = project_id
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service.name.__root__,
-                    database_name=database_name,
-                )
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else database_name,
-                ):
-                    self.status.filter(database_fqn, "Database Filtered out")
-                    continue
-
+        for project_id in self.project_ids:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.database_service.name.__root__,
+                database_name=project_id,
+            )
+            if filter_by_database(
+                self.source_config.databaseFilterPattern,
+                database_fqn if self.source_config.useFqnForFiltering else project_id,
+            ):
+                self.status.filter(database_fqn, "Database Filtered out")
+            else:
                 try:
-                    self.set_inspector(database_name=database_name)
-                    self.project_id = (  # pylint: disable=attribute-defined-outside-init
-                        database_name
-                    )
-                    yield database_name
+                    self.set_inspector(database_name=project_id)
+                    yield project_id
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error trying to connect to database {database_name}: {exc}"
+                        f"Error trying to connect to database {project_id}: {exc}"
                     )
-        else:
-            self.set_inspector(database_name=self.project_ids)
-            yield self.project_ids
 
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
@@ -420,7 +439,9 @@ class BigquerySource(CommonDbSourceService):
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(
-                    f"{self.context.database.name.__root__}.{schema_name}.{table_name}"
+                    fqn._build(
+                        self.context.database.name.__root__, schema_name, table_name
+                    )
                 )
                 view_definition = (
                     "" if view_definition is None else str(view_definition)
@@ -438,7 +459,7 @@ class BigquerySource(CommonDbSourceService):
         check if the table is partitioned table and return the partition details
         """
         database = self.context.database.name.__root__
-        table = self.client.get_table(f"{database}.{schema_name}.{table_name}")
+        table = self.client.get_table(fqn._build(database, schema_name, table_name))
         if table.time_partitioning is not None:
             if table.time_partitioning.field:
                 table_partition = TablePartition(
@@ -483,12 +504,12 @@ class BigquerySource(CommonDbSourceService):
             os.remove(tmp_credentials_file)
             del os.environ[GOOGLE_CREDENTIALS]
 
-    def get_source_url(
+    def _get_source_url(
         self,
         database_name: Optional[str] = None,
         schema_name: Optional[str] = None,
         table_name: Optional[str] = None,
-        table_type: Optional[TableType] = None,
+        type_infix: str = "4m3",
     ) -> Optional[str]:
         """
         Method to get the source url for bigquery
@@ -502,7 +523,7 @@ class BigquerySource(CommonDbSourceService):
                 schema_table_url = f"&ws=!1m4!1m3!3m2!1s{database_name}!2s{schema_name}"
             if table_name:
                 schema_table_url = (
-                    f"&ws=!1m5!1m4!4m3!1s{database_name}"
+                    f"&ws=!1m5!1m4!{type_infix}!1s{database_name}"
                     f"!2s{schema_name}!3s{table_name}"
                 )
             if schema_table_url:
@@ -512,3 +533,104 @@ class BigquerySource(CommonDbSourceService):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url: {exc}")
         return None
+
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        return self._get_source_url(
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            # This infix identifies tables in the URL
+            type_infix="4m3",
+        )
+
+    def get_stored_procedure_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+    ) -> Optional[str]:
+        return self._get_source_url(
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            # This infix identifies Stored Procedures in the URL
+            type_infix="6m3",
+        )
+
+    def get_stored_procedures(self) -> Iterable[BigQueryStoredProcedure]:
+        """List BigQuery Stored Procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.engine.execute(
+                BIGQUERY_GET_STORED_PROCEDURES.format(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                )
+            ).all()
+            for row in results:
+                stored_procedure = BigQueryStoredProcedure.parse_obj(dict(row))
+                yield stored_procedure
+
+    def yield_stored_procedure(
+        self, stored_procedure: BigQueryStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+
+        try:
+            yield Either(
+                right=CreateStoredProcedureRequest(
+                    name=EntityName(__root__=stored_procedure.name),
+                    storedProcedureCode=StoredProcedureCode(
+                        language=STORED_PROC_LANGUAGE_MAP.get(
+                            stored_procedure.language or "SQL",
+                        ),
+                        code=stored_procedure.definition,
+                    ),
+                    databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    sourceUrl=SourceUrl(
+                        __root__=self.get_stored_procedure_url(
+                            database_name=self.context.database.name.__root__,
+                            schema_name=self.context.database_schema.name.__root__,
+                            # Follow the same building strategy as tables
+                            table_name=stored_procedure.name,
+                        )
+                    ),
+                )
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """
+        Pick the stored procedure name from the context
+        and return the list of associated queries
+        """
+        # Only process if we actually have yield a stored procedure
+        if self.context.stored_procedure:
+            start, _ = get_start_and_end(self.source_config.queryLogDuration)
+            query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
+                start_date=start,
+                region=self.service_connection.usageLocation,
+            )
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+                schema_name=self.context.database_schema.name.__root__,
+                database_name=self.context.database.name.__root__,
+            )
+
+            for query_by_procedure in (
+                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
+                or []
+            ):
+                yield query_by_procedure

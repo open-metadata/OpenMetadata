@@ -28,7 +28,6 @@ import java.security.GeneralSecurityException;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -59,15 +59,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private LoginConfiguration loginConfiguration;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
     if (config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP)
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
-    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();
@@ -226,7 +226,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
-    tokenRepository.deleteTokenByUserAndType(currentUserId.toString(), REFRESH_TOKEN.toString());
+    tokenRepository.deleteTokenByUserAndType(currentUserId, REFRESH_TOKEN.toString());
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
     tokenRepository.insertToken(newRefreshToken);

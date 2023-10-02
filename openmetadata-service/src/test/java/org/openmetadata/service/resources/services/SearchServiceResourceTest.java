@@ -12,12 +12,15 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -26,12 +29,11 @@ import org.openmetadata.schema.services.connections.search.ElasticSearchConnecti
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class SearchServiceResourceTest extends EntityResourceTest<SearchService, CreateSearchService> {
+public class SearchServiceResourceTest extends ServiceResourceTest<SearchService, CreateSearchService> {
   public SearchServiceResourceTest() {
     super(
         Entity.SEARCH_SERVICE,
@@ -91,13 +93,14 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   @Test
-  void put_updateService_as_admin_2xx(TestInfo test) throws IOException {
+  void put_updateService_as_admin_2xx(TestInfo test) throws IOException, URISyntaxException {
     SearchConnection connection1 =
-        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9300"));
+        new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9300")));
     SearchService service =
         createAndCheckEntity(createRequest(test).withDescription(null).withConnection(connection1), ADMIN_AUTH_HEADERS);
 
-    ElasticSearchConnection credentials2 = new ElasticSearchConnection().withHostPort("https://localhost:9400");
+    ElasticSearchConnection credentials2 =
+        new ElasticSearchConnection().withHostPort(new URI("https://localhost:9400"));
     SearchConnection connection2 = new SearchConnection().withConfig(credentials2);
 
     // Update SearchService description and connection
@@ -140,7 +143,8 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
         .withName(name)
         .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
         .withConnection(
-            new SearchConnection().withConfig(new ElasticSearchConnection().withHostPort("http://localhost:9200")));
+            new SearchConnection()
+                .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200"))));
   }
 
   @Override

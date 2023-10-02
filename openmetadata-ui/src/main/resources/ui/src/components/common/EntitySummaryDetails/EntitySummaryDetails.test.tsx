@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { act, findByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { act } from 'react-test-renderer';
 import EntitySummaryDetails from './EntitySummaryDetails';
 
 const mockData = {

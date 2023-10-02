@@ -44,7 +44,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.resources.Collection;
@@ -71,8 +70,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   static final String FIELDS = "owner,tests,summary";
 
-  public TestSuiteResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestSuite.class, new TestSuiteRepository(dao), authorizer);
+  public TestSuiteResource(Authorizer authorizer) {
+    super(Entity.TEST_SUITE, authorizer);
   }
 
   @Override
@@ -410,6 +409,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+    repository.deleteFromSearch(response.getEntity(), response.getChangeType());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

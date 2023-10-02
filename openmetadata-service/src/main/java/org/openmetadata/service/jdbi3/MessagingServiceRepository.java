@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 
+@Slf4j
 public class MessagingServiceRepository extends ServiceEntityRepository<MessagingService, MessagingConnection> {
   private static final String UPDATE_FIELDS = "owner, connection";
 
@@ -31,5 +33,6 @@ public class MessagingServiceRepository extends ServiceEntityRepository<Messagin
         MessagingConnection.class,
         UPDATE_FIELDS,
         ServiceType.MESSAGING);
+    supportsSearch = true;
   }
 }

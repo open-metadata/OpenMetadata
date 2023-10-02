@@ -17,6 +17,8 @@ import static org.openmetadata.schema.type.Include.ALL;
 
 import java.util.Collections;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityReference;
@@ -28,6 +30,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+@Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchemaRepository(CollectionDAO dao) {
     super(
@@ -38,6 +41,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao,
         "",
         "");
+    supportsSearch = true;
   }
 
   @Override
@@ -111,6 +115,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         .withName(original.getName())
         .withService(original.getService())
         .withId(original.getId());
+  }
+
+  @Override
+  public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
+    return Entity.getEntity(entity.getDatabase(), fields, Include.NON_DELETED);
   }
 
   @Override

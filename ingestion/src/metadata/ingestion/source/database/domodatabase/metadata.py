@@ -14,12 +14,15 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
-from metadata.clients.domo_client import DomoClient
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -42,7 +45,10 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    QueryByProcedure,
+)
 from metadata.ingestion.source.database.domodatabase.models import (
     OutputDataset,
     Owner,
@@ -74,7 +80,6 @@ class DomodatabaseSource(DatabaseServiceSource):
         self.service_connection = self.config.serviceConnection.__root__.config
         self.domo_client = get_connection(self.service_connection)
         self.connection_obj = self.domo_client
-        self.client = DomoClient(self.service_connection)
         self.test_connection()
 
     @classmethod
@@ -219,6 +224,27 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
+
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         yield from []
 
@@ -230,7 +256,7 @@ class DomodatabaseSource(DatabaseServiceSource):
         Method to get the source url for domodatabase
         """
         try:
-            return f"{clean_uri(self.service_connection.sandboxDomain)}/datasources/{table_name}/details/overview"
+            return f"{clean_uri(self.service_connection.instanceDomain)}/datasources/{table_name}/details/overview"
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url for {table_name}: {exc}")
@@ -242,4 +268,4 @@ class DomodatabaseSource(DatabaseServiceSource):
         return table
 
     def close(self) -> None:
-        self.client.client.close()
+        """Nothing to close"""

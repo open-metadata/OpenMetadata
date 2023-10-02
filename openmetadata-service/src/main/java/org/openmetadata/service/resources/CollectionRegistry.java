@@ -160,6 +160,7 @@ public final class CollectionRegistry {
       Jdbi jdbi,
       Environment environment,
       OpenMetadataApplicationConfig config,
+      CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
@@ -167,7 +168,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, daoObject, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -231,14 +232,14 @@ public final class CollectionRegistry {
   private static Object createResource(
       Jdbi jdbi,
       String resourceClass,
+      CollectionDAO daoObject,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
 
-    // Decorate Collection DAO
-    CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+    // Check Collection DAO
     Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
 
     Object resource = null;
@@ -246,12 +247,12 @@ public final class CollectionRegistry {
 
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
+      resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
     } catch (NoSuchMethodException e) {
       try {
         resource =
-            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, AuthenticatorHandler.class)
-                .newInstance(daoObject, authorizer, authHandler);
+            clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
+                .newInstance(authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
         try {
           resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
@@ -260,7 +261,7 @@ public final class CollectionRegistry {
         }
       }
     } catch (Exception ex) {
-      LOG.warn("Exception encountered", ex);
+      LOG.warn("Exception encountered while creating resource for {}", clz, ex);
     }
 
     // Call initialize method, if it exists
@@ -270,7 +271,7 @@ public final class CollectionRegistry {
     } catch (NoSuchMethodException ignored) {
       // Method does not exist and initialize is not called
     } catch (Exception ex) {
-      LOG.warn("Encountered exception ", ex);
+      LOG.warn("Encountered exception while initializing resource for {}", clz, ex);
     }
 
     // Call upgrade method, if it exists

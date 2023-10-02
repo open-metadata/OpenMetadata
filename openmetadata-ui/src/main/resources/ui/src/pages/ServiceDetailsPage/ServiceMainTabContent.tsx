@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
 import Loader from 'components/Loader/Loader';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
@@ -45,7 +46,7 @@ interface ServiceMainTabContentProps {
   isServiceLoading: boolean;
   paging: Paging;
   currentPage: number;
-  pagingHandler: (cursorType: string | number, activePage?: number) => void;
+  pagingHandler: NextPreviousProps['pagingHandler'];
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
 }
 
@@ -64,8 +65,8 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
 }: ServiceMainTabContentProps) {
   const { t } = useTranslation();
-  const { serviceFQN, serviceCategory } = useParams<{
-    serviceFQN: string;
+  const { fqn: serviceFQN, serviceCategory } = useParams<{
+    fqn: string;
     serviceCategory: ServiceTypes;
   }>();
   const [isEdit, setIsEdit] = useState(false);
