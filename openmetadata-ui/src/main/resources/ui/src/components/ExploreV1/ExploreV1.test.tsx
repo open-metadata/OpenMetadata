@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../components/Explore/exlore.mock';
 import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
-import { SearchIndex } from '../enums/search.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('react-router-dom', () => ({

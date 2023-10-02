@@ -18,8 +18,8 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getCustomLogoConfig } from 'rest/settingConfigAPI';
 import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
 export const ApplicationConfigContext = createContext<LogoConfiguration>(
   {} as LogoConfiguration

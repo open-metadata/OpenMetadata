@@ -18,7 +18,7 @@ import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constant
 import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
 import RichTextEditorPreviewer from '../../../../common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
 
 const { Text, Paragraph } = Typography;

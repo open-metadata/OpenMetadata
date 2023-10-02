@@ -18,7 +18,7 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
-import { CSVImportResult } from '../../generated/type/csvImportResult';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { GlossaryImportResult } from './GlossaryImportResult.component';
 
 const mockCsvImportResult = {

@@ -13,8 +13,8 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getRunHistoryForPipeline } from '../../../rest/ingestionPipelineAPI';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
 const executionRuns = [

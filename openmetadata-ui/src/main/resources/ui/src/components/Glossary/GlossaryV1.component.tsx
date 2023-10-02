@@ -12,31 +12,31 @@
  */
 
 import { AxiosError } from 'axios';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import {
-  API_RES_MAX_SIZE,
-  getGlossaryTermDetailsPath,
-} from 'constants/constants';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import Loader from '../../components/Loader/Loader';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  API_RES_MAX_SIZE,
+  getGlossaryTermDetailsPath,
+} from '../../constants/constants';
+import { EntityAction } from '../../enums/entity.enum';
+import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
   addGlossaryTerm,
   getGlossaryTerms,
   ListGlossaryTermsParams,
   patchGlossaryTerm,
-} from 'rest/glossaryAPI';
-import Loader from '../../components/Loader/Loader';
-import { withActivityFeed } from '../../components/router/withActivityFeed';
-import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+} from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { EntityAction } from '../enums/entity.enum';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {

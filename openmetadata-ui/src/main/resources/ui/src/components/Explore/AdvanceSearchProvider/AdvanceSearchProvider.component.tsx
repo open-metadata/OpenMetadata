@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  emptyJsonTree,
-  getQbConfigs,
-} from 'constants/AdvancedSearch.constants';
-import { tabsInfo } from 'constants/explore.constants';
+
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -31,10 +27,15 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import {
+  emptyJsonTree,
+  getQbConfigs,
+} from '../../../constants/AdvancedSearch.constants';
+import { tabsInfo } from '../../../constants/explore.constants';
+import { SearchIndex } from '../../../enums/search.enum';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
-import { SearchIndex } from '../enums/search.enum';
 import { ExploreSearchIndex, UrlParams } from '../explore.interface';
 import {
   AdvanceSearchContext,
@@ -186,18 +187,31 @@ export const AdvanceSearchProvider = ({
     setShowModal(false);
   }, [treeInternal, config, handleTreeUpdate]);
 
+  const contextValues = useMemo(
+    () => ({
+      queryFilter,
+      sqlQuery,
+      onTreeUpdate: handleChange,
+      toggleModal,
+      treeInternal,
+      config,
+      onReset: handleReset,
+      onResetAllFilters: handleResetAllFilters,
+    }),
+    [
+      queryFilter,
+      sqlQuery,
+      handleChange,
+      toggleModal,
+      treeInternal,
+      config,
+      handleReset,
+      handleResetAllFilters,
+    ]
+  );
+
   return (
-    <AdvancedSearchContext.Provider
-      value={{
-        queryFilter,
-        sqlQuery,
-        onTreeUpdate: handleChange,
-        toggleModal,
-        treeInternal,
-        config,
-        onReset: handleReset,
-        onResetAllFilters: handleResetAllFilters,
-      }}>
+    <AdvancedSearchContext.Provider value={contextValues}>
       {loading ? <Loader /> : children}
       <AdvancedSearchModal
         visible={showModal}

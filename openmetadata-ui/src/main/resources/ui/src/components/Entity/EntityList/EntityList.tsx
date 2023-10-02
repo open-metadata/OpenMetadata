@@ -14,10 +14,10 @@
 import { Button, Card, Col, Row, Typography } from 'antd';
 import React, { Fragment, FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
-import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { EntityReference } from '../../generated/entity/type';
-import { getEntityName } from '../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../utils/TableUtils';
+import { EntityReference } from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './entity.less';
 interface Prop {
   entityList: Array<EntityReference>;

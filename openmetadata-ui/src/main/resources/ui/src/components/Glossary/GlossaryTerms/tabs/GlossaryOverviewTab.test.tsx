@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import { act, findByText, render, screen } from '@testing-library/react';
-import { MOCKED_GLOSSARY_TERMS, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import {
+  MOCKED_GLOSSARY_TERMS,
+  MOCK_PERMISSIONS,
+} from '../../../../mocks/Glossary.mock';
 import GlossaryOverviewTab from './GlossaryOverviewTab.component';
 
 jest.mock('./GlossaryTermSynonyms', () => {

@@ -12,13 +12,13 @@
  */
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
 import {
   MOCK_SQL_TEST_CASE,
   MOCK_TEST_CASE,
   MOCK_TEST_CASE_RESULT,
-} from 'mocks/TestSuite.mock';
-import React from 'react';
-import { getListTestCaseResults } from 'rest/testAPI';
+} from '../../../mocks/TestSuite.mock';
+import { getListTestCaseResults } from '../../../rest/testAPI';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 import TestSummary from './TestSummary';
 

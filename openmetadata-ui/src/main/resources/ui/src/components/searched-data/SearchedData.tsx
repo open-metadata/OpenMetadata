@@ -19,12 +19,12 @@ import React, { useMemo } from 'react';
 import ExploreSearchCard from '../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
-import { getEntityName } from '../utils/EntityUtils';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = [

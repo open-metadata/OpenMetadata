@@ -15,15 +15,15 @@ import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getSampleDataBySearchIndexId } from 'rest/SearchIndexAPI';
-import { getSampleDataByTopicId } from 'rest/topicsAPI';
 import Loader from '../../components/Loader/Loader';
 import { WORKFLOWS_METADATA_DOCS } from '../../constants/docs.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndexSampleData } from '../../generated/entity/data/searchIndex';
 import { TopicSampleData } from '../../generated/entity/data/topic';
+import { getSampleDataBySearchIndexId } from '../../rest/SearchIndexAPI';
+import { getSampleDataByTopicId } from '../../rest/topicsAPI';
+import { Transi18next } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import { EntityType } from '../enums/entity.enum';
-import { Transi18next } from '../utils/CommonUtils';
 import MessageCard from './MessageCard';
 
 const SampleDataWithMessages: FC<{

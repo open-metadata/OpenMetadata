@@ -12,8 +12,8 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { Glossary } from '../../generated/entity/data/glossary';
-import { DEFAULT_ENTITY_PERMISSION } from '../utils/PermissionsUtils';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import GlossaryHeader from './GlossaryHeader.component';
 
 jest.mock(

@@ -18,7 +18,7 @@ import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
-import { getTrimmedContent } from '../utils/CommonUtils';
+import { getTrimmedContent } from '../../../utils/CommonUtils';
 import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';

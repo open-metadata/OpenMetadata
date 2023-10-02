@@ -21,8 +21,6 @@ import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
-import { restorePipeline } from 'rest/pipelineAPI';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -58,21 +56,23 @@ import {
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
 import { LabelType, State } from '../../generated/type/tagLabel';
+import { postThread } from '../../rest/feedsAPI';
+import { restorePipeline } from '../../rest/pipelineAPI';
 import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import { getDecodedFqn } from '../utils/StringsUtils';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../utils/TableTags/TableTags.utils';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
 const PipelineDetails = ({

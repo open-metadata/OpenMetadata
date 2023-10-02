@@ -15,21 +15,23 @@ import { Col, Divider, Row, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Dashboard } from '../../../../generated/entity/data/dashboard';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import {
+  Dashboard,
+  TagLabel,
+} from '../../../../generated/entity/data/dashboard';
 import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import SummaryTagsDescription from '../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { TagLabel } from '../../generated/type/tagLabel';
-import { ChartType } from '../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import { ExplorePageTabs } from '../enums/Explore.enum';
-import SummaryList from '../SummaryList/SummaryList.component';
-import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from '../utils/EntityUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { ChartType } from '../../../DashboardDetails/DashboardDetails.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface DashboardSummaryProps {
   entityDetails: Dashboard;

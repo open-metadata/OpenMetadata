@@ -18,8 +18,8 @@ import { Link } from 'react-router-dom';
 import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
-import { getEntityName } from '../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../utils/TableUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 import './recently-viewed.less';
 
 const RecentlyViewed: FunctionComponent = () => {

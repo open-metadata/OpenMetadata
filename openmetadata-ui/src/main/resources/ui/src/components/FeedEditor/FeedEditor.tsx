@@ -34,8 +34,8 @@ import {
 } from '../../constants/Feeds.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
-import { getEntityIcon } from '../utils/TableUtils';
 import './FeedEditor.css';
 import { FeedEditorProp } from './FeedEditor.interface';
 

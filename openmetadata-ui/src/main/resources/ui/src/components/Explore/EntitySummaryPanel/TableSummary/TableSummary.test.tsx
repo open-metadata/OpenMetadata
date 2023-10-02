@@ -12,15 +12,15 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { MOCK_TABLE } from 'mocks/TableData.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
-} from 'rest/tableAPI';
+} from '../../../../rest/tableAPI';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
-import { DRAWER_NAVIGATION_OPTIONS } from '../utils/EntityUtils';
 import TableSummary from './TableSummary.component';
 
 const mockEntityPermissions = {

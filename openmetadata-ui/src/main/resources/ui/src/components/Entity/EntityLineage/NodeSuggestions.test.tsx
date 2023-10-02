@@ -13,8 +13,8 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { searchData } from 'rest/miscAPI';
-import { SearchIndex } from '../enums/search.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { searchData } from '../../../rest/miscAPI';
 import NodeSuggestions from './NodeSuggestions.component';
 
 const mockProps = {

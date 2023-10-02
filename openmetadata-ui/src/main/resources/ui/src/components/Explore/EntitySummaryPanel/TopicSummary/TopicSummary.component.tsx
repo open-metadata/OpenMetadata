@@ -12,26 +12,26 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { getTeamAndUserDetailsPath } from 'constants/constants';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
+import { getTopicByFqn } from '../../../../rest/topicsAPI';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
-import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
-import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
-import SummaryTagsDescription from '../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import SummaryList from '../SummaryList/SummaryList.component';
-import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
-} from '../utils/EntityUtils';
+} from '../../../../utils/EntityUtils';
+import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface TopicSummaryProps {
   entityDetails: Topic;

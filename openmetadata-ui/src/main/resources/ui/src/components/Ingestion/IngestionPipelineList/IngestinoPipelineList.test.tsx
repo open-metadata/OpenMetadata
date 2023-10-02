@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React from 'react';
-import { ServiceCategory } from '../enums/service.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
 const mockGetIngestinoPipelines = jest.fn();

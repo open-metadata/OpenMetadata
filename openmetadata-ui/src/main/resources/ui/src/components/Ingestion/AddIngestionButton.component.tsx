@@ -18,13 +18,13 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getAddIngestionPath } from '../../utils/RouterUtils';
 import {
   getIngestionButtonText,
   getIngestionTypes,
   getMenuItems,
   getSupportedPipelineTypes,
-} from '../utils/IngestionUtils';
+} from '../../utils/IngestionUtils';
+import { getAddIngestionPath } from '../../utils/RouterUtils';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 
 function AddIngestionButton({

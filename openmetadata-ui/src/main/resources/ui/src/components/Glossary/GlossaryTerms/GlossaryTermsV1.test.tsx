@@ -12,9 +12,12 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { mockedGlossaryTerms, MOCK_ASSETS_DATA } from 'mocks/Glossary.mock';
 import React from 'react';
-import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  mockedGlossaryTerms,
+  MOCK_ASSETS_DATA,
+} from '../../../mocks/Glossary.mock';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryTerms from './GlossaryTermsV1.component';
 
 jest.mock('react-router-dom', () => ({

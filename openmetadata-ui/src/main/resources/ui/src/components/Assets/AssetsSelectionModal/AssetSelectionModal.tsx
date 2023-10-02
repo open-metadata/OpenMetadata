@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, List, Modal, Select, Space } from 'antd';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
+import { Domain } from 'domain';
 import { compare } from 'fast-json-patch';
 import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
@@ -25,25 +25,24 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDataProductByName } from 'rest/dataProductAPI';
-import { getDomainByName } from 'rest/domainAPI';
-import { searchQuery } from 'rest/searchAPI';
-import Searchbar from '../../components/common/searchbar/Searchbar';
-import TableDataCardV2 from '../../components/common/table-data-card-v2/TableDataCardV2';
-import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import Loader from '../../components/Loader/Loader';
-import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
-import { Table } from '../../generated/entity/data/table';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { Domain } from '../../generated/entity/domains/domain';
-import { SearchIndex } from '../enums/search.enum';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   getAPIfromSource,
   getAssetsFields,
   getAssetsSearchIndex,
   getEntityAPIfromSource,
-} from '../utils/Assets/AssetsUtils';
-import { getQueryFilterToExcludeTerm } from '../utils/GlossaryUtils';
+} from '../../../utils/Assets/AssetsUtils';
+import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
+import Searchbar from '../../common/searchbar/Searchbar';
+import TableDataCardV2 from '../../common/table-data-card-v2/TableDataCardV2';
+import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import Loader from '../../Loader/Loader';
+import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import './asset-selection-model.style.less';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
 

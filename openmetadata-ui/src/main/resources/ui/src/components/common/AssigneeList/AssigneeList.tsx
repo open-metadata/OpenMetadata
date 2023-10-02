@@ -16,9 +16,9 @@ import { ImageShape } from 'Models';
 import React, { FC, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getOwnerValue } from '../../../utils/CommonUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import { getOwnerValue } from '../utils/CommonUtils';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   assignees: EntityReference[];

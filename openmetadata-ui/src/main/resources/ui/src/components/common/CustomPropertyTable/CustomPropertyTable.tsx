@@ -14,31 +14,34 @@
 import { Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { EntityField } from 'constants/Feeds.constants';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
-import { CustomProperty, Type } from '../../../generated/entity/type';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import { ChangeDescription } from '../../generated/tests/testCase';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
-import { EntityType } from '../enums/entity.enum';
-import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
-import Table from '../Table/Table';
-import { getEntityExtentionDetailsFromEntityType } from '../utils/CustomProperties/CustomProperty.utils';
-import { getEntityName } from '../utils/EntityUtils';
+  ChangeDescription,
+  CustomProperty,
+  Type,
+} from '../../../generated/entity/type';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
-} from '../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../PermissionProvider/PermissionProvider.interface';
+import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
+import Table from '../Table/Table';
 import {
   CustomPropertyProps,
   ExtentionEntities,

@@ -12,7 +12,6 @@
  */
 
 import { CurveType } from 'recharts/types/shape/Curve';
-import { ListTestCaseParams } from 'rest/testAPI';
 import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
 import {
   Column,
@@ -22,6 +21,7 @@ import {
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Paging } from '../../generated/type/paging';
+import { ListTestCaseParams } from '../../rest/testAPI';
 import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {

@@ -27,7 +27,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
 import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
@@ -45,6 +44,7 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
   axisTickFormatter,
   updateActiveChartFilter,

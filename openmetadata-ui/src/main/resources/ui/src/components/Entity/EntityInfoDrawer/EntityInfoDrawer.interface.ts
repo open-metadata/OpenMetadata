@@ -12,7 +12,7 @@
  */
 
 import { Edge, Node } from 'reactflow';
-import { AddLineage } from '../../generated/api/lineage/addLineage';
+import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 
 export interface LineageDrawerProps {

@@ -48,6 +48,7 @@ import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/G
 import SearchedData from '../../components/searched-data/SearchedData';
 import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { tabsInfo } from '../../constants/explore.constants';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   QueryFieldInterface,
@@ -55,10 +56,9 @@ import {
 } from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getSearchIndexFromPath } from '../../utils/ExplorePage/ExplorePageUtils';
 import PageLayoutV1 from '../containers/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../enums/common.enum';
 import Loader from '../Loader/Loader';
-import { getSearchIndexFromPath } from '../utils/ExplorePage/ExplorePageUtils';
 import './ExploreV1.style.less';
 
 const ExploreV1: React.FC<ExploreProps> = ({

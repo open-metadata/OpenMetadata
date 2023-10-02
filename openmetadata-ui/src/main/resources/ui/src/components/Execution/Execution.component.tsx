@@ -29,7 +29,6 @@ import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getPipelineStatus } from 'rest/pipelineAPI';
 import { ReactComponent as Calendar } from '../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../assets/svg/filter.svg';
 import {
@@ -38,13 +37,14 @@ import {
 } from '../../constants/execution.constants';
 import { PIPELINE_EXECUTION_TABS } from '../../constants/pipeline.constants';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { getPipelineStatus } from '../../rest/pipelineAPI';
 import {
   getCurrentMillis,
   getCurrentUnixInteger,
   getEpochMillisForPastDays,
   getUnixSecondsForPastDays,
-} from '../utils/date-time/DateTimeUtils';
+} from '../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './Execution.style.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';

@@ -27,7 +27,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
 import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
@@ -43,6 +42,7 @@ import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
   CustomTooltip,

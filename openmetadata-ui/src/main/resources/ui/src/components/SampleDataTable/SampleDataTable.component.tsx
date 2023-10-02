@@ -20,32 +20,32 @@ import {
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
-import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  deleteSampleDataByTableId,
-  getSampleDataByTableId,
-} from 'rest/tableAPI';
+import AppState from '../../AppState';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
+import { DROPDOWN_ICON_SIZE_PROPS } from '../../constants/ManageButton.constants';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { LOADING_STATE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
+import {
+  deleteSampleDataByTableId,
+  getSampleDataByTableId,
+} from '../../rest/tableAPI';
 import { getEntityDeleteMessage, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import { LOADING_STATE } from '../enums/common.enum';
-import { EntityType } from '../enums/entity.enum';
 import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
 import {

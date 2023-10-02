@@ -12,10 +12,10 @@
  */
 import { render } from '@testing-library/react';
 import React from 'react';
-import { getContainerByName } from 'rest/storageAPI';
-import { Container } from '../../generated/entity/data/container';
-import { EntityType } from '../enums/entity.enum';
-import { DEFAULT_ENTITY_PERMISSION } from '../utils/PermissionsUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
+import { getContainerByName } from '../../../rest/storageAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 

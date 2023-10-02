@@ -14,8 +14,6 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { getVersionPathWithTab } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
 import { t } from 'i18next';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -28,7 +26,10 @@ import Loader from '../../components/Loader/Loader';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { getVersionPathWithTab } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription, Task } from '../../generated/entity/data/pipeline';
 import { TagSource } from '../../generated/type/schema';
 import {
@@ -36,9 +37,8 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { getUpdatedPipelineTasks } from '../utils/PipelineVersionUtils';
-import { getFilterTags } from '../utils/TableTags/TableTags.utils';
+import { getUpdatedPipelineTasks } from '../../utils/PipelineVersionUtils';
+import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
 const PipelineVersion: FC<PipelineVersionProp> = ({

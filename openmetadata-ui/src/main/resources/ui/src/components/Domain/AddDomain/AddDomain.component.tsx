@@ -13,21 +13,21 @@
 import { Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { ERROR_MESSAGE } from 'constants/constants';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { addDomains } from 'rest/domainAPI';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
-import { CreateDomain } from '../../generated/api/domains/createDomain';
+import { ERROR_MESSAGE } from '../../../constants/constants';
+import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { addDomains } from '../../../rest/domainAPI';
+import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
 import { useDomainProvider } from '../DomainProvider/DomainProvider';
-import { getIsErrorMatch } from '../utils/CommonUtils';
-import { getDomainPath } from '../utils/RouterUtils';
-import { showErrorToast } from '../utils/ToastUtils';
 import './add-domain.less';
 
 const AddDomain = () => {

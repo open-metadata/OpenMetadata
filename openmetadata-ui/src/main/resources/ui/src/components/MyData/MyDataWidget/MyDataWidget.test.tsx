@@ -13,7 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
+import { getUserById } from '../../../rest/userAPI';
 import { MyDataWidget } from './MyDataWidget.component';
 
 const userDetails = {

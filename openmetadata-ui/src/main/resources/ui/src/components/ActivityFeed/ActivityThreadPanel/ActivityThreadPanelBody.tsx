@@ -18,10 +18,10 @@ import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined } from 'lodash';
 import React, { FC, Fragment, RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllFeeds } from 'rest/feedsAPI';
 import AppState from '../../../AppState';
 import { confirmStateInitialValue } from '../../../constants/Feeds.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
   Thread,
@@ -30,14 +30,14 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import Loader from '../../Loader/Loader';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import ActivityThread from './ActivityThread';
 import ActivityThreadList from './ActivityThreadList';
 import { ActivityThreadPanelBodyProp } from './ActivityThreadPanel.interface';

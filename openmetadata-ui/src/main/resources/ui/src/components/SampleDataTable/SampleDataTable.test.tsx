@@ -14,9 +14,9 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getSampleDataByTableId } from 'rest/tableAPI';
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { getSampleDataByTableId } from '../../rest/tableAPI';
 import SampleDataTable from './SampleDataTable.component';
 
 const mockProps = {

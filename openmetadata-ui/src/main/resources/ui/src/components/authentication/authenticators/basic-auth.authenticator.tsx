@@ -18,9 +18,12 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AccessTokenResponse, getAccessTokenOnExpiry } from 'rest/auth-API';
+import { AuthProvider } from '../../../generated/settings/settings';
+import {
+  AccessTokenResponse,
+  getAccessTokenOnExpiry,
+} from '../../../rest/auth-API';
 import localState from '../../../utils/LocalStorageUtils';
-import { AuthProvider } from '../../generated/settings/settings';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { useBasicAuth } from '../auth-provider/basic-auth.provider';
 

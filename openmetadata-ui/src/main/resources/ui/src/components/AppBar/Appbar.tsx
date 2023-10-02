@@ -14,12 +14,6 @@
 import { Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import { tabsInfo } from 'constants/explore.constants';
-import {
-  urlGitbookDocs,
-  urlGithubRepo,
-  urlJoinSlack,
-} from 'constants/URL.constants';
 import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
@@ -27,7 +21,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { getVersion } from 'rest/miscAPI';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
@@ -46,16 +39,23 @@ import {
   TOUR_SEARCH_TERM,
 } from '../../constants/constants';
 import {
+  urlGitbookDocs,
+  urlGithubRepo,
+  urlJoinSlack,
+} from '../../constants/URL.constants';
+import { CurrentTourPageType } from '../../enums/tour.enum';
+import { getVersion } from '../../rest/miscAPI';
+import { extractDetailsFromToken } from '../../utils/AuthProvider.util';
+import {
   addToRecentSearched,
   getNonDeletedTeams,
 } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { CurrentTourPageType } from '../enums/tour.enum';
 import NavBar from '../nav-bar/NavBar';
-import { extractDetailsFromToken } from '../utils/AuthProvider.util';
-import { getEntityName } from '../utils/EntityUtils';
+import { tabsInfo } from '../NotificationBox/NotificationBox.utils';
 import './app-bar.style.less';
 
 const Appbar: React.FC = (): JSX.Element => {

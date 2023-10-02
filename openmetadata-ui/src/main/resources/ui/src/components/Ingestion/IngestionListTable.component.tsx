@@ -22,8 +22,8 @@ import { PagingHandlerParams } from '../../components/common/next-previous/NextP
 import Table from '../../components/common/Table/Table';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getEntityName } from '../utils/EntityUtils';
-import { getErrorPlaceHolder } from '../utils/IngestionUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';

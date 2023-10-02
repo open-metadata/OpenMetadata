@@ -17,9 +17,9 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
 import { SearchedDataProps } from './SearchedData.interface';

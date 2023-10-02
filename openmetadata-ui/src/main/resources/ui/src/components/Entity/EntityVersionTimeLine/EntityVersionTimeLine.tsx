@@ -16,9 +16,9 @@ import classNames from 'classnames';
 import { capitalize, toString } from 'lodash';
 import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import CloseIcon from '../../components/Modals/CloseIcon.component';
-import { EntityHistory } from '../../generated/type/entityHistory';
-import { getSummary, isMajorVersion } from '../utils/EntityVersionUtils';
+import { EntityHistory } from '../../../generated/type/entityHistory';
+import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
+import CloseIcon from '../../Modals/CloseIcon.component';
 
 type Props = {
   versionList: EntityHistory;

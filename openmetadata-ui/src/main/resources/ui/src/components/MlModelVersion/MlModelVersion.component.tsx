@@ -22,7 +22,6 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { getVersionPathWithTab } from 'constants/constants';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -36,7 +35,9 @@ import SourceList from '../../components/MlModelDetail/SourceList.component';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { getVersionPathWithTab } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/dashboard';
 import { MlFeature } from '../../generated/entity/data/mlmodel';
 import { TagSource } from '../../generated/type/tagLabel';
@@ -45,10 +46,9 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { getMlFeatureVersionData } from '../../utils/MlModelVersionUtils';
+import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import Loader from '../Loader/Loader';
-import { getMlFeatureVersionData } from '../utils/MlModelVersionUtils';
-import { getFilterTags } from '../utils/TableTags/TableTags.utils';
 import { MlModelVersionProp } from './MlModelVersion.interface';
 
 const MlModelVersion: FC<MlModelVersionProp> = ({

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Table } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,8 +22,7 @@ import {
   getTableViewData,
   StatusIndicator,
 } from '../../../utils/executionUtils';
-import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
-import Table from '../../components/common/Table/Table';
+import FilterTablePlaceHolder from '../../common/error-with-placeholder/FilterTablePlaceHolder';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;

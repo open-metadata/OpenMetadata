@@ -15,11 +15,11 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityTabs } from '../../enums/entity.enum';
 import {
   mockColumnDiffPipelineVersionMockProps,
   pipelineVersionMockProps,
 } from '../../mocks/PipelineVersion.mock';
-import { EntityTabs } from '../enums/entity.enum';
 import PipelineVersion from './PipelineVersion.component';
 
 const mockPush = jest.fn();

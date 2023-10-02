@@ -14,11 +14,11 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import {
   mockDashboardEntityDetails,
   mockFetchChartsResponse,
 } from '../mocks/DashboardSummary.mock';
-import { DRAWER_NAVIGATION_OPTIONS } from '../utils/EntityUtils';
 import DashboardSummary from './DashboardSummary.component';
 
 jest.mock('../SummaryList/SummaryList.component', () =>

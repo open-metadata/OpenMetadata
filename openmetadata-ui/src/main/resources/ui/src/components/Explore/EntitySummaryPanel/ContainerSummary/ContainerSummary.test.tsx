@@ -19,7 +19,7 @@ import {
   DataType,
   FileFormat,
   StorageServiceType,
-} from '../../generated/entity/data/container';
+} from '../../../../generated/entity/data/container';
 import ContainerSummary from './ContainerSummary.component';
 
 jest.mock('../SummaryList/SummaryList.component', () =>

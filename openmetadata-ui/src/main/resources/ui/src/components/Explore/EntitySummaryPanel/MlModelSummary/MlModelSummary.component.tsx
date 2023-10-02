@@ -15,19 +15,18 @@ import { Col, Divider, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { Mlmodel, TagLabel } from '../../../../generated/entity/data/mlmodel';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import SummaryTagsDescription from '../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { TagLabel } from '../../generated/type/tagLabel';
-import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import { ExplorePageTabs } from '../enums/Explore.enum';
-import SummaryList from '../SummaryList/SummaryList.component';
-import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from '../utils/EntityUtils';
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface MlModelSummaryProps {
   entityDetails: Mlmodel;

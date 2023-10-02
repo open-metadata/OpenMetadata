@@ -20,9 +20,9 @@ import {
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { LeafNodes } from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Paging } from '../../generated/type/paging';
-import { EntityTabs } from '../enums/entity.enum';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {

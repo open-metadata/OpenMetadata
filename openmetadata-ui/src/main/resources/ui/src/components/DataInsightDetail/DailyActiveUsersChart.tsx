@@ -26,7 +26,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
 import PageHeader from '../../components/header/PageHeader.component';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
 import {
@@ -38,6 +37,7 @@ import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { DailyActiveUsers } from '../../generated/dataInsight/type/dailyActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
   CustomTooltip,
   getFormattedActiveUsersData,

@@ -24,13 +24,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { axisTickFormatter } from '../../utils/ChartUtils';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

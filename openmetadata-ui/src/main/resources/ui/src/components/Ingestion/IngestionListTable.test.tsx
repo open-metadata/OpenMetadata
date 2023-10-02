@@ -12,8 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { mockIngestionListTableProps } from 'mocks/IngestionListTable.mock';
 import React from 'react';
+import { mockIngestionListTableProps } from '../../mocks/IngestionListTable.mock';
 import IngestionListTable from './IngestionListTable.component';
 
 jest.mock('../../components/common/next-previous/NextPrevious', () =>

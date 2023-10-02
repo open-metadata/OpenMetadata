@@ -16,7 +16,7 @@ import {
   TableType,
   TagLabel,
 } from '../../../../generated/entity/data/table';
-import { DRAWER_NAVIGATION_OPTIONS } from '../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface TableSummaryProps {
   entityDetails: Table;

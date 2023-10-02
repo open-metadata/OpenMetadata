@@ -30,22 +30,22 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { Category, CustomProperty, Type } from '../../../generated/entity/type';
 import {
   addPropertyToEntity,
   getTypeByFQN,
   getTypeListByCategory,
-} from 'rest/metadataTypeAPI';
-import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
-import { Category, CustomProperty, Type } from '../../../generated/entity/type';
+} from '../../../rest/metadataTypeAPI';
+import { generateFormFields } from '../../../utils/formUtils';
+import { getSettingOptionByEntityType } from '../../../utils/GlobalSettingsUtils';
+import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
-import { generateFormFields } from '../utils/formUtils';
-import { getSettingOptionByEntityType } from '../utils/GlobalSettingsUtils';
-import { getSettingPath } from '../utils/RouterUtils';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 
 const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();

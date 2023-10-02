@@ -19,9 +19,12 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import { mockedGlossaryTerms, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  mockedGlossaryTerms,
+  MOCK_PERMISSIONS,
+} from '../../../mocks/Glossary.mock';
 import GlossaryTermTab from './GlossaryTermTab.component';
 
 const mockOnAddGlossaryTerm = jest.fn();

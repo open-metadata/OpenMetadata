@@ -18,27 +18,27 @@ import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { EntityHistory } from '../../../generated/type/entityHistory';
 import {
   deleteDataProduct,
   getDataProductByName,
   getDataProductVersionData,
   getDataProductVersionsList,
   patchDataProduct,
-} from 'rest/dataProductAPI';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
-import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../components/Loader/Loader';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { EntityHistory } from '../../generated/type/entityHistory';
-import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+} from '../../../rest/dataProductAPI';
 import {
   getDataProductsDetailsPath,
   getDataProductVersionsPath,
   getDomainPath,
-} from '../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
+} from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../containers/PageLayoutV1';
+import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../Loader/Loader';
+import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
 
 const DataProductsPage = () => {
   const { t } = useTranslation();

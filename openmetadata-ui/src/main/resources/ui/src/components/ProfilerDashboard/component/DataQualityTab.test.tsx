@@ -19,8 +19,8 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { MOCK_TEST_CASE } from 'mocks/TestSuite.mock';
 import React from 'react';
+import { MOCK_TEST_CASE } from '../../../mocks/TestSuite.mock';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 

@@ -13,8 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getListTestSuites } from 'rest/testAPI';
-import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { getListTestSuites } from '../../../rest/testAPI';
 import { TestSuites } from './TestSuites.component';
 
 const testSuitePermission = {

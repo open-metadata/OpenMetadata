@@ -18,9 +18,9 @@ import {
   LabelType,
   State,
   TagSource,
-} from '../../generated/entity/data/searchIndex';
+} from '../../../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockSearchIndexEntityDetails } from '../mocks/SearchIndexSummary.mock';
-import { DRAWER_NAVIGATION_OPTIONS } from '../utils/EntityUtils';
 import SearchIndexSummary from './SearchIndexSummary.component';
 
 jest.mock('../SummaryList/SummaryList.component', () =>

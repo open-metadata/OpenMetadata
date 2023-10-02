@@ -13,18 +13,24 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { PAGE_SIZE_BASE } from 'constants/constants';
-import { ALL_EXPLORE_SEARCH_INDEX } from 'constants/explore.constants';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import Loader from '../../components/Loader/Loader';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { ALL_EXPLORE_SEARCH_INDEX } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
-} from 'interface/search.interface';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
-import Loader from '../../components/Loader/Loader';
-import { SearchIndex } from '../../enums/search.enum';
+} from '../../interface/search.interface';
+import { searchData } from '../../rest/miscAPI';
+import { Transi18next } from '../../utils/CommonUtils';
+import {
+  filterOptionsByIndex,
+  getGroupLabel,
+  getSuggestionElement,
+} from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
@@ -38,12 +44,6 @@ import {
   TagSource,
   TopicSource,
 } from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { Transi18next } from '../utils/CommonUtils';
-import {
-  filterOptionsByIndex,
-  getGroupLabel,
-  getSuggestionElement,
-} from '../utils/SearchUtils';
 
 type SuggestionProp = {
   searchText: string;

@@ -18,8 +18,8 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
 import { EntityType } from '../../../enums/entity.enum';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
 const mockCustomProperties = [

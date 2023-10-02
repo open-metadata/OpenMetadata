@@ -15,10 +15,10 @@ import classNames from 'classnames';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
-import { EntityReference } from '../../generated/entity/type';
-import { EntityLineageNodeType } from '../enums/entity.enum';
-import { isLeafNode } from '../utils/EntityUtils';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { isLeafNode } from '../../../utils/EntityUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
   LeafNodes,
   LineagePos,

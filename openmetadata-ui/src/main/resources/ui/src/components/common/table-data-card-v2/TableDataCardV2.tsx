@@ -26,15 +26,15 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
-import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
-import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
-import TableDataCardBody from '../../components/TableDataCardBody/TableDataCardBody';
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
 import {
   getEntityBreadcrumbs,
   getEntityId,
   getEntityName,
-} from '../utils/EntityUtils';
+} from '../../../utils/EntityUtils';
+import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
+import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
+import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
