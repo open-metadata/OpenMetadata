@@ -14,6 +14,8 @@ public class StorageServiceRepository extends ServiceEntityRepository<StorageSer
         dao,
         dao.storageServiceDAO(),
         StorageConnection.class,
+        "",
         ServiceType.STORAGE);
+    supportsSearch = true;
   }
 }

@@ -27,6 +27,10 @@ from typing import Optional, Union, cast
 from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
+from metadata.data_insight.processor.cost_analysis_report_data_processor import (
+    AggregatedCostAnalysisReportDataProcessor,
+    RawCostAnalysisReportDataProcessor,
+)
 from metadata.data_insight.processor.data_processor import DataProcessor
 from metadata.data_insight.processor.entity_report_data_processor import (
     EntityReportDataProcessor,
@@ -97,6 +101,8 @@ class DataInsightWorkflow(WorkflowStatusMixin):
                 EntityReportDataProcessor,
                 WebAnalyticEntityViewReportDataProcessor,
                 WebAnalyticUserActivityReportDataProcessor,
+                RawCostAnalysisReportDataProcessor,
+                AggregatedCostAnalysisReportDataProcessor,
             ]
         ] = None
 

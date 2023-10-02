@@ -49,11 +49,11 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
@@ -63,21 +63,19 @@ import org.openmetadata.service.util.ReIndexingHandler;
 @Path("/v1/search")
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "search")
+@Collection(name = "elasticsearch")
 public class SearchResource {
-  private final CollectionDAO dao;
   private final Authorizer authorizer;
-  private SearchClient searchClient;
+  private SearchRepository searchRepository;
 
-  public SearchResource(CollectionDAO dao, Authorizer authorizer) {
-    this.dao = dao;
+  public SearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
     if (config.getElasticSearchConfiguration() != null) {
-      searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
-      ReIndexingHandler.initialize(searchClient);
+      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), Entity.getCollectionDAO());
+      ReIndexingHandler.initialize(searchRepository);
     }
   }
 
@@ -179,7 +177,7 @@ public class SearchResource {
             .sortOrder(sortOrder)
             .includeSourceFields(includeSourceFields)
             .build();
-    return searchClient.search(request);
+    return searchRepository.search(request);
   }
 
   @GET
@@ -204,7 +202,7 @@ public class SearchResource {
           String index)
       throws IOException {
 
-    return searchClient.searchByField(fieldName, fieldValue, index);
+    return searchRepository.searchByField(fieldName, fieldValue, index);
   }
 
   @GET
@@ -224,7 +222,7 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchClient.searchBySourceUrl(sourceUrl);
+    return searchRepository.searchBySourceUrl(sourceUrl);
   }
 
   @GET
@@ -285,7 +283,7 @@ public class SearchResource {
             .fetchSource(fetchSource)
             .includeSourceFields(includeSourceFields)
             .build();
-    return searchClient.suggest(request);
+    return searchRepository.suggest(request);
   }
 
   @GET
@@ -332,7 +330,7 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") String deleted)
       throws IOException {
 
-    return searchClient.aggregate(index, fieldName, value, query);
+    return searchRepository.aggregate(index, fieldName, value, query);
   }
 
   @GET
@@ -367,7 +365,8 @@ public class SearchResource {
     // Check if there is a running job for reindex for requested entity
     String jobRecord;
     jobRecord =
-        dao.entityExtensionTimeSeriesDao()
+        Entity.getCollectionDAO()
+            .entityExtensionTimeSeriesDao()
             .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
     if (jobRecord != null) {
       return Response.status(Response.Status.OK)

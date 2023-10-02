@@ -26,9 +26,9 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -44,9 +44,9 @@ public class SettingsCache {
   }
 
   // Expected to be called only once from the DefaultAuthorizer
-  public static void initialize(CollectionDAO dao, OpenMetadataApplicationConfig config) {
+  public static void initialize(OpenMetadataApplicationConfig config) {
     if (!initialized) {
-      systemRepository = new SystemRepository(dao.systemDAO());
+      systemRepository = Entity.getSystemRepository();
       initialized = true;
       createDefaultConfiguration(config);
     }

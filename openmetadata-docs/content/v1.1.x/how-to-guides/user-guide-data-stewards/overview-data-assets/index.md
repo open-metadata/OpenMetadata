@@ -10,6 +10,13 @@ This section will deal with all the details related to data assets: how to chang
 {%inlineCalloutContainer%}
  {%inlineCallout
   color="violet-70"
+  bold="Data Ownership"
+  icon="add_moderator"
+  href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership"%}
+  Learn how to assign or change data owners
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
   bold="Follow a Data Asset"
   icon="add_moderator"
   href="/how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset"%}

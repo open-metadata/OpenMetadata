@@ -51,7 +51,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -79,8 +78,8 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
     return dashboardDataModel;
   }
 
-  public DashboardDataModelResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DashboardDataModel.class, new DashboardDataModelRepository(dao), authorizer);
+  public DashboardDataModelResource(Authorizer authorizer) {
+    super(Entity.DASHBOARD_DATA_MODEL, authorizer);
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {

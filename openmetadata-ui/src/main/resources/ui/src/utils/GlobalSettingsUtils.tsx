@@ -225,16 +225,28 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'customAttributes',
       items: [
         {
+          label: i18next.t('label.database'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.database',
+          icon: <DatabaseIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.database-schema'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.databaseSchema',
+          icon: <SchemaIcon className="side-panel-icons" />,
+        },
+        {
           label: i18next.t('label.table-plural'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.tables',
           icon: <TableIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.topic-plural'),
+          label: i18next.t('label.stored-procedure-plural'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.topics',
-          icon: <TopicIcon className="side-panel-icons" />,
+          key: 'customAttributes.storedProcedure',
+          icon: <StoredProcedureIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.dashboard-plural'),
@@ -249,10 +261,10 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <PipelineIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.ml-model-plural'),
+          label: i18next.t('label.topic-plural'),
           isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.mlModels',
-          icon: <MlModelIcon className="side-panel-icons" />,
+          key: 'customAttributes.topics',
+          icon: <TopicIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.container-plural'),
@@ -261,34 +273,22 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <StorageIcon className="side-panel-icons" />,
         },
         {
+          label: i18next.t('label.ml-model-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'customAttributes.mlModels',
+          icon: <MlModelIcon className="side-panel-icons" />,
+        },
+        {
           label: i18next.t('label.search-index'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.searchIndex',
           icon: <SearchOutlined className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.stored-procedure-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.storedProcedure',
-          icon: <StoredProcedureIcon className="side-panel-icons" />,
-        },
-        {
           label: i18next.t('label.glossary-term'),
           isProtected: Boolean(isAdminUser),
           key: 'customAttributes.glossaryTerm',
           icon: <GlossaryIcon className="side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.database'),
-          isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.database',
-          icon: <DatabaseIcon className="side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.database-schema'),
-          isProtected: Boolean(isAdminUser),
-          key: 'customAttributes.databaseSchema',
-          icon: <SchemaIcon className="side-panel-icons" />,
         },
       ],
     },
