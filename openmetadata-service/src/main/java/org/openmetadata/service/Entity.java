@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
@@ -35,6 +37,7 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -42,20 +45,37 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ChangeEventRepository;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.reflections.Reflections;
 
 @Slf4j
 public final class Entity {
-  // Fully qualified name separator
-  public static final String SEPARATOR = ".";
+  private static volatile boolean initializedRepositories = false;
+  @Getter private static volatile CollectionDAO collectionDAO;
+  public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
   private static final Map<String, EntityRepository<? extends EntityInterface>> ENTITY_REPOSITORY_MAP = new HashMap<>();
+  private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
+      ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
+  @Getter @Setter private static TokenRepository tokenRepository;
   @Getter @Setter private static FeedRepository feedRepository;
+  @Getter @Setter private static LineageRepository lineageRepository;
+  @Getter @Setter private static UsageRepository usageRepository;
+  @Getter @Setter private static SystemRepository systemRepository;
+  @Getter @Setter private static ChangeEventRepository changeEventRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
@@ -139,6 +159,7 @@ public final class Entity {
   public static final String ROLE = "role";
   public static final String USER = "user";
   public static final String TEAM = "team";
+  public static final String PERSONA = "persona";
   public static final String BOT = "bot";
 
   //
@@ -159,6 +180,14 @@ public final class Entity {
   public static final String WORKFLOW = "workflow";
 
   //
+  // Time series entities
+  public static final String ENTITY_REPORT_DATA = "EntityReportData";
+  public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "WebAnalyticEntityViewReportData";
+  public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "WebAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "RawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "AggregatedCostAnalysisReportData";
+
+  //
   // Reserved names in OpenMetadata
   //
   public static final String ADMIN_USER_NAME = "admin";
@@ -172,6 +201,7 @@ public final class Entity {
   public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
+  public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
 
@@ -202,24 +232,69 @@ public final class Entity {
           DASHBOARD_SERVICE,
           MESSAGING_SERVICE,
           WORKFLOW,
-          TEST_SUITE);
+          TEST_SUITE,
+          DOCUMENT);
 
   private Entity() {}
 
+  public static void initializeRepositories(CollectionDAO collectionDAO) {
+    if (!initializedRepositories) {
+      Entity.collectionDAO = collectionDAO;
+      tokenRepository = new TokenRepository(collectionDAO);
+      // Check Collection DAO
+      Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
+      Set<Class<?>> repositories = getRepositories();
+      for (Class<?> clz : repositories) {
+        if (Modifier.isAbstract(clz.getModifiers())) {
+          continue; // Don't instantiate abstract classes
+        }
+        try {
+          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
+        } catch (Exception e) {
+          LOG.warn("Exception encountered", e);
+        }
+      }
+      initializedRepositories = true;
+    }
+  }
+
+  public static void cleanup() {
+    initializedRepositories = false;
+    ENTITY_REPOSITORY_MAP.clear();
+  }
+
   public static <T extends EntityInterface> void registerEntity(
-      Class<T> clazz,
-      String entity,
-      EntityRepository<T> entityRepository,
-      List<MetadataOperation> entitySpecificOperations) {
+      Class<T> clazz, String entity, EntityRepository<T> entityRepository) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
     Collections.sort(ENTITY_LIST);
 
-    // Set up entity operations for permissions
-    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
     LOG.info("Registering entity {} {}", clazz, entity);
+  }
+
+  public static <T extends EntityTimeSeriesInterface> void registerEntity(
+      Class<T> clazz, String entity, EntityTimeSeriesRepository<T> entityRepository) {
+    ENTITY_TS_REPOSITORY_MAP.put(entity, entityRepository);
+    EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
+    EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
+    ENTITY_LIST.add(entity);
+    Collections.sort(ENTITY_LIST);
+
+    LOG.info("Registering entity time series {} {}", clazz, entity);
+  }
+
+  public static void registerResourcePermissions(String entity, List<MetadataOperation> entitySpecificOperations) {
+    // Set up entity operations for permissions
+    Class<?> clazz = getEntityClassFromType(entity);
+    ResourceRegistry.addResource(entity, entitySpecificOperations, getEntityFields(clazz));
+  }
+
+  public static void registerTimeSeriesResourcePermissions(String entity) {
+    // Set up entity operations for permissions
+    Class<?> clazz = getEntityTimeSeriesClassFromType(entity);
+    ResourceRegistry.addResource(entity, null, getEntityFields(clazz));
   }
 
   public static List<String> getEntityList() {
@@ -318,9 +393,19 @@ public final class Entity {
   public static EntityRepository<? extends EntityInterface> getEntityRepository(@NonNull String entityType) {
     EntityRepository<? extends EntityInterface> entityRepository = ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityRepositoryNotFound(entityType));
     }
     return entityRepository;
+  }
+
+  public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> getEntityTimeSeriesRepository(
+      @NonNull String entityType) {
+    EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
+        ENTITY_TS_REPOSITORY_MAP.get(entityType);
+    if (entityTimeSeriesRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityType));
+    }
+    return entityTimeSeriesRepository;
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
@@ -360,6 +445,10 @@ public final class Entity {
 
   public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
     return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
+  }
+
+  public static Class<? extends EntityTimeSeriesInterface> getEntityTimeSeriesClassFromType(String entityType) {
+    return EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
   /**
@@ -417,5 +506,12 @@ public final class Entity {
         }
       }
     }
+  }
+
+  /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
+  private static Set<Class<?>> getRepositories() {
+    // Get classes marked with @Repository annotation
+    Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
+    return reflections.getTypesAnnotatedWith(Repository.class);
   }
 }

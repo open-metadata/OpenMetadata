@@ -53,7 +53,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dao,
         "",
         "");
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -206,6 +206,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Add table level tags by adding tag to table relationship
     super.applyTags(dashboardDataModel);
     applyTags(dashboardDataModel.getColumns());
+  }
+
+  @Override
+  public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   @Override

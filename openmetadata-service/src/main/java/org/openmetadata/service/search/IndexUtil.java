@@ -33,6 +33,8 @@ public class IndexUtil {
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA = "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA = "webAnalyticUserActivityReportData";
+  public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
+  public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA = "AggregatedCostAnalysisReportData";
   public static final Map<String, String> ENTITY_TYPE_TO_INDEX_MAP;
 
   private static final Map<SearchIndexDefinition.ElasticSearchIndexType, Set<String>> INDEX_TO_MAPPING_FIELDS_MAP =
@@ -57,7 +59,7 @@ public class IndexUtil {
     FAILED
   }
 
-  public static SearchClient getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
+  public static SearchRepository getSearchClient(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
     if (esConfig != null) {
       return esConfig.getSearchType().equals(SearchType.OPENSEARCH)
           ? new OpenSearchClientImpl(esConfig, dao)
@@ -124,7 +126,11 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA_INDEX;
     } else if (type.equalsIgnoreCase(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)) {
       return SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
-    } else if (type.equalsIgnoreCase(Entity.CONTAINER) || type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+    } else if (type.equalsIgnoreCase(RAW_COST_ANALYSIS_REPORT_DATA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.RAW_COST_ANALYSIS_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(AGGREGATED_COST_ANALYSIS_REPORT_DATA)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.AGGREGATED_COST_ANALYSIS_REPORT_DATA_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.CONTAINER)) {
       return SearchIndexDefinition.ElasticSearchIndexType.CONTAINER_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.QUERY)) {
       return SearchIndexDefinition.ElasticSearchIndexType.QUERY_SEARCH_INDEX;
@@ -148,6 +154,10 @@ public class IndexUtil {
       return SearchIndexDefinition.ElasticSearchIndexType.STORED_PROCEDURE_SEARCH_INDEX;
     } else if (type.equalsIgnoreCase(Entity.DATA_PRODUCT)) {
       return SearchIndexDefinition.ElasticSearchIndexType.DATA_PRODUCTS_SEARCH_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.STORAGE_SERVICE_INDEX;
+    } else if (type.equalsIgnoreCase(Entity.METADATA_SERVICE)) {
+      return SearchIndexDefinition.ElasticSearchIndexType.METADATA_SERVICE_INDEX;
     }
     throw new EventPublisherException("Failed to find index doc for type " + type);
   }

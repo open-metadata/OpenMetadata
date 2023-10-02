@@ -21,7 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.entityTypeNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityRepositoryNotFound;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -107,7 +107,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityTypeNotFound(invalidEntityType));
+        entityRepositoryNotFound(invalidEntityType));
   }
 
   @Test
@@ -116,7 +116,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityTypeNotFound(invalidEntityType));
+        entityRepositoryNotFound(invalidEntityType));
   }
 
   @Test

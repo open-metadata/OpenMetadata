@@ -125,7 +125,7 @@ class EntityReportProcessorTest(unittest.TestCase):
 
         expected = [
             ReportData(
-                timestamp=None,
+                timestamp=1695324826495,
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
@@ -139,7 +139,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 ),  # type: ignore
             ),
             ReportData(
-                timestamp=None,
+                timestamp=1695324826495,
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
@@ -153,7 +153,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 ),  # type: ignore
             ),
             ReportData(
-                timestamp=None,
+                timestamp=1695324826495,
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
@@ -167,7 +167,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 ),  # type: ignore
             ),
             ReportData(
-                timestamp=None,
+                timestamp=1695324826495,
                 reportDataType=ReportDataType.EntityReportData.value,
                 data=EntityReportData(
                     entityType="Table",
@@ -185,7 +185,7 @@ class EntityReportProcessorTest(unittest.TestCase):
         processed = []
 
         for flat_result in EntityReportDataProcessor(mocked_om)._flatten_results(data):
-            flat_result.timestamp = None
+            flat_result.timestamp = 1695324826495
             processed.append(flat_result)
             assert all(
                 k in flat_result.data.dict()

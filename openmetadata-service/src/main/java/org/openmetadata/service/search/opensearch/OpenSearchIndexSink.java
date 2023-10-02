@@ -7,7 +7,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
@@ -16,9 +16,9 @@ import org.opensearch.client.RequestOptions;
 @Slf4j
 public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
-  private final SearchClient client;
+  private final SearchRepository client;
 
-  public OpenSearchIndexSink(SearchClient client) {
+  public OpenSearchIndexSink(SearchRepository client) {
     this.client = client;
   }
 

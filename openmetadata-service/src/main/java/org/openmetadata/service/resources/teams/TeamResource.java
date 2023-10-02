@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -62,7 +61,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -99,8 +97,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Team.class, new TeamRepository(dao), authorizer);
+  public TeamResource(Authorizer authorizer) {
+    super(Entity.TEAM, authorizer);
   }
 
   @Override
@@ -111,9 +109,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
-          InstantiationException, IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
     repository.initOrganization();
   }
@@ -299,7 +295,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificRoleVersion",
+      operationId = "getSpecificTeamVersion",
       summary = "Get a version of the team",
       description = "Get a version of the team by given `id`",
       responses = {

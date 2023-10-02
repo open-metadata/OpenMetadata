@@ -35,6 +35,7 @@ import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSumm
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { mockDatasetData } from 'constants/mockTourData.constants';
+import { TabSpecificField } from 'enums/entity.enum';
 import { Column } from 'generated/entity/data/container';
 import {
   filter,
@@ -58,7 +59,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { getLatestTableProfileByFqn } from 'rest/tableAPI';
+import {
+  getLatestTableProfileByFqn,
+  getTableDetailsByFQN,
+} from 'rest/tableAPI';
 import { getListTestCase, ListTestCaseParams } from 'rest/testAPI';
 import { bytesToSize, getDecodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as ColumnProfileIcon } from '../../assets/svg/column-profile.svg';
@@ -96,7 +100,6 @@ import {
 import './tableProfiler.less';
 
 const TableProfilerV1: FC<TableProfilerProps> = ({
-  testSuite,
   isTableDeleted,
   permissions,
 }: TableProfilerProps) => {
@@ -138,6 +141,7 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [testSuite, setTestSuite] = useState<Table['testSuite']>();
 
   const isColumnProfile = activeTab === TableProfilerTab.COLUMN_PROFILE;
   const isDataQuality = activeTab === TableProfilerTab.DATA_QUALITY;
@@ -471,6 +475,26 @@ const TableProfilerV1: FC<TableProfilerProps> = ({
 
     return { statusDict, totalTests: temp.length };
   }, [activeColumnFqn, columnTests]);
+
+  const fetchTestSuiteDetails = async () => {
+    setIsLoading(true);
+    try {
+      const details = await getTableDetailsByFQN(
+        datasetFQN,
+        TabSpecificField.TESTSUITE
+      );
+      setTestSuite(details.testSuite);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    if (isDataQuality && isUndefined(testSuite)) {
+      fetchTestSuiteDetails();
+    }
+  }, [isDataQuality, testSuite]);
 
   useEffect(() => {
     const fetchTest =

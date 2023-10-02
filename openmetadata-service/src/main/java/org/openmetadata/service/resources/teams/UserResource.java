@@ -40,7 +40,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
@@ -138,7 +137,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -160,25 +159,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     super.addHref(uriInfo, user);
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
+    Entity.withHref(uriInfo, user.getPersonas());
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
-    super(User.class, new UserRepository(dao), authorizer);
+  public UserResource(Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
+    super(Entity.USER, authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
-    tokenRepository = new TokenRepository(dao);
-    UserTokenCache.initialize(dao);
+    tokenRepository = Entity.getTokenRepository();
+    UserTokenCache.initialize();
     authHandler = authenticatorHandler;
   }
 
@@ -189,9 +189,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @Override
-  public void initialize(OpenMetadataApplicationConfig config)
-      throws IOException, ClassNotFoundException, InvocationTargetException, NoSuchMethodException,
-          InstantiationException, IllegalAccessException {
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
@@ -562,7 +560,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (Boolean.TRUE.equals(create.getIsBot())) { // TODO expect bot to be created separately
       return createOrUpdateBot(user, create, uriInfo, securityContext);
     }
-    RestUtil.PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
+    PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -626,7 +624,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     AuthenticationMechanism authenticationMechanism =
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    RestUtil.PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
+    PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     addHref(uriInfo, response.getEntity());
     // Invalidate Bot Token in Cache
     BotTokenCache.invalidateToken(user.getName());
@@ -726,7 +724,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           authorizer.authorizeAdmin(securityContext);
           continue;
         }
-        // if path contains team, check if team is joinable by any user
+        // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
             && patchOpObject.getString("op").equals("add")
             && path.startsWith("/teams/")) {
@@ -1056,7 +1054,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, true);
     List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+        tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
@@ -1093,14 +1091,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
     if (removeAll) {
-      tokenRepository.deleteTokenByUserAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+      tokenRepository.deleteTokenByUserAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     } else {
       List<String> ids = request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
       tokenRepository.deleteAllToken(ids);
     }
     UserTokenCache.invalidateToken(user.getName());
     List<TokenInterface> tokens =
-        tokenRepository.findByUserIdAndType(user.getId().toString(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+        tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
   }
 
@@ -1144,7 +1142,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for user import/export")
-  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name) {
+  public String getUserCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
   }
 
@@ -1218,6 +1216,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withIsBot(create.getIsBot())
         .withIsAdmin(create.getIsAdmin())
         .withProfile(create.getProfile())
+        .withPersonas(create.getPersonas())
+        .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
@@ -1259,7 +1259,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
-    RestUtil.PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
+    PutResponse<User> response = repository.createOrUpdate(uriInfo, user);
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }

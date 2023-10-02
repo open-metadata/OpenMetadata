@@ -284,10 +284,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
         return buildUnhealthyStatus("Airflow APIs not found. Please follow the installation guide.");
       }
 
+      return buildUnhealthyStatus(
+          String.format("Unexpected status response: code [%s] - [%s]", response.statusCode(), response.body()));
+
     } catch (Exception e) {
       return buildUnhealthyStatus(String.format("Failed to get REST status due to [%s].", e.getMessage()));
     }
-    throw new PipelineServiceClientException(String.format("Failed to get REST status due to %s.", response.body()));
   }
 
   @Override

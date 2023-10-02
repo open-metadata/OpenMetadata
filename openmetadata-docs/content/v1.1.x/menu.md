@@ -603,35 +603,49 @@ site_menu:
     url: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Assign or Change Data Ownership
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Follow a Data Asset
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
-  - category: How to Guides / The Pillars of OpenMetadata
+  - category: How to Guides / The Six Pillars of OpenMetadata
     url: /how-to-guides/openmetadata
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery
+    url: /how-to-guides/openmetadata/data-discovery
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / How to Discover Assets of Interest
+    url: /how-to-guides/openmetadata/data-discovery/discover
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration
+    url: /how-to-guides/openmetadata/data-collaboration
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler
+    url: /how-to-guides/openmetadata/data-quality-profiler
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage
+    url: /how-to-guides/openmetadata/data-lineage
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights
+    url: /how-to-guides/openmetadata/data-insights
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance
     url: /how-to-guides/openmetadata/data-governance
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification
     url: /how-to-guides/openmetadata/data-governance/glossary-classification
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is a Glossary
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is a Glossary
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is Classification
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / What is Classification
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/classification
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / What are Tiers
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / What are Tiers
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/tiers
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Setup a Glossary
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Setup a Glossary
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/setup-glossary
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Create Glossary Terms
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Create Glossary Terms
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/glossary-terms
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Bulk Import a Glossary
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/import-glossary
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Add Assets to Glossary Terms
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/assets
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Classify Data Assets
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / How to Classify Data Assets
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/classify-assets
-  - category: How to Guides / The Pillars of OpenMetadata / Data Governance / Glossary and Classification / Best Practices for Glossary and Classification
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification / Best Practices for Glossary and Classification
     url: /how-to-guides/openmetadata/data-governance/glossary-classification/best-practices
   - category: How to Guides / CLI Ingestion with basic auth
     url: /how-to-guides/cli-ingestion-with-basic-auth
