@@ -1,7 +1,8 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
@@ -11,23 +12,26 @@ import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
-  private CollectionDAO collectionDAO;
+  protected CollectionDAO collectionDAO;
   private Application app;
+  protected SearchRepository searchRepository;
 
   @Override
-  public void init(Application app, CollectionDAO dao) {
+  public void init(Application app, CollectionDAO dao, SearchRepository searchRepository) {
     this.collectionDAO = dao;
+    this.searchRepository = searchRepository;
     this.app = app;
   }
 
   @Override
-  public void triggerOnDemand(Object requestObj) {
+  public void triggerOnDemand() {
     // Validate Native Application
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       AppRuntime runtime = getAppRuntime(app);
@@ -68,13 +72,15 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // This is the part of the code that is executed by the scheduler
-    Application jobApp = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO);
+    Application jobApp = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     CollectionDAO dao = (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
+    SearchRepository searchRepositoryForJob =
+        (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
     // Initialise the Application
-    this.init(jobApp, dao);
+    this.init(jobApp, dao, searchRepositoryForJob);
 
     // Trigger
-    this.doExecute(jobExecutionContext);
+    this.startApp(jobExecutionContext);
   }
 
   public static AppRuntime getAppRuntime(Application app) {

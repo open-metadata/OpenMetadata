@@ -123,7 +123,6 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
-import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -430,8 +429,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, provider);
       environment.jersey().register(eventFilter);
-      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
-      environment.jersey().register(reindexingJobs);
     }
   }
 

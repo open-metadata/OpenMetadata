@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchRepository;
 
 @Slf4j
 public class ApplicationHandler {
@@ -13,14 +14,16 @@ public class ApplicationHandler {
     /*Helper*/
   }
 
-  public static void triggerApplicationOnDemand(Application app, CollectionDAO daoCollection) {
+  public static void triggerApplicationOnDemand(
+      Application app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod = resource.getClass().getMethod("init", Application.class, CollectionDAO.class);
+      Method initMethod =
+          resource.getClass().getMethod("init", Application.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection);
 
       // Call Trigger On Demand Method
@@ -34,15 +37,17 @@ public class ApplicationHandler {
     }
   }
 
-  public static void scheduleApplication(Application app, CollectionDAO daoCollection) {
+  public static void scheduleApplication(
+      Application app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod = resource.getClass().getMethod("init", Application.class, CollectionDAO.class);
-      initMethod.invoke(resource, app, daoCollection);
+      Method initMethod =
+          resource.getClass().getMethod("init", Application.class, CollectionDAO.class, SearchRepository.class);
+      initMethod.invoke(resource, app, daoCollection, searchRepository);
 
       // Call Trigger On Demand Method
       Method scheduleMethod = resource.getClass().getMethod("schedule");
