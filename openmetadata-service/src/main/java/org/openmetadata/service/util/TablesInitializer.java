@@ -267,7 +267,6 @@ public final class TablesInitializer {
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
     SearchRepository searchRepository =
         new SearchRepository(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
-    searchRepository.init();
 
     // Initialize secrets manager
     SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());

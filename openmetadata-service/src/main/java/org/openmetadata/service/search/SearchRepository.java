@@ -54,7 +54,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.resources.search.SearchResource;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -84,6 +83,7 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
+
   public SearchRepository(ElasticSearchConfiguration config, CollectionDAO dao) {
     this.dao = dao;
     if (config != null && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
@@ -92,10 +92,8 @@ public class SearchRepository {
       searchClient = new ElasticSearchClient(config);
     }
     this.language = config != null ? config.getSearchIndexMappingLanguage().value() : "en";
-  }
-
-  public void init() {
     loadIndexMappings();
+    Entity.setSearchRepository(this);
   }
 
   public SearchClient getSearchClient() {
@@ -108,7 +106,7 @@ public class SearchRepository {
 
   private void loadIndexMappings() {
     entityIndexMap = new HashMap<>();
-    try (InputStream in = getClass().getResourceAsStream("/json.data/search/indexMapping.json")) {
+    try (InputStream in = getClass().getResourceAsStream("/elasticsearch/indexMapping.json")) {
       assert in != null;
       JsonObject jsonPayload = JsonUtils.readJson(new String(in.readAllBytes())).asJsonObject();
       Set<String> entities = jsonPayload.keySet();
@@ -178,7 +176,7 @@ public class SearchRepository {
 
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      if (!indexExists(indexMapping)) {
+      if (indexExists(indexMapping)) {
         searchClient.deleteIndex(indexMapping);
       }
     } catch (Exception e) {
@@ -188,8 +186,7 @@ public class SearchRepository {
 
   private String getIndexMapping(IndexMapping indexMapping) {
     try (InputStream in =
-        SearchResource.class.getResourceAsStream(
-            String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))) {
+        getClass().getResourceAsStream(String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))) {
       assert in != null;
       return new String(in.readAllBytes());
     } catch (Exception e) {
@@ -244,18 +241,25 @@ public class SearchRepository {
     if (entity != null) {
       String entityType = entity.getEntityReference().getType();
       String entityId = entity.getId().toString();
-      IndexMapping indexMapping = entityIndexMap.get(entityType);
-      String scriptTxt = DEFAULT_UPDATE_SCRIPT;
-      Map<String, Object> doc = new HashMap<>();
-      if (entity.getChangeDescription() != null
-          && Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
-        scriptTxt = getScriptWithParams(entity, doc);
-      } else {
-        SearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, entity);
-        doc = elasticSearchIndex.buildESDoc();
+      try {
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        String scriptTxt = DEFAULT_UPDATE_SCRIPT;
+        Map<String, Object> doc = new HashMap<>();
+        if (entity.getChangeDescription() != null
+            && Objects.equals(entity.getVersion(), entity.getChangeDescription().getPreviousVersion())) {
+          scriptTxt = getScriptWithParams(entity, doc);
+        } else {
+          SearchIndex elasticSearchIndex = SearchIndexFactory.buildIndex(entityType, entity);
+          doc = elasticSearchIndex.buildESDoc();
+        }
+        searchClient.updateEntity(indexMapping.getIndexName(), entityId, doc, scriptTxt);
+        propagateInheritedFieldsToChildren(entityType, entityId, entity.getChangeDescription(), indexMapping);
+      } catch (Exception ie) {
+        LOG.error(
+            String.format(
+                "Issue in Updatind the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
+                entityId, entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
       }
-      searchClient.updateEntity(indexMapping.getIndexName(), entityId, doc, scriptTxt);
-      propagateInheritedFieldsToChildren(entityType, entityId, entity.getChangeDescription(), indexMapping);
     }
   }
 
@@ -264,7 +268,9 @@ public class SearchRepository {
     if (changeDescription != null) {
       Pair<String, EntityReference> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
-      searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
+      if (updates != null) {
+        searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
+      }
     }
   }
 
@@ -275,19 +281,20 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           scriptTxt.append(String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getName()));
-          fieldData = (EntityReference) field.getNewValue();
+          fieldData = JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
         }
       }
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (inheritableFields.contains(field.getName())) {
-          EntityReference entityReference = (EntityReference) field.getOldValue();
+          EntityReference entityReference = JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          ;
           scriptTxt.append(
               String.format(
                   UPDATE_PROPAGATED_FIELD_SCRIPT,
                   field.getName(),
                   entityReference.getId().toString(),
                   field.getName()));
-          fieldData = (EntityReference) field.getNewValue();
+          fieldData = JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
         }
       }
       for (FieldChange field : changeDescription.getFieldsDeleted()) {

@@ -73,7 +73,7 @@
   },
   "mlModel": {
     "indexName": "mlmodel_search_index",
-    "indexMappingFile": "/elasticsearch/%s/mlmodel_search_index",
+    "indexMappingFile": "/elasticsearch/%s/mlmodel_index_mapping.json",
     "alias": "mlModel",
     "parentAliases": ["all"]
   },
@@ -91,7 +91,7 @@
   },
   "dataProduct": {
     "indexName": "data_product_search_index",
-    "indexMappingFile": "/elasticsearch/%s/data_product_index_mapping.json",
+    "indexMappingFile": "/elasticsearch/%s/data_products_index_mapping.json",
     "alias": "dataProduct",
     "parentAliases": []
   },
@@ -103,7 +103,7 @@
   },
   "glossary": {
     "indexName": "glossary_search_index",
-    "indexMappingFile": "/elasticsearch/%s/glossary_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/glossary_index_mapping.json",
     "alias": "glossary",
     "parentAliases": ["all"]
   },
@@ -121,77 +121,91 @@
   },
   "user": {
     "indexName": "user_search_index",
-    "indexMappingFile": "/elasticsearch/%s/user_index_mapping.json"
+    "indexMappingFile": "/elasticsearch/%s/user_index_mapping.json",
+    "alias": "user",
+    "parentAliases": []
   },
   "team": {
     "indexName": "team_search_index",
-    "indexMappingFile": "/elasticsearch/%s/team_index_mapping.json"
+    "indexMappingFile": "/elasticsearch/%s/team_index_mapping.json",
+    "alias": "team",
+    "parentAliases": []
   },
   "entityReportData": {
     "indexName": "entity_report_data_index",
-    "indexMappingFile": "/elasticsearch/%s/entity_report_data_index.json"
+    "indexMappingFile": "/elasticsearch/entity_report_data_index.json",
+    "alias": "entityReportData",
+    "parentAliases": []
   },
   "webAnalyticEntityViewReportData": {
     "indexName": "web_analytic_entity_view_report_data_index",
-    "indexMappingFile": "/elasticsearch/web_analytic_entity_view_report_data_index.json"
+    "indexMappingFile": "/elasticsearch/web_analytic_entity_view_report_data_index.json",
+    "alias": "webAnalyticEntityViewReportData",
+    "parentAliases": []
   },
   "webAnalyticUserActivityReportData": {
     "indexName": "web_analytic_user_activity_report_data_index",
-    "indexMappingFile": "/elasticsearch/web_analytic_user_activity_report_data_index.json"
+    "indexMappingFile": "/elasticsearch/web_analytic_user_activity_report_data_index.json",
+    "alias": "webAnalyticUserActivityReportData",
+    "parentAliases": []
   },
   "rawCostAnalysisReportData": {
     "indexName": "raw_cost_analysis_report_data_index",
-    "indexMappingFile": "/elasticsearch/raw_cost_analysis_report_data_index.json"
+    "indexMappingFile": "/elasticsearch/raw_cost_analysis_report_data_index.json",
+    "alias": "rawCostAnalysisReportData",
+    "parentAliases": []
   },
   "AggregatedCostAnalysisReportData": {
     "indexName": "aggregated_cost_analysis_report_data_index",
-    "indexMappingFile": "/elasticsearch/aggregated_cost_analysis_report_data_index.json"
+    "indexMappingFile": "/elasticsearch/aggregated_cost_analysis_report_data_index.json",
+    "alias": "AggregatedCostAnalysisReportData",
+    "parentAliases": []
   },
   "databaseService": {
     "indexName": "database_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/database_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/database_service_index_mapping.json",
     "alias": "databaseService",
     "parentAliases": []
   },
   "messagingService": {
     "indexName": "messaging_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/messaging_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/messaging_service_index_mapping.json",
     "alias": "messagingService",
     "parentAliases": []
   },
   "pipelineService": {
     "indexName": "pipeline_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/pipeline_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/pipeline_service_index_mapping.json",
     "alias": "pipelineService",
     "parentAliases": []
   },
   "dashboardService": {
     "indexName": "dashboard_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/dashboard_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/dashboard_service_index_mapping.json",
     "alias": "dashboardService",
     "parentAliases": []
   },
   "searchService": {
     "indexName": "search_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/search_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/search_service_index_mapping.json",
     "alias": "searchService",
     "parentAliases": []
   },
   "storageService": {
     "indexName": "storage_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/storage_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/storage_service_index_mapping.json",
     "alias": "storageService",
     "parentAliases": []
   },
   "metadataService": {
     "indexName": "metadata_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/metadata_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/metadata_service_index_mapping.json",
     "alias": "metadataService",
     "parentAliases": []
   },
   "mlmodelService": {
     "indexName": "mlmodel_service_search_index",
-    "indexMappingFile": "/elasticsearch/%s/mlmodel_service_search_index.json",
+    "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
     "parentAliases": []
   }

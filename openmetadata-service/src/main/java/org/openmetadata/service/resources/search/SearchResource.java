@@ -66,6 +66,7 @@ public class SearchResource {
   public SearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
     this.searchRepository = Entity.getSearchRepository();
+    ReIndexingHandler.initialize(searchRepository);
   }
 
   @GET
