@@ -50,7 +50,6 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -72,8 +71,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   static final String FIELDS = "children,owner,experts";
 
-  public DomainResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Domain.class, new DomainRepository(dao), authorizer);
+  public DomainResource(Authorizer authorizer) {
+    super(Entity.DOMAIN, authorizer);
   }
 
   @Override

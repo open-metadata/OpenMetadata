@@ -119,6 +119,7 @@ import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
+import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -135,6 +136,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.connections.TestConnectionStepResult;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -186,9 +188,7 @@ import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
 import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
-import org.openmetadata.service.resources.teams.RoleResourceTest;
-import org.openmetadata.service.resources.teams.TeamResourceTest;
-import org.openmetadata.service.resources.teams.UserResourceTest;
+import org.openmetadata.service.resources.teams.*;
 import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.security.SecurityUtil;
@@ -257,6 +257,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Team TEAM21; // Team under Team2
 
   public static User DATA_STEWARD;
+  public static Persona DATA_ENGINEER;
+  public static Persona DATA_SCIENTIST;
+
+  public static Document ACTIVITY_FEED_KNOWLEDGE_PANEL;
+  public static Document MY_DATA_KNOWLEDGE_PANEL;
+  public static User USER_WITH_DATA_STEWARD_ROLE;
   public static Role DATA_STEWARD_ROLE;
   public static EntityReference DATA_STEWARD_ROLE_REF;
   public static User DATA_CONSUMER;
@@ -396,6 +402,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     new PolicyResourceTest().setupPolicies();
     new RoleResourceTest().setupRoles(test);
+    new PersonaResourceTest().setupPersonas(test);
     new TeamResourceTest().setupTeams(test);
     new UserResourceTest().setupUsers(test);
     new DomainResourceTest().setupDomains(test);
@@ -2648,6 +2655,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           actualList.stream().filter(a -> EntityUtil.entityReferenceMatch.test(a, expected)).findAny().orElse(null);
       assertNotNull(actual, "Expected entity reference " + expected.getId() + " not found");
     }
+  }
+
+  protected void assertEntityReference(EntityReference expected, EntityReference actual) {
+    assertEquals(expected.getId(), actual.getId());
+    assertEquals(expected.getName(), actual.getName());
+    assertEquals(expected.getDescription(), actual.getDescription());
+    assertEquals(expected.getType(), actual.getType());
+    assertEquals(expected.getDisplayName(), actual.getDisplayName());
+    assertEquals(expected.getDeleted(), actual.getDeleted());
   }
 
   protected void assertEntityReferencesContain(List<EntityReference> list, EntityReference reference) {

@@ -19,7 +19,6 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
@@ -36,9 +35,9 @@ public class UserTokenCache {
     /* Private constructor for singleton */
   }
 
-  public static void initialize(CollectionDAO dao) {
+  public static void initialize() {
     if (!initialized) {
-      tokenRepository = new TokenRepository(dao);
+      tokenRepository = Entity.getTokenRepository();
       initialized = true;
       LOG.info("User Token cache is initialized");
     } else {
