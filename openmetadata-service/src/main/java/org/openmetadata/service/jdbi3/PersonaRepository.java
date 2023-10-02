@@ -41,7 +41,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
         PERSONA_PATCH_FIELDS,
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;
-    supportsSearchIndex = false;
+    supportsSearch = false;
   }
 
   @Override

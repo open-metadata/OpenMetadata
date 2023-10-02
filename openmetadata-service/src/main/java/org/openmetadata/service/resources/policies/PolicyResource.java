@@ -49,6 +49,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
@@ -59,7 +60,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.resources.Collection;
@@ -68,6 +68,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -90,8 +91,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return policy;
   }
 
-  public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Policy.class, new PolicyRepository(dao), authorizer);
+  public PolicyResource(Authorizer authorizer) {
+    super(Entity.POLICY, authorizer);
   }
 
   @Override
@@ -104,6 +105,27 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     repository.initSeedDataFromResources();
+  }
+
+  @Override
+  public void upgrade() throws IOException {
+    // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
+    try {
+      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
+      String originalJson = JsonUtils.pojoToJson(organizationPolicy);
+      for (Rule rule : organizationPolicy.getRules()) {
+        if (rule.getName().equals("OrganizationPolicy-Owner-Rule")
+            && !rule.getOperations().contains(MetadataOperation.ALL)) {
+          rule.getOperations().clear();
+          rule.getOperations().add(MetadataOperation.ALL);
+        }
+      }
+      String updatedJson = JsonUtils.pojoToJson(organizationPolicy);
+      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
+      repository.patch(null, organizationPolicy.getId(), "admin", patch);
+    } catch (Exception e) {
+      LOG.error("Failed to update OrganizationPolicy", e);
+    }
   }
 
   public static class PolicyList extends ResultList<Policy> {

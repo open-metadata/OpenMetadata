@@ -26,6 +26,7 @@ import {
   DELETE_TERM,
   SEARCH_ENTITY_MLMODEL,
   SEARCH_ENTITY_PIPELINE,
+  SEARCH_ENTITY_STORED_PROCEDURE,
   SEARCH_ENTITY_TOPIC,
 } from '../../constants/constants';
 
@@ -39,6 +40,7 @@ const ENTITIES = {
   // dashboard: SEARCH_ENTITY_DASHBOARD.dashboard_2,
   pipeline: SEARCH_ENTITY_PIPELINE.pipeline_2,
   mlmodel: SEARCH_ENTITY_MLMODEL.mlmodel_2,
+  storedProcedure: SEARCH_ENTITY_STORED_PROCEDURE.stored_procedure_2,
 };
 const glossary = 'GlossaryOwnerTest';
 const glossaryTerm = 'GlossaryTermOwnerTest';

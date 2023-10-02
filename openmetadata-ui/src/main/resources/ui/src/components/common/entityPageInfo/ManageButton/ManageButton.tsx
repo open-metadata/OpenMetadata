@@ -285,6 +285,7 @@ const ManageButton: FC<Props> = ({
         }}
         className="reactive-modal"
         closable={false}
+        data-testid="restore-asset-modal"
         maskClosable={false}
         okText={t('label.restore')}
         open={showReactiveModal}

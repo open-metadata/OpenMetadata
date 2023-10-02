@@ -1145,7 +1145,7 @@ export const getEntityLinkFromType = (
       return getTableDetailsPath(fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
       return getTagsDetailsPath(getEncodedFqn(fullyQualifiedName));
     case EntityType.TOPIC:
