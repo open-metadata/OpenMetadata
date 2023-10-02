@@ -39,6 +39,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
 import { SearchService } from 'generated/entity/services/searchService';
+import { StorageService } from 'generated/entity/services/storageService';
 import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -204,6 +205,14 @@ export default function EntitySummaryPanel({
           <ServiceSummary
             entityDetails={entity as MlmodelService}
             type={ExplorePageTabs.ML_MODEL_SERVICE}
+          />
+        );
+
+      case EntityType.STORAGE_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as StorageService}
+            type={ExplorePageTabs.STORAGE_SERVICE}
           />
         );
 

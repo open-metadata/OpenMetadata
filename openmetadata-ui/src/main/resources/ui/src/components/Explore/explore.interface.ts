@@ -28,6 +28,7 @@ import { MessagingService } from 'generated/entity/services/messagingService';
 import { MlmodelService } from 'generated/entity/services/mlmodelService';
 import { PipelineService } from 'generated/entity/services/pipelineService';
 import { SearchService } from 'generated/entity/services/searchService';
+import { StorageService } from 'generated/entity/services/storageService';
 import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -139,6 +140,7 @@ export type EntityUnion =
   | DashboardService
   | PipelineService
   | MlmodelService
+  | StorageService
   | SearchService;
 
 export type EntityWithServices =
@@ -158,6 +160,7 @@ export type EntityServiceUnion =
   | DashboardService
   | PipelineService
   | MlmodelService
+  | StorageService
   | SearchService;
 
 export interface EntityDetailsObjectInterface {

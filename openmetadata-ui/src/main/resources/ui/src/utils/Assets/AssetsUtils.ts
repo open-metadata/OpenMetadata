@@ -152,6 +152,7 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
     [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
     [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
+    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
     [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
   };
 

@@ -158,6 +158,7 @@ const AssetsTabs = forwardRef(
             dashboardServiceResponse,
             mlmodelServiceResponse,
             pipelineServiceResponse,
+            storageServiceResponse,
             searchServiceResponse,
             glossaryResponse,
           ]) => {
@@ -186,6 +187,8 @@ const AssetsTabs = forwardRef(
                 mlmodelServiceResponse.data.hits.total.value,
               [EntityType.PIPELINE_SERVICE]:
                 pipelineServiceResponse.data.hits.total.value,
+              [EntityType.STORAGE_SERVICE]:
+                storageServiceResponse.data.hits.total.value,
               [EntityType.SEARCH_SERVICE]:
                 searchServiceResponse.data.hits.total.value,
 

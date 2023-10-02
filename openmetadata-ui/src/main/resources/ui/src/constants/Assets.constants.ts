@@ -108,6 +108,11 @@ export const AssetsFilterOptions: Array<{
     value: SearchIndex.ML_MODEL_SERVICE,
   },
   {
+    label: i18n.t('label.storage-service'),
+    key: EntityType.STORAGE_SERVICE,
+    value: SearchIndex.STORAGE_SERVICE,
+  },
+  {
     label: i18n.t('label.search-index-service'),
     key: EntityType.SEARCH_SERVICE,
     value: SearchIndex.SEARCH_SERVICE,
@@ -131,5 +136,6 @@ export const ASSETS_INDEXES = [
   SearchIndex.DASHBOARD_SERVICE,
   SearchIndex.ML_MODEL_SERVICE,
   SearchIndex.PIPELINE_SERVICE,
+  SearchIndex.STORAGE_SERVICE,
   SearchIndex.SEARCH_SERVICE,
 ];

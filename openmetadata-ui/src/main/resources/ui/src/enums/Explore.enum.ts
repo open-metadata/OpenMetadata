@@ -35,5 +35,6 @@ export enum ExplorePageTabs {
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
   ML_MODEL_SERVICE = 'mlmodelService',
+  STORAGE_SERVICE = 'storageService',
   SEARCH_INDEX_SERVICE = 'searchIndexService',
 }
