@@ -29,19 +29,7 @@ public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
   @Getter private final Class<S> serviceConnectionClass;
-
   @Getter private final ServiceType serviceType;
-
-  protected ServiceEntityRepository(
-      String collectionPath,
-      String service,
-      CollectionDAO dao,
-      EntityDAO<T> entityDAO,
-      Class<S> serviceConnectionClass,
-      ServiceType serviceType) {
-    this(collectionPath, service, dao, entityDAO, serviceConnectionClass, "", serviceType);
-    quoteFqn = true;
-  }
 
   protected ServiceEntityRepository(
       String collectionPath,
@@ -54,6 +42,7 @@ public abstract class ServiceEntityRepository<
     super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
+    quoteFqn = true;
   }
 
   @Override

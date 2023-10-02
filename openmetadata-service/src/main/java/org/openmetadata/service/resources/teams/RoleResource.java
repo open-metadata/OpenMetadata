@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.Collection;
@@ -90,8 +89,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     return role;
   }
 
-  public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Role.class, new RoleRepository(collectionDAO), authorizer);
+  public RoleResource(Authorizer authorizer) {
+    super(Entity.ROLE, authorizer);
   }
 
   @Override
