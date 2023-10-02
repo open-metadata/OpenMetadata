@@ -268,13 +268,13 @@ public class SearchRepository {
     if (changeDescription != null) {
       Pair<String, EntityReference> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
-      if (updates != null) {
+      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
         searchClient.updateChildren(indexMapping.getAlias(), parentMatch, updates);
       }
     }
   }
 
-  public Pair<String, EntityReference> getInheritedFieldChanges(ChangeDescription changeDescription) {
+  private Pair<String, EntityReference> getInheritedFieldChanges(ChangeDescription changeDescription) {
     StringBuilder scriptTxt = new StringBuilder();
     EntityReference fieldData = null;
     if (changeDescription != null) {
@@ -287,10 +287,10 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (inheritableFields.contains(field.getName())) {
           EntityReference entityReference = JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-          ;
           scriptTxt.append(
               String.format(
                   UPDATE_PROPAGATED_FIELD_SCRIPT,
+                  field.getName(),
                   field.getName(),
                   entityReference.getId().toString(),
                   field.getName()));
@@ -299,7 +299,7 @@ public class SearchRepository {
       }
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
-          EntityReference entityReference = (EntityReference) field.getOldValue();
+          EntityReference entityReference = JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           scriptTxt.append(
               String.format(
                   REMOVE_PROPAGATED_FIELD_SCRIPT,
@@ -350,7 +350,7 @@ public class SearchRepository {
       String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
       try {
         searchClient.softDeleteOrRestoreEntity(indexMapping.getIndexName(), entityId, scriptTxt);
-        softDeleteOrRestoredChildren(entity, indexMapping, true);
+        softDeleteOrRestoredChildren(entity, indexMapping, delete);
       } catch (Exception ie) {
         LOG.error(
             String.format(
@@ -422,6 +422,7 @@ public class SearchRepository {
       default:
         searchClient.softDeleteOrRestoreChildren(
             indexMapping.getAlias(), scriptTxt, List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        break;
     }
   }
 

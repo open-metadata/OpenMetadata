@@ -49,6 +49,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchDataInsightProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchDataInsightProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
@@ -338,8 +339,11 @@ public class SearchIndexWorkflow implements Runnable {
 
   private void reCreateIndexes(String entityType) {
     if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-      searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
-      searchRepository.createIndex(searchRepository.getIndexMapping(entityType));
+      IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
+      if (indexMapping != null) {
+        searchRepository.deleteIndex(indexMapping);
+        searchRepository.createIndex(indexMapping);
+      }
     }
   }
 
