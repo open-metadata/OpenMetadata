@@ -263,7 +263,7 @@ public class OpenSearchClient implements SearchClient {
       case "team_search_index":
         searchSourceBuilder = buildUserOrTeamSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
-      case "glossary_search_index":
+      case "glossary_term_search_index":
         searchSourceBuilder = buildGlossaryTermSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "tag_search_index":
