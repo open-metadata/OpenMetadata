@@ -50,17 +50,13 @@ class EntityProducer(ProducerInterface):
     # pylint: disable=protected-access,dangerous-default-value
     def fetch_data(self, limit=100, fields=["*"]) -> Iterable:
         for entity in self.entities:
-            # we want to skip the entity if it fails to fetch
-            # and continue with the rest of the entities vs failing the whole workflow
-            self.metadata._skip_on_failure = True
             try:
                 yield from self.metadata.list_all_entities(
-                    entity, limit=limit, fields=fields
+                    entity, limit=limit, fields=fields, skip_on_failure=True
                 )
             except Exception as err:
                 logger.error(f"Error trying to fetch entity -- {err}")
                 logger.debug(traceback.format_exc())
-            self.metadata._skip_on_failure = False
 
 
 class EntityProducerTable(EntityProducer):

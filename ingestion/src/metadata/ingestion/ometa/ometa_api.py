@@ -130,7 +130,6 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
-        skip_on_failure: bool = False,
     ):
         self.config = config
 
@@ -163,7 +162,6 @@ class OpenMetadata(
         )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
-        self._skip_on_failure = skip_on_failure
         if self.config.enableVersionValidation:
             self.validate_versions()
 
@@ -379,6 +377,7 @@ class OpenMetadata(
         after: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -395,7 +394,7 @@ class OpenMetadata(
         if self._use_raw_data:
             return resp
 
-        if self._skip_on_failure:
+        if skip_on_failure:
             entities = []
             for elmt in resp["data"]:
                 try:
@@ -416,6 +415,7 @@ class OpenMetadata(
         fields: Optional[List[str]] = None,
         limit: int = 1000,
         params: Optional[Dict[str, str]] = None,
+        skip_on_failure: bool = False,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -429,7 +429,7 @@ class OpenMetadata(
 
         # First batch of Entities
         entity_list = self.list_entities(
-            entity=entity, fields=fields, limit=limit, params=params
+            entity=entity, fields=fields, limit=limit, params=params, skip_on_failure=skip_on_failure
         )
         for elem in entity_list.entities:
             yield elem
@@ -437,7 +437,7 @@ class OpenMetadata(
         after = entity_list.after
         while after:
             entity_list = self.list_entities(
-                entity=entity, fields=fields, limit=limit, params=params, after=after
+                entity=entity, fields=fields, limit=limit, params=params, after=after, skip_on_failure=skip_on_failure
             )
             for elem in entity_list.entities:
                 yield elem
