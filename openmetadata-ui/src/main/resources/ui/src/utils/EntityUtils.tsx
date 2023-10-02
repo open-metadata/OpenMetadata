@@ -879,58 +879,6 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   return overview;
 };
 
-const getPipelineOverview = (pipelineDetails: Pipeline) => {
-  const { owner, tags, sourceUrl, service, displayName } = pipelineDetails;
-  const tier = getTierFromTableTags(tags ?? []);
-
-  const overview = [
-    {
-      name: i18next.t('label.owner'),
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        i18next.t('label.no-entity', {
-          entity: i18next.t('label.owner'),
-        }),
-      url: getOwnerValue(owner as EntityReference),
-      isLink: !isEmpty(owner?.name),
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
-    {
-      name: `${i18next.t('label.pipeline')} ${i18next.t(
-        'label.url-uppercase'
-      )}`,
-      dataTestId: 'pipeline-url-label',
-      value: displayName ?? NO_DATA,
-      url: sourceUrl,
-      isLink: true,
-      isExternal: true,
-      visible: [
-        DRAWER_NAVIGATION_OPTIONS.lineage,
-        DRAWER_NAVIGATION_OPTIONS.explore,
-      ],
-    },
-    {
-      name: i18next.t('label.service'),
-      value: (service?.name as string) || NO_DATA,
-      url: getServiceDetailsPath(
-        service?.name as string,
-        ServiceCategory.PIPELINE_SERVICES
-      ),
-      isLink: true,
-      isExternal: false,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
-    {
-      name: i18next.t('label.tier'),
-      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
-      isLink: false,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
-  ];
-
-  return overview;
-};
-
 export const getEntityOverview = (
   type: string,
   entityDetail: EntityUnion

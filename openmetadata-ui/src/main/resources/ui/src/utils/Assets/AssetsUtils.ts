@@ -83,6 +83,7 @@ export const getAPIfromSource = (
     case EntityType.MLMODEL_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -128,6 +129,7 @@ export const getEntityAPIfromSource = (
     case EntityType.MLMODEL_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
