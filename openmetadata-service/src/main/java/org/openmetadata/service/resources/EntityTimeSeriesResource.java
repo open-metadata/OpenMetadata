@@ -3,12 +3,9 @@ package org.openmetadata.service.resources;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 
 public abstract class EntityTimeSeriesResource<
@@ -17,8 +14,6 @@ public abstract class EntityTimeSeriesResource<
   protected final String entityType;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
-  public static SearchRepository searchRepository;
-  public static ElasticSearchConfiguration esConfig;
 
   protected EntityTimeSeriesResource(String entityType, Authorizer authorizer) {
     this.entityType = entityType;
@@ -29,8 +24,6 @@ public abstract class EntityTimeSeriesResource<
   }
 
   public void initialize(OpenMetadataApplicationConfig config) {
-    esConfig = config.getElasticSearchConfiguration();
-    searchRepository = IndexUtil.getSearchClient(esConfig, repository.getDaoCollection());
     // Nothing to do in the default implementation
   }
 
