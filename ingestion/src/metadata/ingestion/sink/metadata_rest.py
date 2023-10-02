@@ -480,11 +480,9 @@ class MetadataRestSink(Sink):
                     f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
                 )
 
-        for column_tag_response in record.column_tags or []:
-            patched = self.metadata.patch_column_tag(
-                table=record.table,
-                column_fqn=column_tag_response.column_fqn,
-                tag_label=column_tag_response.tag_label,
+        if record.column_tags:
+            patched = self.metadata.patch_column_tags(
+                table=record.table, column_tags=record.column_tags
             )
             if not patched:
                 self.status.failed(
@@ -495,8 +493,7 @@ class MetadataRestSink(Sink):
                 )
             else:
                 logger.debug(
-                    f"Successfully patched tag {column_tag_response.tag_label} for"
-                    f" {record.table.fullyQualifiedName.__root__}.{column_tag_response.column_fqn}"
+                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.__root__}"
                 )
 
         return Either(right=table)

@@ -319,12 +319,11 @@ class AtlasSource(Source):
                 if classification_tags:
                     tag_labels.extend(classification_tags)
 
-        for tag_label in tag_labels:
-            self.metadata.patch_tag(
-                entity=Table,
-                source=table_object,
-                tag_label=tag_label,
-            )
+        self.metadata.patch_tags(
+            entity=Table,
+            source=table_object,
+            tag_labels=tag_labels,
+        )
 
     def _parse_table_columns(self, table_response, tbl_entity, name) -> List[Column]:
         om_cols = []

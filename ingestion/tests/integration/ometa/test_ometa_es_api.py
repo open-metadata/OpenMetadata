@@ -216,9 +216,6 @@ class OMetaESTest(TestCase):
             hard_delete=True,
         )
 
-    # Disabling this test because it fails with
-    # this pr: https://github.com/open-metadata/OpenMetadata/pull/11879
-    # and failure is repoducible only with docker deployment
     def test_es_search_from_service_table(self):
         """
         We can fetch tables from a service

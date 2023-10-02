@@ -130,7 +130,7 @@ describe('Check if tags addition and removal flow working properly from tables',
       visitEntityDetailsPage(
         entityDetails.term,
         entityDetails.serviceName,
-        apiEntity
+        entityDetails.entity
       );
       verifyResponseStatusCode('@getEntityDetail', 200);
       verifyResponseStatusCode('@getEntityPermission', 200);
@@ -161,7 +161,7 @@ describe('Check if tags addition and removal flow working properly from tables',
     });
 
     it(`Adding & removing tags to the ${entityDetails.entity} entity schema table`, () => {
-      if (entityDetails.entity !== 'storedProcedures') {
+      if (!['containers', 'storedProcedures'].includes(entityDetails.entity)) {
         interceptURL(
           'GET',
           `/api/v1/${apiEntity}/name/*?fields=*`,
@@ -189,7 +189,7 @@ describe('Check if tags addition and removal flow working properly from tables',
         visitEntityDetailsPage(
           entityDetails.term,
           entityDetails.serviceName,
-          apiEntity
+          entityDetails.entity
         );
         verifyResponseStatusCode('@getEntityDetail', 200);
         verifyResponseStatusCode('@getEntityPermission', 200);
