@@ -61,6 +61,7 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -73,7 +74,7 @@ import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
@@ -90,8 +91,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
-    this.userRepository = new UserRepository(collectionDAO);
-    this.tokenRepository = new TokenRepository(collectionDAO);
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     SmtpSettings smtpSettings = config.getSmtpSettings();
@@ -269,7 +270,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     storedBasicAuthMechanism.setPassword(newHashedPassword);
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-    RestUtil.PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
+    PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
     // remove login/details from cache
     loginAttemptCache.recordSuccessfulLogin(userName);
 

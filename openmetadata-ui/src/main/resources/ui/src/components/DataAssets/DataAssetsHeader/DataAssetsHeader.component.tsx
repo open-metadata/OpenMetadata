@@ -313,6 +313,18 @@ export const DataAssetsHeader = ({
     onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
+  const { editDomainPermission, editOwnerPermission, editTierPermission } =
+    useMemo(
+      () => ({
+        editDomainPermission: permissions.EditAll && !dataAsset.deleted,
+        editOwnerPermission:
+          (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
+        editTierPermission:
+          (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
+      }),
+      [permissions, dataAsset]
+    );
+
   return (
     <>
       <Row gutter={[8, 12]}>
@@ -344,13 +356,13 @@ export const DataAssetsHeader = ({
                       entityFqn={dataAsset.fullyQualifiedName ?? ''}
                       entityId={dataAsset.id ?? ''}
                       entityType={entityType}
-                      hasPermission={permissions.EditAll}
+                      hasPermission={editDomainPermission}
                     />
                     <Divider className="self-center m-x-sm" type="vertical" />
                   </>
                 )}
                 <OwnerLabel
-                  hasPermission={permissions.EditAll || permissions.EditOwner}
+                  hasPermission={editOwnerPermission}
                   owner={dataAsset?.owner}
                   onUpdate={onOwnerUpdate}
                 />
@@ -369,13 +381,10 @@ export const DataAssetsHeader = ({
                       </span>
                     )}
 
-                    {(permissions.EditAll || permissions.EditTags) && (
+                    {editTierPermission && (
                       <Button
                         className="flex-center p-0"
                         data-testid="edit-tier"
-                        disabled={
-                          !(permissions.EditAll || permissions.EditTags)
-                        }
                         icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                         size="small"
                         type="text"
@@ -392,7 +401,7 @@ export const DataAssetsHeader = ({
         <Col span={6}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <ButtonGroup size="small">
+              <ButtonGroup data-testid="asset-header-btn-group" size="small">
                 {onUpdateVote && (
                   <Voting
                     disabled={deleted}

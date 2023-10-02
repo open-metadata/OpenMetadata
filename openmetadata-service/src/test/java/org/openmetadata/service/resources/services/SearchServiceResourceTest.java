@@ -20,6 +20,7 @@ import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -28,12 +29,11 @@ import org.openmetadata.schema.services.connections.search.ElasticSearchConnecti
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class SearchServiceResourceTest extends EntityResourceTest<SearchService, CreateSearchService> {
+public class SearchServiceResourceTest extends ServiceResourceTest<SearchService, CreateSearchService> {
   public SearchServiceResourceTest() {
     super(
         Entity.SEARCH_SERVICE,
@@ -139,16 +139,12 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
 
   @Override
   public CreateSearchService createRequest(String name) {
-    try {
-      return new CreateSearchService()
-          .withName(name)
-          .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
-          .withConnection(
-              new SearchConnection()
-                  .withConfig(new ElasticSearchConnection().withHostPort(new URI("http://localhost:9200"))));
-    } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
-    }
+    return new CreateSearchService()
+        .withName(name)
+        .withServiceType(CreateSearchService.SearchServiceType.ElasticSearch)
+        .withConnection(
+            new SearchConnection()
+                .withConfig(new ElasticSearchConnection().withHostPort(CommonUtil.getUri("http://localhost:9200"))));
   }
 
   @Override
