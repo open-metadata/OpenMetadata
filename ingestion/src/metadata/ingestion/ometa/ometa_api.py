@@ -370,6 +370,7 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
+    # pylint: disable=too-many-locals
     def list_entities(
         self,
         entity: Type[T],
@@ -429,7 +430,11 @@ class OpenMetadata(
 
         # First batch of Entities
         entity_list = self.list_entities(
-            entity=entity, fields=fields, limit=limit, params=params, skip_on_failure=skip_on_failure
+            entity=entity,
+            fields=fields,
+            limit=limit,
+            params=params,
+            skip_on_failure=skip_on_failure,
         )
         for elem in entity_list.entities:
             yield elem
@@ -437,7 +442,12 @@ class OpenMetadata(
         after = entity_list.after
         while after:
             entity_list = self.list_entities(
-                entity=entity, fields=fields, limit=limit, params=params, after=after, skip_on_failure=skip_on_failure
+                entity=entity,
+                fields=fields,
+                limit=limit,
+                params=params,
+                after=after,
+                skip_on_failure=skip_on_failure,
             )
             for elem in entity_list.entities:
                 yield elem

@@ -47,7 +47,7 @@ class EntityProducer(ProducerInterface):
         container.Container,
     ]
 
-    # pylint: disable=protected-access,dangerous-default-value
+    # pylint: disable=dangerous-default-value
     def fetch_data(self, limit=100, fields=["*"]) -> Iterable:
         for entity in self.entities:
             try:
