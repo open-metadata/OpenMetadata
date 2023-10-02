@@ -20,7 +20,6 @@ import appState from 'AppState';
 import { AxiosError, AxiosRequestConfig } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
-import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
@@ -68,6 +67,7 @@ import {
   matchUserDetails,
 } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
+import { AuthorizerConfiguration } from '../../generated/configuration/authorizerConfiguration';
 import Loader from '../../Loader/Loader';
 import Auth0Authenticator from '../authenticators/Auth0Authenticator';
 import BasicAuthAuthenticator from '../authenticators/basic-auth.authenticator';
@@ -80,7 +80,7 @@ import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
 
-import { AuthProvider as AuthProviderEnum } from 'generated/settings/settings';
+import { AuthProvider as AuthProviderEnum } from '../../generated/settings/settings';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;

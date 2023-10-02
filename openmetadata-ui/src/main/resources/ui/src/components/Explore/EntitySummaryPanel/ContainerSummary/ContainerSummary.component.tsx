@@ -12,22 +12,22 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { SummaryEntityType } from 'enums/EntitySummary.enum';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Container } from 'generated/entity/data/container';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTagValue } from 'utils/CommonUtils';
-import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
+import SummaryPanelSkeleton from '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { Container } from '../../generated/entity/data/container';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import { SummaryEntityType } from '../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { getTagValue } from '../utils/CommonUtils';
+import { getFormattedEntityData } from '../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
-import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import SummaryList from '../SummaryList/SummaryList.component';
-import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+} from '../utils/EntityUtils';
 import { ContainerSummaryProps } from './ContainerSummary.interface';
 
 function ContainerSummary({

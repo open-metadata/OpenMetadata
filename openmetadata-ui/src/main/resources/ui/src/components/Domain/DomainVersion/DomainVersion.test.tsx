@@ -98,13 +98,13 @@ jest.mock('rest/domainAPI', () => ({
 }));
 
 jest.mock(
-  'components/Domain/DomainDetailsPage/DomainDetailsPage.component',
+  '../../components/Domain/DomainDetailsPage/DomainDetailsPage.component',
   () => {
     return jest.fn().mockReturnValue(<>Domain component</>);
   }
 );
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

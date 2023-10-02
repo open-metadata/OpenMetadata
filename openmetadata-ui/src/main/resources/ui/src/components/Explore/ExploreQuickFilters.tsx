@@ -13,24 +13,24 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { SearchIndex } from 'enums/search.enum';
 import { isEqual, isString, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
-import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import Qs from 'qs';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { getAggregateFieldOptions } from 'rest/miscAPI';
 import { getTags } from 'rest/tagAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
 } from '../../constants/AdvancedSearch.constants';
+import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { SearchIndex } from '../enums/search.enum';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
+import { getCombinedQueryFilterObject } from '../utils/ExplorePage/ExplorePageUtils';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 

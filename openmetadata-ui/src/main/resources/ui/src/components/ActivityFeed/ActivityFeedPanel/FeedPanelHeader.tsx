@@ -14,11 +14,9 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
-import CloseIcon from 'components/Modals/CloseIcon.component';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityLink } from 'utils/TableUtils';
 import {
   entityDisplayName,
   getEntityField,
@@ -27,6 +25,8 @@ import {
   getEntityType,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
+import CloseIcon from '../../components/Modals/CloseIcon.component';
+import { getEntityLink } from '../utils/TableUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({

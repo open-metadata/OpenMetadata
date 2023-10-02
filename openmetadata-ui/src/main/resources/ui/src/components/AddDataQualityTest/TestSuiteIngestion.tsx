@@ -22,7 +22,6 @@ import {
   deployIngestionPipelineById,
   updateIngestionPipeline as putIngestionPipeline,
 } from 'rest/ingestionPipelineAPI';
-import { getIngestionName } from 'utils/ServiceUtils';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -44,6 +43,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
+import { getIngestionName } from '../utils/ServiceUtils';
 import { TestSuiteIngestionProps } from './AddDataQualityTest.interface';
 import TestSuiteScheduler from './components/TestSuiteScheduler';
 

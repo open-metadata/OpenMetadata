@@ -14,14 +14,14 @@ import { ReactRenderer } from '@tiptap/react';
 import tippy, { Instance, Props } from 'tippy.js';
 
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { getSuggestions, searchData } from 'rest/miscAPI';
-import { getEntityBreadcrumbs } from 'utils/EntityUtils';
-import { buildMentionLink } from 'utils/FeedUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { ExtensionRef } from '../BlockEditor.interface';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { getEntityBreadcrumbs } from '../utils/EntityUtils';
+import { buildMentionLink } from '../utils/FeedUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import HashList from './HashList';
 
 export const hashtagSuggestion = () => ({

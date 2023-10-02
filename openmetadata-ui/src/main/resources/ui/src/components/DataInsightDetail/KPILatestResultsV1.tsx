@@ -20,10 +20,10 @@ import {
 import { toNumber } from 'lodash';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getKpiResultFeedback } from 'utils/DataInsightUtils';
-import { getDaysRemaining } from 'utils/date-time/DateTimeUtils';
 import { KpiTargetType } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { UIKpiResult } from '../../interface/data-insight.interface';
+import { getKpiResultFeedback } from '../utils/DataInsightUtils';
+import { getDaysRemaining } from '../utils/date-time/DateTimeUtils';
 import './kpi-latest-results.less';
 
 interface Props {

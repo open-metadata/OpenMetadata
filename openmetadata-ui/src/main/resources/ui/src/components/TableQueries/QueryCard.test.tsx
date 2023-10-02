@@ -18,11 +18,11 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { Query } from 'generated/entity/data/query';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { Query } from '../../generated/entity/data/query';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import QueryCard from './QueryCard';
 import { QueryCardProp } from './TableQueries.interface';
 

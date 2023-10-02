@@ -12,9 +12,9 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { MOCK_TABLE_DATA } from 'mocks/Teams.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_TABLE_DATA } from '../../../mocks/Teams.mock';
 import AddTestSuiteForm from './AddTestSuiteForm';
 
 const mockOnSubmit = jest.fn();
@@ -31,11 +31,11 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<>RichTextEditor</>)
 );
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 

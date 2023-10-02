@@ -13,13 +13,12 @@
 
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { EntityTabs } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFeedsWithFilter } from 'rest/feedsAPI';
 import AppState from '../../AppState';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getUserPath,
   NOTIFICATION_READ_TIMER,
@@ -31,6 +30,7 @@ import { Post, Thread } from '../../generated/entity/feed/thread';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { EntityTabs } from '../enums/entity.enum';
 import Loader from '../Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';

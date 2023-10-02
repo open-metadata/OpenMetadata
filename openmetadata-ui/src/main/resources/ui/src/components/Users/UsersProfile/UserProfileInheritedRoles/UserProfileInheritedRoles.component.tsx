@@ -12,10 +12,10 @@
  */
 
 import { Card, Typography } from 'antd';
-import Chip from 'components/common/Chip/Chip.component';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
+import Chip from '../../../../components/common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
 
 const UserProfileInheritedRoles = ({

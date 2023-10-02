@@ -13,18 +13,11 @@
 
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
 import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  getEntityBreadcrumbs,
-  getEntityId,
-  getEntityName,
-} from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
@@ -34,7 +27,14 @@ import {
   getOwnerValue,
 } from '../../../utils/CommonUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
+import TableDataCardBody from '../../components/TableDataCardBody/TableDataCardBody';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
+import {
+  getEntityBreadcrumbs,
+  getEntityId,
+  getEntityName,
+} from '../utils/EntityUtils';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {

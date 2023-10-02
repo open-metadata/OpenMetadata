@@ -13,12 +13,12 @@
 import { Skeleton, Typography } from 'antd';
 import { WILD_CARD_CHAR } from 'constants/char.constants';
 import { ROUTES } from 'constants/constants';
-import { SearchIndex } from 'enums/search.enum';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { searchQuery } from 'rest/searchAPI';
-import { createQueryFilter } from 'utils/Query/QueryUtils';
+import { SearchIndex } from '../enums/search.enum';
+import { createQueryFilter } from '../utils/Query/QueryUtils';
 
 const QueryCount = ({ tableId }: { tableId: string }) => {
   const { t } = useTranslation();

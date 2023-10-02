@@ -15,7 +15,7 @@ import { fireEvent, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import AddGlossary from './AddGlossary.component';
 
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
@@ -23,7 +23,7 @@ jest.mock('rest/glossaryAPI', () => ({
   addGlossaries: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>

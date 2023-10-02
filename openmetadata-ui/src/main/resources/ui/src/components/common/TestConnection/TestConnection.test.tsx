@@ -17,11 +17,6 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ServiceCategory } from 'enums/service.enum';
-import {
-  StatusType,
-  WorkflowStatus,
-} from 'generated/api/automations/createWorkflow';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { ConfigData } from 'interface/service.interface';
 import React from 'react';
@@ -32,6 +27,11 @@ import {
   getWorkflowById,
   triggerWorkflowById,
 } from 'rest/workflowAPI';
+import {
+  StatusType,
+  WorkflowStatus,
+} from '../../generated/api/automations/createWorkflow';
+import { ServiceCategory } from '../enums/service.enum';
 import TestConnection from './TestConnection';
 import {
   CREATE_WORKFLOW_PAYLOAD,
@@ -51,8 +51,8 @@ const mockProps = {
   shouldValidateForm: false,
 };
 
-jest.mock('utils/ServiceUtils', () => ({
-  ...jest.requireActual('utils/ServiceUtils'),
+jest.mock('../utils/ServiceUtils', () => ({
+  ...jest.requireActual('../utils/ServiceUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
 }));
 

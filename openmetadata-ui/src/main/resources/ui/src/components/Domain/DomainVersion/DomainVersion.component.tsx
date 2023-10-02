@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { Domain } from 'generated/entity/domains/domain';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { noop, toString } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -23,9 +19,13 @@ import {
   getDomainVersionData,
   getDomainVersionsList,
 } from 'rest/domainAPI';
-import { getDomainPath, getDomainVersionsPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import { Domain } from '../../generated/entity/domains/domain';
+import { EntityHistory } from '../../generated/type/entityHistory';
 import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
+import { getDomainPath, getDomainVersionsPath } from '../utils/RouterUtils';
+import { showErrorToast } from '../utils/ToastUtils';
 
 const DomainVersion = () => {
   const history = useHistory();

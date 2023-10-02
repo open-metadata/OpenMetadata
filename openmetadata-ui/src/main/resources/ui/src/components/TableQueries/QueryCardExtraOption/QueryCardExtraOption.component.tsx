@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Button, Dropdown, MenuProps, Space, Tag } from 'antd';
-import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
 import { isUndefined, split } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getCurrentUserId, pluralize } from 'utils/CommonUtils';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { getCurrentUserId, pluralize } from '../../../utils/CommonUtils';
 import { QueryVoteType } from '../TableQueries.interface';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 import { ReactComponent as EditIcon } from '/assets/svg/edit-new.svg';
@@ -25,9 +25,9 @@ import { ReactComponent as ThumbsUpFilled } from '/assets/svg/thumbs-up-filled.s
 import { ReactComponent as ThumbsUpOutline } from '/assets/svg/thumbs-up-outline.svg';
 
 import { AxiosError } from 'axios';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
-import { deleteQuery } from 'rest/queryAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
+import { deleteQuery } from '../../../rest/queryAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './query-card-extra-option.style.less';
 
 const QueryCardExtraOption = ({

@@ -23,7 +23,6 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import { getUserByName } from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
@@ -33,6 +32,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
+import { getEntityName } from '../utils/EntityUtils';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;

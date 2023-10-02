@@ -27,7 +27,6 @@ import React, {
 import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
-import { getEntityIcon } from 'utils/TableUtils';
 import {
   MENTION_ALLOWED_CHARS,
   MENTION_DENOTATION_CHARS,
@@ -36,6 +35,7 @@ import {
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
+import { getEntityIcon } from '../utils/TableUtils';
 import './FeedEditor.css';
 import { FeedEditorProp } from './FeedEditor.interface';
 

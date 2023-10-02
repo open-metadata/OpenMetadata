@@ -12,23 +12,23 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import { getGlossaryTermDetailsPath } from 'constants/constants';
 import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ChangeDescription } from 'generated/entity/type';
 import { noop } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getFeedCounts } from 'utils/CommonUtils';
-import { getEntityVersionByField } from 'utils/EntityVersionUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import GlossaryHeader from '../../components/Glossary/GlossaryHeader/GlossaryHeader.component';
+import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import { ChangeDescription } from '../../generated/entity/type';
+import { EntityType } from '../enums/entity.enum';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
+import { getFeedCounts } from '../utils/CommonUtils';
+import { getEntityVersionByField } from '../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import {
   GlossaryDetailsProps,
   GlossaryTabs,

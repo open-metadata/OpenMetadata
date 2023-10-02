@@ -17,10 +17,10 @@ import {
   DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY,
 } from 'mocks/DataInsight.mock';
 import React from 'react';
-import { getGraphDataByEntityType } from 'utils/DataInsightUtils';
+import { getGraphDataByEntityType } from '../utils/DataInsightUtils';
 
-import { DataInsightChartType } from 'generated/dataInsight/dataInsightChartResult';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import OwnerInsight from './OwnerInsight';
 
 const mockProps = {

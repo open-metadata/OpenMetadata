@@ -73,26 +73,26 @@ jest.mock('./UsersProfile/UserProfileTeams/UserProfileTeams.component', () => {
   return jest.fn().mockReturnValue(<div>UserProfileTeams</div>);
 });
 
-jest.mock('components/searched-data/SearchedData', () => {
+jest.mock('../../components/searched-data/SearchedData', () => {
   return jest.fn().mockReturnValue(<p>SearchedData</p>);
 });
 
 jest.mock(
-  'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
+  '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
   () => {
     return jest.fn().mockReturnValue(<p>EntitySummaryPanel</p>);
   }
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
   }
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()

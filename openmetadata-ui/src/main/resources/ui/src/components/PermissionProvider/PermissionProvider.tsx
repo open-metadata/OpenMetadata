@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Loader from 'components/Loader/Loader';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -32,6 +31,7 @@ import {
   getResourcePermission,
 } from 'rest/permissionAPI';
 import AppState from '../../AppState';
+import Loader from '../../components/Loader/Loader';
 import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
   getUrlPathnameExpiryAfterRoute,

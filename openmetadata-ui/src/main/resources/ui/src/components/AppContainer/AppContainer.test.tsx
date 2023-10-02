@@ -56,19 +56,19 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('components/AppBar/Appbar', () =>
+jest.mock('../../components/AppBar/Appbar', () =>
   jest.fn().mockReturnValue(<p>Appbar</p>)
 );
 
-jest.mock('pages/SignUp/SignUpPage', () =>
+jest.mock('../../pages/SignUp/SignUpPage', () =>
   jest.fn().mockReturnValue(<p>SignUpPage</p>)
 );
 
-jest.mock('components/router/AuthenticatedAppRouter', () =>
+jest.mock('../../components/router/AuthenticatedAppRouter', () =>
   jest.fn().mockReturnValue(<p>AuthenticatedAppRouter</p>)
 );
 

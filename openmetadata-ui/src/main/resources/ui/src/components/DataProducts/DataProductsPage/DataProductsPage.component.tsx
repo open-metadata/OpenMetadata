@@ -13,14 +13,7 @@
 import { Button } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,13 +25,20 @@ import {
   getDataProductVersionsList,
   patchDataProduct,
 } from 'rest/dataProductAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { EntityHistory } from '../../generated/type/entityHistory';
+import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import {
   getDataProductsDetailsPath,
   getDataProductVersionsPath,
   getDomainPath,
-} from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
-import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
+} from '../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 
 const DataProductsPage = () => {
   const { t } = useTranslation();

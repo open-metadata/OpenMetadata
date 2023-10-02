@@ -28,11 +28,11 @@ jest.mock('rest/userAPI', () => ({
   ),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('utils/TableUtils', () => ({
+jest.mock('../utils/TableUtils', () => ({
   getEntityLink: jest.fn().mockImplementation((link) => link),
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
@@ -44,7 +44,7 @@ jest.mock('./../../../AppState', () => ({
 }));
 
 jest.mock(
-  'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
+  '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
   }

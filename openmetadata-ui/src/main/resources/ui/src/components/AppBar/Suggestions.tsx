@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import { PAGE_SIZE_BASE } from 'constants/constants';
 import { ALL_EXPLORE_SEARCH_INDEX } from 'constants/explore.constants';
 import {
@@ -24,12 +23,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchData } from 'rest/miscAPI';
-import { Transi18next } from 'utils/CommonUtils';
-import {
-  filterOptionsByIndex,
-  getGroupLabel,
-  getSuggestionElement,
-} from 'utils/SearchUtils';
+import Loader from '../../components/Loader/Loader';
 import { SearchIndex } from '../../enums/search.enum';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -44,6 +38,12 @@ import {
   TagSource,
   TopicSource,
 } from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { Transi18next } from '../utils/CommonUtils';
+import {
+  filterOptionsByIndex,
+  getGroupLabel,
+  getSuggestionElement,
+} from '../utils/SearchUtils';
 
 type SuggestionProp = {
   searchText: string;

@@ -14,25 +14,22 @@
 import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import Table from 'components/common/Table/Table';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Paging } from 'generated/type/paging';
 import { usePaging } from 'hooks/paging/usePaging';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getBots } from 'rest/botsAPI';
-import { showPagination } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Table from '../../components/common/Table/Table';
 import { getBotsPath } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -41,7 +38,10 @@ import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder'
 import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import PageHeader from '../header/PageHeader.component';
+import { showPagination } from '../utils/CommonUtils';
+import { getEntityName } from '../utils/EntityUtils';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BotListV1 = ({

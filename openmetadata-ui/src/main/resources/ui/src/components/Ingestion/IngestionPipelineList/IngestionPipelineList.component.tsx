@@ -13,19 +13,7 @@
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import Table from 'components/common/Table/Table';
-import Loader from 'components/Loader/Loader';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
 import cronstrue from 'cronstrue';
-import { ServiceCategory } from 'enums/service.enum';
-import {
-  IngestionPipeline,
-  PipelineType,
-} from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from 'hooks/paging/usePaging';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { isNil, map, startCase } from 'lodash';
@@ -35,12 +23,24 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from 'rest/ingestionPipelineAPI';
-import { showPagination } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityTypeFromServiceCategory } from 'utils/ServiceUtils';
-import { FilterIcon } from 'utils/TableUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Table from '../../components/common/Table/Table';
+import Loader from '../../components/Loader/Loader';
+import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ServiceCategory } from '../enums/service.enum';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
+import { showPagination } from '../utils/CommonUtils';
+import { getEntityName } from '../utils/EntityUtils';
+import { getEntityTypeFromServiceCategory } from '../utils/ServiceUtils';
+import { FilterIcon } from '../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 
 export const IngestionPipelineList = ({
   serviceName,

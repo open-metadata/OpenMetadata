@@ -14,20 +14,23 @@
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import { getTableTabPath, PIPE_SYMBOL } from 'constants/constants';
-import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
-import { EntityType } from 'enums/entity.enum';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { customFormatDateTime } from 'utils/date-time/DateTimeUtils';
-import { parseSearchParams } from 'utils/Query/QueryUtils';
-import { getQueryPath } from 'utils/RouterUtils';
+import { getTableTabPath, PIPE_SYMBOL } from '../../constants/constants';
+import {
+  QUERY_DATE_FORMAT,
+  QUERY_LINE_HEIGHT,
+} from '../../constants/Query.constant';
 import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { useClipboard } from '../../hooks/useClipBoard';
+import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { parseSearchParams } from '../../utils/Query/QueryUtils';
+import { getQueryPath } from '../../utils/RouterUtils';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';

@@ -12,17 +12,17 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { EntityImport } from 'components/common/EntityImport/EntityImport.component';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { CSVImportResult } from 'generated/type/csvImportResult';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { importGlossaryInCSVFormat } from 'rest/glossaryAPI';
-import { getGlossaryPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { EntityImport } from '../../components/common/EntityImport/EntityImport.component';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import { CSVImportResult } from '../../generated/type/csvImportResult';
 import { GlossaryImportResult } from '../ImportResult/GlossaryImportResult.component';
+import { getGlossaryPath } from '../utils/RouterUtils';
+import { showErrorToast } from '../utils/ToastUtils';
 import './ImportGlossary.less';
 
 interface Props {

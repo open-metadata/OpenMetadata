@@ -19,8 +19,8 @@ import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from 'rest/tableAPI';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
+import { DRAWER_NAVIGATION_OPTIONS } from '../utils/EntityUtils';
 import TableSummary from './TableSummary.component';
 
 const mockEntityPermissions = {
@@ -58,7 +58,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest
       .fn()

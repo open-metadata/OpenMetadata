@@ -14,9 +14,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from 'components/header/PageHeader.component';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +30,8 @@ import {
   YAxis,
 } from 'recharts';
 import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -60,6 +59,7 @@ import {
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResultsV1 from './KPILatestResultsV1';

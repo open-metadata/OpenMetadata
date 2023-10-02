@@ -16,10 +16,10 @@ import { mockIngestionListTableProps } from 'mocks/IngestionListTable.mock';
 import React from 'react';
 import IngestionListTable from './IngestionListTable.component';
 
-jest.mock('components/common/next-previous/NextPrevious', () =>
+jest.mock('../../components/common/next-previous/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div>nextPrevious</div>)
 );
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>loader</div>)
 );
 jest.mock('./PipelineActions.component', () =>

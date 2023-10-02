@@ -26,7 +26,7 @@ jest.mock('./GlossaryTermReferences', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermReferences</p>);
 });
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 

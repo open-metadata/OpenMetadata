@@ -19,8 +19,8 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getQueriesList } from 'rest/queryAPI';
 import { MOCK_QUERIES, MOCK_QUERIES_ES_DATA } from '../../mocks/Queries.mock';
+import { getQueriesList } from '../../rest/queryAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
@@ -31,7 +31,7 @@ const mockTableQueriesProp: TableQueriesProp = {
 jest.mock('./QueryCard', () => {
   return jest.fn().mockReturnValue(<p>QueryCard</p>);
 });
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
@@ -47,7 +47,7 @@ jest.mock('rest/queryAPI', () => ({
       Promise.resolve({ data: MOCK_QUERIES, paging: { total: 2 } })
     ),
 }));
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest.fn(),
     permissions: {

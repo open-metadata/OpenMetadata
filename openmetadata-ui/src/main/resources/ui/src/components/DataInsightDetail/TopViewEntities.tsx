@@ -14,13 +14,13 @@
 import { Card, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Table from 'components/common/Table/Table';
-import PageHeader from 'components/header/PageHeader.component';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
+import Table from '../../components/common/Table/Table';
+import PageHeader from '../../components/header/PageHeader.component';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';

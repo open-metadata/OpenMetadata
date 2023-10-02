@@ -13,20 +13,20 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Divider, Drawer, Row, Typography } from 'antd';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import { EntityType } from 'enums/entity.enum';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import { getEntityLink } from '../../../utils/TableUtils';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
+import { EntityType } from '../enums/entity.enum';
+import { getEntityName } from '../utils/EntityUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import {
   EdgeInfoDrawerInfo,
   EdgeInformationType,

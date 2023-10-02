@@ -86,7 +86,7 @@ const mockData: SearchedDataProps['data'] = [
 const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
 
-jest.mock('components/TableDataCardBody/TableDataCardBody', () => {
+jest.mock('../../components/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 

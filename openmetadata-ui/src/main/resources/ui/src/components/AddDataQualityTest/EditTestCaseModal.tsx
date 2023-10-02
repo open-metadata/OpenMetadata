@@ -16,7 +16,6 @@ import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
-import { Table } from 'generated/entity/data/table';
 import React, {
   useCallback,
   useEffect,
@@ -27,6 +26,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTestDefinitionById, updateTestCaseById } from 'rest/testAPI';
+import { Table } from '../../generated/entity/data/table';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,

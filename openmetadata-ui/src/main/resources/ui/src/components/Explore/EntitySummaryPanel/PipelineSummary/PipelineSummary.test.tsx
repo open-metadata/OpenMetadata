@@ -14,8 +14,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
 import { mockPipelineEntityDetails } from '../mocks/PipelineSummary.mock';
+import { DRAWER_NAVIGATION_OPTIONS } from '../utils/EntityUtils';
 import PipelineSummary from './PipelineSummary.component';
 
 jest.mock('../SummaryList/SummaryList.component', () =>

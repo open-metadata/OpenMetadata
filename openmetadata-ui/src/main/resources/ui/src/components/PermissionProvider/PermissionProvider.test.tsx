@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import AppState from 'AppState';
-import { User } from 'generated/entity/teams/user';
 import React from 'react';
 import {
   getEntityPermissionByFqn,
@@ -20,6 +19,7 @@ import {
   getLoggedInUserPermissions,
   getResourcePermission,
 } from 'rest/permissionAPI';
+import { User } from '../../generated/entity/teams/user';
 import PermissionProvider from './PermissionProvider';
 
 jest.mock('rest/permissionAPI', () => ({

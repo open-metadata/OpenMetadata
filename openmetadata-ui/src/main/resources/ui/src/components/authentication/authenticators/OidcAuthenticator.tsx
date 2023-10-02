@@ -13,8 +13,6 @@
 
 import { isEmpty } from 'lodash';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
-import SigninPage from 'pages/login';
-import PageNotFound from 'pages/page-not-found/PageNotFound';
 import React, {
   ComponentType,
   forwardRef,
@@ -30,6 +28,8 @@ import { ROUTES } from '../../../constants/constants';
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';
+import SigninPage from '../../pages/login';
+import PageNotFound from '../../pages/page-not-found/PageNotFound';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import {
   AuthenticatorRef,

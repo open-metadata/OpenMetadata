@@ -14,9 +14,6 @@
 import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { PAGE_SIZE } from 'constants/constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -26,16 +23,6 @@ import {
   ZOOM_VALUE,
 } from 'constants/Lineage.constants';
 import { mockDatasetData } from 'constants/mockTourData.constants';
-import { EntityLineageNodeType, EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { AddLineage } from 'generated/api/lineage/addLineage';
-import { Column } from 'generated/entity/data/container';
-import { EntityReference } from 'generated/entity/type';
-import {
-  ColumnLineage,
-  EntityLineage,
-  LineageDetails,
-} from 'generated/type/entityLineage';
 import { withLoader } from 'hoc/withLoader';
 import { debounce, isEmpty, isNil, isUndefined, union, uniqueId } from 'lodash';
 import { LoadingState } from 'Models';
@@ -68,6 +55,21 @@ import { getDataModelDetails } from 'rest/dataModelsAPI';
 import { getLineageByFQN, updateLineageEdge } from 'rest/lineageAPI';
 import { searchData } from 'rest/miscAPI';
 import { getTableDetails } from 'rest/tableAPI';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '../../components/Loader/Loader';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { AddLineage } from '../../generated/api/lineage/addLineage';
+import { Column } from '../../generated/entity/data/container';
+import { EntityReference } from '../../generated/entity/type';
+import {
+  ColumnLineage,
+  EntityLineage,
+  LineageDetails,
+} from '../../generated/type/entityLineage';
+import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
+import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import {
   addLineageHandler,
   createNewEdge,
@@ -107,17 +109,15 @@ import {
   onNodeMouseMove,
   removeLineageHandler,
   updateEdgesWithLineageDetails,
-} from 'utils/EntityLineageUtils';
+} from '../utils/EntityLineageUtils';
 import {
   getEntityBreadcrumbs,
   getEntityLineage,
   getEntityName,
   getEntityReferenceFromEntity,
-} from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
-import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+} from '../utils/EntityUtils';
+import SVGIcons from '../utils/SvgUtils';
+import { showErrorToast } from '../utils/ToastUtils';
 import AddPipeLineModal from './AddPipeLineModal';
 import CustomControlsComponent from './CustomControls.component';
 import './entity-lineage.style.less';

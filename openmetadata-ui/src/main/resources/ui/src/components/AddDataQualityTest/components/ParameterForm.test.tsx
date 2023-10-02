@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { TestDefinition } from 'generated/tests/testDefinition';
 import {
   MOCK_TABLE_COLUMN_NAME_TO_EXIST,
   MOCK_TABLE_CUSTOM_SQL_QUERY,
@@ -20,9 +19,10 @@ import {
   MOCK_TABLE_WITH_DATE_TIME_COLUMNS,
 } from 'mocks/TestSuite.mock';
 import React from 'react';
+import { TestDefinition } from '../../generated/tests/testDefinition';
 import ParameterForm from './ParameterForm';
 
-jest.mock('components/schema-editor/SchemaEditor', () => {
+jest.mock('../../components/schema-editor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
 });
 

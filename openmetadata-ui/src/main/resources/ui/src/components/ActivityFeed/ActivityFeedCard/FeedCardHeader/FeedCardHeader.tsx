@@ -17,7 +17,6 @@ import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
@@ -29,6 +28,10 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../utils/date-time/DateTimeUtils';
 import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({

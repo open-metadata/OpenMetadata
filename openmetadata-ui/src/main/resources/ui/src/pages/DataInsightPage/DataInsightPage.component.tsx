@@ -12,40 +12,29 @@
  */
 
 import { Button, Col, Row, Space, Typography } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import DailyActiveUsersChart from 'components/DataInsightDetail/DailyActiveUsersChart';
-import DataInsightSummary from 'components/DataInsightDetail/DataInsightSummary';
-import DescriptionInsight from 'components/DataInsightDetail/DescriptionInsight';
-import KPIChart from 'components/DataInsightDetail/KPIChart';
-import OwnerInsight from 'components/DataInsightDetail/OwnerInsight';
-import PageViewsByEntitiesChart from 'components/DataInsightDetail/PageViewsByEntitiesChart';
-import TierInsight from 'components/DataInsightDetail/TierInsight';
-import TopActiveUsers from 'components/DataInsightDetail/TopActiveUsers';
-import TopViewEntities from 'components/DataInsightDetail/TopViewEntities';
-import TotalEntityInsight from 'components/DataInsightDetail/TotalEntityInsight';
-import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
-import SearchDropdown from 'components/SearchDropdown/SearchDropdown';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import {
-  DEFAULT_RANGE_DATA,
-  DEFAULT_SELECTED_RANGE,
-} from 'constants/profiler.constant';
-import { EntityFields } from 'enums/AdvancedSearch.enum';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Operation } from 'generated/entity/policies/policy';
 import { t } from 'i18next';
 import { isEmpty, isEqual } from 'lodash';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { getListKPIs } from 'rest/KpiAPI';
-import { searchQuery } from 'rest/searchAPI';
-import { formatDate } from 'utils/date-time/DateTimeUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DailyActiveUsersChart from '../../components/DataInsightDetail/DailyActiveUsersChart';
+import DataInsightSummary from '../../components/DataInsightDetail/DataInsightSummary';
+import DescriptionInsight from '../../components/DataInsightDetail/DescriptionInsight';
+import KPIChart from '../../components/DataInsightDetail/KPIChart';
+import OwnerInsight from '../../components/DataInsightDetail/OwnerInsight';
+import PageViewsByEntitiesChart from '../../components/DataInsightDetail/PageViewsByEntitiesChart';
+import TierInsight from '../../components/DataInsightDetail/TierInsight';
+import TopActiveUsers from '../../components/DataInsightDetail/TopActiveUsers';
+import TopViewEntities from '../../components/DataInsightDetail/TopViewEntities';
+import TotalEntityInsight from '../../components/DataInsightDetail/TotalEntityInsight';
+import DatePickerMenu from '../../components/DatePickerMenu/DatePickerMenu.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
+import SearchDropdown from '../../components/SearchDropdown/SearchDropdown';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import { autocomplete } from '../../constants/AdvancedSearch.constants';
 import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
@@ -53,17 +42,28 @@ import {
   INITIAL_CHART_FILTER,
   TIER_FILTER,
 } from '../../constants/DataInsight.constants';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SELECTED_RANGE,
+} from '../../constants/profiler.constant';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { Operation } from '../../generated/entity/policies/policy';
 import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
+import { getListKPIs } from '../../rest/KpiAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   getDataInsightPathWithFqn,
   getTeamFilter,
 } from '../../utils/DataInsightUtils';
+import { formatDate } from '../../utils/date-time/DateTimeUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
 import DataInsightLeftPanel from './DataInsightLeftPanel';

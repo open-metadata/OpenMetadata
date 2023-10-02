@@ -18,14 +18,17 @@ import { OperationPermission } from '../../PermissionProvider/PermissionProvider
 import GlossaryDetails from './GlossaryDetails.component';
 
 jest.mock(
-  'components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
+  '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
   () => {
     return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
   }
 );
-jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () => {
-  return jest.fn().mockReturnValue(<p>GlossaryHeader.component</p>);
-});
+jest.mock(
+  '../../components/Glossary/GlossaryHeader/GlossaryHeader.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>GlossaryHeader.component</p>);
+  }
+);
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -41,7 +44,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()

@@ -12,21 +12,12 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { TestCase } from 'generated/tests/testCase';
 import {
   SearchHitBody,
   TestCaseSearchSource,
 } from 'interface/search.interface';
 import { PagingResponse } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
@@ -36,8 +27,17 @@ import {
   getTestCaseById,
   ListTestCaseParams,
 } from 'rest/testAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Searchbar from '../../components/common/searchbar/Searchbar';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import DataQualityTab from '../../components/ProfilerDashboard/component/DataQualityTab';
+import { TestCase } from '../../generated/tests/testCase';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import { DataQualitySearchParams } from '../DataQuality.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { showErrorToast } from '../utils/ToastUtils';
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const history = useHistory();

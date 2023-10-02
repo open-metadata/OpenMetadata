@@ -12,7 +12,6 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { AuthProvider } from 'generated/settings/settings';
 import React, {
   forwardRef,
   Fragment,
@@ -21,6 +20,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import localState from '../../../utils/LocalStorageUtils';
+import { AuthProvider } from '../../generated/settings/settings';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 

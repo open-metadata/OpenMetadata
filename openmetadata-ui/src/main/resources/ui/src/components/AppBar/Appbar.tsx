@@ -14,15 +14,12 @@
 import { Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { tabsInfo } from 'constants/explore.constants';
 import {
   urlGitbookDocs,
   urlGithubRepo,
   urlJoinSlack,
 } from 'constants/URL.constants';
-import { CurrentTourPageType } from 'enums/tour.enum';
 import { isEmpty, isString, max } from 'lodash';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
@@ -31,14 +28,14 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getVersion } from 'rest/miscAPI';
-import { extractDetailsFromToken } from 'utils/AuthProvider.util';
-import { getEntityName } from 'utils/EntityUtils';
 import appState from '../../AppState';
 import { ReactComponent as IconAPI } from '../../assets/svg/api.svg';
 import { ReactComponent as IconDoc } from '../../assets/svg/doc.svg';
 import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
 import { ReactComponent as IconSlackGrey } from '../../assets/svg/slack-grey.svg';
 import { ReactComponent as IconVersionBlack } from '../../assets/svg/version-black.svg';
+import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import {
   getExplorePath,
   getTeamAndUserDetailsPath,
@@ -55,7 +52,10 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
+import { CurrentTourPageType } from '../enums/tour.enum';
 import NavBar from '../nav-bar/NavBar';
+import { extractDetailsFromToken } from '../utils/AuthProvider.util';
+import { getEntityName } from '../utils/EntityUtils';
 import './app-bar.style.less';
 
 const Appbar: React.FC = (): JSX.Element => {

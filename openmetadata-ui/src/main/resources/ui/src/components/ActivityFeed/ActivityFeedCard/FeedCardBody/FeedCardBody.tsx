@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
@@ -25,6 +24,7 @@ import RichTextEditorPreviewer from '../../../common/rich-text-editor/RichTextEd
 import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
+import { formatDateTimeFromSeconds } from '../utils/date-time/DateTimeUtils';
 
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,

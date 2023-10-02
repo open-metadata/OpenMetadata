@@ -13,38 +13,38 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
-import { ReactComponent as IconRemove } from 'assets/svg/ic-remove.svg';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import Table from 'components/common/Table/Table';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import ConfirmationModal from 'components/Modals/ConfirmationModal/ConfirmationModal';
-import { commonUserDetailColumns } from 'components/Users/Users.util';
-import { PAGE_SIZE_MEDIUM } from 'constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityAction } from 'enums/entity.enum';
-import { User } from 'generated/entity/teams/user';
-import { EntityReference } from 'generated/entity/type';
 import { isEmpty, orderBy } from 'lodash';
-import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
 import QueryString from 'qs';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { exportUserOfTeam } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getSettingsPathWithFqn } from 'utils/RouterUtils';
+import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
+import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
+import ManageButton from '../../../../components/common/entityPageInfo/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from '../../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { ManageButtonItemLabel } from '../../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import NextPrevious from '../../../../components/common/next-previous/NextPrevious';
+import Searchbar from '../../../../components/common/searchbar/Searchbar';
+import Table from '../../../../components/common/Table/Table';
+import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
+import { useEntityExportModalProvider } from '../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import ConfirmationModal from '../../../../components/Modals/ConfirmationModal/ConfirmationModal';
+import { commonUserDetailColumns } from '../../../../components/Users/Users.util';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { EntityAction } from '../../../../enums/entity.enum';
+import { User } from '../../../../generated/entity/teams/user';
+import { EntityReference } from '../../../../generated/entity/type';
+import { ImportType } from '../../../../pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
+import { exportUserOfTeam } from '../../../../rest/teamsAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { getSettingsPathWithFqn } from '../../../../utils/RouterUtils';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({

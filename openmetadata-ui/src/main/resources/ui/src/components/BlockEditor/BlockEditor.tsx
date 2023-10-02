@@ -20,7 +20,7 @@ import {
   getFrontEndFormat,
   HTMLToMarkdown,
   MarkdownToHTMLConverter,
-} from 'utils/FeedUtils';
+} from '../utils/FeedUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import ImageModal, { ImageData } from './ImageModal/ImageModal';

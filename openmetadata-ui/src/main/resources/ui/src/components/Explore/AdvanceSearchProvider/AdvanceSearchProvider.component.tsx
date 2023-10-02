@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Loader from 'components/Loader/Loader';
 import {
   emptyJsonTree,
   getQbConfigs,
 } from 'constants/AdvancedSearch.constants';
 import { tabsInfo } from 'constants/explore.constants';
-import { SearchIndex } from 'enums/search.enum';
 import { isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -34,7 +32,9 @@ import {
 } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
+import Loader from '../../components/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
+import { SearchIndex } from '../enums/search.enum';
 import { ExploreSearchIndex, UrlParams } from '../explore.interface';
 import {
   AdvanceSearchContext,

@@ -11,17 +11,7 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, {
@@ -34,7 +24,17 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { searchData } from 'rest/miscAPI';
-import { formatDataProductResponse } from 'utils/APIUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import ExploreSearchCard from '../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../components/Loader/Loader';
+import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { formatDataProductResponse } from '../utils/APIUtils';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(

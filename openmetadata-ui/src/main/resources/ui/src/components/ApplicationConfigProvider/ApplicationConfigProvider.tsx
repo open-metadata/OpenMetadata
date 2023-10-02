@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
 import React, {
   createContext,
   FC,
@@ -20,6 +19,7 @@ import React, {
   useState,
 } from 'react';
 import { getCustomLogoConfig } from 'rest/settingConfigAPI';
+import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
 
 export const ApplicationConfigContext = createContext<LogoConfiguration>(
   {} as LogoConfiguration

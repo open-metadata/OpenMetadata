@@ -14,8 +14,6 @@
 import { Badge, Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
 import { PRIMERY_COLOR } from 'constants/constants';
-import { DatabaseServiceType } from 'generated/entity/data/database';
-import { PipelineServiceType } from 'generated/entity/services/pipelineService';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +29,8 @@ import { MlModelServiceType } from '../../../generated/entity/services/mlmodelSe
 import { errorMsg, getServiceLogo } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
+import { DatabaseServiceType } from '../../generated/entity/data/database';
+import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
 import './select-service-type.less';
 import { SelectServiceTypeProps } from './Steps.interface';
 

@@ -12,24 +12,24 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
 import { isEmpty } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityOverview,
-} from 'utils/EntityUtils';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { getTagValue } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import SummaryTagsDescription from '../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { SearchIndex } from '../../generated/entity/data/searchIndex';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from '../utils/EntityUtils';
 import { SearchIndexSummaryProps } from './SearchIndexSummary.interface';
 
 function SearchIndexSummary({

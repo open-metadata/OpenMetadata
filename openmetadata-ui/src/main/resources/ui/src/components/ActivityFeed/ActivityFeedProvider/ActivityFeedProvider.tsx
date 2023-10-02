@@ -12,18 +12,7 @@
  */
 import AppState from 'AppState';
 import { AxiosError } from 'axios';
-import { EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import { ReactionOperation } from 'enums/reactions.enum';
 import { compare, Operation } from 'fast-json-patch';
-import {
-  Post,
-  Reaction,
-  ReactionType,
-  Thread,
-  ThreadType,
-} from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
 import { isEqual } from 'lodash';
 import React, {
   createContext,
@@ -43,10 +32,21 @@ import {
   updatePost,
   updateThread,
 } from 'rest/feedsAPI';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { getUpdatedThread } from 'utils/FeedUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import {
+  Post,
+  Reaction,
+  ReactionType,
+  Thread,
+  ThreadType,
+} from '../../generated/entity/feed/thread';
+import { Paging } from '../../generated/type/paging';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
+import { EntityType } from '../enums/entity.enum';
+import { FeedFilter } from '../enums/mydata.enum';
+import { ReactionOperation } from '../enums/reactions.enum';
+import { getEntityFeedLink } from '../utils/EntityUtils';
+import { getUpdatedThread } from '../utils/FeedUtils';
+import { showErrorToast } from '../utils/ToastUtils';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
 interface Props {

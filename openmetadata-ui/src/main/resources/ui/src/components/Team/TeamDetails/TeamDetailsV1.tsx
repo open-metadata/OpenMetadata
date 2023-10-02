@@ -32,33 +32,8 @@ import {
   Typography,
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import {
-  ReactComponent as EditIcon,
-  ReactComponent as IconEdit,
-} from 'assets/svg/edit-new.svg';
-import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
-import { ReactComponent as IconRestore } from 'assets/svg/ic-restore.svg';
-import { ReactComponent as IconOpenLock } from 'assets/svg/open-lock.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
-import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import AssetsTabs from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { ROUTES } from 'constants/constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
-import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
-import { EMAIL_REG_EX } from 'constants/regex.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { compare } from 'fast-json-patch';
 import {
   cloneDeep,
@@ -68,17 +43,38 @@ import {
   last,
   lowerCase,
 } from 'lodash';
-import AddAttributeModal from 'pages/RolesPage/AddAttributeModal/AddAttributeModal';
-import { ImportType } from 'pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import { getSuggestions } from 'rest/miscAPI';
-import { exportTeam, restoreTeam } from 'rest/teamsAPI';
 import AppState from '../../../AppState';
+import {
+  ReactComponent as EditIcon,
+  ReactComponent as IconEdit,
+} from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
+import { ReactComponent as IconRestore } from '../../../assets/svg/ic-restore.svg';
+import { ReactComponent as IconOpenLock } from '../../../assets/svg/open-lock.svg';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import TeamTypeSelect from '../../../components/common/TeamTypeSelect/TeamTypeSelect.component';
+import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
+import AssetsTabs from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { ROUTES } from '../../../constants/constants';
 import { ROLE_DOCS, TEAMS_DOCS } from '../../../constants/docs.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
+import { DROPDOWN_ICON_SIZE_PROPS } from '../../../constants/ManageButton.constants';
+import { EMAIL_REG_EX } from '../../../constants/regex.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
@@ -92,6 +88,10 @@ import {
   PlaceholderProps,
   TeamDetailsProp,
 } from '../../../interface/teamsAndUsers.interface';
+import AddAttributeModal from '../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
+import { ImportType } from '../../../pages/teams/ImportTeamsPage/ImportTeamsPage.interface';
+import { getSuggestions } from '../../../rest/miscAPI';
+import { exportTeam, restoreTeam } from '../../../rest/teamsAPI';
 import { getCountBadge, hasEditAccess } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';

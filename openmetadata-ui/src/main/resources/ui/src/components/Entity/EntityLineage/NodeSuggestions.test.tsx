@@ -12,9 +12,9 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { SearchIndex } from 'enums/search.enum';
 import React from 'react';
 import { searchData } from 'rest/miscAPI';
+import { SearchIndex } from '../enums/search.enum';
 import NodeSuggestions from './NodeSuggestions.component';
 
 const mockProps = {

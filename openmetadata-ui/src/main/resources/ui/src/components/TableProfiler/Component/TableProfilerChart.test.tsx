@@ -13,7 +13,10 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
+import {
+  getSystemProfileList,
+  getTableProfilesList,
+} from '../../../rest/tableAPI';
 import TableProfilerChart from './TableProfilerChart';
 
 const mockFQN = 'testFQN';

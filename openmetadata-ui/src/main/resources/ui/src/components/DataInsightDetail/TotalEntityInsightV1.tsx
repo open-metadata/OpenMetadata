@@ -25,10 +25,6 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -38,6 +34,10 @@ import {
 import { axisTickFormatter } from '../../utils/ChartUtils';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../utils/date-time/DateTimeUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';

@@ -126,13 +126,16 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('components/TableTags/TableTags.component', () => {
+jest.mock('../../components/TableTags/TableTags.component', () => {
   return jest.fn().mockReturnValue(<p>TableTags</p>);
 });
 
-jest.mock('components/TableDescription/TableDescription.component', () => {
-  return jest.fn().mockReturnValue(<p>TableDescription</p>);
-});
+jest.mock(
+  '../../components/TableDescription/TableDescription.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>TableDescription</p>);
+  }
+);
 
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
   ModalWithMarkdownEditor: jest
@@ -140,12 +143,12 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
     .mockReturnValue(<p> ModalWithMarkdownEditor</p>),
 }));
 
-jest.mock('utils/TableUtils', () => ({
+jest.mock('../utils/TableUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/GlossaryUtils', () => ({
+jest.mock('../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));

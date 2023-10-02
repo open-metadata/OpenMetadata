@@ -13,7 +13,6 @@
 
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +28,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getAggregateChartData } from 'rest/DataInsightAPI';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,

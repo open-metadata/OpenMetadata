@@ -12,14 +12,11 @@
  */
 
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { withActivityFeed } from 'components/router/withActivityFeed';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   API_RES_MAX_SIZE,
   getGlossaryTermDetailsPath,
 } from 'constants/constants';
-import { EntityAction } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
@@ -32,11 +29,14 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from 'rest/glossaryAPI';
+import Loader from '../../components/Loader/Loader';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { EntityAction } from '../enums/entity.enum';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import {

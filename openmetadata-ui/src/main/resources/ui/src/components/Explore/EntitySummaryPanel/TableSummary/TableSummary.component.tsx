@@ -12,15 +12,7 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { mockTablePermission } from 'constants/mockTourData.constants';
-import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
   default as React,
@@ -35,19 +27,27 @@ import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from 'rest/tableAPI';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityOverview,
-} from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { ROUTES } from '../../../../constants/constants';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { Table, TestSummary } from '../../../../generated/entity/data/table';
 import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import SummaryTagsDescription from '../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import SummaryPanelSkeleton from '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from '../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../utils/PermissionsUtils';
 import './table-summary.less';
 import { TableSummaryProps } from './TableSummary.interface';
 

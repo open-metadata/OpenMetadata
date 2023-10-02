@@ -12,27 +12,27 @@
  */
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { EntityType } from 'enums/entity.enum';
-import { OwnerType } from 'enums/user.enum';
-import { EntityReference } from 'generated/type/entityLineage';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getEntityPlaceHolder, getOwnerValue } from 'utils/CommonUtils';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import TableDataCardBody from '../../components/TableDataCardBody/TableDataCardBody';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { EntityReference } from '../../generated/type/entityLineage';
+import { EntityType } from '../enums/entity.enum';
+import { OwnerType } from '../enums/user.enum';
+import { getEntityPlaceHolder, getOwnerValue } from '../utils/CommonUtils';
 import {
   getEntityBreadcrumbs,
   getEntityId,
   getEntityLinkFromType,
   getEntityName,
-} from 'utils/EntityUtils';
-import { stringToHTML } from 'utils/StringsUtils';
-import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
+} from '../utils/EntityUtils';
+import { stringToHTML } from '../utils/StringsUtils';
+import { getServiceIcon, getUsagePercentile } from '../utils/TableUtils';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 

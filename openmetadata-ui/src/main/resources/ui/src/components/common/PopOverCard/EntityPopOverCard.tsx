@@ -12,10 +12,6 @@
  */
 
 import { Popover } from 'antd';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
-import { Include } from 'generated/type/include';
 import React, {
   FC,
   HTMLAttributes,
@@ -38,12 +34,16 @@ import { getContainerByFQN } from 'rest/storageAPI';
 import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
-import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { EntityUnion } from '../../components/Explore/explore.interface';
+import ExploreSearchCard from '../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../components/Loader/Loader';
+import { Include } from '../../generated/type/include';
+import { getTableFQNFromColumnFQN } from '../utils/CommonUtils';
+import { getEntityName } from '../utils/EntityUtils';
+import { getDecodedFqn, getEncodedFqn } from '../utils/StringsUtils';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {

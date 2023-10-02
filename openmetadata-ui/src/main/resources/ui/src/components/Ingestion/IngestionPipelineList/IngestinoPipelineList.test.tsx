@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ServiceCategory } from 'enums/service.enum';
 import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React from 'react';
+import { ServiceCategory } from '../enums/service.enum';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
 
 const mockGetIngestinoPipelines = jest.fn();
 const mockBulkDeployPipelines = jest.fn();
 
 jest.mock(
-  'components/common/error-with-placeholder/ErrorPlaceHolderIngestion',
+  '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion',
   () => {
     return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
   }
@@ -34,7 +34,7 @@ jest.mock('hooks/useAirflowStatus', () => ({
   })),
 }));
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 

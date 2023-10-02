@@ -23,15 +23,15 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
 import {
-  formatDateTime,
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import {
   IngestionPipeline,
   PipelineStatus,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../utils/date-time/DateTimeUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import './ingestion-recent-run.style.less';
 
 interface Props {

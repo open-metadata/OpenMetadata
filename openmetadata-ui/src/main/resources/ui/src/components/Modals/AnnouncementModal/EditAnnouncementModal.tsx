@@ -17,10 +17,10 @@ import { observer } from 'mobx-react';
 import moment from 'moment';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTimeZone } from 'utils/date-time/DateTimeUtils';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { getTimeZone } from '../utils/date-time/DateTimeUtils';
 import { CreateAnnouncement } from './AddAnnouncementModal';
 import './AnnouncementModal.less';
 

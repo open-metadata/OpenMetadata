@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { AuthProvider } from 'generated/settings/settings';
 import React, {
   forwardRef,
   Fragment,
@@ -21,6 +20,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { AccessTokenResponse, getAccessTokenOnExpiry } from 'rest/auth-API';
 import localState from '../../../utils/LocalStorageUtils';
+import { AuthProvider } from '../../generated/settings/settings';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { useBasicAuth } from '../auth-provider/basic-auth.provider';
 

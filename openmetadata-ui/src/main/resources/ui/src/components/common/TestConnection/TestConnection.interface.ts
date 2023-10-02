@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ServiceCategory } from 'enums/service.enum';
-import { StatusType } from 'generated/entity/automations/workflow';
 import { ConfigData } from 'interface/service.interface';
+import { StatusType } from '../../generated/entity/automations/workflow';
+import { ServiceCategory } from '../enums/service.enum';
 
 export interface TestConnectionProps {
   isTestingDisabled: boolean;

@@ -13,15 +13,6 @@
 import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import Table from 'components/common/Table/Table';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import ProfilerProgressWidget from 'components/TableProfiler/Component/ProfilerProgressWidget';
 import {
   getTableTabPath,
   INITIAL_PAGING_VALUE,
@@ -29,14 +20,8 @@ import {
   ROUTES,
 } from 'constants/constants';
 import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs } from 'enums/entity.enum';
-import { TestSummary } from 'generated/entity/data/table';
-import { TestSuite } from 'generated/tests/testSuite';
-import { EntityReference } from 'generated/type/entityReference';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -46,9 +31,24 @@ import {
   ListTestSuitePrams,
   TestSuiteType,
 } from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getTestSuitePath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import Table from '../../components/common/Table/Table';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
+import ProfilerProgressWidget from '../../components/TableProfiler/Component/ProfilerProgressWidget';
+import { TestSummary } from '../../generated/entity/data/table';
+import { TestSuite } from '../../generated/tests/testSuite';
+import { EntityReference } from '../../generated/type/entityReference';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { EntityTabs } from '../enums/entity.enum';
+import { getEntityName } from '../utils/EntityUtils';
+import { getTestSuitePath } from '../utils/RouterUtils';
+import { showErrorToast } from '../utils/ToastUtils';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();

@@ -12,17 +12,8 @@
  */
 import { Menu, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import Loader from 'components/Loader/Loader';
-import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
 import { ICON_DIMENSION } from 'constants/constants';
 import { observerOptions } from 'constants/Mydata.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from 'generated/entity/feed/thread';
 import { useElementInView } from 'hooks/useElementInView';
 import { noop } from 'lodash';
 import {
@@ -36,15 +27,24 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getAllFeeds, getFeedCount } from 'rest/feedsAPI';
-import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
-import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import Loader from '../../components/Loader/Loader';
+import { TaskTab } from '../../components/Task/TaskTab/TaskTab.component';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../generated/entity/feed/thread';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { FeedFilter } from '../enums/mydata.enum';
+import { getCountBadge, getEntityDetailLink } from '../utils/CommonUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from '../utils/EntityUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,

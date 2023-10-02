@@ -12,10 +12,10 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
+import { EntityType } from '../enums/entity.enum';
 import { CustomEdge } from './CustomEdge.component';
 
 jest.mock('constants/Lineage.constants', () => ({

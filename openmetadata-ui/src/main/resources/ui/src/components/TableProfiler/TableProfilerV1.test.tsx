@@ -24,8 +24,8 @@ import { TEST_CASE } from '../../mocks/TableData.mock';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
 // internal imports
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import TableProfilerV1 from './TableProfilerV1';
 
 const mockLocation = {

@@ -12,14 +12,18 @@
  */
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import Reactions from 'components/Reactions/Reactions';
-import { ReactionOperation } from 'enums/reactions.enum';
 import { compare } from 'fast-json-patch';
-import { Post, ReactionType, Thread } from 'generated/entity/feed/thread';
 import { noop } from 'lodash';
 import React, { useState } from 'react';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import Reactions from '../../../components/Reactions/Reactions';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  Post,
+  ReactionType,
+  Thread,
+} from '../../../generated/entity/feed/thread';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card.style.less';

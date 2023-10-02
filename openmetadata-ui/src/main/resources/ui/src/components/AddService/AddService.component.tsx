@@ -13,7 +13,6 @@
 
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
 import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -25,8 +24,7 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { FormSubmitType } from '../../enums/form.enum';
@@ -46,6 +44,8 @@ import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../ServiceConfig/ConnectionConfigForm';
+import { getEncodedFqn } from '../utils/StringsUtils';
+import { showErrorToast } from '../utils/ToastUtils';
 import { AddServiceProps, ServiceConfig } from './AddService.interface';
 import ConfigureService from './Steps/ConfigureService';
 import SelectServiceType from './Steps/SelectServiceType';

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { EntityField } from 'constants/Feeds.constants';
+import { cloneDeep, isEqual } from 'lodash';
+import { EntityField } from '../constants/Feeds.constants';
 import {
   ChangeDescription,
   MlFeature,
   Mlmodel,
-} from 'generated/entity/data/mlmodel';
-import { cloneDeep, isEqual } from 'lodash';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+} from '../generated/entity/data/mlmodel';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,

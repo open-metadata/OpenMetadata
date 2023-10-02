@@ -19,7 +19,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAlertsFromName, triggerEventById } from 'rest/alertsAPI';
+import { getAlertsFromName, triggerEventById } from '../../rest/alertsAPI';
 import AlertDataInsightReportPage from './AlertDataInsightReportPage';
 
 const MOCK_DATA_INSIGHTS_ALERT_DATA = {
@@ -50,7 +50,7 @@ const MOCK_DATA_INSIGHTS_ALERT_DATA = {
   provider: 'system',
 };
 
-jest.mock('rest/alertsAPI', () => ({
+jest.mock('../../rest/alertsAPI', () => ({
   getAlertsFromName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_DATA_INSIGHTS_ALERT_DATA)),
