@@ -107,6 +107,7 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json::jsonb #- '{connection,config,sandboxDomain}',
   '{connection,config,instanceDomain}',
+    json JSONB NOT NULL,
   (json #> '{connection,config,sandboxDomain}')::jsonb,
   true
 )
@@ -171,3 +172,27 @@ CREATE INDEX idx_name_data_search_service_entity ON search_service_entity (name)
 CREATE INDEX idx_name_data_search_index_entity ON search_index_entity (name);
 CREATE INDEX idx_name_data_stored_procedure_entity ON stored_procedure_entity (name);
 
+CREATE TABLE IF NOT EXISTS persona_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  nameHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (nameHash)
+);
+CREATE INDEX persona_name_index ON persona_entity USING btree (name);
+
+CREATE TABLE IF NOT EXISTS doc_store (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> 'entityType') STORED NOT NULL,
+  fqnHash VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (fqnHash)
+);
+CREATE INDEX page_name_index ON doc_store USING btree (name);
