@@ -99,34 +99,30 @@ const AddDomainForm = ({
         height: 'auto',
       },
     },
-    ...(type === DomainFormType.DATA_PRODUCT
-      ? [
-          {
-            name: 'iconURL',
-            id: 'root/iconURL',
-            label: t('label.icon-url'),
-            required: false,
-            placeholder: t('label.icon-url'),
-            type: FieldTypes.TEXT,
-            props: {
-              'data-testid': 'icon-url',
-            },
-          },
-          {
-            name: 'color',
-            id: 'root/color',
-            label: t('label.color'),
-            required: false,
-            type: FieldTypes.COLOR_PICKER,
-            rules: [
-              {
-                pattern: HEX_COLOR_CODE_REGEX,
-                message: t('message.hex-color-validation'),
-              },
-            ],
-          },
-        ]
-      : []),
+    {
+      name: 'iconURL',
+      id: 'root/iconURL',
+      label: t('label.icon-url'),
+      required: false,
+      placeholder: t('label.icon-url'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'icon-url',
+      },
+    },
+    {
+      name: 'color',
+      id: 'root/color',
+      label: t('label.color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+    },
   ];
 
   if (type === DomainFormType.DOMAIN) {
@@ -210,22 +206,15 @@ const AddDomainForm = ({
 
   const handleFormSubmit: FormProps['onFinish'] = (formData) => {
     const updatedData = omit(formData, 'color', 'iconURL');
-
-    let data = {
+    const style = {
+      color: formData.color,
+      iconURL: formData.iconURL,
+    };
+    const data = {
       ...updatedData,
+      style,
       experts: expertsList.map((item) => item.name ?? ''),
     } as CreateDomain | CreateDataProduct;
-
-    if (type === DomainFormType.DATA_PRODUCT) {
-      const style = {
-        color: formData.color,
-        iconURL: formData.iconURL,
-      };
-      data = {
-        ...data,
-        style,
-      };
-    }
 
     onSubmit(data);
   };

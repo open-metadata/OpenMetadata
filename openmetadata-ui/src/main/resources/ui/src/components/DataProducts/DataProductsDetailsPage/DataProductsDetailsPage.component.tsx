@@ -57,7 +57,7 @@ import {
 import { Domain } from 'generated/entity/domains/domain';
 import { Operation } from 'generated/entity/policies/policy';
 import { Style } from 'generated/type/tagLabel';
-import { cloneDeep, isEmpty, toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -338,12 +338,13 @@ const DataProductsDetailsPage = ({
 
   const onStyleSave = (data: Style) => {
     const style: Style = {
+      // if color/iconURL is empty or undefined send undefined
       color: data.color ? data.color : undefined,
       iconURL: data.iconURL ? data.iconURL : undefined,
     };
     const updatedDetails = {
       ...dataProduct,
-      style: isEmpty(style) ? undefined : style,
+      style,
     };
 
     onUpdate(updatedDetails);

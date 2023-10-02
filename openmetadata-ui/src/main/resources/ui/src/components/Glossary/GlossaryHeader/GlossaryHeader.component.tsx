@@ -54,7 +54,7 @@ import {
   Status,
 } from 'generated/entity/data/glossaryTerm';
 import { Style } from 'generated/type/tagLabel';
-import { cloneDeep, isEmpty, toString } from 'lodash';
+import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -196,12 +196,13 @@ const GlossaryHeader = ({
 
   const onStyleSave = (data: Style) => {
     const style: Style = {
-      color: data?.color,
-      iconURL: data?.iconURL,
+      // if color/iconURL is empty or undefined send undefined
+      color: data.color ? data.color : undefined,
+      iconURL: data.iconURL ? data.iconURL : undefined,
     };
     const updatedDetails = {
       ...selectedData,
-      style: isEmpty(style) ? undefined : style,
+      style,
     };
 
     onUpdate(updatedDetails);
