@@ -19,7 +19,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class GlossaryTermIndex implements ElasticSearchIndex {
+public class GlossaryTermIndex implements SearchIndex {
   final GlossaryTerm glossaryTerm;
   final List<String> excludeFields = List.of("changeDescription");
 
