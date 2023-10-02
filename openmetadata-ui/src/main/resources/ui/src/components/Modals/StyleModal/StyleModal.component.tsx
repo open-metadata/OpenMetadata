@@ -28,10 +28,12 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
 
   return (
     <Modal
+      cancelText={t('label.cancel')}
       okButtonProps={{
         form: 'style-modal',
         htmlType: 'submit',
       }}
+      okText={t('label.submit')}
       open={open}
       title={t('label.edit-entity', { entity: t('label.style') })}
       onCancel={onCancel}>
@@ -54,6 +56,7 @@ const StyleModal = ({ open, onCancel, onSubmit, style }: StyleModalProps) => {
         }}>
         <Form.Item label={t('label.icon-url')} name="iconURL">
           <Input
+            data-testid="icon-url"
             placeholder={t('label.enter-entity', {
               entity: t('label.icon-url'),
             })}
