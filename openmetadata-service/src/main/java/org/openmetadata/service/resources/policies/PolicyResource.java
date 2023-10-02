@@ -60,7 +60,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.resources.Collection;
@@ -92,8 +91,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return policy;
   }
 
-  public PolicyResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Policy.class, new PolicyRepository(dao), authorizer);
+  public PolicyResource(Authorizer authorizer) {
+    super(Entity.POLICY, authorizer);
   }
 
   @Override

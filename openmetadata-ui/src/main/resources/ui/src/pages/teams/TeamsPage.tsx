@@ -18,7 +18,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import Loader from '../../components/Loader/Loader';
@@ -43,7 +42,6 @@ import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
 import { SearchResponse } from '../../interface/search.interface';
 import { searchData } from '../../rest/miscAPI';
 import {
@@ -56,7 +54,7 @@ import { getUsers, updateUserDetail } from '../../rest/userAPI';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -64,8 +62,6 @@ const TeamsPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
   const { fqn } = useParams<{ fqn: string }>();
   const [currentFqn, setCurrentFqn] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
@@ -223,7 +219,7 @@ const TeamsPage = () => {
     getUsers({
       fields: 'teams,roles',
       limit: PAGE_SIZE_BASE,
-      team,
+      team: getDecodedFqn(team),
       ...paging,
     })
       .then((res) => {
@@ -285,7 +281,11 @@ const TeamsPage = () => {
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(name, ['owner', 'parents'], 'all');
+      const data = await getTeamByName(
+        name,
+        ['owner', 'parents', 'profile'],
+        'all'
+      );
 
       setSelectedTeam(data);
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -621,7 +621,6 @@ const TeamsPage = () => {
         handleJoinTeamClick={handleJoinTeamClick}
         handleLeaveTeamClick={handleLeaveTeamClick}
         handleTeamUsersSearchAction={handleUsersSearchAction}
-        hasAccess={isAuthDisabled || isAdminUser}
         isDescriptionEditable={isDescriptionEditable}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}

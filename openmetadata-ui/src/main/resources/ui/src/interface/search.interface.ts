@@ -138,6 +138,10 @@ export interface SearchServiceSearchSource
   extends SearchSourceBase,
     SearchService {}
 
+export interface StorageServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -161,6 +165,7 @@ export type ExploreSearchSource =
   | MlModelServiceSearchSource
   | MessagingServiceSearchSource
   | SearchServiceSearchSource
+  | StorageServiceSearchSource
   | DomainSearchSource
   | SearchIndexSearchSource;
 
@@ -185,6 +190,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
+  [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
   [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
   [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;

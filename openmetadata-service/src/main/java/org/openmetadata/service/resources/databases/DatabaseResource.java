@@ -55,7 +55,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -90,8 +89,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  public DatabaseResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Database.class, new DatabaseRepository(dao), authorizer);
+  public DatabaseResource(Authorizer authorizer) {
+    super(Entity.DATABASE, authorizer);
   }
 
   public static class DatabaseList extends ResultList<Database> {

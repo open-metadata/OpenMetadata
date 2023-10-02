@@ -46,7 +46,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -66,13 +65,11 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "analytics")
 public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
   private SearchRepository searchRepository;
-  private final CollectionDAO collectionDao;
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owner";
 
-  public DataInsightChartResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DataInsightChart.class, new DataInsightChartRepository(dao), authorizer);
-    collectionDao = dao;
+  public DataInsightChartResource(Authorizer authorizer) {
+    super(Entity.DATA_INSIGHT_CHART, authorizer);
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
@@ -87,7 +84,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // instantiate an elasticsearch client
     if (config.getElasticSearchConfiguration() != null) {
-      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), collectionDao);
+      searchRepository =
+          IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), repository.getDaoCollection());
     }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");

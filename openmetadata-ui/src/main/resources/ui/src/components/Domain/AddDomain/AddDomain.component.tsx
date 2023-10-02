@@ -93,6 +93,9 @@ const AddDomain = () => {
           entity: t('label.domain'),
         })}
       </Typography.Title>
+      <Typography.Text className="mb-5">
+        {t('message.create-new-domain-guide')}
+      </Typography.Text>
     </div>
   );
 

@@ -138,7 +138,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         ),
       },
     ];
-  }, [data, onTeamExpand]);
+  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);
 
   const handleMoveRow = useCallback(
     async (dragRecord: Team, dropRecord: Team) => {

@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,11 +31,13 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 
 export const OwnerLabel = ({
   owner,
+  className,
   onUpdate,
   hasPermission,
   ownerDisplayName,
 }: {
   owner?: EntityReference;
+  className?: string;
   onUpdate?: (owner?: EntityReference) => void;
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode;
@@ -77,7 +80,10 @@ export const OwnerLabel = ({
 
       {displayName ? (
         <Link
-          className="text-primary font-medium text-xs no-underline"
+          className={classNames(
+            'text-primary font-medium text-xs no-underline',
+            className
+          )}
           data-testid="owner-link"
           to={
             owner?.type === 'team'
@@ -88,7 +94,7 @@ export const OwnerLabel = ({
         </Link>
       ) : (
         <Typography.Text
-          className="font-medium text-xs"
+          className={classNames('font-medium text-xs', className)}
           data-testid="owner-link">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
