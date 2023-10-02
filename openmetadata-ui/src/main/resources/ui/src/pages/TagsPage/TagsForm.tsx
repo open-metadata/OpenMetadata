@@ -42,7 +42,11 @@ const TagsForm = ({
   const [form] = Form.useForm();
 
   useEffect(() => {
-    form.setFieldsValue(initialValues);
+    form.setFieldsValue({
+      ...initialValues,
+      iconURL: initialValues?.style?.iconURL,
+      color: initialValues?.style?.color,
+    });
   }, [initialValues]);
 
   const disableNameField = useMemo(
