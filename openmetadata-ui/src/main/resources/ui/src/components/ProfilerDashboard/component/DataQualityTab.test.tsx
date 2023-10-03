@@ -54,7 +54,7 @@ jest.mock('../../../hooks/authHooks', () => ({
     };
   },
 }));
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => mockPermissionsData,
 }));
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {

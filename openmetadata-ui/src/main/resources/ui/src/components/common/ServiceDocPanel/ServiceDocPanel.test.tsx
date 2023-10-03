@@ -14,12 +14,12 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import ServiceRequirements from './ServiceDocPanel';
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () =>
     jest
       .fn()

@@ -50,12 +50,12 @@ const mockIncorrectCsvContent = `parent,name*,displayName,description*,synonyms,
 `;
 
 jest.mock(
-  '../../components/IngestionStepper/IngestionStepper.component',
+  '../../../components/IngestionStepper/IngestionStepper.component',
   () => {
     return jest.fn().mockImplementation(() => <div>Stepper</div>);
   }
 );
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock('./ImportStatus/ImportStatus.component', () => ({

@@ -35,7 +35,7 @@ const mockSearchedFields = MOCK_SEARCH_INDEX_FIELDS.filter((field) =>
 );
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -44,16 +44,17 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../../components/common/error-with-placeholder/FilterTablePlaceHolder',
   () =>
     jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
 );
 
-jest.mock('../../components/TableDescription/TableDescription.component', () =>
-  jest.fn().mockImplementation(() => <div>testTableDescription</div>)
+jest.mock(
+  '../../../components/TableDescription/TableDescription.component',
+  () => jest.fn().mockImplementation(() => <div>testTableDescription</div>)
 );
 
-jest.mock('../../components/TableTags/TableTags.component', () =>
+jest.mock('../../../components/TableTags/TableTags.component', () =>
   jest.fn().mockImplementation(() => <div>testTableTags</div>)
 );
 

@@ -50,7 +50,7 @@ jest.mock('../error-with-placeholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
@@ -62,7 +62,7 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   ),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -87,7 +87,7 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../utils/CustomProperties/CustomProperty.utils', () => ({
+jest.mock('../../../utils/CustomProperties/CustomProperty.utils', () => ({
   getEntityExtentionDetailsFromEntityType: jest.fn(),
 }));
 

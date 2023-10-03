@@ -28,13 +28,11 @@ const mockCsvImportResult = {
   success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
 
-jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
-  () =>
-    jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
+jest.mock('../../common/title-breadcrumb/title-breadcrumb.component', () =>
+  jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -56,28 +54,25 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../utils/RouterUtils', () => ({
+jest.mock('../../../utils/RouterUtils', () => ({
   getGlossaryPath: jest.fn().mockImplementation((fqn) => `/glossary/${fqn}`),
 }));
 
-jest.mock('../utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-jest.mock(
-  '../../components/common/EntityImport/EntityImport.component',
-  () => ({
-    EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
-      return (
-        <div data-testid="entity-import">
-          {children}{' '}
-          <button data-testid="import" onClick={onImport}>
-            import
-          </button>
-        </div>
-      );
-    }),
-  })
-);
+jest.mock('../../common/EntityImport/EntityImport.component', () => ({
+  EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
+    return (
+      <div data-testid="entity-import">
+        {children}{' '}
+        <button data-testid="import" onClick={onImport}>
+          import
+        </button>
+      </div>
+    );
+  }),
+}));
 
 describe('Import Glossary', () => {
   it('Should render the all components', async () => {

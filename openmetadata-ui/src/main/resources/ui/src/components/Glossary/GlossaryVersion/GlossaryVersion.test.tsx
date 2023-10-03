@@ -56,11 +56,11 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_VERSION)),
 }));
 
-jest.mock('../../components/Glossary/GlossaryV1.component', () => {
+jest.mock('../GlossaryV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary component</>);
 });
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../../containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

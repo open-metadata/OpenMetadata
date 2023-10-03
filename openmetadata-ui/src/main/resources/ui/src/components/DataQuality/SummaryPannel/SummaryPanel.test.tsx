@@ -31,14 +31,14 @@ const mockSummary = {
   failed: 1,
 };
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
     },
   })),
 }));
-jest.mock('../../components/common/SummaryCard/SummaryCard.component', () => {
+jest.mock('../../common/SummaryCard/SummaryCard.component', () => {
   return {
     SummaryCard: jest
       .fn()

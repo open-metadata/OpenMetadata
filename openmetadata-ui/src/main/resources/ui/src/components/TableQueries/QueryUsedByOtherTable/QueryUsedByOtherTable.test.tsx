@@ -27,7 +27,7 @@ const mockProps: QueryUsedByOtherTableProps = {
   onChange: jest.fn(),
 };
 
-jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
+jest.mock('../../AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
     .fn()
     .mockImplementation(() => <div>AsyncSelect.component</div>),

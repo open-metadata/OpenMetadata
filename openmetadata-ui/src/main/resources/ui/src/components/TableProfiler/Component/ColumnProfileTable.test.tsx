@@ -46,7 +46,7 @@ jest.mock('antd', () => ({
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
 }));
-jest.mock('../../components/common/Table/Table', () =>
+jest.mock('../../../components/common/Table/Table', () =>
   jest.fn().mockImplementation(() => <div>Table</div>)
 );
 

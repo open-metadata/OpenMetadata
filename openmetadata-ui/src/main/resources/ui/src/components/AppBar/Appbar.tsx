@@ -38,6 +38,7 @@ import {
   TERM_USER,
   TOUR_SEARCH_TERM,
 } from '../../constants/constants';
+import { tabsInfo } from '../../constants/explore.constants';
 import {
   urlGitbookDocs,
   urlGithubRepo,
@@ -55,7 +56,6 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import NavBar from '../nav-bar/NavBar';
-import { tabsInfo } from '../NotificationBox/NotificationBox.utils';
 import './app-bar.style.less';
 
 const Appbar: React.FC = (): JSX.Element => {

@@ -30,7 +30,7 @@ const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testSuite: testSuitePermission,
@@ -53,11 +53,11 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()

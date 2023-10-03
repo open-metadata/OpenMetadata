@@ -85,31 +85,31 @@ const props = {
   onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('../utils/TagsUtils', () => ({
+jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../utils/GlossaryUtils', () => ({
+jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn(() => Promise.resolve([])),
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../utils/TableTags/TableTags.utils', () => ({
-  ...jest.requireActual('../utils/TableTags/TableTags.utils'),
+jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
+  ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
   getFilterTags: jest.fn().mockReturnValue({
     Classification: [],
     Glossary: [],
   }),
 }));
 
-jest.mock('../utils/ContainerDetailUtils', () => ({
+jest.mock('../../../utils/ContainerDetailUtils', () => ({
   updateContainerColumnDescription: jest.fn(),
   updateContainerColumnTags: jest.fn(),
 }));
 
 jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
   () =>
     jest
       .fn()
@@ -119,7 +119,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -127,7 +127,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/TableTags/TableTags.component', () =>
+jest.mock('../../../components/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -136,7 +136,7 @@ jest.mock('../../components/TableTags/TableTags.component', () =>
 );
 
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () =>
     jest
       .fn()

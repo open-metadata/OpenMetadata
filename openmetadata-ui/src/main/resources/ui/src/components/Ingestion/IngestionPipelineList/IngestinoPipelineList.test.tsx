@@ -20,7 +20,7 @@ const mockGetIngestinoPipelines = jest.fn();
 const mockBulkDeployPipelines = jest.fn();
 
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion',
+  '../../common/error-with-placeholder/ErrorPlaceHolderIngestion',
   () => {
     return jest.fn().mockImplementation(() => <p>Airflow not available</p>);
   }
@@ -34,7 +34,7 @@ jest.mock('../../../hooks/useAirflowStatus', () => ({
   })),
 }));
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 

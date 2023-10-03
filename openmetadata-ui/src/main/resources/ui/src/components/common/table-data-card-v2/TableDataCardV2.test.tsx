@@ -34,18 +34,15 @@ jest.mock('../../../constants/constants', () => ({
     .mockImplementation((path) => `/dataset/${path}`),
 }));
 
-jest.mock('../../components/TableDataCardBody/TableDataCardBody', () => {
+jest.mock('../../TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 
 const mockHandleSummaryPanelDisplay = jest.fn();
 
-jest.mock(
-  '../../components/Entity/EntityHeader/EntityHeader.component',
-  () => ({
-    EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
-  })
-);
+jest.mock('../../Entity/EntityHeader/EntityHeader.component', () => ({
+  EntityHeader: jest.fn().mockImplementation(() => <p>EntityHeader</p>),
+}));
 
 describe('Test TableDataCard Component', () => {
   it('Component should render', () => {

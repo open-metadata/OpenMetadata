@@ -33,12 +33,12 @@ jest.mock('../../../../rest/topicsAPI', () => ({
 }));
 
 jest.mock(
-  '../../components/common/SummaryTagsDescription/SummaryTagsDescription.component',
+  '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component',
   () => jest.fn().mockImplementation(() => <p>SummaryTagDescription</p>)
 );
 
 jest.mock(
-  '../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
+  '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
   () => jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 

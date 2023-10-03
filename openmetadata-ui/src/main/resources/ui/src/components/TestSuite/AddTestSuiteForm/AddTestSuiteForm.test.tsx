@@ -31,11 +31,11 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<>RichTextEditor</>)
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader</div>);
 });
 

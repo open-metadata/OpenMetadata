@@ -143,20 +143,17 @@ jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest
-      .fn()
-      .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
-  }
-);
+jest.mock('../Entity/EntityLineage/EntityLineage.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="lineage-details">Lineage</p>);
+});
 
 jest.mock('../TasksDAGView/TasksDAGView', () => {
   return jest.fn().mockReturnValue(<p data-testid="tasks-dag">Tasks DAG</p>);
 });
 
-jest.mock('../../components/containers/PageLayoutV1', () => {
+jest.mock('../containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -179,12 +176,12 @@ jest.mock('../../utils/CommonUtils', () => ({
   getCountBadge: jest.fn().mockImplementation((count) => <p>{count}</p>),
 }));
 
-jest.mock('../utils/TagsUtils', () => ({
+jest.mock('../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../utils/GlossaryUtils', () => ({
+jest.mock('../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));

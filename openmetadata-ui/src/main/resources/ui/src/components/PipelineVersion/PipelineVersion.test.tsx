@@ -15,7 +15,6 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { EntityTabs } from '../../enums/entity.enum';
 import {
   mockColumnDiffPipelineVersionMockProps,
   pipelineVersionMockProps,
@@ -78,7 +77,7 @@ jest.mock('react-router-dom', () => ({
     push: mockPush,
   })),
   useParams: jest.fn().mockReturnValue({
-    tab: EntityTabs.PIPELINE,
+    tab: 'pipeline',
   }),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));

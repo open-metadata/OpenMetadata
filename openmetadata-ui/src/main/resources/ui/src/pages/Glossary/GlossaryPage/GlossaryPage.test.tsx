@@ -31,11 +31,11 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => {
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => {
   return {
     usePermissionProvider: jest.fn(() => ({
       permissions: {
@@ -46,7 +46,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => {
   };
 });
 
-jest.mock('../../components/Glossary/GlossaryV1.component', () => {
+jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
   return jest.fn().mockImplementation((props) => (
     <div>
       <p> Glossary.component</p>
@@ -81,7 +81,7 @@ jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
       <div data-testid="glossary-left-panel-container">Left Panel</div>
     ));
 });
-jest.mock('../../rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   deleteGlossary: jest.fn().mockImplementation(() => Promise.resolve()),
   deleteGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
   getGlossaryTermByFQN: jest
@@ -98,7 +98,7 @@ jest.mock('../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
 }));
 
-jest.mock('../../components/containers/PageLayoutV1', () =>
+jest.mock('../../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
     <div>
       {leftPanel}

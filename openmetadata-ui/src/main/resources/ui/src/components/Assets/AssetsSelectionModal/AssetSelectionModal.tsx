@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, List, Modal, Select, Space } from 'antd';
-import { Domain } from 'domain';
 import { compare } from 'fast-json-patch';
 import { map, startCase } from 'lodash';
 import { EntityDetailUnion } from 'Models';
@@ -27,7 +26,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';

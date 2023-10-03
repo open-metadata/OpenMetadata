@@ -28,8 +28,8 @@ const mockProps: QueryCardExtraOptionProps = {
   afterDeleteAction: jest.fn(),
 };
 
-jest.mock('../utils/CommonUtils', () => ({
-  ...jest.requireActual('../utils/CommonUtils'),
+jest.mock('../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../utils/CommonUtils'),
   getCurrentUserId: jest
     .fn()
     .mockReturnValue(MOCK_QUERIES[0].votes.upVoters[0].id),

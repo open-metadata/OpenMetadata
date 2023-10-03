@@ -30,7 +30,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
@@ -56,13 +56,11 @@ jest.mock('./tabs/GlossaryTermReferences', () =>
 jest.mock('./tabs/AssetsTabs.component', () =>
   jest.fn().mockReturnValue(<div>AssetsTabs</div>)
 );
-jest.mock(
-  '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
-  () => jest.fn().mockReturnValue(<div>GlossaryTermTab</div>)
+jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryTermTab</div>)
 );
-jest.mock(
-  '../../components/Glossary/GlossaryHeader/GlossaryHeader.component',
-  () => jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
+jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
 );
 
 const mockProps = {

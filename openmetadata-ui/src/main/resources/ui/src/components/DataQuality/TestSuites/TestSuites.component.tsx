@@ -28,6 +28,7 @@ import {
 import { PROGRESS_BAR_COLOR } from '../../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
+import { TestSummary } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TestSuite } from '../../../generated/tests/testCase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';

@@ -53,30 +53,26 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock(
-  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ markdown }) => (
-        <p data-testid="description">{markdown}</p>
-      ))
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
+  jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <p data-testid="description">{markdown}</p>
+    ))
 );
-jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ onClick }) => (
-        <div onClick={onClick}>ErrorPlaceHolder</div>
-      ))
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onClick }) => (
+      <div onClick={onClick}>ErrorPlaceHolder</div>
+    ))
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
 

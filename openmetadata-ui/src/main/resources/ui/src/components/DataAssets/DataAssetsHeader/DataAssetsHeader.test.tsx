@@ -45,7 +45,7 @@ const mockProps: DataAssetsHeaderProps = {
 };
 
 jest.mock(
-  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest
       .fn()
@@ -53,19 +53,19 @@ jest.mock(
   }
 );
 jest.mock(
-  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
   () => {
     return jest
       .fn()
       .mockImplementation(() => <div>EntityHeaderTitle.component</div>);
   }
 );
-jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
+jest.mock('../../../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
     .mockImplementation(() => <div>OwnerLabel.component</div>),
 }));
-jest.mock('../../components/common/TierCard/TierCard', () =>
+jest.mock('../../../components/common/TierCard/TierCard', () =>
   jest.fn().mockImplementation(({ children }) => (
     <div>
       TierCard.component
@@ -74,16 +74,16 @@ jest.mock('../../components/common/TierCard/TierCard', () =>
   ))
 );
 jest.mock(
-  '../../components/common/entityPageInfo/ManageButton/ManageButton',
+  '../../../components/common/entityPageInfo/ManageButton/ManageButton',
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
 jest.mock(
-  '../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard',
+  '../../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard',
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
 );
 jest.mock(
-  '../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer',
+  '../../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer',
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
 );

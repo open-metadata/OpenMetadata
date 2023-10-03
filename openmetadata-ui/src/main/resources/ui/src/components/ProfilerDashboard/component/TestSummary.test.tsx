@@ -46,7 +46,7 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../../components/DatePickerMenu/DatePickerMenu.component', () => {
+jest.mock('../../../components/DatePickerMenu/DatePickerMenu.component', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>DatePickerMenu.component</div>);

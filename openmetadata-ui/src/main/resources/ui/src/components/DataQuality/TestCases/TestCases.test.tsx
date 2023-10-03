@@ -32,7 +32,7 @@ const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
 const mockUseHistory = { push: jest.fn() };
 const mockLocation = { search: '' };
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
@@ -68,19 +68,22 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('../../components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('../../components/common/searchbar/Searchbar', () => {
+jest.mock('../../../components/common/searchbar/Searchbar', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
 });
-jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
-});
 jest.mock(
-  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  '../../../components/ProfilerDashboard/component/DataQualityTab',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>DataQualityTab.component</div>);
+  }
+);
+jest.mock(
+  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
   () => {
     return jest
       .fn()

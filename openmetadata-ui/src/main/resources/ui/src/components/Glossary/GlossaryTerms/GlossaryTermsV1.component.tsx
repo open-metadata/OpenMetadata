@@ -29,7 +29,7 @@ import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
-import { CustomPropertyTable } from '../../CustomEntityDetail/CustomPropertyTable';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { EntityDetailsObjectInterface } from '../../Explore/explore.interface';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import TabsLabel from '../../TabsLabel/TabsLabel.component';

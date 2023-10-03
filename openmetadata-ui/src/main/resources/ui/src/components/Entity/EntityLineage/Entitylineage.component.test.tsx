@@ -53,7 +53,7 @@ const mockPaginatedData = {
   edges: [],
 };
 
-jest.mock('../utils/EntityLineageUtils', () => ({
+jest.mock('../../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
   getDeletedLineagePlaceholder: jest
     .fn()

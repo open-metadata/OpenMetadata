@@ -19,7 +19,7 @@ import { Constraint, DataType } from '../../generated/entity/data/table';
 import { LabelType, State, TagSource } from '../../generated/type/schema';
 import TableTags from './TableTags.component';
 
-jest.mock('../utils/FeedElementUtils', () => ({
+jest.mock('../../utils/FeedElementUtils', () => ({
   getFieldThreadElement: jest
     .fn()
     .mockReturnValue(

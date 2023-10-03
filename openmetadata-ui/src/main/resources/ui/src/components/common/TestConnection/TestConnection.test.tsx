@@ -49,8 +49,8 @@ const mockProps = {
   shouldValidateForm: false,
 };
 
-jest.mock('../utils/ServiceUtils', () => ({
-  ...jest.requireActual('../utils/ServiceUtils'),
+jest.mock('../../../utils/ServiceUtils', () => ({
+  ...jest.requireActual('../../../utils/ServiceUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
 }));
 
