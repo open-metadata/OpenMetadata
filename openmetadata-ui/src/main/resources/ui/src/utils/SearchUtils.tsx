@@ -52,10 +52,12 @@ export const getSearchAPIQueryParams = (
   trackTotalHits = false
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
+
+  const encodedQueryString = queryString ? encodeURIComponent(queryString) : '';
   const query =
-    queryString && queryString === WILD_CARD_CHAR
-      ? queryString
-      : `*${queryString}*`;
+    encodedQueryString === WILD_CARD_CHAR
+      ? encodedQueryString
+      : `*${encodedQueryString}*`;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),
