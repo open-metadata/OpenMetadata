@@ -265,7 +265,7 @@ dev = {
     "isort",
     "pre-commit",
     "pycln",
-    "pylint",
+    "pylint~=3.0.0",
     "twine",
 }
 
