@@ -239,14 +239,13 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(
-      Jdbi jdbi, CollectionDAO collectionDAO, Set<String> additionalRepositories) {
+  public static void initializeRepositories(Jdbi jdbi, CollectionDAO collectionDAO) {
     if (!initializedRepositories) {
       Entity.collectionDAO = collectionDAO;
       tokenRepository = new TokenRepository(collectionDAO);
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
-      Set<Class<?>> repositories = getRepositories(additionalRepositories);
+      Set<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
@@ -517,21 +516,8 @@ public final class Entity {
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
-  private static Set<Class<?>> getRepositories(Set<String> additionalRepository) {
-    // Get classes marked with @Repository annotation
-    Set<Class<?>> collectionClasses = new HashSet<>();
-
-    // Add Open-metadata Repos
-    Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
-    collectionClasses.addAll(reflections.getTypesAnnotatedWith(Repository.class));
-
-    // Add External Repositories if exists
-    if (!CommonUtil.nullOrEmpty(additionalRepository)) {
-      for (String packageName : additionalRepository) {
-        Reflections packageReflections = new Reflections(packageName);
-        collectionClasses.addAll(packageReflections.getTypesAnnotatedWith(Repository.class));
-      }
-    }
-    return collectionClasses;
+  private static Set<Class<?>> getRepositories() {
+    Reflections reflections = new Reflections();
+    return new HashSet<>(reflections.getTypesAnnotatedWith(Repository.class));
   }
 }

@@ -296,7 +296,6 @@ public final class TablesInitializer {
             jdbi,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
-            config.getExtensionConfiguration().getRepositoriesPackage(),
             forceMigrations);
         break;
       case MIGRATE:
@@ -306,7 +305,6 @@ public final class TablesInitializer {
             jdbi,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
-            config.getExtensionConfiguration().getRepositoriesPackage(),
             forceMigrations);
         break;
       case INFO:
@@ -361,11 +359,10 @@ public final class TablesInitializer {
       Jdbi jdbi,
       ConnectionType connType,
       String nativeMigrationSQLPath,
-      Set<String> additionalRepositories,
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class), additionalRepositories);
+    Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class));
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }
