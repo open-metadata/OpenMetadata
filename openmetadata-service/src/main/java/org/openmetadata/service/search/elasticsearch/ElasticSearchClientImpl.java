@@ -96,7 +96,6 @@ import org.elasticsearch.script.ScriptType;
 import org.elasticsearch.search.SearchModule;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.BucketOrder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
@@ -342,6 +341,10 @@ public class ElasticSearchClientImpl implements SearchRepository {
       case "domain_search_index":
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
+      case "raw_cost_analysis_report_data_index":
+        searchSourceBuilder =
+            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -376,7 +379,8 @@ public class ElasticSearchClientImpl implements SearchRepository {
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
-        || request.getIndex().equalsIgnoreCase("query_search_index")) {
+        || request.getIndex().equalsIgnoreCase("query_search_index")
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -848,6 +852,11 @@ public class ElasticSearchClientImpl implements SearchRepository {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
+  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
+    return searchBuilder(queryBuilder, null, from, size);
+  }
+
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
@@ -1252,7 +1261,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
       String indexName)
       throws IOException, ParseException {
     org.elasticsearch.action.search.SearchRequest searchRequestTotalAssets =
-        buildSearchRequest(scheduleTime, currentTime, null, team, chartType, indexName);
+        buildSearchRequest(scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
     SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
     DataInsightChartResult processedDataTotalAssets =
         processDataInsightChartResult(searchResponseTotalAssets, chartType);
@@ -1277,10 +1286,13 @@ public class ElasticSearchClientImpl implements SearchRepository {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException {
     org.elasticsearch.action.search.SearchRequest searchRequest =
-        buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+        buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
   }
@@ -1330,35 +1342,38 @@ public class ElasticSearchClientImpl implements SearchRepository {
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
       throws ParseException {
-    DataInsightAggregatorInterface processor =
-        createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
+    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartName);
     return processor.process();
   }
 
   private static DataInsightAggregatorInterface createDataAggregator(
-      Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
+      SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new EsEntitiesDescriptionAggregator(aggregations, dataInsightChartType);
+        return new EsEntitiesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new EsServicesDescriptionAggregator(aggregations, dataInsightChartType);
+        return new EsServicesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new EsEntitiesOwnerAggregator(aggregations, dataInsightChartType);
+        return new EsEntitiesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new EsServicesOwnerAggregator(aggregations, dataInsightChartType);
+        return new EsServicesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
       case TOTAL_ENTITIES_BY_TYPE:
-        return new EsTotalEntitiesAggregator(aggregations, dataInsightChartType);
+        return new EsTotalEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
-        return new EsTotalEntitiesByTierAggregator(aggregations, dataInsightChartType);
+        return new EsTotalEntitiesByTierAggregator(aggregations.getAggregations(), dataInsightChartType);
       case DAILY_ACTIVE_USERS:
-        return new EsDailyActiveUsersAggregator(aggregations, dataInsightChartType);
+        return new EsDailyActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PAGE_VIEWS_BY_ENTITIES:
-        return new EsPageViewsByEntitiesAggregator(aggregations, dataInsightChartType);
+        return new EsPageViewsByEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
       case MOST_ACTIVE_USERS:
-        return new EsMostActiveUsersAggregator(aggregations, dataInsightChartType);
+        return new EsMostActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
       case MOST_VIEWED_ENTITIES:
-        return new EsMostViewedEntitiesAggregator(aggregations, dataInsightChartType);
+        return new EsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+      case UNUSED_ASSETS:
+        return new EsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
+      case AGGREGATED_UNUSED_ASSETS:
+        return new EsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
@@ -1371,12 +1386,25 @@ public class ElasticSearchClientImpl implements SearchRepository {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex) {
     SearchSourceBuilder searchSourceBuilder =
-        buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
-    AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
-    searchSourceBuilder.aggregation(aggregationBuilder);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+        buildQueryFilter(startTs, endTs, tier, team, queryFilter, dataInsightChartName.value());
+    if (!dataInsightChartName
+        .toString()
+        .equalsIgnoreCase(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString())) {
+      AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
+      searchSourceBuilder.aggregation(aggregationBuilder);
+      searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    } else {
+      // get raw doc for unused assets
+      searchSourceBuilder.fetchSource(true);
+      searchSourceBuilder.from(from);
+      searchSourceBuilder.size(size);
+      searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
+    }
 
     org.elasticsearch.action.search.SearchRequest searchRequest =
         new org.elasticsearch.action.search.SearchRequest(dataReportIndex);
@@ -1385,11 +1413,12 @@ public class ElasticSearchClientImpl implements SearchRepository {
   }
 
   private static SearchSourceBuilder buildQueryFilter(
-      Long startTs, Long endTs, String tier, String team, String dataInsightChartName) {
+      Long startTs, Long endTs, String tier, String team, String queryFilter, String dataInsightChartName) {
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     BoolQueryBuilder searchQueryFiler = new BoolQueryBuilder();
 
+    // Add team filter
     if (team != null && DataInsightChartRepository.SUPPORTS_TEAM_FILTER.contains(dataInsightChartName)) {
       List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
 
@@ -1398,6 +1427,7 @@ public class ElasticSearchClientImpl implements SearchRepository {
       searchQueryFiler.must(teamQueryFilter);
     }
 
+    // Add tier filter
     if (tier != null && DataInsightChartRepository.SUPPORTS_TIER_FILTER.contains(dataInsightChartName)) {
       List<String> tierArray = Arrays.asList(tier.split("\\s*,\\s*"));
 
@@ -1406,11 +1436,34 @@ public class ElasticSearchClientImpl implements SearchRepository {
       searchQueryFiler.must(tierQueryFilter);
     }
 
-    RangeQueryBuilder dateQueryFilter =
-        QueryBuilders.rangeQuery(DataInsightChartRepository.TIMESTAMP).gte(startTs).lte(endTs);
+    // Add date range filter
+    if (!DataInsightChartRepository.SUPPORTS_NULL_DATE_RANGE.contains(dataInsightChartName)) {
+      if (startTs == null || endTs == null) {
+        throw new IllegalArgumentException(
+            String.format("Start and End date are required for chart type %s ", dataInsightChartName));
+      }
+      RangeQueryBuilder dateQueryFilter =
+          QueryBuilders.rangeQuery(DataInsightChartRepository.TIMESTAMP).gte(startTs).lte(endTs);
+      searchQueryFiler.must(dateQueryFilter);
+    }
 
-    searchQueryFiler.must(dateQueryFilter);
-    return searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
+    searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
+
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    return searchSourceBuilder;
   }
 
   private static AggregationBuilder buildQueryAggregation(
@@ -1439,6 +1492,23 @@ public class ElasticSearchClientImpl implements SearchRepository {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case AGGREGATED_UNUSED_ASSETS:
+        SumAggregationBuilder threeDaysAgg =
+            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+        SumAggregationBuilder sevenDaysAgg =
+            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+        SumAggregationBuilder fourteenDaysAgg =
+            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+        SumAggregationBuilder thirtyDaysAgg =
+            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+        SumAggregationBuilder sixtyDaysAgg =
+            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+        return dateHistogramAggregationBuilder
+            .subAggregation(threeDaysAgg)
+            .subAggregation(sevenDaysAgg)
+            .subAggregation(fourteenDaysAgg)
+            .subAggregation(thirtyDaysAgg)
+            .subAggregation(sixtyDaysAgg);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
