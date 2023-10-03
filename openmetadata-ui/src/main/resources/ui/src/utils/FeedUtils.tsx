@@ -570,6 +570,10 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
       EntityType.DASHBOARD_SERVICE,
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
+      EntityType.MLMODEL_SERVICE,
+      EntityType.METADATA_SERVICE,
+      EntityType.STORAGE_SERVICE,
+      EntityType.SEARCH_SERVICE,
       EntityType.TYPE,
       EntityType.MLMODEL,
     ].includes(entityType as EntityType)

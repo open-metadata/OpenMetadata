@@ -242,6 +242,10 @@ export const getEntityLink = (
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.MESSAGING_SERVICE:
     case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
     case EntityType.WEBHOOK:
