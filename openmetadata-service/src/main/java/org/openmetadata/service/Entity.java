@@ -36,6 +36,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -238,7 +239,8 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(CollectionDAO collectionDAO, Set<String> additionalRepositories) {
+  public static void initializeRepositories(
+      Jdbi jdbi, CollectionDAO collectionDAO, Set<String> additionalRepositories) {
     if (!initializedRepositories) {
       Entity.collectionDAO = collectionDAO;
       tokenRepository = new TokenRepository(collectionDAO);
@@ -252,6 +254,11 @@ public final class Entity {
         try {
           clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
         } catch (Exception e) {
+          try {
+            clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
+          } catch (Exception ex) {
+            LOG.warn("Exception encountered", ex);
+          }
           LOG.warn("Exception encountered", e);
         }
       }

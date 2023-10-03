@@ -365,7 +365,7 @@ public final class TablesInitializer {
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi.onDemand(CollectionDAO.class), additionalRepositories);
+    Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class), additionalRepositories);
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }
