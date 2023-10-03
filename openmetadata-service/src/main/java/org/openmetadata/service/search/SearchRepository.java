@@ -318,6 +318,9 @@ public interface SearchRepository {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException;
 
