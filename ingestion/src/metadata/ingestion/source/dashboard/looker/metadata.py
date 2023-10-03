@@ -56,6 +56,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
+    NoGitCredentials,
 )
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -92,7 +93,6 @@ from metadata.ingestion.source.dashboard.looker.models import (
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
 from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.readers.file.base import Reader
-from metadata.readers.file.bitbucket import BitBucketReader
 from metadata.readers.file.credentials import get_credentials_from_url
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
@@ -103,6 +103,7 @@ from pydantic import ValidationError
 from ingestion.src.metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
 )
+
 from ingestion.src.metadata.ingestion.lineage.models import (
     ConnectionTypeDialectMapper,
 )
@@ -196,7 +197,15 @@ class LookerSource(DashboardServiceSource):
         return cls(config, metadata_config)
 
     @staticmethod
-    def __init_repo(credentials) -> "LookMLRepo":
+    def __init_repo(
+        credentials: Optional[
+            Union[
+                NoGitCredentials,
+                GitHubCredentials,
+                BitBucketCredentials,
+            ]
+        ]
+    ) -> "LookMLRepo":
         repo_name = "{}/{}".format(
             credentials.repositoryOwner.__root__,
             credentials.repositoryName.__root__,
@@ -208,13 +217,21 @@ class LookerSource(DashboardServiceSource):
         _clone_repo(
             repo_name,
             repo_path,
-            credentials.token.__root__.get_secret_value(),
+            credentials,
             overwrite=True,
         )
         return LookMLRepo(name=repo_name, path=repo_path)
 
     def __read_manifest(
-        self, credentials, path="manifest.lkml"
+        self,
+        credentials: Optional[
+            Union[
+                NoGitCredentials,
+                GitHubCredentials,
+                BitBucketCredentials,
+            ]
+        ],
+        path="manifest.lkml",
     ) -> Optional[LookMLManifest]:
         file_path = "{}/{}".format(self._main_lookml_repo.path, path)
         if not os.path.isfile(file_path):
@@ -232,15 +249,13 @@ class LookerSource(DashboardServiceSource):
                         self._main_lookml_repo.path,
                         f"{IMPORTED_PROJECTS_DIR}/{remote_name}",
                     ),
-                    credentials.token.__root__.get_secret_value(),
+                    credentials,
                 )
 
             return manifest
 
     def prepare(self):
-        if self.service_connection.gitCredentials and isinstance(
-            self.service_connection.gitCredentials, GitHubCredentials
-        ):
+        if self.service_connection.gitCredentials:
             credentials = self.service_connection.gitCredentials
             self._main_lookml_repo = self.__init_repo(credentials)
             self._main__lookml_manifest = self.__read_manifest(credentials)

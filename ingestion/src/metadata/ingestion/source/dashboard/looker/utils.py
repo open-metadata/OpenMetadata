@@ -1,6 +1,16 @@
 import os
 import shutil
-from typing import Optional
+from typing import Optional, Union
+
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    NoGitCredentials,
+)
+from metadata.generated.schema.security.credentials.githubCredentials import (
+    GitHubCredentials,
+)
+from metadata.generated.schema.security.credentials.bitbucketCredentials import (
+    BitBucketCredentials,
+)
 
 from ingestion.src.metadata.utils.logger import ingestion_logger
 from git import Repo
@@ -9,17 +19,33 @@ logger = ingestion_logger()
 
 
 def _clone_repo(
-    repo_name: str, path: str, token: str, overwrite: Optional[bool] = False
+    repo_name: str,
+    path: str,
+    credential: Optional[
+        Union[
+            NoGitCredentials,
+            GitHubCredentials,
+            BitBucketCredentials,
+        ]
+    ],
+    overwrite: Optional[bool] = False,
 ):
     """Clone a repo to local `path`"""
     try:
         if overwrite:
             shutil.rmtree(path, ignore_errors=True)
         if os.path.isdir(path):
-            logger.debug(f"GitHubCloneReader::_clone: repo {path} already cloned.")
+            logger.debug(f"_clone_repo: repo {path} already cloned.")
             return
 
-        url = f"https://x-oauth-basic:{token}@github.com/{repo_name}.git"
+        url = None
+        if isinstance(credential, GitHubCredentials):
+            url = f"https://x-oauth-basic:{credential.token.__root__.get_secret_value()}@github.com/{repo_name}.git"
+        elif isinstance(credential, BitBucketCredentials):
+            url = f"https://x-token-auth::{credential.token.__root__.get_secret_value()}@github.com/{repo_name}.git"
+
+        assert url is not None
+
         Repo.clone_from(url, path)
 
         logger.info(f"repo {repo_name} cloned to {path}")
