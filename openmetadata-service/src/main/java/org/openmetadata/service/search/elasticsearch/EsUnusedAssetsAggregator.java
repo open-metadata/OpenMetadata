@@ -1,11 +1,10 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.search.TotalHits;
 import org.elasticsearch.search.SearchHit;
@@ -19,6 +18,7 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 @Slf4j
 public class EsUnusedAssetsAggregator extends DataInsightAggregatorInterface {
   final ObjectMapper mapper = new ObjectMapper();
+
   public EsUnusedAssetsAggregator(SearchHits hits, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(hits, dataInsightChartType);
   }
@@ -50,10 +50,7 @@ public class EsUnusedAssetsAggregator extends DataInsightAggregatorInterface {
         Double sizeInByte = (Double) data.get("sizeInByte");
         EntityReference entityReference = mapper.convertValue(data.get("entity"), EntityReference.class);
         UnusedAssets unusedAssets =
-            new UnusedAssets()
-                .withEntity(entityReference)
-                .withLastAccessedAt(lastAccessed)
-                .withSizeInBytes(sizeInByte);
+            new UnusedAssets().withEntity(entityReference).withLastAccessedAt(lastAccessed).withSizeInBytes(sizeInByte);
         dataList.add(unusedAssets);
       } catch (Exception e) {
         LOG.error("Error while parsing hits for UnusedData chart from ES", e);
