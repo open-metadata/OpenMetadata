@@ -25,6 +25,7 @@ import { withActivityFeed } from 'components/router/withActivityFeed';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
+import { Tag } from 'generated/entity/classification/tag';
 import { TagLabel, TagSource } from 'generated/type/schema';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
@@ -34,6 +35,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { restoreMlmodel } from 'rest/mlModelAPI';
 import { getEntityName } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { updateTierTag } from 'utils/TagsUtils';
 import AppState from '../../AppState';
 import { getMlModelDetailsPath } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -185,17 +187,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [mlModelDetail, mlModelDetail.owner]
   );
 
-  const onTierUpdate = async (newTier?: string) => {
-    const tierTag: Mlmodel['tags'] = newTier
-      ? [
-          ...mlModelTags,
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(mlModelDetail.tags ?? []);
+  const onTierUpdate = async (newTier?: Tag) => {
+    const tierTag = updateTierTag(mlModelDetail?.tags ?? [], newTier);
     const updatedMlModelDetails = {
       ...mlModelDetail,
       tags: tierTag,

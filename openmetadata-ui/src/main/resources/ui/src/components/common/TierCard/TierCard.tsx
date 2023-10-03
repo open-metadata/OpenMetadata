@@ -22,6 +22,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import Loader from 'components/Loader/Loader';
+import { Tag } from 'generated/entity/classification/tag';
 import { t } from 'i18next';
 import React, { useState } from 'react';
 import { getTags } from 'rest/tagAPI';
@@ -34,7 +35,10 @@ import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
 const { Panel } = Collapse;
 const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
-  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
+  const [tiers, setTiers] = useState<Array<Tag>>([]);
+  const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
+    []
+  );
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const getTierData = async () => {
@@ -57,9 +61,10 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               tier.description.indexOf('\n\n') + 1
             ),
           })) ?? [];
-        setTierData(tierData);
+        setTierCardData(tierData);
+        setTiers(data);
       } else {
-        setTierData([]);
+        setTierCardData([]);
       }
     } catch (err) {
       showErrorToast(
@@ -74,7 +79,8 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
   };
 
   const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
-    updateTier?.(value as string);
+    const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
+    updateTier?.(tier);
   };
 
   const clearTierSelection = () => {
@@ -108,7 +114,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               collapsible="icon"
               defaultActiveKey={currentTier}
               expandIconPosition="end">
-              {tierData.map((card) => (
+              {tierCardData.map((card) => (
                 <Panel
                   data-testid="card-list"
                   header={
@@ -145,7 +151,9 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) => visible && !tierData.length && getTierData()}>
+      onOpenChange={(visible) =>
+        visible && !tierCardData.length && getTierData()
+      }>
       {children}
     </Popover>
   );

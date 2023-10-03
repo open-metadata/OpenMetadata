@@ -33,6 +33,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getDashboardDetailsPath, PRIMERY_COLOR } from 'constants/constants';
 import { compare } from 'fast-json-patch';
+import { Tag } from 'generated/entity/classification/tag';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { TagSource } from 'generated/type/schema';
 import { groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
@@ -44,6 +45,7 @@ import { restoreDashboard } from 'rest/dashboardAPI';
 import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -250,17 +252,8 @@ const DashboardDetails = ({
     [owner]
   );
 
-  const onTierUpdate = async (newTier?: string) => {
-    const tierTag: Dashboard['tags'] = newTier
-      ? [
-          ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(dashboardDetails.tags ?? []);
+  const onTierUpdate = async (newTier?: Tag) => {
+    const tierTag = updateTierTag(dashboardDetails?.tags ?? [], newTier);
     const updatedDashboard = {
       ...dashboardDetails,
       tags: tierTag,

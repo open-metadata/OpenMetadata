@@ -25,7 +25,6 @@ import {
   getEntityId,
   getEntityName,
 } from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -106,7 +105,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           value: source.tier
             ? isString(source.tier)
               ? source.tier
-              : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+              : getEntityName(source.tier)
             : '',
         });
       }

@@ -41,6 +41,7 @@ const mockData: SearchedDataProps['data'] = [
         { ...TAG_CONSTANT, tagFQN: 'tags3' },
       ],
       tier: {
+        ...TAG_CONSTANT,
         tagFQN: 'tier1',
       },
     },
@@ -62,7 +63,7 @@ const mockData: SearchedDataProps['data'] = [
         { ...TAG_CONSTANT, tagFQN: 'tags2' },
         { ...TAG_CONSTANT, tagFQN: 'tags3' },
       ],
-      tier: { tagFQN: 'tier2' },
+      tier: { ...TAG_CONSTANT, tagFQN: 'tier2' },
     },
   },
   {
@@ -78,7 +79,7 @@ const mockData: SearchedDataProps['data'] = [
         { ...TAG_CONSTANT, tagFQN: 'tags2' },
         { ...TAG_CONSTANT, tagFQN: 'tags3' },
       ],
-      tier: { tagFQN: 'tier3' },
+      tier: { ...TAG_CONSTANT, tagFQN: 'tier3' },
     },
   },
 ];

@@ -41,6 +41,7 @@ import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
+import { Tag } from 'generated/entity/classification/tag';
 import { Container } from 'generated/entity/data/container';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
@@ -71,6 +72,7 @@ import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
 
 const ContainerPage = () => {
@@ -340,23 +342,12 @@ const ContainerPage = () => {
     [containerData, containerData?.owner]
   );
 
-  const handleUpdateTier = async (updatedTier?: string) => {
+  const handleUpdateTier = async (updatedTier?: Tag) => {
     try {
+      const tierTag = updateTierTag(containerData?.tags ?? [], updatedTier);
       const { tags: newTags, version } = await handleUpdateContainerData({
         ...(containerData as Container),
-        tags: [
-          ...getTagsWithoutTier(containerData?.tags ?? []),
-          ...(updatedTier
-            ? [
-                {
-                  tagFQN: updatedTier,
-                  labelType: LabelType.Manual,
-                  state: State.Confirmed,
-                  source: TagSource.Classification,
-                },
-              ]
-            : []),
-        ],
+        tags: tierTag,
       });
 
       setContainerData((prev) => ({

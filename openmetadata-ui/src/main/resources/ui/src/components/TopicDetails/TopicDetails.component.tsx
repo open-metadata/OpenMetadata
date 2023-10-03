@@ -30,6 +30,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { getTopicDetailsPath } from 'constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
+import { Tag } from 'generated/entity/classification/tag';
 import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { TagLabel } from 'generated/type/schema';
 import { EntityTags } from 'Models';
@@ -39,6 +40,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { restoreTopic } from 'rest/topicsAPI';
 import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -210,17 +212,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     [owner]
   );
 
-  const onTierUpdate = (newTier?: string) => {
-    const tierTag: Topic['tags'] = newTier
-      ? [
-          ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(topicDetails.tags ?? []);
+  const onTierUpdate = (newTier?: Tag) => {
+    const tierTag = updateTierTag(topicDetails?.tags ?? [], newTier);
     const updatedTopicDetails = {
       ...topicDetails,
       tags: tierTag,

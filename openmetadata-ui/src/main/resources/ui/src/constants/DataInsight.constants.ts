@@ -54,40 +54,6 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
 
 export const BAR_SIZE = 15;
 
-export const TIER_FILTER = {
-  [i18n.t('label.tier-number', { tier: 1 })]: {
-    key: 'Tier.Tier1',
-    label: 'Tier1',
-  },
-  [i18n.t('label.tier-number', { tier: 2 })]: {
-    key: 'Tier.Tier2',
-    label: 'Tier2',
-  },
-  [i18n.t('label.tier-number', { tier: 3 })]: {
-    key: 'Tier.Tier3',
-    label: 'Tier3',
-  },
-  [i18n.t('label.tier-number', { tier: 4 })]: {
-    key: 'Tier.Tier4',
-    label: 'Tier4',
-  },
-  [i18n.t('label.tier-number', { tier: 5 })]: {
-    key: 'Tier.Tier5',
-    label: 'Tier5',
-  },
-};
-
-export const TIER_DATA = {
-  'Tier.Tier1': i18n.t('label.tier-number', { tier: 1 }),
-  'Tier.Tier2': i18n.t('label.tier-number', { tier: 2 }),
-  'Tier.Tier3': i18n.t('label.tier-number', { tier: 3 }),
-  'Tier.Tier4': i18n.t('label.tier-number', { tier: 4 }),
-  'Tier.Tier5': i18n.t('label.tier-number', { tier: 5 }),
-  NoTier: i18n.t('label.no-entity', {
-    entity: i18n.t('label.tier'),
-  }),
-};
-
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
   endTs: getCurrentMillis(),

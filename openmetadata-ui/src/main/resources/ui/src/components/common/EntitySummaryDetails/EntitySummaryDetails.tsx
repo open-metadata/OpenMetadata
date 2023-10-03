@@ -18,6 +18,7 @@ import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.sv
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import classNames from 'classnames';
 import { DE_ACTIVE_COLOR } from 'constants/constants';
+import { Tag } from 'generated/entity/classification/tag';
 import { isString, isUndefined, lowerCase, noop, toLower } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { useMemo } from 'react';
@@ -38,7 +39,7 @@ export interface GetInfoElementsProps {
   updateOwner?: (value: Table['owner']) => void;
   tier?: TagLabel;
   currentTier?: string;
-  updateTier?: (value?: string) => void;
+  updateTier?: (value?: Tag) => void;
   currentOwner?: Dashboard['owner'];
   deleted?: boolean;
   allowTeamOwner?: boolean;

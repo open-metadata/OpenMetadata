@@ -33,6 +33,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import TasksDAGView from 'components/TasksDAGView/TasksDAGView';
 import { compare } from 'fast-json-patch';
+import { Tag } from 'generated/entity/classification/tag';
 import { TagSource } from 'generated/type/schema';
 import { groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions, TagOption } from 'Models';
@@ -43,6 +44,7 @@ import { postThread } from 'rest/feedsAPI';
 import { restorePipeline } from 'rest/pipelineAPI';
 import { getDecodedFqn } from 'utils/StringsUtils';
 import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
 import {
   getPipelineDetailsPath,
@@ -222,17 +224,8 @@ const PipelineDetails = ({
     [owner]
   );
 
-  const onTierUpdate = async (newTier?: string) => {
-    const tierTag: Pipeline['tags'] = newTier
-      ? [
-          ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(pipelineDetails.tags ?? []);
+  const onTierUpdate = async (newTier?: Tag) => {
+    const tierTag = updateTierTag(pipelineDetails?.tags ?? [], newTier);
     const updatedPipelineDetails = {
       ...pipelineDetails,
       tags: tierTag,

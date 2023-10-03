@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tag } from 'generated/entity/classification/tag';
 import { EntityReference } from 'generated/type/entityReference';
 import { TableDetail } from 'Models';
 import { ReactNode } from 'react';
@@ -23,7 +24,7 @@ export type CardWithListItems = {
 
 export interface TierCardProps {
   currentTier?: string;
-  updateTier?: (value?: string) => void;
+  updateTier?: (value?: Tag) => void;
   onSave?: (
     owner?: EntityReference,
     tier?: TableDetail['tier'],

@@ -15,7 +15,6 @@ import classNames from 'classnames';
 import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { EntityType } from 'enums/entity.enum';
 import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/type/entityLineage';
@@ -59,7 +58,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
         ? source.tier
-        : source.tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)?.[1] ?? '';
+        : getEntityName(source.tier);
       const profileName =
         source.owner?.type === OwnerType.USER ? source.owner?.name : undefined;
 

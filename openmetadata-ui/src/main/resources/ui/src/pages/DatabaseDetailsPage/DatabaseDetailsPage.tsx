@@ -40,6 +40,7 @@ import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { SearchIndex } from 'enums/search.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { Tag } from 'generated/entity/classification/tag';
 import { LabelType } from 'generated/entity/data/table';
 import { Include } from 'generated/type/include';
 import { State, TagSource } from 'generated/type/tagLabel';
@@ -68,6 +69,7 @@ import { getFeedCount, postThread } from 'rest/feedsAPI';
 import { searchQuery } from 'rest/searchAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDatabaseSchemaTable } from 'utils/DatabaseDetails.utils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { default as appState } from '../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
@@ -438,17 +440,8 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   const handleUpdateTier = useCallback(
-    (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(database?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(database?.tags ?? []);
+    (newTier?: Tag) => {
+      const tierTag = updateTierTag(database?.tags ?? [], newTier);
       const updatedTableDetails = {
         ...database,
         tags: tierTag,

@@ -21,6 +21,7 @@ import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { getExplorePath, PAGE_SIZE } from 'constants/constants';
 import { ExplorePageTabs } from 'enums/Explore.enum';
 import { SearchIndex } from 'enums/search.enum';
+import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import i18next from 'i18next';
 import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -38,6 +39,7 @@ import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
 import { formatSearchTagsResponse } from './APIUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
+import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -321,4 +323,21 @@ export const fetchTagsElasticSearch = async (
       total: res.hits.total.value,
     },
   };
+};
+
+export const createTierTag = (tag: Tag) => {
+  return {
+    displayName: tag.displayName,
+    name: tag.name,
+    description: tag.description,
+    tagFQN: tag.fullyQualifiedName,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  };
+};
+
+export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
+  return newTier
+    ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
+    : getTagsWithoutTier(oldTags);
 };

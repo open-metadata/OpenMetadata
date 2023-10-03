@@ -37,6 +37,7 @@ import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
+import { Tag } from 'generated/entity/classification/tag';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { Include } from 'generated/type/include';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
@@ -68,6 +69,7 @@ import {
 import { getTableList, TableListParams } from 'rest/tableAPI';
 import { getEntityMissingError } from 'utils/CommonUtils';
 import { getDecodedFqn } from 'utils/StringsUtils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { default as appState } from '../../AppState';
 import {
   getDatabaseSchemaDetailsPath,
@@ -392,17 +394,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const handleUpdateTier = useCallback(
-    async (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(databaseSchema?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(databaseSchema?.tags ?? []);
+    async (newTier?: Tag) => {
+      const tierTag = updateTierTag(databaseSchema?.tags ?? [], newTier);
       const updatedSchemaDetails = {
         ...databaseSchema,
         tags: tierTag,

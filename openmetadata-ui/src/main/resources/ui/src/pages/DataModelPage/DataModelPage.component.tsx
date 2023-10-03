@@ -25,9 +25,9 @@ import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
+import { Tag } from 'generated/entity/classification/tag';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Include } from 'generated/type/include';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -51,7 +51,8 @@ import { postThread } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityMissingError } from 'utils/CommonUtils';
 import { getSortedDataModelColumnTags } from 'utils/DataModelsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
+import { getTierTags } from 'utils/TableUtils';
+import { updateTierTag } from 'utils/TagsUtils';
 import { showErrorToast } from 'utils/ToastUtils';
 
 const DataModelsPage = () => {
@@ -227,23 +228,12 @@ const DataModelsPage = () => {
     [dataModelData, dataModelData?.owner]
   );
 
-  const handleUpdateTier = async (updatedTier?: string) => {
+  const handleUpdateTier = async (updatedTier?: Tag) => {
     try {
+      const tags = updateTierTag(dataModelData?.tags ?? [], updatedTier);
       const { tags: newTags, version } = await handleUpdateDataModelData({
         ...(dataModelData as DashboardDataModel),
-        tags: [
-          ...getTagsWithoutTier(dataModelData?.tags ?? []),
-          ...(updatedTier
-            ? [
-                {
-                  tagFQN: updatedTier,
-                  labelType: LabelType.Manual,
-                  state: State.Confirmed,
-                  source: TagSource.Classification,
-                },
-              ]
-            : []),
-        ],
+        tags,
       });
 
       setDataModelData((prev) => ({
