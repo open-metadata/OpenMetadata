@@ -14,8 +14,6 @@ for the profiler
 """
 from sqlalchemy import inspect, or_, text
 
-from metadata.profiler.orm.functions.modulo import ModuloFn
-from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import FLOAT_SET
 from metadata.profiler.processor.handle_partition import RANDOM_LABEL
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
