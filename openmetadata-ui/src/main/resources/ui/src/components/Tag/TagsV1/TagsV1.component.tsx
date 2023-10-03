@@ -71,14 +71,15 @@ const TagsV1 = ({
 
   const tagName = useMemo(
     () =>
-      tag.displayName
-        ? tag.displayName
-        : showOnlyName
-        ? tag.tagFQN
-            .split(FQN_SEPARATOR_CHAR)
-            .slice(-2)
-            .join(FQN_SEPARATOR_CHAR)
-        : tag.tagFQN,
+      tag.displayName ??
+      getTagDisplay(
+        showOnlyName
+          ? tag.tagFQN
+              .split(FQN_SEPARATOR_CHAR)
+              .slice(-2)
+              .join(FQN_SEPARATOR_CHAR)
+          : tag.tagFQN
+      ),
     [showOnlyName, tag.tagFQN]
   );
 
@@ -120,7 +121,7 @@ const TagsV1 = ({
             ellipsis
             className="m-0 tags-label"
             data-testid={`tag-${tag.tagFQN}`}>
-            {getTagDisplay(tagName)}
+            {tagName}
           </Typography.Paragraph>
         </div>
       </div>

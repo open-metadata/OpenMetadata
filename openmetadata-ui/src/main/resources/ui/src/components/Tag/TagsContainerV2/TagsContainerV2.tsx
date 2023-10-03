@@ -359,6 +359,30 @@ const TagsContainerV2 = ({
     handleAddClick,
   ]);
 
+  const tagBody = useMemo(() => {
+    if (isEditTags) {
+      return tagsSelectContainer;
+    } else {
+      return isHoriZontalLayout ? (
+        horizontalLayout
+      ) : (
+        <Row data-testid="entity-tags">
+          {addTagButton}
+          {renderTags}
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
+      );
+    }
+  }, [
+    isEditTags,
+    tagsSelectContainer,
+    addTagButton,
+    isHoriZontalLayout,
+    horizontalLayout,
+    renderTags,
+    editTagButton,
+  ]);
+
   useEffect(() => {
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
@@ -368,18 +392,7 @@ const TagsContainerV2 = ({
       className="w-full"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
-
-      {isEditTags ? (
-        tagsSelectContainer
-      ) : isHoriZontalLayout ? (
-        horizontalLayout
-      ) : (
-        <Row data-testid="entity-tags">
-          {addTagButton}
-          {renderTags}
-          {showInlineEditButton && <Col>{editTagButton}</Col>}
-        </Row>
-      )}
+      {tagBody}
 
       <Space align="baseline" className="m-t-xs w-full" size="middle">
         {showBottomEditButton && !showInlineEditButton && editTagButton}

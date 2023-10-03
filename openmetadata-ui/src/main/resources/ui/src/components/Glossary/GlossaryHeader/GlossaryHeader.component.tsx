@@ -143,6 +143,42 @@ const GlossaryHeader = ({
     [selectedData.votes, USER_ID]
   );
 
+  const icon = useMemo(() => {
+    if (isGlossary) {
+      return (
+        <GlossaryIcon
+          className="align-middle"
+          color={DE_ACTIVE_COLOR}
+          height={36}
+          name="folder"
+          width={32}
+        />
+      );
+    }
+
+    if ((selectedData as GlossaryTerm).style?.iconURL) {
+      return (
+        <img
+          className="align-middle"
+          data-testid="icon"
+          height={36}
+          src={(selectedData as GlossaryTerm).style?.iconURL}
+          width={32}
+        />
+      );
+    }
+
+    return (
+      <IconTerm
+        className="align-middle"
+        color={DE_ACTIVE_COLOR}
+        height={36}
+        name="doc"
+        width={32}
+      />
+    );
+  }, [selectedData, isGlossary]);
+
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
   }, [fqn]);
@@ -451,33 +487,7 @@ const GlossaryHeader = ({
             breadcrumb={breadcrumb}
             entityData={selectedData}
             entityType={EntityType.GLOSSARY_TERM}
-            icon={
-              isGlossary ? (
-                <GlossaryIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              ) : (selectedData as GlossaryTerm).style?.iconURL ? (
-                <img
-                  className="align-middle"
-                  data-testid="icon"
-                  height={36}
-                  src={(selectedData as GlossaryTerm).style?.iconURL}
-                  width={32}
-                />
-              ) : (
-                <IconTerm
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="doc"
-                  width={32}
-                />
-              )
-            }
+            icon={icon}
             serviceName=""
           />
         </Col>

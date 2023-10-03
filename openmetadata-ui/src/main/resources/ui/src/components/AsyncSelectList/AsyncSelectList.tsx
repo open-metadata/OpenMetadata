@@ -70,9 +70,8 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       .map((tag) => {
         const displayName = tag.data?.displayName;
         const parts = Fqn.split(tag.label);
-        const lastPartOfTag = displayName
-          ? displayName
-          : parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        const lastPartOfTag =
+          displayName ?? parts.slice(-1).join(FQN_SEPARATOR_CHAR);
         parts.pop();
 
         return {
@@ -130,7 +129,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         (option) => option.value === value
       );
 
-      return data ? data : { value, label: value };
+      return data ?? { value, label: value };
     });
 
     onChange?.(selectedValues);
