@@ -78,7 +78,7 @@ jest.mock('../../../rest/workflowAPI', () => ({
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
 }));
 
-jest.mock('hooks/useAirflowStatus', () => ({
+jest.mock('../../../hooks/useAirflowStatus', () => ({
   useAirflowStatus: jest
     .fn()
     .mockImplementation(() => ({ isAirflowAvailable: true })),
@@ -218,7 +218,7 @@ describe('Test Connection Component', () => {
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ...WORKFLOW_DETAILS,
-        response: { ...WORKFLOW_DETAILS.response, status: StatusType.Failed },
+        response: { ...WORKFLOW_DETAILS.response, status: StatusType.Failure },
       })
     );
     await act(async () => {
@@ -415,7 +415,7 @@ describe('Test Connection Component', () => {
               mandatory: false,
             },
           ],
-          status: StatusType.Failed,
+          status: StatusType.Failure,
         },
       })
     );

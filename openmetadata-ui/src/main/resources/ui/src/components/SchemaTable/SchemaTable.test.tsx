@@ -169,7 +169,7 @@ jest.mock(
 
 const mockTableScrollValue = jest.fn();
 
-jest.mock('constants/Table.constants', () => ({
+jest.mock('../../constants/Table.constants', () => ({
   get TABLE_SCROLL_VALUE() {
     return mockTableScrollValue();
   },

@@ -70,7 +70,7 @@ jest.mock('../../components/authentication/auth-provider/AuthProvider', () => {
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };
 });
-jest.mock('hooks/authHooks', () => {
+jest.mock('../../hooks/authHooks', () => {
   return {
     useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
   };

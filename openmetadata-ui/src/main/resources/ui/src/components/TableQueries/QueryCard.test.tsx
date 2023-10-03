@@ -73,8 +73,8 @@ jest.mock('./QueryUsedByOtherTable/QueryUsedByOtherTable.component', () => {
   return jest.fn().mockReturnValue(<>QueryUsedByOtherTable</>);
 });
 const mockOnCopyToClipBoard = jest.fn();
-jest.mock('hooks/useClipBoard', () => ({
-  ...jest.requireActual('hooks/useClipBoard'),
+jest.mock('../../hooks/useClipBoard', () => ({
+  ...jest.requireActual('../../hooks/useClipBoard'),
   useClipboard: jest
     .fn()
     .mockImplementation(() => ({ onCopyToClipBoard: mockOnCopyToClipBoard })),

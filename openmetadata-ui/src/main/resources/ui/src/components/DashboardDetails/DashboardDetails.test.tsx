@@ -17,13 +17,13 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { mockGlossaryList } from 'mocks/Glossary.mock';
-import { mockTagList } from 'mocks/Tags.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityTabs } from '../../enums/entity.enum';
 import { ChartType } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { EntityTabs } from '../enums/entity.enum';
+import { mockGlossaryList } from '../../mocks/Glossary.mock';
+import { mockTagList } from '../../mocks/Tags.mock';
 import DashboardDetails from './DashboardDetails.component';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
 

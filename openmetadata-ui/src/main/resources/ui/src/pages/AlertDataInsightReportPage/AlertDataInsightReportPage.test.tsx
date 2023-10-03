@@ -57,7 +57,7 @@ jest.mock('../../rest/alertsAPI', () => ({
   triggerEventById: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('hooks/authHooks', () => ({
+jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
 }));
 

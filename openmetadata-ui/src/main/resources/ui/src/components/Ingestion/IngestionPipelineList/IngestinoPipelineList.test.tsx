@@ -26,8 +26,8 @@ jest.mock(
   }
 );
 
-jest.mock('hooks/useAirflowStatus', () => ({
-  ...jest.requireActual('hooks/useAirflowStatus'),
+jest.mock('../../../hooks/useAirflowStatus', () => ({
+  ...jest.requireActual('../../../hooks/useAirflowStatus'),
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     isAirflowAvailable: false,
     isFetchingStatus: true,

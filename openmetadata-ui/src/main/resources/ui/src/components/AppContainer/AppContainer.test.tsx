@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { ROUTES } from 'constants/constants';
 import React from 'react';
 import { MemoryRouter, Switch } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
 import AppContainer from './AppContainer';
 
 jest.mock('../../AppState', () => ({

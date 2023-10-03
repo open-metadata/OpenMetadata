@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -21,6 +20,7 @@ import {
   mockNoChartData,
   mockTagChangeVersion,
 } from '../../mocks/dashboardVersion.mock';
+import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 

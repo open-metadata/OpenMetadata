@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { DOMAINS_LIST } from 'mocks/Domains.mock';
 import React from 'react';
+import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import DomainLeftPanel from './DomainLeftPanel.component';
 
 const mockHistory = {

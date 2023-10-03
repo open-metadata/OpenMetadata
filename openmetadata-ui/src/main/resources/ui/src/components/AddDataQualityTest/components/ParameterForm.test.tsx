@@ -12,14 +12,14 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import React from 'react';
+import { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   MOCK_TABLE_COLUMN_NAME_TO_EXIST,
   MOCK_TABLE_CUSTOM_SQL_QUERY,
   MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN,
   MOCK_TABLE_WITH_DATE_TIME_COLUMNS,
-} from 'mocks/TestSuite.mock';
-import React from 'react';
-import { TestDefinition } from '../../generated/tests/testDefinition';
+} from '../../../mocks/TestSuite.mock';
 import ParameterForm from './ParameterForm';
 
 jest.mock('../../components/schema-editor/SchemaEditor', () => {
