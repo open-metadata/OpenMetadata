@@ -42,8 +42,8 @@ import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
@@ -150,7 +150,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // as first step register all the repositories
-    Entity.initializeRepositories(collectionDAO);
+    Entity.initializeRepositories(collectionDAO, catalogConfig.getExtensionConfiguration().getRepositoriesPackage());
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
@@ -455,7 +455,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void registerResources(
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi, CollectionDAO daoObject) {
-    List<String> extensionResources =
+    Set<String> extensionResources =
         config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
     CollectionRegistry.initialize(extensionResources);
     CollectionRegistry.getInstance()

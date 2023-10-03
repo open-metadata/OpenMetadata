@@ -29,12 +29,21 @@
     }
   },
   "properties": {
+    "repositoriesPackage" : {
+      "description": "Repositories Package name for Extension.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
     "resourcePackage" : {
       "description": "Resources Package name for Extension.",
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "uniqueItems": true
     },
     "extensions": {
       "description": "Extension Class to Register in OM",

@@ -36,6 +36,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -237,13 +238,13 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(CollectionDAO collectionDAO) {
+  public static void initializeRepositories(CollectionDAO collectionDAO, Set<String> additionalRepositories) {
     if (!initializedRepositories) {
       Entity.collectionDAO = collectionDAO;
       tokenRepository = new TokenRepository(collectionDAO);
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
-      Set<Class<?>> repositories = getRepositories();
+      Set<Class<?>> repositories = getRepositories(additionalRepositories);
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
@@ -509,9 +510,21 @@ public final class Entity {
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
-  private static Set<Class<?>> getRepositories() {
+  private static Set<Class<?>> getRepositories(Set<String> additionalRepository) {
     // Get classes marked with @Repository annotation
+    Set<Class<?>> collectionClasses = new HashSet<>();
+
+    // Add Open-metadata Repos
     Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
-    return reflections.getTypesAnnotatedWith(Repository.class);
+    collectionClasses.addAll(reflections.getTypesAnnotatedWith(Repository.class));
+
+    // Add External Repositories if exists
+    if (!CommonUtil.nullOrEmpty(additionalRepository)) {
+      for (String packageName : additionalRepository) {
+        Reflections packageReflections = new Reflections(packageName);
+        collectionClasses.addAll(packageReflections.getTypesAnnotatedWith(Repository.class));
+      }
+    }
+    return collectionClasses;
   }
 }
