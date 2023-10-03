@@ -22,10 +22,12 @@ export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
-export const entityUrlMap = {
+export const ENTITY_URL_MAP = {
   team: 'settings/members/teams',
   user: 'users',
 };
+
+export type EntityUrlMapType = keyof typeof ENTITY_URL_MAP;
 
 export const confirmStateInitialValue = {
   state: false,
@@ -74,6 +76,14 @@ export enum EntityField {
   MESSAGE_SCHEMA = 'messageSchema',
   CHARTS = 'charts',
   DATA_MODEL = 'dataModel',
+  CONSTRAINT = 'constraint',
+  TABLE_CONSTRAINTS = 'tableConstraints',
+  PARTITIONS = 'partitions',
+  REPLICATION_FACTOR = 'replicationFactor',
+  SOURCE_URL = 'sourceUrl',
+  MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
+  EXPERTS = 'experts',
+  FIELDS = 'fields',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';

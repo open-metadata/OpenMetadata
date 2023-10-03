@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Column } from 'generated/entity/data/table';
@@ -19,6 +21,7 @@ import { EntityReference } from 'generated/entity/type';
 import { EntityTags } from 'Models';
 
 export interface DataModelDetailsProps {
+  updateDataModelDetailsState?: (data: DataAssetWithDomains) => void;
   dataModelData: DashboardDataModel;
   dataModelPermissions: OperationPermission;
   fetchDataModel: () => void;
@@ -29,8 +32,10 @@ export interface DataModelDetailsProps {
   handleUpdateTier: (tier?: string) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;
   handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
   onUpdateDataModel: (
     updatedDataModel: DashboardDataModel,
     key: keyof DashboardDataModel
   ) => Promise<void>;
+  handleToggleDelete: () => void;
 }

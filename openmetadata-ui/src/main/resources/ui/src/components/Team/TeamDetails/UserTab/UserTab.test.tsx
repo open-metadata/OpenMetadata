@@ -109,8 +109,8 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(await screen.findByText('Loader')).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).toBeInTheDocument();
     expect(
       await screen.findByTestId('user-selectable-list')
     ).toBeInTheDocument();
@@ -118,10 +118,10 @@ describe('UserTab', () => {
     expect(await screen.findByText('Searchbar')).toBeInTheDocument();
   });
 
-  it('Pagination should visible if total value is greater then 15', async () => {
+  it('Pagination should visible if total value is greater then 25', async () => {
     render(
       <BrowserRouter>
-        <UserTab {...props} paging={{ total: 16 }} />
+        <UserTab {...props} paging={{ total: 26 }} />
       </BrowserRouter>
     );
 

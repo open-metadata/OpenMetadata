@@ -32,7 +32,6 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -48,6 +47,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         "",
         "");
     quoteFqn = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -68,7 +68,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void prepare(Classification entity) {
+  public void prepare(Classification entity, boolean update) {
     /* Nothing to do */
   }
 
@@ -112,7 +112,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
+      recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
 

@@ -14,7 +14,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { tableVersionMockProps } from '../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
 
@@ -41,10 +40,6 @@ jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
-);
-
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('components/Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -115,37 +110,6 @@ describe('TableVersion tests', () => {
     expect(versionTable).toBeNull();
   });
 
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <TableVersion
-          {...tableVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-    const loader = screen.queryByText('Loader');
-    const dataAssetsVersionHeader = screen.queryByText(
-      'DataAssetsVersionHeader'
-    );
-    const schemaTabLabel = screen.queryByText('label.schema');
-    const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
-    const versionTable = screen.queryByText('VersionTable');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(loader).toBeNull();
-    expect(entityVersionTimeLine).toBeNull();
-    expect(dataAssetsVersionHeader).toBeNull();
-    expect(schemaTabLabel).toBeNull();
-    expect(customPropertyTabLabel).toBeNull();
-    expect(versionTable).toBeNull();
-  });
-
   it('Should update url on click of tab', async () => {
     await act(async () => {
       render(<TableVersion {...tableVersionMockProps} />);
@@ -166,34 +130,5 @@ describe('TableVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
-  });
-
-  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
-    await act(async () => {
-      render(
-        <TableVersion
-          {...tableVersionMockProps}
-          entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />
-      );
-    });
-
-    const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
-    );
-    const versionTable = screen.getByText('VersionTable');
-    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
-
-    expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(versionTable).toBeInTheDocument();
-    expect(errorPlaceHolder).toBeNull();
-
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
-
-    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });

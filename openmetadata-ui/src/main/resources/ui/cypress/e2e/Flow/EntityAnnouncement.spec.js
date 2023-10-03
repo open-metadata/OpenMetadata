@@ -12,11 +12,7 @@
  */
 
 import {
-  getCurrentLocaleDate,
-  getFutureLocaleDateFromCurrentDate,
-} from '../../../src/utils/TimeUtils';
-import {
-  descriptionBox,
+  addAnnouncement,
   interceptURL,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
@@ -27,108 +23,6 @@ describe('Entity Announcement', () => {
   beforeEach(() => {
     cy.login();
   });
-
-  const createAnnouncement = (title, startDate, endDate, description) => {
-    cy.get('[data-testid="add-announcement"]').should('be.visible').click();
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .contains('Make an announcement');
-    cy.get('.ant-modal-body').should('be.visible');
-
-    cy.get('#title').should('be.visible').type(title);
-    cy.get('#startDate').should('be.visible').type(startDate);
-    cy.get('#endtDate').should('be.visible').type(endDate);
-    cy.get(descriptionBox).type(description);
-
-    cy.get('[id="announcement-submit"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
-  };
-
-  const addAnnouncement = (value) => {
-    interceptURL('GET', '/api/v1/permissions/*/name/*', 'entityPermission');
-    interceptURL('GET', '/api/v1/feed/count?entityLink=*', 'entityFeed');
-    interceptURL('GET', `/api/v1/${value.entity}/name/*`, 'getEntityDetails');
-    interceptURL('POST', '/api/v1/feed', 'waitForAnnouncement');
-    interceptURL(
-      'GET',
-      '/api/v1/feed?entityLink=*type=Announcement',
-      'announcementFeed'
-    );
-
-    visitEntityDetailsPage(value.term, value.serviceName, value.entity);
-    cy.get('[data-testid="manage-button"]').click();
-    cy.get('[data-testid="announcement-button"]').click();
-
-    cy.wait('@announcementFeed').then((res) => {
-      const data = res.response.body.data;
-
-      if (data.length > 0) {
-        const token = localStorage.getItem('oidcIdToken');
-        data.map((feed) => {
-          cy.request({
-            method: 'DELETE',
-            url: `/api/v1/feed/${feed.id}`,
-            headers: { Authorization: `Bearer ${token}` },
-          }).then((response) => {
-            expect(response.status).to.eq(200);
-          });
-        });
-        cy.reload();
-        cy.get('[data-testid="manage-button"]').click();
-        cy.get('[data-testid="announcement-button"]').click();
-      }
-      const startDate = getCurrentLocaleDate();
-      const endDate = getFutureLocaleDateFromCurrentDate(5);
-
-      cy.get('[data-testid="announcement-error"]')
-        .should('be.visible')
-        .contains('No Announcements, Click on add announcement to add one.');
-
-      // Create Active Announcement
-      createAnnouncement(
-        'Announcement Title',
-        startDate,
-        endDate,
-        'Announcement Description'
-      );
-
-      // wait time for success toast message
-      verifyResponseStatusCode('@waitForAnnouncement', 201);
-      cy.get('.Toastify__close-button >').should('be.visible').click();
-      // Create InActive Announcement
-      const InActiveStartDate = getFutureLocaleDateFromCurrentDate(6);
-      const InActiveEndDate = getFutureLocaleDateFromCurrentDate(11);
-
-      createAnnouncement(
-        'InActive Announcement Title',
-        InActiveStartDate,
-        InActiveEndDate,
-        'InActive Announcement Description'
-      );
-
-      // wait time for success toast message
-      verifyResponseStatusCode('@waitForAnnouncement', 201);
-      cy.get('.Toastify__close-button >').should('be.visible').click();
-      // check for inActive-announcement
-      cy.get('[data-testid="inActive-announcements"]').should('be.visible');
-
-      // close announcement drawer
-      cy.get('[data-testid="title"] .anticon-close')
-        .should('be.visible')
-        .click();
-
-      // reload page to get the active announcement card
-      cy.reload();
-      verifyResponseStatusCode('@entityPermission', 200);
-      verifyResponseStatusCode('@getEntityDetails', 200);
-      verifyResponseStatusCode('@entityFeed', 200);
-
-      // check for announcement card on entity page
-      cy.get('[data-testid="announcement-card"]').should('be.visible');
-    });
-  };
 
   ANNOUNCEMENT_ENTITIES.forEach((entity) => {
     it(`Add announcement and verify the active announcement for ${entity.entity}`, () => {

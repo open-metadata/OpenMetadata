@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CHART;
 import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.service.util.EntityUtil;
 
 public class DataInsightChartRepository extends EntityRepository<DataInsightChart> {
@@ -59,6 +60,9 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "PageViewsByEntities",
           "MostViewedEntities");
 
+  public static final List<String> SUPPORTS_NULL_DATE_RANGE =
+      Arrays.asList(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString());
+
   public DataInsightChartRepository(CollectionDAO dao) {
     super(COLLECTION_PATH, DATA_INSIGHT_CHART, DataInsightChart.class, dao.dataInsightChartDAO(), dao, "", "");
   }
@@ -74,7 +78,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   }
 
   @Override
-  public void prepare(DataInsightChart entity) {
+  public void prepare(DataInsightChart entity, boolean update) {
     /* Nothing to do */
   }
 

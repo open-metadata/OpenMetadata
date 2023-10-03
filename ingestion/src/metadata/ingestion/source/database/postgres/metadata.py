@@ -34,7 +34,8 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -200,7 +201,9 @@ class PostgresSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Fetch Tags
         """
@@ -221,9 +224,14 @@ class PostgresSource(CommonDbSourceService):
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,
                     tag_description="Postgres Tag Value",
-                    classification_desciption="Postgres Tag Name",
+                    classification_description="Postgres Tag Name",
                 )
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classification",
+                    error=f"Skipping Policy Tag: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )

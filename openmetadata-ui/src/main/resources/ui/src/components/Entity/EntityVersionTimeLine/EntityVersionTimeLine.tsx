@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 
-import { Divider, Typography } from 'antd';
+import { Col, Divider, Drawer, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import CloseIcon from 'components/Modals/CloseIcon.component';
 import { EntityHistory } from 'generated/type/entityHistory';
 import { capitalize, toString } from 'lodash';
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSummary, isMajorVersion } from 'utils/EntityVersionUtils';
 
 type Props = {
   versionList: EntityHistory;
   currentVersion: string;
-  show?: boolean;
   versionHandler: (v: string) => void;
   onBack: () => void;
 };
@@ -32,13 +31,13 @@ type VersionType = 'all' | 'major' | 'minor';
 const EntityVersionTimeLine: React.FC<Props> = ({
   versionList = {} as EntityHistory,
   currentVersion,
-  show = false,
   versionHandler,
   onBack,
 }: Props) => {
   const { t } = useTranslation();
   const [versionType] = useState<VersionType>('all');
-  const getVersionList = () => {
+
+  const versions = useMemo(() => {
     let versionTypeList = [];
     const list = versionList.versions ?? [];
 
@@ -89,9 +88,10 @@ const EntityVersionTimeLine: React.FC<Props> = ({
             ) && versionType === 'all'
           );
         };
+        const versionText = `v${parseFloat(currV?.version).toFixed(1)}`;
 
         return (
-          <Fragment key={i}>
+          <Fragment key={currV.version}>
             {i === 0 ? (
               <div className="timeline-content cursor-pointer">
                 <div className="timeline-wrapper">
@@ -113,7 +113,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                       major: majorVersionChecks(),
                     }
                   )}
-                  data-testid="select-version"
+                  data-testid={`version-selector-${versionText}`}
                 />
                 <span className={classNames('timeline-line')} />
               </div>
@@ -122,7 +122,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                   className={classNames('d-flex font-medium', {
                     'text-primary': toString(currV?.version) === currentVersion,
                   })}>
-                  <span>{`v${parseFloat(currV?.version).toFixed(1)}`}</span>
+                  <span>{versionText}</span>
                   {majorVersionChecks() ? (
                     <span
                       className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
@@ -163,18 +163,35 @@ const EntityVersionTimeLine: React.FC<Props> = ({
         })}
       </p>
     );
-  };
+  }, [versionList, currentVersion, versionHandler, versionType]);
 
   return (
-    <div className={classNames('timeline-drawer', { open: show })}>
-      <header className="d-flex justify-between">
-        <p className="font-medium ">{t('label.version-plural-history')}</p>
-        <CloseIcon handleCancel={onBack} />
-      </header>
-      <Divider className="m-t-sm m-b-md" />
-
-      <div>{getVersionList()}</div>
-    </div>
+    <Drawer
+      destroyOnClose
+      open
+      className="versions-list-container"
+      closable={false}
+      getContainer={false}
+      mask={false}
+      maskClosable={false}
+      title={
+        <>
+          <Row className="p-b-xss" justify="space-between">
+            <Col>
+              <Typography.Text className="font-medium">
+                {t('label.version-plural-history')}
+              </Typography.Text>
+            </Col>
+            <Col>
+              <CloseIcon handleCancel={onBack} />
+            </Col>
+          </Row>
+          <Divider className="m-0" />
+        </>
+      }
+      width={330}>
+      {versions}
+    </Drawer>
   );
 };
 

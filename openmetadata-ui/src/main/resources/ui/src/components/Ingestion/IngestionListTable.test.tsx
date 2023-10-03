@@ -32,13 +32,11 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
 }));
 
 describe('IngestionListTable tests', () => {
-  it('Should display the loader if the isLoading is true', () => {
+  it('Should display the loader if the isLoading is true', async () => {
     render(<IngestionListTable {...mockIngestionListTableProps} isLoading />);
 
-    const ingestionListTable = screen.getByTestId('ingestion-list-table');
-    const loader = screen.getByText('loader');
+    const loader = await screen.findByTestId('skeleton-table');
 
-    expect(ingestionListTable).toBeInTheDocument();
     expect(loader).toBeInTheDocument();
   });
 
@@ -74,7 +72,7 @@ describe('IngestionListTable tests', () => {
       <IngestionListTable
         {...mockIngestionListTableProps}
         paging={{
-          total: 14,
+          total: 16,
           after: 'after',
         }}
       />

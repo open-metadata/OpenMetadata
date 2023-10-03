@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.pipeline.PipelineServiceResource;
 
+@Slf4j
 public class PipelineServiceRepository extends ServiceEntityRepository<PipelineService, PipelineConnection> {
 
   public PipelineServiceRepository(CollectionDAO dao) {
@@ -28,6 +30,8 @@ public class PipelineServiceRepository extends ServiceEntityRepository<PipelineS
         dao,
         dao.pipelineServiceDAO(),
         PipelineConnection.class,
+        "",
         ServiceType.PIPELINE);
+    supportsSearch = true;
   }
 }

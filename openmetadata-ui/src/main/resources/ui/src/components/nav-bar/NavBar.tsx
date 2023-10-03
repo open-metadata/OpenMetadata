@@ -14,19 +14,23 @@
 import {
   Badge,
   Button,
+  Col,
   Dropdown,
   Input,
   InputRef,
   Popover,
+  Row,
   Select,
   Space,
 } from 'antd';
 import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
+import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
 import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from 'components/AppBar/SearchOptions';
 import Suggestions from 'components/AppBar/Suggestions';
 import BrandImage from 'components/common/BrandImage/BrandImage';
+import { useDomainProvider } from 'components/Domain/DomainProvider/DomainProvider';
 import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
 import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
@@ -103,6 +107,8 @@ const NavBar = ({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
+  const { domainOptions, activeDomain, updateActiveDomain } =
+    useDomainProvider();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -310,6 +316,11 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
+  const handleDomainChange = useCallback(({ key }) => {
+    updateActiveDomain(key);
+    refreshPage();
+  }, []);
+
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
     refreshPage();
@@ -341,7 +352,10 @@ const NavBar = ({
             width={30}
           />
         </Link>
-        <div className="m-auto relative" ref={searchContainerRef}>
+        <div
+          className="m-auto relative"
+          data-testid="navbar-search-container"
+          ref={searchContainerRef}>
           <Popover
             content={
               !isTourRoute &&
@@ -430,7 +444,31 @@ const NavBar = ({
           </Popover>
         </div>
 
-        <Space size={24}>
+        <Space align="center" size={24}>
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: domainOptions,
+              onClick: handleDomainChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={6}>
+              <Col className="flex-center">
+                <DomainIcon
+                  className="d-flex text-base-color"
+                  height={18}
+                  name="folder"
+                  width={18}
+                />
+              </Col>
+              <Col>{activeDomain}</Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
+
           <Dropdown
             destroyPopupOnHide
             className="cursor-pointer"
@@ -468,14 +506,20 @@ const NavBar = ({
             }}
             placement="bottomRight"
             trigger={['click']}>
-            <Space size={2}>
-              {upperCase((language || SupportedLocales.English).split('-')[0])}
-              <DropDownIcon className="m-y-xs" height={14} width={14} />
-            </Space>
+            <Row gutter={2}>
+              <Col>
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}
+              </Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
           </Dropdown>
 
           <Dropdown
-            className="cursor-pointer"
+            className="cursor-pointer m-t-xss"
             menu={{ items: supportDropdown }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"

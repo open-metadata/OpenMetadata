@@ -10,11 +10,7 @@
 #  limitations under the License.
 
 """
-Define Random Number function
-
-Returns a column with random values
-between 0 and 100 to help us draw sample
-data.
+Define Sum function
 """
 
 from sqlalchemy.ext.compiler import compiles

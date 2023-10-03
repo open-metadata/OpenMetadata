@@ -97,4 +97,4 @@ export const updateContainerColumnDescription = (
 };
 
 export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}`;
+${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAIN}`;

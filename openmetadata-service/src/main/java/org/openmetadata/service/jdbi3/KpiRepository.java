@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.ChartParameterValues;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
@@ -24,6 +23,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -56,7 +56,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
   }
 
   @Override
-  public void prepare(Kpi kpi) {
+  public void prepare(Kpi kpi, boolean update) {
     // validate targetDefinition
     DataInsightChart chart = Entity.getEntity(kpi.getDataInsightChart(), "metrics", Include.NON_DELETED);
     kpi.setDataInsightChart(chart.getEntityReference());
@@ -99,27 +99,21 @@ public class KpiRepository extends EntityRepository<Kpi> {
     addRelationship(kpi.getId(), kpi.getDataInsightChart().getId(), KPI, DATA_INSIGHT_CHART, Relationship.USES);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> addKpiResult(UriInfo uriInfo, String fqn, KpiResult kpiResult) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
-
-    String storedKpiResult =
-        getExtensionAtTimestamp(kpi.getFullyQualifiedName(), KPI_RESULT_EXTENSION, kpiResult.getTimestamp());
     storeTimeSeries(
         kpi.getFullyQualifiedName(),
         KPI_RESULT_EXTENSION,
         "kpiResult",
         JsonUtils.pojoToJson(kpiResult),
-        kpiResult.getTimestamp(),
-        storedKpiResult != null);
-    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult, storedKpiResult);
+        kpiResult.getTimestamp());
+    ChangeDescription change = addKpiResultChangeDescription(kpi.getVersion(), kpiResult);
     ChangeEvent changeEvent = getChangeEvent(withHref(uriInfo, kpi), change, entityType, kpi.getVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
-  @Transaction
   public RestUtil.PutResponse<?> deleteKpiResult(String fqn, Long timestamp) {
     // Validate the request content
     Kpi kpi = dao.findEntityByName(fqn);
@@ -136,11 +130,10 @@ public class KpiRepository extends EntityRepository<Kpi> {
         String.format("Failed to find kpi result for %s at %s", kpi.getName(), timestamp));
   }
 
-  private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue, Object oldValue) {
-    FieldChange fieldChange =
-        new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue).withOldValue(oldValue);
+  private ChangeDescription addKpiResultChangeDescription(Double version, Object newValue) {
+    FieldChange fieldChange = new FieldChange().withName(KPI_RESULT_FIELD).withNewValue(newValue);
     ChangeDescription change = new ChangeDescription().withPreviousVersion(version);
-    change.getFieldsUpdated().add(fieldChange);
+    change.getFieldsAdded().add(fieldChange);
     return change;
   }
 
@@ -159,8 +152,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return JsonUtils.readValue(getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
-  public ResultList<KpiResult> getKpiResults(
-      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+  public ResultList<KpiResult> getKpiResults(String fqn, Long startTs, Long endTs, OrderBy orderBy) {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(

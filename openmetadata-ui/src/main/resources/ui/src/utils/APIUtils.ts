@@ -12,6 +12,8 @@
  */
 
 import { Tag } from 'generated/entity/classification/tag';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { Domain } from 'generated/entity/domains/domain';
 import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
@@ -27,8 +29,11 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.GLOSSARY
   | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
@@ -39,7 +44,7 @@ export const formatDataResponse = (
     const newData = {} as FormattedTableData;
     const source = hit._source;
     newData.index = hit._index;
-    newData.id = hit._source.id;
+    newData.id = hit._source.id ?? '';
     newData.name = hit._source.name;
     newData.displayName = hit._source.displayName ?? '';
     newData.description = hit._source.description ?? '';
@@ -112,6 +117,45 @@ export const formatTeamsResponse = (
       isJoinable: d._source.isJoinable,
       teamType: d._source.teamType,
       href: d._source.href,
+    };
+  });
+};
+
+export const formatDomainsResponse = (
+  hits: SearchResponse<SearchIndex.DOMAIN>['hits']['hits']
+): Domain[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      description: d._source.description,
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domainType: d._source.domainType,
+      experts: d._source.experts,
+      parent: d._source.parent,
+      owner: d._source.owner,
+    };
+  });
+};
+
+export const formatDataProductResponse = (
+  hits: SearchResponse<SearchIndex.DATA_PRODUCT>['hits']['hits']
+): DataProduct[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName ?? '',
+      description: d._source.description ?? '',
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domain: d._source.domain,
+      experts: d._source.experts,
+      owner: d._source.owner,
     };
   });
 };

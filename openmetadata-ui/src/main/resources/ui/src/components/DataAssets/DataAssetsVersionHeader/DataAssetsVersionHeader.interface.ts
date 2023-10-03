@@ -12,7 +12,11 @@
  */
 
 import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
+import { EntityType } from 'enums/entity.enum';
+import { Database } from 'generated/entity/data/database';
+import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { EntityReference } from 'generated/entity/type';
+import { ServicesType } from 'interface/service.interface';
 import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
 
 export interface DataAssetsVersionHeaderProps {
@@ -20,9 +24,12 @@ export interface DataAssetsVersionHeaderProps {
   version: string;
   deleted: boolean;
   displayName: string;
-  currentVersionData: VersionData;
+  serviceName?: string;
+  currentVersionData: VersionData | ServicesType | Database | DatabaseSchema;
   ownerDisplayName: React.ReactNode;
+  domainDisplayName?: React.ReactNode;
   tierDisplayName: React.ReactNode;
   ownerRef: EntityReference | undefined;
   onVersionClick: () => void;
+  entityType: EntityType;
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty, round, uniqueId } from 'lodash';
@@ -37,7 +37,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -59,14 +59,23 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
   kpi: Kpi | undefined;
   selectedDays: number;
+  dataInsightChartName: DataInsightChartType;
+  header?: string;
 }
 
-const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
+const DescriptionInsight: FC<Props> = ({
+  chartFilter,
+  kpi,
+  selectedDays,
+  dataInsightChartName,
+  header,
+}) => {
   const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
     useState<DataInsightChartResult>();
 
@@ -84,7 +93,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
   } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesDescriptionByType?.data ?? [],
-      DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+      dataInsightChartName
     );
   }, [totalEntitiesDescriptionByType]);
 
@@ -103,8 +112,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
     try {
       const params = {
         ...chartFilter,
-        dataInsightChartName:
-          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+        dataInsightChartName,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
@@ -138,12 +146,12 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-description-percentage-card"
-      id={DataInsightChartType.PercentageOfEntitiesWithDescriptionByType}
+      id={dataInsightChartName}
       loading={isLoading}
       title={
         <PageHeader
           data={{
-            header: t('label.data-insight-description-summary'),
+            header,
             subHeader: t('message.field-insight', {
               field: t('label.description-lowercase'),
             }),
@@ -155,7 +163,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
           <Col span={DI_STRUCTURE.leftContainerSpan}>
             <ResponsiveContainer
               debounce={1}
-              id="description-summary-graph"
+              id={`${dataInsightChartName}-graph`}
               minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
@@ -181,7 +189,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {entities.map((entity) => (
+                {entities.map((entity, i) => (
                   <Line
                     dataKey={entity}
                     hide={
@@ -190,7 +198,7 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                         : false
                     }
                     key={entity}
-                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       entity === activeMouseHoverKey
@@ -206,34 +214,29 @@ const DescriptionInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {t('label.completed-entity', {
-                    entity: t('label.description'),
-                  })}
-                  {isPercentageGraph ? ' %' : ''}
-                </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
+                  label={`${t('label.completed-entity', {
+                    entity: t('label.description'),
+                  })}${isPercentageGraph ? ' %' : ''}`}
                   progress={Number(total)}
-                  showLabel={false}
                   suffix={isPercentageGraph ? '%' : ''}
                   target={targetValue}
                 />
               </Col>
-              {entities.map((entity) => {
+              {entities.map((entity, i) => {
                 return (
                   <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                    <EntitySummaryProgressBar
+                      entity={entity}
+                      label={`${round(latestData[entity] ?? 0, 2)}${
+                        isPercentageGraph ? '%' : ''
+                      }`}
+                      latestData={latestData}
                       progress={latestData[entity]}
-                      showLabel={false}
-                      startValue={round(latestData[entity] || 0, 2)}
-                      successValue={entity}
-                      suffix={isPercentageGraph ? '%' : ''}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   </Col>
                 );

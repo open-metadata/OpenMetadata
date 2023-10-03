@@ -17,10 +17,11 @@ import DashboardDetails from 'components/DashboardDetails/DashboardDetails.compo
 import Loader from 'components/Loader/Loader';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { updateChart } from 'rest/chartAPI';
@@ -29,6 +30,7 @@ import {
   getDashboardByFqn,
   patchDashboardDetails,
   removeFollower,
+  updateDashboardVotes,
 } from 'rest/dashboardAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getVersionPath } from '../../constants/constants';
@@ -59,7 +61,7 @@ const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardFQN } = useParams<{ dashboardFQN: string }>();
+  const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
@@ -281,6 +283,35 @@ const DashboardDetailsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDashboardDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDashboardVotes(id, data);
+      const details = await getDashboardByFqn(dashboardFQN, defaultFields);
+      setDashboardDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateDashboardDetailsState = useCallback((data) => {
+    const updatedData = data as Dashboard;
+
+    setDashboardDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {
       fetchDashboardDetail(dashboardFQN);
@@ -314,9 +345,12 @@ const DashboardDetailsPage = () => {
       dashboardDetails={dashboardDetails}
       fetchDashboard={() => fetchDashboardDetail(dashboardFQN)}
       followDashboardHandler={followDashboard}
+      handleToggleDelete={handleToggleDelete}
       unFollowDashboardHandler={unFollowDashboard}
+      updateDashboardDetailsState={updateDashboardDetailsState}
       versionHandler={versionHandler}
       onDashboardUpdate={onDashboardUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

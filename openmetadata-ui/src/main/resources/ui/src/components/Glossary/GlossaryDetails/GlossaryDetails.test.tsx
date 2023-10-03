@@ -40,6 +40,15 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <p>testActivityFeedTab</p>),
+  })
+);
+
 const mockProps = {
   glossary: mockedGlossaries[0],
   glossaryTerms: [],
@@ -58,6 +67,7 @@ const mockProps = {
   refreshGlossaryTerms: jest.fn(),
   onAddGlossaryTerm: jest.fn(),
   onEditGlossaryTerm: jest.fn(),
+  updateVote: jest.fn(),
 };
 
 describe('Test Glossary-details component', () => {

@@ -12,12 +12,13 @@
  */
 
 import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Divider, Row, Space, Table, Tooltip } from 'antd';
+import { Button, Divider, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import Table from 'components/common/Table/Table';
 import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import Loader from 'components/Loader/Loader';
 import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
@@ -27,6 +28,7 @@ import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider
 import cronstrue from 'cronstrue';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { EntityType } from 'enums/entity.enum';
+import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from 'generated/entity/data/table';
 import { Operation } from 'generated/entity/policies/policy';
 import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -127,14 +129,14 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     });
   };
 
-  const getAllIngestionWorkflows = async (paging?: string) => {
+  const getAllIngestionWorkflows = async () => {
     try {
       setIsLoading(true);
-      const response = await getIngestionPipelines(
-        ['owner', 'pipelineStatuses'],
-        testSuiteFQN,
-        paging
-      );
+      const response = await getIngestionPipelines({
+        arrQueryFields: ['owner', 'pipelineStatuses'],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+      });
       setTestSuitePipelines(response.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -221,7 +223,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
       showSuccessToast(
         `${t('label.pipeline')}  ${
           reDeployed ? t('label.re-deploy') : t('label.deployed')
-        }  ${t('label.successfully-small')}`
+        }  ${t('label.successfully-lowercase')}`
       );
     } catch (error) {
       setCurrDeployId({ id: '', state: '' });
@@ -578,7 +580,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
               {t('label.add')}
             </Button>
           }
-          className="mt-24"
           heading={t('label.pipeline')}
           permission={createPermission}
           type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
@@ -589,11 +590,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [testSuiteFQN]
   );
 
-  if (isLoading || isFetchingStatus) {
-    return <Loader />;
-  }
-
-  if (!isAirflowAvailable) {
+  if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <ErrorPlaceHolderIngestion />;
   }
 
@@ -606,6 +603,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           ...test,
           key: test.name,
         }))}
+        loading={isLoading || isFetchingStatus}
         locale={{ emptyText: errorPlaceholder }}
         pagination={false}
         rowKey="name"

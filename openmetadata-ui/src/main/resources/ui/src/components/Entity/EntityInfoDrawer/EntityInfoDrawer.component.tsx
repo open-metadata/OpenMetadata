@@ -19,20 +19,25 @@ import DashboardSummary from 'components/Explore/EntitySummaryPanel/DashboardSum
 import DataModelSummary from 'components/Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
 import MlModelSummary from 'components/Explore/EntitySummaryPanel/MlModelSummary/MlModelSummary.component';
 import PipelineSummary from 'components/Explore/EntitySummaryPanel/PipelineSummary/PipelineSummary.component';
+import SearchIndexSummary from 'components/Explore/EntitySummaryPanel/SearchIndexSummary/SearchIndexSummary.component';
+import StoredProcedureSummary from 'components/Explore/EntitySummaryPanel/StoredProcedureSummary/StoredProcedureSummary.component';
 import TableSummary from 'components/Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
 import TopicSummary from 'components/Explore/EntitySummaryPanel/TopicSummary/TopicSummary.component';
 import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
 import { Container } from 'generated/entity/data/container';
 import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { SearchIndex } from 'generated/entity/data/searchIndex';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { getDashboardByFqn } from 'rest/dashboardAPI';
 import { getDataModelsByName } from 'rest/dataModelsAPI';
 import { getMlModelByFQN } from 'rest/mlModelAPI';
 import { getPipelineByFqn } from 'rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
 import { getContainerByName } from 'rest/storageAPI';
+import { getStoredProceduresByName } from 'rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from 'rest/tableAPI';
 import { getTopicByFqn } from 'rest/topicsAPI';
 import { EntityType } from '../../../enums/entity.enum';
@@ -47,7 +52,6 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';
 import './EntityInfoDrawer.style.less';
@@ -58,7 +62,6 @@ const EntityInfoDrawer = ({
   selectedNode,
   isMainNode = false,
 }: LineageDrawerProps) => {
-  const { t } = useTranslation();
   const [entityDetail, setEntityDetail] = useState<EntityDetailUnion>(
     {} as EntityDetailUnion
   );
@@ -130,16 +133,23 @@ const EntityInfoDrawer = ({
 
           break;
         }
+
+        case EntityType.STORED_PROCEDURE: {
+          response = await getStoredProceduresByName(encodedFqn, 'owner,tags');
+
+          break;
+        }
+
+        case EntityType.SEARCH_INDEX: {
+          response = await getSearchIndexDetailsByFQN(encodedFqn, 'owner,tags');
+
+          break;
+        }
+
         default:
           break;
       }
       setEntityDetail(response);
-    } catch (error) {
-      showErrorToast(
-        t('server.error-selected-node-name-details', {
-          selectedNodeName: selectedNode.name,
-        })
-      );
     } finally {
       setIsLoading(false);
     }
@@ -216,6 +226,26 @@ const EntityInfoDrawer = ({
           <DataModelSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as DashboardDataModel}
+            isLoading={isLoading}
+            tags={tags}
+          />
+        );
+
+      case EntityType.STORED_PROCEDURE:
+        return (
+          <StoredProcedureSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as StoredProcedure}
+            isLoading={isLoading}
+            tags={tags}
+          />
+        );
+
+      case EntityType.SEARCH_INDEX:
+        return (
+          <SearchIndexSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as SearchIndex}
             isLoading={isLoading}
             tags={tags}
           />

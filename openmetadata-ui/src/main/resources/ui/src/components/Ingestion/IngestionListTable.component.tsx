@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Table, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import NextPrevious from 'components/common/next-previous/NextPrevious';
-import Loader from 'components/Loader/Loader';
+import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
+import Table from 'components/common/Table/Table';
 import cronstrue from 'cronstrue';
-import { Paging } from 'generated/type/paging';
 import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,14 +50,16 @@ function IngestionListTable({
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${paging[cursorType as keyof Paging]}`;
+  const ingestionPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
-    onIngestionWorkflowsUpdate(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
+      onIngestionWorkflowsUpdate(pagingString);
+      setIngestionCurrentPage(currentPage);
+    }
   };
 
   const renderNameField = (text: string, record: IngestionPipeline) => {
@@ -181,16 +183,17 @@ function IngestionListTable({
   );
 
   return (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
         columns={tableColumn}
         data-testid="ingestion-list-table"
         dataSource={ingestionData}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader size="small" />,
-        }}
+        loading={isLoading}
         locale={{
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,
@@ -209,10 +212,9 @@ function IngestionListTable({
           pageSize={PAGE_SIZE}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          totalCount={paging.total}
         />
       )}
-    </div>
+    </Space>
   );
 }
 

@@ -35,7 +35,7 @@ describe('Create a team and add that team as a owner of the entity', () => {
     cy.login();
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=15&index=team_search_index`,
+      `/api/v1/search/query?q=*${teamName}***teamType:Group&from=0&size=25&index=team_search_index`,
       'waitForTeams'
     );
     interceptURL('PATCH', `/api/v1/tables/*`, 'updateTable');
@@ -48,7 +48,9 @@ describe('Create a team and add that team as a owner of the entity', () => {
   it('Add a group team type and assign it as a owner of the entity', () => {
     interceptURL('GET', '/api/v1/teams/name/*', 'getTeams');
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     // Clicking on teams
     cy.get('[data-testid="settings-left-panel"]')

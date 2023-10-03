@@ -14,7 +14,7 @@
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -37,7 +37,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
@@ -50,10 +50,9 @@ import {
   renderLegend,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import CustomStatistic from './CustomStatistic';
 import './DataInsightDetail.less';
-import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -151,7 +150,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {entities.map((entity) => (
+                {entities.map((entity, i) => (
                   <Line
                     dataKey={entity}
                     hide={
@@ -160,7 +159,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                         : false
                     }
                     key={entity}
-                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       entity === activeMouseHoverKey
@@ -174,33 +173,14 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
             </ResponsiveContainer>
           </Col>
           <Col span={DI_STRUCTURE.rightContainerSpan}>
-            <Row gutter={DI_STRUCTURE.rightRowGutter}>
-              <Col span={24}>
-                <CustomStatistic
-                  changeInValue={relativePercentage}
-                  duration={selectedDays}
-                  label={t('label.total-entity', {
-                    entity: t('label.asset-plural'),
-                  })}
-                  value={total}
-                />
-              </Col>
-              {entities.map((entity) => {
-                const progress = (latestData[entity] / Number(total)) * 100;
-
-                return (
-                  <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      progress={progress}
-                      showLabel={false}
-                      startValue={latestData[entity]}
-                      successValue={entity}
-                      suffix=""
-                    />
-                  </Col>
-                );
-              })}
-            </Row>
+            <TotalEntityInsightSummary
+              entities={entities}
+              gutter={DI_STRUCTURE.rightRowGutter}
+              latestData={latestData}
+              relativePercentage={relativePercentage}
+              selectedDays={selectedDays}
+              total={total}
+            />
           </Col>
         </Row>
       ) : (

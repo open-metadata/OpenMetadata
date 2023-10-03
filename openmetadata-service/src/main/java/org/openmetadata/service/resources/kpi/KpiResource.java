@@ -42,8 +42,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -69,8 +68,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return kpi;
   }
 
-  public KpiResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Kpi.class, new KpiRepository(dao), authorizer);
+  public KpiResource(Authorizer authorizer) {
+    super(Entity.KPI, authorizer);
   }
 
   @Override
@@ -296,15 +295,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateKpiRequest create) {
     Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
-    // Check if this kpi exist
-    try {
-      // if a kpi exits it is an update call
-      repository.getByName(null, kpi.getName(), repository.getFields("id,name"));
-    } catch (EntityNotFoundException ex) {
-      // if the kpi doesn't exist , then it can get created so need to ensure one to one validation
-      // TODO fix this
-      // dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
-    }
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
 
@@ -424,7 +414,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @Valid
           @QueryParam("orderBy")
           @DefaultValue("DESC")
-          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+          OrderBy orderBy) {
     return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 

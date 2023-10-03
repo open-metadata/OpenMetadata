@@ -43,6 +43,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         dao,
         UPDATE_FIELDS,
         UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -60,7 +61,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   @Override
-  public void prepare(DataProduct entity) {
+  public void prepare(DataProduct entity, boolean update) {
     // Parent, Experts, Owner, Assets are already validated
   }
 

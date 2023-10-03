@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import DataProductsPage from 'components/DataProducts/DataProductsPage/DataProductsPage.component';
+import AddDomain from 'components/Domain/AddDomain/AddDomain.component';
+import DomainPage from 'components/Domain/DomainPage.component';
 import DataQualityPage from 'pages/DataQuality/DataQualityPage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
@@ -72,6 +75,11 @@ const SwaggerPage = withSuspenseFallback(
 const TagsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TagsPage/TagsPage'))
 );
+const ClassificationVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/ClassificationVersionPage/ClassificationVersionPage')
+  )
+);
 const TopicDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/TopicDetails/TopicDetailsPage.component'))
 );
@@ -80,6 +88,12 @@ const TourPageComponent = withSuspenseFallback(
 );
 const UserPage = withSuspenseFallback(
   React.lazy(() => import('pages/UserPage/UserPage.component'))
+);
+
+const DomainVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('components/Domain/DomainVersion/DomainVersion.component')
+  )
 );
 
 const GlossaryVersionPage = withSuspenseFallback(
@@ -127,6 +141,10 @@ const DataModelDetailsPage = withSuspenseFallback(
   React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
 );
 
+const StoredProcedureDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('pages/StoredProcedure/StoredProcedurePage'))
+);
+
 const TableDetailsPageV1 = withSuspenseFallback(
   React.lazy(() => import('pages/TableDetailsPageV1/TableDetailsPageV1'))
 );
@@ -138,6 +156,17 @@ const EditIngestionPage = withSuspenseFallback(
 const EntityVersionPage = withSuspenseFallback(
   React.lazy(
     () => import('pages/EntityVersionPage/EntityVersionPage.component')
+  )
+);
+const ServiceVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
+);
+const DatabaseVersionPage = withSuspenseFallback(
+  React.lazy(() => import('pages/DatabaseVersionPage/DatabaseVersionPage'))
+);
+const DatabaseSchemaVersionPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
   )
 );
 const ExplorePageV1 = withSuspenseFallback(
@@ -228,6 +257,12 @@ const ContainerPage = withSuspenseFallback(
   React.lazy(() => import('pages/ContainerPage/ContainerPage'))
 );
 
+const SearchIndexDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
+  )
+);
+
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('pages/QueryPage/QueryPage.component'))
 );
@@ -248,13 +283,18 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
     [permissions]
   );
 
-  const glossaryTermPermission = useMemo(
+  const domainPermission = useMemo(
+    () =>
+      userPermissions.hasViewPermissions(ResourceEntity.DOMAIN, permissions),
+    [permissions]
+  );
+
+  const dataProductPermission = useMemo(
     () =>
       userPermissions.hasViewPermissions(
-        ResourceEntity.GLOSSARY_TERM,
+        ResourceEntity.DATA_PRODUCT,
         permissions
       ),
-
     [permissions]
   );
 
@@ -325,6 +365,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         hasPermission={tagCategoryPermission}
         path={ROUTES.TAG_DETAILS}
       />
+      <AdminProtectedRoute
+        exact
+        component={ClassificationVersionPage}
+        hasPermission={tagCategoryPermission}
+        path={ROUTES.TAG_VERSION}
+      />
+
+      <Route
+        exact
+        component={DataProductsPage}
+        path={ROUTES.DATA_PRODUCT_VERSION}
+      />
+      <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
       <Route
         exact
         component={() => <GlossaryVersionPage isGlossary />}
@@ -340,7 +393,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryVersionPage}
         path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
       />
+      <Route
+        exact
+        component={DatabaseVersionPage}
+        path={ROUTES.DATABASE_VERSION}
+      />
+      <Route
+        exact
+        component={DatabaseSchemaVersionPage}
+        path={ROUTES.SCHEMA_VERSION}
+      />
       <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+      <Route
+        exact
+        component={ServiceVersionPage}
+        path={ROUTES.SERVICE_VERSION}
+      />
       <Route
         exact
         component={EntityVersionPage}
@@ -424,6 +492,23 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={DataModelDetailsPage}
         path={ROUTES.DATA_MODEL_DETAILS_WITH_SUB_TAB}
       />
+
+      <Route
+        exact
+        component={StoredProcedureDetailsPage}
+        path={ROUTES.STORED_PROCEDURE_DETAILS}
+      />
+      <Route
+        exact
+        component={StoredProcedureDetailsPage}
+        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={StoredProcedureDetailsPage}
+        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB}
+      />
+
       <Route
         exact
         component={PipelineDetailsPage}
@@ -450,6 +535,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         exact
         component={ContainerPage}
         path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={SearchIndexDetailsPage}
+        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB}
       />
       <AdminProtectedRoute
         exact
@@ -508,13 +608,41 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={AddDataQualityTestPage}
         path={ROUTES.ADD_DATA_QUALITY_TEST_CASE}
       />
-      <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
+
       <AdminProtectedRoute
         exact
-        component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS}
       />
+      <AdminProtectedRoute
+        exact
+        component={DataProductsPage}
+        hasPermission={dataProductPermission}
+        path={ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB}
+      />
+
+      <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN_DETAILS}
+      />
+      <AdminProtectedRoute
+        exact
+        component={DomainPage}
+        hasPermission={domainPermission}
+        path={ROUTES.DOMAIN_DETAILS_WITH_TAB}
+      />
+
+      <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
@@ -524,8 +652,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={GlossaryPage}
-        hasPermission={glossaryTermPermission}
-        path={ROUTES.GLOSSARY_TERMS}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB}
       />
       <AdminProtectedRoute
         exact

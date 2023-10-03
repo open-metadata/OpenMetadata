@@ -173,6 +173,19 @@
                   <directory>src/main/resources/ui/dist</directory>
                   <filtering>true</filtering>
                 </resource>
+                <resource>
+                  <directory>src/main/resources/ui</directory>
+                  <targetPath>${project.build.outputDirectory}/openmetadata-ui/</targetPath>
+                  <excludes>
+                    <exclude>dist/**</exclude>
+                    <exclude>node_modules/**</exclude>
+                    <exclude>webpack/**</exclude>
+                    <exclude>*tsconfig.tsbuildinfo</exclude>
+                  </excludes>
+                  <includes>
+                    <include>**</include>
+                  </includes>
+                </resource>
               </resources>
             </configuration>
           </execution>

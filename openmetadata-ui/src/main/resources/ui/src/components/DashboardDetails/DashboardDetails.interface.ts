@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
@@ -26,6 +28,7 @@ export interface ChartsPermissions {
   permissions: OperationPermission;
 }
 export interface DashboardDetailsProps {
+  updateDashboardDetailsState?: (data: DataAssetWithDomains) => void;
   charts: Array<ChartType>;
   dashboardDetails: Dashboard;
   fetchDashboard: () => void;
@@ -46,4 +49,6 @@ export interface DashboardDetailsProps {
     updatedDashboard: Dashboard,
     key: keyof Dashboard
   ) => Promise<void>;
+  handleToggleDelete: () => void;
+  onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
 }

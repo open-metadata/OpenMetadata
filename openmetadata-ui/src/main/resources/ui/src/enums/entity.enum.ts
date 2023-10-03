@@ -28,6 +28,7 @@ export enum EntityType {
   PIPELINE_SERVICE = 'pipelineService',
   MLMODEL_SERVICE = 'mlmodelService',
   STORAGE_SERVICE = 'storageService',
+  SEARCH_SERVICE = 'searchService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -45,8 +46,12 @@ export enum EntityType {
   TAG = 'tag',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   SUBSCRIPTION = 'subscription',
-  USER_NAME = 'username',
   CHART = 'chart',
+  DOMAIN = 'domain',
+  DATA_PRODUCT = 'dataProduct',
+  SAMPLE_DATA = 'sampleData',
+  STORED_PROCEDURE = 'storedProcedure',
+  SEARCH_INDEX = 'searchIndex',
 }
 
 export enum AssetsType {
@@ -56,6 +61,7 @@ export enum AssetsType {
   PIPELINE = 'pipeline',
   MLMODEL = 'mlmodel',
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
+  STORED_PROCEDURE = 'storedProcedure',
 }
 
 export enum ChangeType {
@@ -101,6 +107,10 @@ export enum TabSpecificField {
   SCHEDULE_INTERVAL = 'scheduleInterval',
   TESTSUITE = 'testSuite',
   VIEW_DEFINITION = 'viewDefinition',
+  FIELDS = 'fields',
+  VOTES = 'votes',
+  DOMAIN = 'domain',
+  DATA_PRODUCTS = 'dataProducts',
 }
 
 export enum FqnPart {
@@ -111,6 +121,7 @@ export enum FqnPart {
   Column,
   NestedColumn,
   Topic,
+  SearchIndexField,
 }
 
 export enum EntityInfo {
@@ -160,6 +171,10 @@ export enum EntityTabs {
   INGESTIONS = 'ingestions',
   CONNECTION = 'connection',
   SQL = 'sql',
+  FIELDS = 'fields',
+  SEARCH_INDEX_SETTINGS = 'search-index-settings',
+  STORED_PROCEDURE = 'stored_procedure',
+  CODE = 'code',
 }
 
 export enum EntityAction {

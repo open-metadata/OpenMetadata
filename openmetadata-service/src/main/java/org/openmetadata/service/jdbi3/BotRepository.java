@@ -25,7 +25,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
-
   static final String BOT_UPDATE_FIELDS = "botUser";
 
   public BotRepository(CollectionDAO dao) {
@@ -44,7 +43,7 @@ public class BotRepository extends EntityRepository<Bot> {
   }
 
   @Override
-  public void prepare(Bot entity) {
+  public void prepare(Bot entity, boolean update) {
     User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
     entity.withBotUser(user.getEntityReference());
   }

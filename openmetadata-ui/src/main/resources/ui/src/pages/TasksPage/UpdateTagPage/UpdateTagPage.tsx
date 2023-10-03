@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
 import { getEntityDetailLink } from 'utils/CommonUtils';
+import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -61,7 +62,8 @@ const UpdateTag = () => {
   const history = useHistory();
   const [form] = useForm();
 
-  const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
+  const { entityType, fqn: entityFQN } =
+    useParams<{ fqn: string; entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -95,7 +97,7 @@ const UpdateTag = () => {
     return getColumnObject(
       column[0],
       getEntityColumnsDetails(entityType, entityData),
-      entityType as EntityType,
+      entityType,
       chartData
     );
   }, [field, entityData, chartData, entityType]);
@@ -145,8 +147,10 @@ const UpdateTag = () => {
         );
         history.push(
           getEntityDetailLink(
-            entityType as EntityType,
-            entityFQN,
+            entityType,
+            entityType === EntityType.TABLE
+              ? entityFQN
+              : getDecodedFqn(entityFQN),
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -157,7 +161,7 @@ const UpdateTag = () => {
 
   useEffect(() => {
     fetchEntityDetail(
-      entityType as EntityType,
+      entityType,
       entityFQN as string,
       setEntityData,
       setChartData
@@ -199,7 +203,7 @@ const UpdateTag = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),

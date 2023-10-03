@@ -32,6 +32,8 @@ export const MYDATA_SUMMARY_OPTIONS = {
   containers: 'containers',
   glossaryTerms: 'glossary-terms',
   tags: 'tags',
+  storedProcedures: 'storedProcedures',
+  dataModel: 'dashboardDataModel',
 };
 
 export const SEARCH_INDEX = {
@@ -40,6 +42,7 @@ export const SEARCH_INDEX = {
   dashboards: 'dashboard_search_index',
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
+  containers: 'container_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
@@ -153,6 +156,38 @@ export const SEARCH_ENTITY_MLMODEL = {
     serviceName: 'mlflow_svc',
     displayName: 'ETA Predictions',
     entityType: 'ML Model',
+  },
+};
+
+export const SEARCH_ENTITY_STORED_PROCEDURE = {
+  stored_procedure_1: {
+    term: 'update_dim_address_table',
+    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    serviceName: 'sample_data',
+    entityType: 'Stored Procedure',
+  },
+  stored_procedure_2: {
+    term: 'update_dim_address_table',
+    entity: MYDATA_SUMMARY_OPTIONS.storedProcedures,
+    serviceName: 'sample_data',
+    displayName: 'update_dim_address_table',
+    entityType: 'Stored Procedure',
+  },
+};
+
+export const SEARCH_ENTITY_DATA_MODEL = {
+  data_model_1: {
+    term: 'operations_view',
+    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    serviceName: 'sample_looker',
+    entityType: 'Data Model',
+  },
+  data_model_2: {
+    term: 'orders_view',
+    entity: MYDATA_SUMMARY_OPTIONS.dataModel,
+    serviceName: 'sample_looker',
+    displayName: 'Orders View',
+    entityType: 'Data Model',
   },
 };
 
@@ -323,6 +358,7 @@ export const SERVICE_TYPE = {
   Pipeline: 'Pipeline',
   MLModels: 'ML Models',
   Storage: 'Storage',
+  StoredProcedure: 'StoredProcedure',
 };
 
 export const ENTITIES = {
@@ -378,7 +414,7 @@ export const HTTP_CONFIG_SOURCE = {
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
   DBT_MANIFEST_HTTP_PATH:
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
-  DBT_RUN_RESTLTS_FILE_PATH:
+  DBT_RUN_RESULTS_FILE_PATH:
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
 };
 
@@ -386,7 +422,7 @@ export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_one',
   dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
-  dbtLineageNodeLabel: 'stg_customers',
+  dbtLineageNodeLabel: 'customers',
   dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
   dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
   dataQualityTest2: 'not_null_customers_customer_id',
@@ -445,7 +481,7 @@ export const TAG_INVALID_NAMES = {
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 
-export const GLOSSARY_INVALID_NAMES = {
+export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
@@ -457,5 +493,45 @@ export const NAME_VALIDATION_ERROR =
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 2 and 64';
 
-export const GLOSSARY_NAME_MAX_LENGTH_VALIDATION_ERROR =
+export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name can be a maximum of 128 characters';
+
+export const DOMAIN_1 = {
+  name: 'Cypress%Domain',
+  updatedName: 'Cypress_Domain_Name',
+  updatedDisplayName: 'Cypress_Domain_Display_Name',
+  description:
+    'This is the Cypress for testing domain creation with percent and dot',
+  updatedDescription:
+    'This is the updated description for Cypress for testing domain creation',
+  experts: 'Aaron Johnson',
+  owner: 'Aaron Singh',
+  updatedOwner: 'Aaron Johnson',
+  domainType: 'Source-aligned',
+  dataProducts: [
+    {
+      name: 'Cypress.Data.Product1',
+      description:
+        'This is the data product description for Cypress.Data.Product1',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+    },
+    {
+      name: 'Cypress.Data.Product2With%',
+      description:
+        'This is the data product description for Cypress.Data.Product2With%',
+      experts: 'Aaron Johnson',
+      owner: 'Aaron Johnson',
+    },
+  ],
+};
+
+export const DOMAIN_2 = {
+  name: 'Cypress.Domain.New',
+  updatedName: 'Cypress.Domain.New',
+  updatedDisplayName: 'Cypress.Domain.New',
+  description: 'This is the Cypress for testing domain creation',
+  experts: 'Aaron Singh',
+  owner: 'Aaron Singh',
+  domainType: 'Source-aligned',
+};

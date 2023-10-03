@@ -17,6 +17,8 @@ import static org.openmetadata.schema.type.Include.ALL;
 
 import java.util.Collections;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.EntityReference;
@@ -28,6 +30,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+@Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public DatabaseSchemaRepository(CollectionDAO dao) {
     super(
@@ -38,6 +41,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         dao,
         "",
         "");
+    supportsSearch = true;
   }
 
   @Override
@@ -47,7 +51,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public void prepare(DatabaseSchema schema) {
+  public void prepare(DatabaseSchema schema, boolean update) {
     populateDatabase(schema);
   }
 
@@ -114,6 +118,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
+    return Entity.getEntity(entity.getDatabase(), fields, Include.NON_DELETED);
+  }
+
+  @Override
   public EntityRepository<DatabaseSchema>.EntityUpdater getUpdater(
       DatabaseSchema original, DatabaseSchema updated, Operation operation) {
     return new DatabaseSchemaUpdater(original, updated, operation);
@@ -135,6 +144,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     @Override
     public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }
 }

@@ -13,8 +13,9 @@ Dynamo source methods.
 """
 
 import traceback
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -24,7 +25,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
@@ -103,3 +104,25 @@ class DynamodbSource(CommonNoSQLSource):
                 f"Failed to read DynamoDB attributes for [{table_name}]: {err}"
             )
         return []
+
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for dynamodb
+        """
+        try:
+            if table_name:
+                return (
+                    f"https://{self.service_connection.awsConfig.awsRegion}."
+                    f"console.aws.amazon.com/dynamodbv2/home?region="
+                    f"{self.service_connection.awsConfig.awsRegion}#table?name={table_name}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
+        return None

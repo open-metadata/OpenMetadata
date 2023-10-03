@@ -1,15 +1,15 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.*;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response.Status;
@@ -20,6 +20,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -116,6 +117,32 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
   }
 
+  @Test
+  void test_listWithDomainFilter(TestInfo test) throws HttpResponseException {
+    DomainResourceTest domainTest = new DomainResourceTest();
+    String domain1 =
+        domainTest.createEntity(domainTest.createRequest(test, 1), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+    String domain2 =
+        domainTest.createEntity(domainTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getFullyQualifiedName();
+    DataProduct p1 = createEntity(createRequest(test, 1).withDomain(domain1), ADMIN_AUTH_HEADERS);
+    DataProduct p2 = createEntity(createRequest(test, 2).withDomain(domain1), ADMIN_AUTH_HEADERS);
+    DataProduct p3 = createEntity(createRequest(test, 3).withDomain(domain2), ADMIN_AUTH_HEADERS);
+    DataProduct p4 = createEntity(createRequest(test, 4).withDomain(domain2), ADMIN_AUTH_HEADERS);
+
+    Map<String, String> params = new HashMap<>();
+    params.put("domain", domain1);
+    List<DataProduct> list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
+    assertEquals(2, list.size());
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p1.getName())));
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p2.getName())));
+
+    params.put("domain", domain2);
+    list = listEntities(params, ADMIN_AUTH_HEADERS).getData();
+    assertEquals(2, list.size());
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p3.getName())));
+    assertTrue(list.stream().anyMatch(s -> s.getName().equals(p4.getName())));
+  }
+
   private void entityInDataProduct(EntityInterface entity, EntityInterface product, boolean inDataProduct)
       throws HttpResponseException {
     // Only table or topic is expected to assets currently in the tests
@@ -131,6 +158,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .withName(name)
         .withDescription(name)
         .withDomain(DOMAIN.getFullyQualifiedName())
+        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
         .withExperts(listOf(USER1.getFullyQualifiedName()))
         .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
   }
@@ -142,6 +170,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEquals(request.getDomain(), createdEntity.getDomain().getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertEntityReferences(request.getAssets(), createdEntity.getAssets());
+    assertStyle(request.getStyle(), createdEntity.getStyle());
   }
 
   @Override

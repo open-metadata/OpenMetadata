@@ -22,16 +22,16 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
+import {
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from 'utils/date-time/DateTimeUtils';
 import { getEncodedFqn } from 'utils/StringsUtils';
 import {
   IngestionPipeline,
   PipelineStatus,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import {
-  getCurrentDateTimeMillis,
-  getDateTimeFromMilliSeconds,
-  getPastDaysDateTimeMillis,
-} from '../../../utils/TimeUtils';
 import './ingestion-recent-run.style.less';
 
 interface Props {
@@ -39,8 +39,8 @@ interface Props {
   classNames?: string;
 }
 const queryParams = {
-  startTs: getPastDaysDateTimeMillis(1),
-  endTs: getCurrentDateTimeMillis(),
+  startTs: getEpochMillisForPastDays(1),
+  endTs: getCurrentMillis(),
 };
 
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
@@ -117,19 +117,18 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
                   {r.timestamp && (
                     <p>
                       {`${t('label.execution-date')}:`}{' '}
-                      {getDateTimeFromMilliSeconds(r.timestamp)}
+                      {formatDateTime(r.timestamp)}
                     </p>
                   )}
                   {r.startDate && (
                     <p>
                       {t('label.start-entity', { entity: t('label.date') })}:{' '}
-                      {getDateTimeFromMilliSeconds(r.startDate)}
+                      {formatDateTime(r.startDate)}
                     </p>
                   )}
                   {r.endDate && (
                     <p>
-                      {`${t('label.end-date')}:`}{' '}
-                      {getDateTimeFromMilliSeconds(r.endDate)}
+                      {`${t('label.end-date')}:`} {formatDateTime(r.endDate)}
                     </p>
                   )}
                 </div>

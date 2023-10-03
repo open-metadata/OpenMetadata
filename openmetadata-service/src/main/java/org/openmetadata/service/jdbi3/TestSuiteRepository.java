@@ -3,20 +3,27 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.jdbi3.TestCaseRepository.TESTCASE_RESULT_EXTENSION;
+import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.ResultSummary;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -34,13 +41,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    quoteFqn = true;
+    quoteFqn = false;
+    supportsSearch = true;
   }
 
   @Override
   public TestSuite setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.setSummary(fields.contains("summary") ? getTestSummary(entity) : entity.getSummary());
+    entity.setSummary(fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
     return entity.withTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
   }
 
@@ -51,17 +59,81 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return entity.withTests(fields.contains("tests") ? entity.getTests() : null);
   }
 
-  private TestSummary getTestSummary(TestSuite entity) {
-    List<EntityReference> testCases = getTestCases(entity);
-    List<String> testCaseFQNs =
-        testCases.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+  private TestSummary buildTestSummary(HashMap<String, Integer> testCaseSummary, int total) {
 
-    return EntityUtil.getTestCaseExecutionSummary(
-        daoCollection.entityExtensionTimeSeriesDao(), testCaseFQNs, TESTCASE_RESULT_EXTENSION);
+    return new TestSummary()
+        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
+        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
+        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
+        .withTotal(total);
   }
 
   @Override
-  public void prepare(TestSuite entity) {
+  public void setFullyQualifiedName(TestSuite testSuite) {
+    if (testSuite.getExecutableEntityReference() != null) {
+      testSuite.setFullyQualifiedName(
+          FullyQualifiedName.add(testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+    } else {
+      testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
+    }
+  }
+
+  private HashMap<String, Integer> getResultSummary(TestSuite testSuite) {
+    HashMap<String, Integer> testCaseSummary = new HashMap<>();
+    for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
+      String status = resultSummary.getStatus().toString();
+      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
+    }
+
+    return testCaseSummary;
+  }
+
+  private ResultSummary getResultSummary(TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
+    return new ResultSummary()
+        .withTestCaseName(testCase.getFullyQualifiedName())
+        .withStatus(testCaseStatus)
+        .withTimestamp(timestamp);
+  }
+
+  private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
+    if (entity.getTestCaseResultSummary().isEmpty()) return new TestSummary();
+    HashMap<String, Integer> testSummary = getResultSummary(entity);
+    return buildTestSummary(testSummary, entity.getTestCaseResultSummary().size());
+  }
+
+  private TestSummary getTestCasesExecutionSummary(List<TestSuite> entities) {
+    if (entities.isEmpty()) return new TestSummary();
+
+    HashMap<String, Integer> testsSummary = new HashMap<>();
+    int total = 0;
+    for (TestSuite testSuite : entities) {
+      HashMap<String, Integer> testSummary = getResultSummary(testSuite);
+      for (Map.Entry<String, Integer> entry : testSummary.entrySet()) {
+        testsSummary.put(entry.getKey(), testsSummary.getOrDefault(entry.getKey(), 0) + entry.getValue());
+      }
+      total += testSuite.getTestCaseResultSummary().size();
+    }
+
+    return buildTestSummary(testsSummary, total);
+  }
+
+  public TestSummary getTestSummary(UUID testSuiteId) {
+    TestSummary testSummary;
+    if (testSuiteId == null) {
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam("testSuiteType", "executable");
+      List<TestSuite> testSuites = listAll(EntityUtil.Fields.EMPTY_FIELDS, filter);
+      testSummary = getTestCasesExecutionSummary(testSuites);
+    } else {
+      // don't want to get it from the cache as test results summary may be stale
+      TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId, "", Include.ALL, false);
+      testSummary = getTestCasesExecutionSummary(testSuite);
+    }
+    return testSummary;
+  }
+
+  @Override
+  public void prepare(TestSuite entity, boolean update) {
     /* Nothing to do */
   }
 
@@ -100,7 +172,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     // the relationship to test cases if hardDelete is true. Test Cases
     // will not be deleted.
     String updatedBy = securityContext.getUserPrincipal().getName();
-    preDelete(original);
+    preDelete(original, updatedBy);
     setFieldsInternal(original, putFields);
 
     String changeType;

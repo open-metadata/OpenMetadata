@@ -17,11 +17,12 @@ import Loader from 'components/Loader/Loader';
 import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
 import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
+import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { postThread } from 'rest/feedsAPI';
@@ -30,6 +31,7 @@ import {
   getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
+  updateMlModelVotes,
 } from 'rest/mlModelAPI';
 import { getVersionPath } from '../../constants/constants';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
@@ -49,7 +51,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const MlModelPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { mlModelFqn } = useParams<{ [key: string]: string }>();
+  const { fqn: mlModelFqn } = useParams<{ fqn: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
   const USERId = getCurrentUserId();
@@ -57,8 +59,6 @@ const MlModelPage = () => {
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const [currentVersion, setCurrentVersion] = useState<string>();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -103,7 +103,6 @@ const MlModelPage = () => {
         timestamp: 0,
         id: res.id,
       });
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -127,10 +126,10 @@ const MlModelPage = () => {
     try {
       const response = await saveUpdatedMlModelData(updatedMlModel);
       const { description, version } = response;
-      setCurrentVersion(version?.toString());
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        description: description,
+        description,
+        version,
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -177,12 +176,12 @@ const MlModelPage = () => {
 
   const onTagUpdate = async (updatedMlModel: Mlmodel) => {
     try {
-      const res = await saveUpdatedMlModelData(updatedMlModel);
+      const { tags, version } = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        tags: sortTagsCaseInsensitive(res.tags ?? []),
+        tags: sortTagsCaseInsensitive(tags ?? []),
+        version: version,
       }));
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -197,14 +196,15 @@ const MlModelPage = () => {
     updatedMlModel: Mlmodel
   ): Promise<void> => {
     try {
-      const res = await saveUpdatedMlModelData(updatedMlModel);
+      const { displayName, owner, tags, version } =
+        await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        displayName: res.displayName,
-        owner: res.owner,
-        tags: res.tags,
+        displayName,
+        owner,
+        tags,
+        version,
       }));
-      setCurrentVersion(res.version?.toString());
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -217,12 +217,14 @@ const MlModelPage = () => {
 
   const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
     try {
-      const response = await saveUpdatedMlModelData(updatedMlModel);
+      const { mlFeatures, version } = await saveUpdatedMlModelData(
+        updatedMlModel
+      );
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
-        mlFeatures: response.mlFeatures,
+        mlFeatures,
+        version,
       }));
-      setCurrentVersion(response.version?.toString());
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -232,7 +234,6 @@ const MlModelPage = () => {
     try {
       const data = await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail(data);
-      setCurrentVersion(data.version?.toString());
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -258,9 +259,42 @@ const MlModelPage = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.MLMODEL, mlModelFqn, currentVersion as string)
+      getVersionPath(
+        EntityType.MLMODEL,
+        mlModelFqn,
+        toString(mlModelDetail.version)
+      )
     );
   };
+
+  const handleToggleDelete = () => {
+    setMlModelDetail((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateMlModelVotes(id, data);
+      const details = await getMlModelByFQN(mlModelFqn, defaultFields);
+      setMlModelDetail(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateMlModelDetailsState = useCallback((data) => {
+    const updatedData = data as Mlmodel;
+
+    setMlModelDetail((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
@@ -288,14 +322,16 @@ const MlModelPage = () => {
       descriptionUpdateHandler={descriptionUpdateHandler}
       fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}
+      handleToggleDelete={handleToggleDelete}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}
       tagUpdateHandler={onTagUpdate}
       unFollowMlModelHandler={unFollowMlModel}
+      updateMlModelDetailsState={updateMlModelDetailsState}
       updateMlModelFeatures={updateMlModelFeatures}
-      version={currentVersion}
       versionHandler={versionHandler}
       onExtensionUpdate={handleExtensionUpdate}
+      onUpdateVote={updateVote}
     />
   );
 };

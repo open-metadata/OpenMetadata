@@ -76,7 +76,8 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(QUERY)
         .withDuration(0.0)
-        .withQueryDate(1673857635064L);
+        .withQueryDate(1673857635064L)
+        .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
   }
 
   @Override
@@ -118,7 +119,11 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
 
   @Test
   void post_without_query_400() {
-    CreateQuery create = new CreateQuery().withDuration(0.0).withQueryDate(1673857635064L);
+    CreateQuery create =
+        new CreateQuery()
+            .withDuration(0.0)
+            .withQueryDate(1673857635064L)
+            .withService(SNOWFLAKE_REFERENCE.getFullyQualifiedName());
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), Response.Status.BAD_REQUEST, "[query must not be null]");
   }
@@ -165,6 +170,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
     patchEntityAndCheck(query, origJson, ADMIN_AUTH_HEADERS, TestUtils.UpdateType.MINOR_UPDATE, change);
     Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
     updatedQuery.setQuery("select * from table1");
     updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
     change = getChangeDescription(query.getVersion());

@@ -39,12 +39,10 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
@@ -85,8 +83,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestCase.class, new TestCaseRepository(dao), authorizer);
+  public TestCaseResource(Authorizer authorizer) {
+    super(Entity.TEST_CASE, authorizer);
   }
 
   @Override
@@ -150,6 +148,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Returns list of tests filtered by the testSuite id", schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
           String testSuiteId,
+      @Parameter(
+              description = "Returns the list of tests ordered by the most recent execution date",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("orderByLastExecutionDate")
+          @DefaultValue("false")
+          Boolean orderByLastExecutionDate,
       @Parameter(description = "Include all the tests at the entity level", schema = @Schema(type = "boolean"))
           @QueryParam("includeAllTests")
           @DefaultValue("false")
@@ -163,7 +167,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("testSuiteId", testSuiteId)
-            .addQueryParam("includeAllTests", includeAllTests.toString());
+            .addQueryParam("includeAllTests", includeAllTests.toString())
+            .addQueryParam("orderByLastExecutionDate", orderByLastExecutionDate.toString());
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
@@ -233,7 +238,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // TODO fix hardcoded entity type
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
@@ -271,7 +275,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    // TODO fix hardcoded entity type
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to VIEW_TESTS
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
@@ -417,7 +420,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     repository.isTestSuiteExecutable(create.getTestSuite());
-    repository.prepareInternal(test);
+    repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
@@ -622,7 +625,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @Valid CreateLogicalTestCases createLogicalTestCases) {
 
-    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null);
+    // don't get entity from cache as test result summary may be stale
+    TestSuite testSuite =
+        Entity.getEntity(Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null, false);
     OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -640,32 +645,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throw new IllegalArgumentException("You are trying to add one or more test cases that do not exist.");
     }
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
-  }
-
-  @GET
-  @Path("/executionSummary")
-  @Operation(
-      operationId = "getExecutionSummaryOfTestCases",
-      summary = "Get the execution summary of test cases",
-      description = "Get the execution summary of test cases.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Tests Execution Summary",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = TestSummary.class)))
-      })
-  public TestSummary getTestsExecutionSummary(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "get summary for a specific test suite",
-              schema = @Schema(type = "String", format = "uuid"))
-          @QueryParam("testSuiteId")
-          UUID testSuiteId) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().build();
-    OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getTestSummary(testSuiteId);
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {

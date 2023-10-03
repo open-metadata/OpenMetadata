@@ -15,18 +15,24 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_TAGS;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.dashboards.DashboardResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
@@ -47,6 +53,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         dao,
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -56,27 +63,34 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void update(TaskDetails task, EntityLink entityLink, String newValue, String user) {
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    EntityLink entityLink = threadContext.getAbout();
     if (entityLink.getFieldName().equals("charts")) {
-      Dashboard dashboard = getByName(null, entityLink.getEntityFQN(), getFields("charts,tags"), Include.ALL, false);
-      EntityReference chart =
+      TaskType taskType = threadContext.getThread().getTask().getType();
+      if (!entityLink.getFieldName().equals(FIELD_DESCRIPTION)) {
+        // Only description field can be updated
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidFieldForTask(entityLink.getFieldName(), taskType));
+      }
+      return new ChartDescriptionTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  static class ChartDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
+    ChartDescriptionTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+      Dashboard dashboard = Entity.getEntity(DASHBOARD, threadContext.getAboutEntity().getId(), "charts", ALL);
+      String chartName = threadContext.getAbout().getArrayFieldName();
+      EntityReference chartReference =
           dashboard.getCharts().stream()
-              .filter(c -> c.getName().equals(entityLink.getArrayFieldName()))
+              .filter(c -> c.getName().equals(chartName))
               .findFirst()
               .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          CatalogExceptionMessage.invalidFieldName("chart", entityLink.getArrayFieldName())));
-      String fieldName =
-          EntityUtil.isDescriptionTask(task.getType())
-              ? FIELD_DESCRIPTION
-              : EntityUtil.isTagTask(task.getType()) ? FIELD_TAGS : "invalidField";
-      EntityLink chartLink = new EntityLink(Entity.CHART, chart.getFullyQualifiedName(), fieldName, null, null);
-      EntityRepository<? extends EntityInterface> chartRepository = Entity.getEntityRepository(Entity.CHART);
-      chartRepository.update(task, chartLink, newValue, user);
-      return;
+                  () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("chart", chartName)));
+      Chart chart = Entity.getEntity(chartReference, "", ALL);
+      threadContext.setAboutEntity(chart);
     }
-    super.update(task, entityLink, newValue, user);
   }
 
   @Override
@@ -126,7 +140,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public void prepare(Dashboard dashboard) {
+  public void prepare(Dashboard dashboard, boolean update) {
     populateService(dashboard);
     dashboard.setCharts(EntityUtil.getEntityReferences(dashboard.getCharts(), Include.NON_DELETED));
     dashboard.setDataModels(EntityUtil.getEntityReferences(dashboard.getDataModels(), Include.NON_DELETED));
@@ -173,6 +187,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public EntityUpdater getUpdater(Dashboard original, Dashboard updated, Operation operation) {
     return new DashboardUpdater(original, updated, operation);
+  }
+
+  @Override
+  public EntityInterface getParentEntity(Dashboard entity, String fields) {
+    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
   }
 
   private List<EntityReference> getRelatedEntities(Dashboard dashboard, String entityType) {

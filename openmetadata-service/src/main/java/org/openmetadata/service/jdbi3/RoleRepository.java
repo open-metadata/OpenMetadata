@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -75,7 +74,7 @@ public class RoleRepository extends EntityRepository<Role> {
    * storeEntity method call.
    */
   @Override
-  public void prepare(Role role) {
+  public void prepare(Role role, boolean update) {
     if (listOrEmpty(role.getPolicies()).isEmpty()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.EMPTY_POLICIES_IN_ROLE);
     }
@@ -83,13 +82,12 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   /**
-   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role)} would create a policy
-   * entity reference if it does not exist.
+   * For regular incoming POST, PUT, PATCH operation calls, {@link RoleRepository#prepare(Role, boolean)} would create a
+   * policy entity reference if it does not exist.
    *
    * <p>This method ensures that the role and its policy are stored correctly.
    */
   @Override
-  @Transaction
   public void storeEntity(Role role, boolean update) {
     // Don't store policy. Build it on the fly based on relationships
     List<EntityReference> policies = role.getPolicies();
@@ -111,7 +109,7 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   @Override
-  protected void preDelete(Role entity) {
+  protected void preDelete(Role entity, String deletedBy) {
     if (FALSE.equals(entity.getAllowDelete())) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(entity.getName(), Entity.ROLE));

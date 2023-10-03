@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Typography } from 'antd';
 import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
 import { ReactComponent as IconUser } from 'assets/svg/user.svg';
+import classNames from 'classnames';
 import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
 import { OwnerType } from 'enums/user.enum';
 import { EntityReference } from 'generated/entity/data/table';
@@ -26,11 +28,13 @@ import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelect
 
 export const OwnerLabel = ({
   owner,
+  className,
   onUpdate,
   hasPermission,
   ownerDisplayName,
 }: {
   owner?: EntityReference;
+  className?: string;
   onUpdate?: (owner?: EntityReference) => void;
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode;
@@ -40,11 +44,21 @@ export const OwnerLabel = ({
 
   const profilePicture = useMemo(() => {
     if (isUndefined(owner)) {
-      return <IconUser data-testid="no-owner-icon" height={18} width={18} />;
+      return (
+        <Icon
+          component={IconUser}
+          data-testid="no-owner-icon"
+          style={{ fontSize: '18px' }}
+        />
+      );
     }
 
     return owner.type === OwnerType.TEAM ? (
-      <IconTeamsGrey data-testid="team-owner-icon" height={18} width={18} />
+      <Icon
+        component={IconTeamsGrey}
+        data-testid="team-owner-icon"
+        style={{ fontSize: '18px' }}
+      />
     ) : (
       <ProfilePicture
         displayName={displayName}
@@ -52,18 +66,21 @@ export const OwnerLabel = ({
         key="profile-picture"
         name={owner.name ?? ''}
         type="circle"
-        width="24"
+        width="18"
       />
     );
   }, [owner]);
 
   return (
-    <Space data-testid="owner-label" size={8}>
+    <div className="d-flex gap-2 items-center" data-testid="owner-label">
       {profilePicture}
 
       {displayName ? (
         <Link
-          className="text-primary font-medium text-xs no-underline"
+          className={classNames(
+            'text-primary font-medium text-xs no-underline',
+            className
+          )}
           data-testid="owner-link"
           to={
             owner?.type === 'team'
@@ -74,7 +91,7 @@ export const OwnerLabel = ({
         </Link>
       ) : (
         <Typography.Text
-          className="font-medium text-xs"
+          className={classNames('font-medium text-xs', className)}
           data-testid="owner-link">
           {t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
@@ -86,6 +103,6 @@ export const OwnerLabel = ({
           onUpdate={onUpdate}
         />
       )}
-    </Space>
+    </div>
   );
 };

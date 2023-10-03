@@ -17,12 +17,12 @@ import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedPro
 import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import DescriptionV1 from 'components/common/description/DescriptionV1';
 import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
 import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
 import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from 'components/DataProductsContainer/DataProductsContainer.component';
 import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
 import Loader from 'components/Loader/Loader';
 import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -37,6 +37,7 @@ import SchemaTab from 'components/SchemaTab/SchemaTab.component';
 import { SourceType } from 'components/searched-data/SearchedData.interface';
 import TableProfilerV1 from 'components/TableProfiler/TableProfilerV1';
 import TableQueries from 'components/TableQueries/TableQueries';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import TabsLabel from 'components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
@@ -54,6 +55,7 @@ import {
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
 import { JoinedWith, Table } from 'generated/entity/data/table';
+import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { ThreadType } from 'generated/entity/feed/thread';
 import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
@@ -69,19 +71,18 @@ import {
   patchTableDetails,
   removeFollower,
   restoreTable,
+  updateTablesVotes,
 } from 'rest/tableAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
-  refreshPage,
   sortTagsCaseInsensitive,
 } from 'utils/CommonUtils';
 import { defaultFields } from 'utils/DatasetDetailsUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
 import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
@@ -93,8 +94,8 @@ const TableDetailsPageV1 = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ datasetFQN: string; tab: string }>();
+  const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = getCurrentUserId();
@@ -115,10 +116,7 @@ const TableDetailsPageV1 = () => {
     () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
     [tablePermissions]
   );
-  const viewTestSuitePermission = useMemo(
-    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
-    [tablePermissions]
-  );
+
   const tableFqn = useMemo(
     () =>
       encodeURIComponent(
@@ -138,9 +136,7 @@ const TableDetailsPageV1 = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      if (viewTestSuitePermission) {
-        fields += `,${TabSpecificField.TESTSUITE}`;
-      }
+
       const details = await getTableDetailsByFQN(tableFqn, fields);
 
       setTableDetails(details);
@@ -417,7 +413,24 @@ const TableDetailsPageV1 = () => {
   };
 
   const onExtensionUpdate = async (updatedData: Table) => {
-    await onTableUpdate(updatedData, 'extension');
+    tableDetails &&
+      (await saveUpdatedTableData({
+        ...tableDetails,
+        extension: updatedData.extension,
+      }));
+  };
+
+  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
+    const dataProductsEntity = updatedData?.map((item) => {
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
+    });
+
+    const updatedTableDetails = {
+      ...tableDetails,
+      dataProducts: dataProductsEntity,
+    };
+
+    await onTableUpdate(updatedTableDetails as Table, 'dataProducts');
   };
 
   const schemaTab = useMemo(
@@ -478,6 +491,13 @@ const TableDetailsPageV1 = () => {
           ) : null}
 
           <Space className="w-full" direction="vertical" size="large">
+            <DataProductsContainer
+              activeDomain={tableDetails?.domain}
+              dataProducts={tableDetails?.dataProducts ?? []}
+              hasPermission={tablePermissions.EditAll && !tableDetails?.deleted}
+              onSave={onDataProductsUpdate}
+            />
+
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
               entityFqn={tableFqn}
@@ -563,6 +583,8 @@ const TableDetailsPageV1 = () => {
           ) : (
             <SampleDataTableComponent
               isTableDeleted={tableDetails?.deleted}
+              ownerId={tableDetails?.owner?.id ?? ''}
+              permissions={tablePermissions}
               tableId={tableDetails?.id ?? ''}
             />
           ),
@@ -608,7 +630,6 @@ const TableDetailsPageV1 = () => {
             <TableProfilerV1
               isTableDeleted={tableDetails?.deleted}
               permissions={tablePermissions}
-              testSuite={tableDetails?.testSuite}
             />
           ),
       },
@@ -674,16 +695,14 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !tablePermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
-            entityDetails={tableDetails as CustomPropertyProps['entityDetails']}
             entityType={EntityType.TABLE}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
               tablePermissions.EditAll || tablePermissions.EditCustomFields
             }
+            hasPermission={tablePermissions.ViewAll}
           />
         ),
       },
@@ -727,6 +746,16 @@ const TableDetailsPageV1 = () => {
     [tableDetails, onTableUpdate, tableTags]
   );
 
+  const handleToggleDelete = () => {
+    setTableDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
   const handleRestoreTable = async () => {
     try {
       await restoreTable(tableDetails?.id ?? '');
@@ -736,7 +765,7 @@ const TableDetailsPageV1 = () => {
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -812,6 +841,21 @@ const TableDetailsPageV1 = () => {
       history.push(getVersionPath(EntityType.TABLE, tableFqn, version + ''));
   }, [version]);
 
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete() : history.push('/'),
+    []
+  );
+
+  const updateTableDetailsState = useCallback((data) => {
+    const updatedData = data as Table;
+
+    setTableDetails((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -827,7 +871,7 @@ const TableDetailsPageV1 = () => {
     if (tableDetails) {
       fetchQueryCount();
     }
-  }, [tableDetails]);
+  }, [tableDetails?.fullyQualifiedName]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');
@@ -844,6 +888,16 @@ const TableDetailsPageV1 = () => {
           entity: t('label.conversation'),
         })
       );
+    }
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateTablesVotes(id, data);
+      const details = await getTableDetailsByFQN(tableFqn, defaultFields);
+      setTableDetails(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -871,7 +925,8 @@ const TableDetailsPageV1 = () => {
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             permissions={tablePermissions}
@@ -880,6 +935,7 @@ const TableDetailsPageV1 = () => {
             onOwnerUpdate={handleUpdateOwner}
             onRestoreDataAsset={handleRestoreTable}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={updateVote}
             onVersionClick={versionHandler}
           />
         </Col>

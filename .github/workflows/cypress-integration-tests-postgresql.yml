@@ -15,6 +15,7 @@
 name: PostgreSQL Cypress Integration Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main 
@@ -40,8 +41,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        job: [0, 1, 2]
+        job: [0]
     environment: test
+    timeout-minutes: 120
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -129,6 +131,7 @@ jobs:
           group: Tests with database postgresql
           browser: chrome
         env:
+          CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}

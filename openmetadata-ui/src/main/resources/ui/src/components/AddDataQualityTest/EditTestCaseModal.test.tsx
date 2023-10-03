@@ -118,4 +118,12 @@ describe('EditTestCaseModal Component', () => {
 
     expect(mockProps.onUpdate).toHaveBeenCalled();
   });
+
+  it('displayName should be visible in input field', async () => {
+    render(<EditTestCaseModal {...mockProps} />);
+    const displayName = await screen.findByLabelText('label.display-name');
+
+    expect(displayName).toBeInTheDocument();
+    expect(displayName).toHaveValue(MOCK_TEST_CASE[0].displayName);
+  });
 });

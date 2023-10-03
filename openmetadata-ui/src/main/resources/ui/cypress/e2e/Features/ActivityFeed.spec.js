@@ -55,7 +55,7 @@ describe('Activity feed', () => {
       '/api/v1/search/query?q=**teamType:Group&from=0&size=15&index=team_search_index',
       'getTeams'
     );
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
     const value = SEARCH_ENTITY_TABLE.table_4;
     const OWNER = 'admin';
     interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
@@ -179,7 +179,7 @@ describe('Activity feed', () => {
     interceptURL(
       'GET',
       // eslint-disable-next-line max-len
-      '/api/v1/search/suggest?q=dim_add&index=dashboard_search_index%2Ctable_search_index%2Ctopic_search_index%2Cpipeline_search_index%2Cmlmodel_search_index%2Ccontainer_search_index%2Cglossary_search_index%2Ctag_search_index',
+      '/api/v1/search/suggest?q=dim_add&index=dashboard_search_index%2Ctable_search_index%2Ctopic_search_index%2Cpipeline_search_index%2Cmlmodel_search_index%2Ccontainer_search_index%2Cstored_procedure_search_index%2Cdashboard_data_model_search_index%2Cglossary_search_index%2Ctag_search_index%2Csearch_entity_index',
       'suggestAsset'
     );
 

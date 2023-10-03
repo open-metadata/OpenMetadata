@@ -21,6 +21,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from 'components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { CreateThread } from 'generated/api/feed/createThread';
@@ -44,6 +45,7 @@ import {
   getDataModelsByName,
   patchDataModelDetails,
   removeDataModelFollower,
+  updateDataModelVotes,
 } from 'rest/dataModelsAPI';
 import { postThread } from 'rest/feedsAPI';
 import { getCurrentUserId, getEntityMissingError } from 'utils/CommonUtils';
@@ -56,8 +58,7 @@ const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN } =
-    useParams<{ dashboardDataModelFQN: string }>();
+  const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -93,7 +94,7 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
+        ResourceEntity.DASHBOARD_DATA_MODEL,
         dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);
@@ -125,7 +126,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers',
+        'owner,tags,followers,votes',
         Include.All
       );
       setDataModelData(response);
@@ -228,26 +229,28 @@ const DataModelsPage = () => {
 
   const handleUpdateTier = async (updatedTier?: string) => {
     try {
-      if (updatedTier) {
-        const { tags: newTags, version } = await handleUpdateDataModelData({
-          ...(dataModelData as DashboardDataModel),
-          tags: [
-            ...getTagsWithoutTier(dataModelData?.tags ?? []),
-            {
-              tagFQN: updatedTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: TagSource.Classification,
-            },
-          ],
-        });
+      const { tags: newTags, version } = await handleUpdateDataModelData({
+        ...(dataModelData as DashboardDataModel),
+        tags: [
+          ...getTagsWithoutTier(dataModelData?.tags ?? []),
+          ...(updatedTier
+            ? [
+                {
+                  tagFQN: updatedTier,
+                  labelType: LabelType.Manual,
+                  state: State.Confirmed,
+                  source: TagSource.Classification,
+                },
+              ]
+            : []),
+        ],
+      });
 
-        setDataModelData((prev) => ({
-          ...(prev as DashboardDataModel),
-          tags: newTags,
-          version,
-        }));
-      }
+      setDataModelData((prev) => ({
+        ...(prev as DashboardDataModel),
+        tags: newTags,
+        version,
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -289,6 +292,39 @@ const DataModelsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDataModelData((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDataModelVotes(id, data);
+      const details = await getDataModelsByName(
+        dashboardDataModelFQN,
+        'owner,tags,followers,votes',
+        Include.All
+      );
+      setDataModelData(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateDataModelDetailsState = useCallback((data) => {
+    const updatedData = data as DashboardDataModel;
+
+    setDataModelData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -324,11 +360,14 @@ const DataModelsPage = () => {
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
+      handleToggleDelete={handleToggleDelete}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
+      updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}
+      onUpdateVote={updateVote}
     />
   );
 };

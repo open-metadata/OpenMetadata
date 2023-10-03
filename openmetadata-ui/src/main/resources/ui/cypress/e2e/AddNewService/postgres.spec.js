@@ -67,13 +67,8 @@ describe('Postgres Ingestion', () => {
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
         .type(`${filterPattern}{enter}`);
     };
 
@@ -107,7 +102,7 @@ describe('Postgres Ingestion', () => {
       '/api/v1/services/ingestionPipelines/deploy/*',
       'deployIngestion'
     );
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click({ force: true });
     verifyResponseStatusCode('@getSettingsPage', 200);
@@ -162,7 +157,7 @@ describe('Postgres Ingestion', () => {
       .scrollIntoView()
       .contains('Usage Ingestion')
       .click();
-    cy.get('[data-testid="next-button"]')
+    cy.get('[data-testid="submit-btn"]')
       .scrollIntoView()
       .should('be.visible')
       .click();

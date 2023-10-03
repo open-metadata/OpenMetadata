@@ -32,6 +32,7 @@ from metadata.cli.openmetadata_imports_migration import (
 )
 from metadata.cli.profile import run_profiler
 from metadata.cli.restore import run_restore
+from metadata.cli.usage import run_usage
 from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger, set_loggers_level
 
@@ -40,6 +41,7 @@ logger = cli_logger()
 
 class MetadataCommands(Enum):
     INGEST = "ingest"
+    USAGE = "usage"
     PROFILE = "profile"
     TEST = "test"
     DOCKER = "docker"
@@ -137,7 +139,7 @@ def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParse
 
 def docker_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Docker
+    Additional Parser Arguments for Docker
     """
     parser.add_argument(
         "--start", help="Start release docker containers", action="store_true"
@@ -190,7 +192,7 @@ def docker_args(parser: argparse.ArgumentParser):
 
 def webhook_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Webhook
+    Additional Parser Arguments for Webhook
     """
     parser.add_argument(
         "-H", "--host", help="Webserver Host", type=str, default="0.0.0.0"
@@ -200,7 +202,7 @@ def webhook_args(parser: argparse.ArgumentParser):
 
 def backup_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Backup
+    Additional Parser Arguments for Backup
     """
     parser.add_argument(
         "-H", "--host", help="Host that runs the database", required=True
@@ -314,7 +316,7 @@ def restore_args(parser: argparse.ArgumentParser):
 
 def add_metadata_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Metadata
+    Additional Parser Arguments for Metadata
     """
     parser.add_argument(
         "-v", "--version", action="version", version=get_metadata_version()
@@ -340,6 +342,12 @@ def get_parser(args=None):
     )
     create_common_config_parser_args(
         sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
+    )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.USAGE.value,
+            help="Workflow to check the query logs of a database service.",
+        )
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
@@ -412,6 +420,8 @@ def metadata(args=None):  # pylint: disable=too-many-branches
 
     if metadata_workflow == MetadataCommands.INGEST.value:
         run_ingest(config_path=config_file)
+    if metadata_workflow == MetadataCommands.USAGE.value:
+        run_usage(config_path=config_file)
     if metadata_workflow == MetadataCommands.LINEAGE.value:
         run_lineage(config_path=config_file)
     if metadata_workflow == MetadataCommands.INSIGHT.value:

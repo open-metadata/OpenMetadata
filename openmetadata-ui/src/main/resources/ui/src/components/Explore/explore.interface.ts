@@ -20,6 +20,8 @@ import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
 import { Database } from 'generated/entity/data/database';
 import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
 import { Glossary } from 'generated/entity/data/glossary';
+import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
+import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -43,7 +45,10 @@ export type ExploreSearchIndex =
   | SearchIndex.TOPIC
   | SearchIndex.CONTAINER
   | SearchIndex.GLOSSARY
-  | SearchIndex.TAG;
+  | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'
@@ -120,7 +125,9 @@ export type EntityUnion =
   | Database
   | Glossary
   | Tag
-  | DashboardDataModel;
+  | DashboardDataModel
+  | StoredProcedure
+  | SearchIndexEntity;
 
 export type EntityWithServices =
   | Topic
@@ -130,7 +137,8 @@ export type EntityWithServices =
   | Container
   | DashboardDataModel
   | Database
-  | DatabaseSchema;
+  | DatabaseSchema
+  | SearchIndexEntity;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];
