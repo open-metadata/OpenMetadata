@@ -66,13 +66,13 @@ public final class CollectionRegistry {
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
-  public List<String> getAdditionalResources() {
+  public Set<String> getAdditionalResources() {
     return additionalResources;
   }
 
-  private final List<String> additionalResources;
+  private final Set<String> additionalResources;
 
-  private CollectionRegistry(List<String> additionalResources) {
+  private CollectionRegistry(Set<String> additionalResources) {
     this.additionalResources = additionalResources;
   }
 
@@ -87,7 +87,7 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
-  public static void initialize(List<String> additionalResources) {
+  public static void initialize(Set<String> additionalResources) {
     if (!initialized) {
       instance = new CollectionRegistry(additionalResources);
       initialized = true;
