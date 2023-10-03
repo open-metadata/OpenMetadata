@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Menu, Space, Typography } from 'antd';
+import AppState from 'AppState';
 import classNames from 'classnames';
 import Loader from 'components/Loader/Loader';
 import { TaskTab } from 'components/Task/TaskTab/TaskTab.component';
@@ -66,6 +67,10 @@ export const ActivityFeedTab = ({
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails, AppState.nonSecureUserDetails]
+  );
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
@@ -196,17 +201,17 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
+    const userFilter =
+      isUserEntity && currentUser?.isAdmin
+        ? FeedFilter.ALL
+        : FeedFilter.OWNER_OR_FOLLOWS;
+
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter:
-        activeTab === 'mentions'
-          ? FeedFilter.MENTIONS
-          : EntityType.USER === entityType
-          ? FeedFilter.OWNER
-          : undefined,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : userFilter,
     };
-  }, [activeTab]);
+  }, [activeTab, isUserEntity, currentUser]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
