@@ -123,10 +123,8 @@ class DashboardServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=DashboardDataModel,
-                context="dataModel",
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
-                ack_sink=False,
             )
         ],
     )

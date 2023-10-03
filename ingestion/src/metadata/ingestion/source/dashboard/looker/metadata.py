@@ -24,12 +24,13 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, cast
-import lkml
+
 import giturlparse
-
-
+import lkml
 from looker_sdk.sdk.api40.methods import Looker40SDK
-from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
+from looker_sdk.sdk.api40.models import (
+    Dashboard as LookerDashboard,
+)
 from looker_sdk.sdk.api40.models import (
     DashboardBase,
     DashboardElement,
@@ -38,8 +39,6 @@ from looker_sdk.sdk.api40.models import (
     LookmlModelNavExplore,
     Project,
 )
-from pydantic import ValidationError
-
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -54,7 +53,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Table, DataModel
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
@@ -95,18 +94,16 @@ from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.readers.file.base import Reader
 from metadata.readers.file.bitbucket import BitBucketReader
 from metadata.readers.file.credentials import get_credentials_from_url
-from metadata.readers.file.github import GitHubReader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
+from pydantic import ValidationError
 
 from ingestion.src.metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
 )
-from ingestion.src.metadata.ingestion.api.models import Nothing
 from ingestion.src.metadata.ingestion.lineage.models import (
-    Dialect,
     ConnectionTypeDialectMapper,
 )
 from ingestion.src.metadata.ingestion.lineage.parser import LineageParser
@@ -117,7 +114,6 @@ from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
     LookMLRepo,
     LookMLManifest,
 )
-
 from ingestion.src.metadata.ingestion.source.dashboard.looker.utils import _clone_repo
 from ingestion.src.metadata.readers.file.local import LocalReader
 
@@ -372,11 +368,6 @@ class LookerSource(DashboardServiceSource):
                     )
                     continue
 
-                logger.info(
-                    f"LookerSource::fetch_lookml_explores: explore_nav = {explore_nav}"
-                )
-                if explore_nav.name != "dlth":
-                    continue
                 try:
                     explore = self.client.lookml_model_explore(
                         lookml_model_name=lookml_model.name,
@@ -459,7 +450,7 @@ class LookerSource(DashboardServiceSource):
                         )
                     if len(model.joins) == 0 and model.sql_table_name:
                         yield from self._process_view(
-                            view_name=ViewName(model.name), explore=model
+                            view_name=ViewName(model.view_name), explore=model
                         )
                 else:
                     logger.info(f"LookerSource::yield_bulk_datamodel: yield empty")
@@ -581,17 +572,12 @@ class LookerSource(DashboardServiceSource):
 
                 # View to the source is only there if we are informing the dbServiceNames
                 for db_service_name in self.source_config.dbServiceNames or []:
-                    add_lineage_request = self.build_lineage_request(
+                    yield self.build_lineage_request(
                         source=source_table_name,
                         db_service_name=db_service_name,
                         to_entity=self._view_data_model,
                     )
-                    yield add_lineage_request if add_lineage_request else Either(
-                        middle=Nothing(
-                            name=view.name,
-                            description="No lineage to add or it is already added",
-                        )
-                    )
+
             elif view.derived_table:
                 logger.info(
                     f"LookerSource::add_view_lineage: view.derived_table = {view.derived_table}"
@@ -617,21 +603,11 @@ class LookerSource(DashboardServiceSource):
                             logger.info(
                                 f"LookerSource::add_view_lineage: from_table_name = {from_table_name} --- view.name = {view.name}"
                             )
-                            add_lineage_request = self.build_lineage_request(
+                            yield self.build_lineage_request(
                                 source=str(from_table_name),
                                 db_service_name=db_service_name,
                                 to_entity=self._view_data_model,
                             )
-                            yield add_lineage_request if add_lineage_request else Either(
-                                middle=Nothing(
-                                    name=view.name,
-                                    description="No lineage to add or it is already added",
-                                )
-                            )
-            else:
-                yield Either(
-                    middle=Nothing(name=view.name, description="No lineage to add")
-                )
 
         except Exception as err:
             yield Either(
@@ -749,7 +725,7 @@ class LookerSource(DashboardServiceSource):
         :return: clean table name
         """
 
-        return table_name.lower().split("as")[0].strip()
+        return table_name.lower().split(" as ")[0].strip()
 
     @staticmethod
     def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:

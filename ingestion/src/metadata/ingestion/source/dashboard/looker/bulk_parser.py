@@ -11,10 +11,6 @@
 """
 .lkml files parser
 """
-import copy
-import os
-import re
-import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -25,10 +21,12 @@ from metadata.ingestion.source.dashboard.looker.models import (
     LookMlView,
     ViewName,
 )
-from metadata.readers.file.base import Reader, ReadException
+from metadata.readers.file.base import ReadException
 from metadata.utils.logger import ingestion_logger
-from pydantic import ValidationError
 
+from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
+    LookMLExplore,
+)
 from ingestion.src.metadata.readers.file.api_reader import ApiReader
 from ingestion.src.metadata.readers.file.local import LocalReader
 
@@ -72,13 +70,8 @@ class BulkLkmlParser(metaclass=SingletonMeta):
     until we find the view we are looking for.
 
     Approach:
-    When we parse, it is because we are looking for a view definition, then
-    1. When parsing any source file the outcome is
-        a. Look for any defined view, and cache it
-        b. The parsing result is the list of includes
-    2. Is my view present in the cache?
-        yes. Then return it
-        no. Then keep parsing `includes` until the response is yes.
+    When we parse, we parse all files *.view.lkml to get all view and cached them. It can speedup the process and avoid
+    infinity loop when parsing includes.
     """
 
     def __init__(self, reader: LocalReader):
@@ -101,10 +94,6 @@ class BulkLkmlParser(metaclass=SingletonMeta):
             for view in lkml_file.views:
                 view.source_file = _path
                 self._views_cache[view.name] = view
-
-        logger.info(
-            f"BulkLkmlParser::__parse_all_views: done: total view found = {len(self._views_cache)}"
-        )
 
     def _read_file(self, path: Includes) -> str:
         """
@@ -131,9 +120,6 @@ class BulkLkmlParser(metaclass=SingletonMeta):
         Otherwise, return None
         """
         if view_name in self._views_cache:
-            logger.info(
-                f"LkmlParser::get_view_from_cache: view [{view_name}] found !!!"
-            )
             return self._views_cache[view_name]
 
         return None
@@ -144,13 +130,21 @@ class BulkLkmlParser(metaclass=SingletonMeta):
         cache the views and return the list of includes to parse if
         we still don't find the view afterwards
         """
-        logger.info(f"LkmlParser::find_view: view_name = {view_name} -- path = {path}")
         cached_view = self.get_view_from_cache(view_name)
         if cached_view:
             return cached_view
-        else:
-            logger.warning(f"BulkLkmlParser::find_view: can't find view {view_name}")
-            return None
+
+        file = self._read_file(Includes(path))
+        lkml_file = LkmlFile.parse_obj(lkml.load(file))
+        explore: LookMLExplore = next(
+            iter([i for i in lkml_file.explores if i.name == view_name]),
+            None,
+        )
+        if explore:
+            return self.get_view_from_cache(ViewName(explore.from_))
+
+        logger.warning(f"BulkLkmlParser::find_view: can't find view {view_name}")
+        return None
 
     def parse_file(self, path: Includes) -> Optional[List[Includes]]:
         """
