@@ -21,18 +21,21 @@ import {
   UploadProps,
 } from 'antd';
 import Dragger from 'antd/lib/upload/Dragger';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-drag-drop.svg';
-import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
 import { AxiosError } from 'axios';
-import Stepper from 'components/IngestionStepper/IngestionStepper.component';
-import Loader from 'components/Loader/Loader';
-import { STEPS_FOR_IMPORT_ENTITY } from 'constants/entity.constants';
-import { CSVImportResult, Status } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transi18next } from 'utils/CommonUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-drag-drop.svg';
+import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
+import Stepper from '../../../components/IngestionStepper/IngestionStepper.component';
+import Loader from '../../../components/Loader/Loader';
+import { STEPS_FOR_IMPORT_ENTITY } from '../../../constants/entity.constants';
+import {
+  CSVImportResult,
+  Status,
+} from '../../../generated/type/csvImportResult';
+import { Transi18next } from '../../../utils/CommonUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './entity-import.style.less';
 import { EntityImportProps } from './EntityImport.interface';
 import { ImportStatus } from './ImportStatus/ImportStatus.component';

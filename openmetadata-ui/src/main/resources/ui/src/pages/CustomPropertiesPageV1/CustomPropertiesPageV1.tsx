@@ -13,29 +13,29 @@
 
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { CustomPropertyTable } from 'components/CustomEntityDetail/CustomPropertyTable';
-import PageHeader from 'components/header/PageHeader.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { EntityTabs } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { default as React, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getTypeByFQN, updateType } from 'rest/metadataTypeAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { CustomPropertyTable } from '../../components/CustomEntityDetail/CustomPropertyTable';
+import PageHeader from '../../components/header/PageHeader.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   ENTITY_PATH,
   getAddCustomPropertyPath,
 } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Type } from '../../generated/entity/type';
+import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPropertiesPageV1.less';

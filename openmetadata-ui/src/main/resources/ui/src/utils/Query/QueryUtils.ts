@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import Qs from 'qs';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import {
   QuerySearchFilterType,
   QuerySearchParams,
-} from 'components/TableQueries/TableQueries.interface';
-import Qs from 'qs';
+} from '../../components/TableQueries/TableQueries.interface';
 
 export const createQueryFilter = (
   allFilter: SearchDropdownOption[],

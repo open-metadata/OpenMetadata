@@ -19,13 +19,13 @@ import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postFeedById, postThread } from 'rest/feedsAPI';
 import AppState from '../../../../AppState';
 import {
   CreateThread,
   ThreadType,
 } from '../../../../generated/api/feed/createThread';
 import { Post } from '../../../../generated/entity/feed/thread';
+import { postFeedById, postThread } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';

@@ -135,7 +135,6 @@ import org.opensearch.script.ScriptType;
 import org.opensearch.search.SearchModule;
 import org.opensearch.search.aggregations.AggregationBuilder;
 import org.opensearch.search.aggregations.AggregationBuilders;
-import org.opensearch.search.aggregations.Aggregations;
 import org.opensearch.search.aggregations.BucketOrder;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
@@ -337,6 +336,10 @@ public class OpenSearchClientImpl implements SearchRepository {
       case "search_entity_index":
         searchSourceBuilder = buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
+      case "raw_cost_analysis_report_data_index":
+        searchSourceBuilder =
+            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+        break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
         break;
@@ -371,7 +374,8 @@ public class OpenSearchClientImpl implements SearchRepository {
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
-        || request.getIndex().equalsIgnoreCase("query_search_index")) {
+        || request.getIndex().equalsIgnoreCase("query_search_index")
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -840,6 +844,11 @@ public class OpenSearchClientImpl implements SearchRepository {
     return addAggregation(searchSourceBuilder);
   }
 
+  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
+    return searchBuilder(queryBuilder, null, from, size);
+  }
+
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
         QueryBuilders.queryStringQuery(query)
@@ -1283,7 +1292,7 @@ public class OpenSearchClientImpl implements SearchRepository {
       String indexName)
       throws IOException, ParseException {
     org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
-        buildSearchRequest(scheduleTime, currentTime, null, team, chartType, indexName);
+        buildSearchRequest(scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
     SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
     DataInsightChartResult processedDataTotalAssets =
         processDataInsightChartResult(searchResponseTotalAssets, chartType);
@@ -1308,10 +1317,13 @@ public class OpenSearchClientImpl implements SearchRepository {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException {
     org.opensearch.action.search.SearchRequest searchRequest =
-        buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+        buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
   }
@@ -1324,35 +1336,38 @@ public class OpenSearchClientImpl implements SearchRepository {
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
       throws ParseException {
-    DataInsightAggregatorInterface processor =
-        createDataAggregator(searchResponse.getAggregations(), dataInsightChartName);
+    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartName);
     return processor.process();
   }
 
   private static DataInsightAggregatorInterface createDataAggregator(
-      Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
+      SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new OsEntitiesDescriptionAggregator(aggregations, dataInsightChartType);
+        return new OsEntitiesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new OsServicesDescriptionAggregator(aggregations, dataInsightChartType);
+        return new OsServicesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new OsEntitiesOwnerAggregator(aggregations, dataInsightChartType);
+        return new OsEntitiesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new OsServicesOwnerAggregator(aggregations, dataInsightChartType);
+        return new OsServicesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
       case TOTAL_ENTITIES_BY_TYPE:
-        return new OsTotalEntitiesAggregator(aggregations, dataInsightChartType);
+        return new OsTotalEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
       case TOTAL_ENTITIES_BY_TIER:
-        return new OsTotalEntitiesByTierAggregator(aggregations, dataInsightChartType);
+        return new OsTotalEntitiesByTierAggregator(aggregations.getAggregations(), dataInsightChartType);
       case DAILY_ACTIVE_USERS:
-        return new OsDailyActiveUsersAggregator(aggregations, dataInsightChartType);
+        return new OsDailyActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
       case PAGE_VIEWS_BY_ENTITIES:
-        return new OsPageViewsByEntitiesAggregator(aggregations, dataInsightChartType);
+        return new OsPageViewsByEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
       case MOST_ACTIVE_USERS:
-        return new OsMostActiveUsersAggregator(aggregations, dataInsightChartType);
+        return new OsMostActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
       case MOST_VIEWED_ENTITIES:
-        return new OsMostViewedEntitiesAggregator(aggregations, dataInsightChartType);
+        return new OsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+      case UNUSED_ASSETS:
+        return new OsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
+      case AGGREGATED_UNUSED_ASSETS:
+        return new OsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
@@ -1365,12 +1380,24 @@ public class OpenSearchClientImpl implements SearchRepository {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex) {
     SearchSourceBuilder searchSourceBuilder =
-        buildQueryFilter(startTs, endTs, tier, team, dataInsightChartName.value());
-    AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
-    searchSourceBuilder.aggregation(aggregationBuilder);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+        buildQueryFilter(startTs, endTs, tier, team, queryFilter, dataInsightChartName.value());
+    if (!dataInsightChartName
+        .toString()
+        .equalsIgnoreCase(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString())) {
+      AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
+      searchSourceBuilder.aggregation(aggregationBuilder);
+      searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    } else {
+      searchSourceBuilder.fetchSource(true);
+      searchSourceBuilder.from(from);
+      searchSourceBuilder.size(size);
+      searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
+    }
 
     org.opensearch.action.search.SearchRequest searchRequest =
         new org.opensearch.action.search.SearchRequest(dataReportIndex);
@@ -1379,7 +1406,7 @@ public class OpenSearchClientImpl implements SearchRepository {
   }
 
   private static SearchSourceBuilder buildQueryFilter(
-      Long startTs, Long endTs, String tier, String team, String dataInsightChartName) {
+      Long startTs, Long endTs, String tier, String team, String queryFilter, String dataInsightChartName) {
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     BoolQueryBuilder searchQueryFiler = new BoolQueryBuilder();
@@ -1400,11 +1427,33 @@ public class OpenSearchClientImpl implements SearchRepository {
       searchQueryFiler.must(tierQueryFilter);
     }
 
-    RangeQueryBuilder dateQueryFilter =
-        QueryBuilders.rangeQuery(DataInsightChartRepository.TIMESTAMP).gte(startTs).lte(endTs);
+    if (!DataInsightChartRepository.SUPPORTS_NULL_DATE_RANGE.contains(dataInsightChartName)) {
+      if (startTs == null || endTs == null) {
+        throw new IllegalArgumentException(
+            String.format("Start and End date are required for chart type %s ", dataInsightChartName));
+      }
+      RangeQueryBuilder dateQueryFilter =
+          QueryBuilders.rangeQuery(DataInsightChartRepository.TIMESTAMP).gte(startTs).lte(endTs);
+      searchQueryFiler.must(dateQueryFilter);
+    }
 
-    searchQueryFiler.must(dateQueryFilter);
-    return searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
+    searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
+
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(X_CONTENT_REGISTRY, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
+        BoolQueryBuilder newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        searchSourceBuilder.query(newQuery);
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    return searchSourceBuilder;
   }
 
   private static AggregationBuilder buildQueryAggregation(
@@ -1433,6 +1482,23 @@ public class OpenSearchClientImpl implements SearchRepository {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
+      case AGGREGATED_UNUSED_ASSETS:
+        SumAggregationBuilder threeDaysAgg =
+            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+        SumAggregationBuilder sevenDaysAgg =
+            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+        SumAggregationBuilder fourteenDaysAgg =
+            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+        SumAggregationBuilder thirtyDaysAgg =
+            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+        SumAggregationBuilder sixtyDaysAgg =
+            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+        return dateHistogramAggregationBuilder
+            .subAggregation(threeDaysAgg)
+            .subAggregation(sevenDaysAgg)
+            .subAggregation(fourteenDaysAgg)
+            .subAggregation(thirtyDaysAgg)
+            .subAggregation(sixtyDaysAgg);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)

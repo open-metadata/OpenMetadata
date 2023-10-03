@@ -49,7 +49,7 @@ const mockProps = {
   children: <div>Child</div>,
 };
 
-jest.mock('rest/tagAPI', () => ({
+jest.mock('../../../rest/tagAPI', () => ({
   getTags: jest.fn().mockImplementation(() => mockGetTags()),
 }));
 

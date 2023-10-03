@@ -12,9 +12,6 @@
  */
 import { Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Paging } from 'generated/type/paging';
 import { debounce } from 'lodash';
 import React, {
   forwardRef,
@@ -24,9 +21,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
-import { tagRender } from 'utils/TagsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import Loader from '../../components/Loader/Loader';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { Paging } from '../../generated/type/paging';
+import { getEntityName } from '../../utils/EntityUtils';
+import { tagRender } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DataProductSelectOption,
   DataProductsSelectListProps,

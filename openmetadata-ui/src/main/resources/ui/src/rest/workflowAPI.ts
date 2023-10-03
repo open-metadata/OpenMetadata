@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { CreateWorkflow } from 'generated/api/automations/createWorkflow';
-import { Workflow } from 'generated/entity/automations/workflow';
-import { TestConnectionDefinition } from 'generated/entity/services/connections/testConnectionDefinition';
+import { CreateWorkflow } from '../generated/api/automations/createWorkflow';
+import { Workflow } from '../generated/entity/automations/workflow';
+import { TestConnectionDefinition } from '../generated/entity/services/connections/testConnectionDefinition';
 import APIClient from './index';
 
 export const getTestConnectionDefinitionByName = async (

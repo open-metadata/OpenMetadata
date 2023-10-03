@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataInsightChartType } from 'generated/dataInsight/dataInsightChartResult';
+import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { getGraphDataByEntityType } from './DataInsightUtils';
 const mockEntityDescriptionData = [
   {

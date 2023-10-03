@@ -12,11 +12,11 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
-import { MOCK_CHILD_MAP, MOCK_LINEAGE_DATA } from 'mocks/Lineage.mock';
 import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../../enums/entity.enum';
+import { MOCK_CHILD_MAP, MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import EntityLineage from './EntityLineage.component';
 
 const mockEntityLineageProp = {
@@ -53,7 +53,7 @@ const mockPaginatedData = {
   edges: [],
 };
 
-jest.mock('utils/EntityLineageUtils', () => ({
+jest.mock('../../../utils/EntityLineageUtils', () => ({
   dragHandle: jest.fn(),
   getDeletedLineagePlaceholder: jest
     .fn()
@@ -76,7 +76,7 @@ jest.mock('utils/EntityLineageUtils', () => ({
   getParamByEntityType: jest.fn().mockReturnValue('entityFQN'),
 }));
 
-jest.mock('rest/lineageAPI', () => ({
+jest.mock('../../../rest/lineageAPI', () => ({
   getLineageByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       ...MOCK_LINEAGE_DATA,

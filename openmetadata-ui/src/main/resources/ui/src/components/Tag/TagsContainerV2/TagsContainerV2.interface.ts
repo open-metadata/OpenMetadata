@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { ThreadType } from 'generated/api/feed/createThread';
-import { TagSource } from 'generated/type/tagLabel';
 import { EntityTags } from 'Models';
 import { ReactElement } from 'react';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 
 export type TagsContainerV2Props = {

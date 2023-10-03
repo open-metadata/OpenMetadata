@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getListTestSuites } from 'rest/testAPI';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { getListTestSuites } from '../../../rest/testAPI';
 import { TestSuites } from './TestSuites.component';
 
 const testSuitePermission = {
@@ -30,16 +30,16 @@ const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testSuite: testSuitePermission,
     },
   })),
 }));
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
-    ...jest.requireActual('rest/testAPI'),
+    ...jest.requireActual('../../../rest/testAPI'),
     getListTestSuites: jest
       .fn()
       .mockImplementation(() =>
@@ -53,18 +53,21 @@ jest.mock('react-router-dom', () => {
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    ));
-});
+jest.mock(
+  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ type }) => (
+        <div data-testid={`error-placeholder-type-${type}`}>
+          ErrorPlaceHolder.component
+        </div>
+      ));
+  }
+);
 
 const mockProps = {
   summaryPanel: <div>SummaryPanel.component</div>,

@@ -16,9 +16,9 @@ import Tree from 'antd/lib/tree';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/vector.svg';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
+import { formatDateTimeFromSeconds } from '../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../utils/executionUtils';
 import './tree-view-tab.less';
 

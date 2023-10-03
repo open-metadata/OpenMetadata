@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Glossary } from 'generated/entity/data/glossary';
+import { Glossary } from '../../../generated/entity/data/glossary';
 
 export interface GlossaryLeftPanelProps {
   glossaries: Glossary[];

@@ -13,9 +13,9 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Col, Form } from 'antd';
-import { LOADING_STATE } from 'enums/common.enum';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { LOADING_STATE } from '../../../enums/common.enum';
 import CronEditor from '../../common/CronEditor/CronEditor';
 import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 

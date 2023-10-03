@@ -1,4 +1,4 @@
-import { TestSummary } from 'generated/tests/testSuite';
+import { TestSummary } from '../../../generated/tests/testSuite';
 
 /*
  *  Copyright 2023 Collate.

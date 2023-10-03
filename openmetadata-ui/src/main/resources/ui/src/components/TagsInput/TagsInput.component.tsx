@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 
 type Props = {
   isVersionView?: boolean;
