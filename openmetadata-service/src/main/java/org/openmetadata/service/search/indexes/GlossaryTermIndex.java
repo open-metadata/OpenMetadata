@@ -18,7 +18,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class GlossaryTermIndex implements SearchIndex {
@@ -60,8 +59,8 @@ public class GlossaryTermIndex implements SearchIndex {
     fields.put(FIELD_NAME, 10.0f);
     fields.put(NAME_KEYWORD, 1.0f);
     fields.put(FIELD_NAME_NGRAM, 1.0f);
-    fields.put(FULLY_QUALIFIED_NAME+".keyword", 3.0f);
-    fields.put(FULLY_QUALIFIED_NAME+".ngram", 1.0f);
+    fields.put(FULLY_QUALIFIED_NAME + ".keyword", 3.0f);
+    fields.put(FULLY_QUALIFIED_NAME + ".ngram", 1.0f);
     fields.put("synonyms", 5.0f);
     fields.put("synonyms.ngram", 1.0f);
     fields.put(FIELD_DESCRIPTION, 3.0f);
