@@ -19,11 +19,11 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { getEntityName } from 'utils/EntityUtils';
 import { EntityLineageNodeType } from '../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../generated/entity/data/pipeline';
 import { replaceSpaceWith_ } from '../../utils/CommonUtils';
 import { getLayoutedElements, onLoad } from '../../utils/EntityLineageUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getTaskExecStatus } from '../../utils/PipelineDetailsUtils';
 import TaskNode from './TaskNode';
 

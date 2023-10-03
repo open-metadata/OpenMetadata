@@ -10,41 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Operation } from 'fast-json-patch';
 import {
   AssetsUnion,
   MapPatchAPIResponse,
-} from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { Operation } from 'fast-json-patch';
-import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
+} from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import {
+  getDashboardByFqn,
+  patchDashboardDetails,
+} from '../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseDetails,
   patchDatabaseSchemaDetails,
-} from 'rest/databaseAPI';
-import { getDataModelsByName, patchDataModelDetails } from 'rest/dataModelsAPI';
-import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
-import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
-import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
+} from '../../rest/databaseAPI';
+import {
+  getDataModelsByName,
+  patchDataModelDetails,
+} from '../../rest/dataModelsAPI';
+import {
+  getGlossaryTermByFQN,
+  patchGlossaryTerm,
+} from '../../rest/glossaryAPI';
+import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
+import { getPipelineByFqn, patchPipelineDetails } from '../../rest/pipelineAPI';
 import {
   getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
-} from 'rest/SearchIndexAPI';
+} from '../../rest/SearchIndexAPI';
 import {
   getDomainSupportedServiceByFQN,
   patchDomainSupportedService,
-} from 'rest/serviceAPI';
-import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
+} from '../../rest/serviceAPI';
+import {
+  getContainerByName,
+  patchContainerDetails,
+} from '../../rest/storageAPI';
 import {
   getStoredProceduresByName,
   patchStoredProceduresDetails,
-} from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
-import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
-import { getServiceCategoryFromEntityType } from 'utils/ServiceUtils';
+} from '../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
+import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
+import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion

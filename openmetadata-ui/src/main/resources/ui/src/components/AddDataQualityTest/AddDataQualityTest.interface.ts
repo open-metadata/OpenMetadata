@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { ReactNode } from 'react';
+import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { Table } from '../../generated/entity/data/table';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';

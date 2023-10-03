@@ -12,13 +12,13 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';

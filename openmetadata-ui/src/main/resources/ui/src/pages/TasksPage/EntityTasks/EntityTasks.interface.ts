@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/api/feed/createThread';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 
 export interface EntityTasksProps {
   data: {

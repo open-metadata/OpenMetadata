@@ -21,12 +21,12 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import React, { useState } from 'react';
-import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { getTags } from '../../../rest/tagAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../Loader/Loader';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';

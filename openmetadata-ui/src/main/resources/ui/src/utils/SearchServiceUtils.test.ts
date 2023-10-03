@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { COMMON_UI_SCHEMA } from 'constants/Services.constant';
-import { SearchServiceType } from 'generated/entity/services/searchService';
-import customSearchConnection from 'jsons/connectionSchemas/connections/search/customSearchConnection.json';
-import elasticSearchConnection from 'jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
-import openSearchConnection from 'jsons/connectionSchemas/connections/search/openSearchConnection.json';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { SearchServiceType } from '../generated/entity/services/searchService';
+import customSearchConnection from '../jsons/connectionSchemas/connections/search/customSearchConnection.json';
+import elasticSearchConnection from '../jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
+import openSearchConnection from '../jsons/connectionSchemas/connections/search/openSearchConnection.json';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 
 const mockGetSearchServiceConfigReturnValue = {

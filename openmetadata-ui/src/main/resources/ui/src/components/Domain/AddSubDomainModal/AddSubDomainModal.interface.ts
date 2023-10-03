@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CreateDomain } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
+import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface AddSubDomainModalProps {
   open: boolean;

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TopicConfigObjectInterface } from 'components/TopicDetails/TopicDetails.interface';
+import { TopicConfigObjectInterface } from '../components/TopicDetails/TopicDetails.interface';
 import { Topic } from '../generated/entity/data/topic';
 
 export const getConfigObject = (

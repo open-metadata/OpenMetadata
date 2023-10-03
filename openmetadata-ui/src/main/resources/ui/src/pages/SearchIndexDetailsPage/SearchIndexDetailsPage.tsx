@@ -13,61 +13,67 @@
 
 import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
-import Loader from 'components/Loader/Loader';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { getVersionPath } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
-import { SearchIndex, TagLabel } from 'generated/entity/data/searchIndex';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import Loader from '../../components/Loader/Loader';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
+import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
+import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
-} from 'rest/SearchIndexAPI';
+} from '../../rest/SearchIndexAPI';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
-} from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { defaultFields, getSearchIndexTabPath } from 'utils/SearchIndexUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  defaultFields,
+  getSearchIndexTabPath,
+} from '../../utils/SearchIndexUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
 function SearchIndexDetailsPage() {

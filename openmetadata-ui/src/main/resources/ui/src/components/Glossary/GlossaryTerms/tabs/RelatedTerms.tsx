@@ -12,38 +12,41 @@
  */
 
 import { Button, Tooltip, Typography } from 'antd';
-import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagSelectForm from 'components/Tag/TagsSelectForm/TagsSelectForm.component';
-import TagButton from 'components/TagButton/TagButton.component';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE,
-} from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { SearchIndex } from 'enums/search.enum';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription, EntityReference } from 'generated/entity/type';
-import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEmpty, uniqWith } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
+import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
+import TagButton from '../../../../components/TagButton/TagButton.component';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE,
+} from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { SearchIndex } from '../../../../enums/search.enum';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../../generated/entity/type';
+import { Paging } from '../../../../generated/type/paging';
+import { searchData } from '../../../../rest/miscAPI';
+import { formatSearchGlossaryTermResponse } from '../../../../utils/APIUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from 'utils/EntityVersionUtils';
-import { VersionStatus } from 'utils/EntityVersionUtils.interface';
-import { getEntityReferenceFromGlossary } from 'utils/GlossaryUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
+} from '../../../../utils/EntityVersionUtils';
+import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
+import { getEntityReferenceFromGlossary } from '../../../../utils/GlossaryUtils';
+import { getGlossaryPath } from '../../../../utils/RouterUtils';
 
 interface RelatedTermsProps {
   isVersionView?: boolean;

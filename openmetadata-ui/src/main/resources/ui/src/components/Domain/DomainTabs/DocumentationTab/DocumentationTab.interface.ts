@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../../generated/entity/domains/domain';
 
 export interface DocumentationTabProps {
   domain: Domain | DataProduct;

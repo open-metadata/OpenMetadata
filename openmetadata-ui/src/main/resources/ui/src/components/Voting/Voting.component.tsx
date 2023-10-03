@@ -12,10 +12,10 @@
  */
 
 import { Button, Typography } from 'antd';
-import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
 import React from 'react';
 import { ReactComponent as ThumbsUpFilled } from '../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../assets/svg/thumbs-up-outline.svg';
+import { QueryVoteType } from '../../components/TableQueries/TableQueries.interface';
 import { VotingProps } from './voting.interface';
 
 const Voting = ({ votes, disabled, voteStatus, onUpdateVote }: VotingProps) => {

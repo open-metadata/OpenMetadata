@@ -12,8 +12,8 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
-import { MOCK_CHART_COLLECTION_DATA } from 'mocks/TestSuite.mock';
 import React from 'react';
+import { MOCK_CHART_COLLECTION_DATA } from '../../../mocks/TestSuite.mock';
 import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 

@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import AppState from 'AppState';
-import { User } from 'generated/entity/teams/user';
 import React from 'react';
+import AppState from '../../AppState';
+import { User } from '../../generated/entity/teams/user';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
-} from 'rest/permissionAPI';
+} from '../../rest/permissionAPI';
 import PermissionProvider from './PermissionProvider';
 
-jest.mock('rest/permissionAPI', () => ({
+jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),

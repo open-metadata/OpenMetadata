@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import { CreateThread } from 'generated/api/feed/createThread';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Column } from 'generated/entity/data/table';
-import { EntityReference } from 'generated/entity/type';
 import { EntityTags } from 'Models';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Column } from '../../generated/entity/data/table';
+import { EntityReference } from '../../generated/entity/type';
 
 export interface DataModelDetailsProps {
   updateDataModelDetailsState?: (data: DataAssetWithDomains) => void;

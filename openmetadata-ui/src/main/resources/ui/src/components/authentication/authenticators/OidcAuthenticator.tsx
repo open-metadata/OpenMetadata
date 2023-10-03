@@ -13,8 +13,6 @@
 
 import { isEmpty } from 'lodash';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
-import SigninPage from 'pages/login';
-import PageNotFound from 'pages/page-not-found/PageNotFound';
 import React, {
   ComponentType,
   forwardRef,
@@ -27,6 +25,8 @@ import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
+import SigninPage from '../../../pages/login/index';
+import PageNotFound from '../../../pages/page-not-found/PageNotFound';
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';

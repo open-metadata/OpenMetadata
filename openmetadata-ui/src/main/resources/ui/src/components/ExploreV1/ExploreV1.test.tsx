@@ -12,10 +12,10 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from 'components/Explore/exlore.mock';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SearchIndex } from 'enums/search.enum';
 import React from 'react';
+import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../components/Explore/exlore.mock';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { SearchIndex } from '../../enums/search.enum';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('react-router-dom', () => ({
@@ -26,7 +26,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -34,14 +34,14 @@ jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('components/GlobalSearchProvider/GlobalSearchProvider', () => ({
+jest.mock('../../components/GlobalSearchProvider/GlobalSearchProvider', () => ({
   useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
   })),
 }));
 
 jest.mock(
-  'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),

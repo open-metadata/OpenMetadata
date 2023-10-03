@@ -18,7 +18,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { updateSettingsConfig } from 'rest/settingConfigAPI';
+import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import EditCustomLogoConfig from './EditCustomLogoConfig';
 
 const mockPush = jest.fn();
@@ -31,11 +31,11 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('rest/settingConfigAPI', () => ({
+jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {
@@ -49,14 +49,15 @@ jest.mock('rest/settingConfigAPI', () => ({
   updateSettingsConfig: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockImplementation(() => <div>BreadCrumb.component</div>)
+jest.mock(
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () => jest.fn().mockImplementation(() => <div>BreadCrumb.component</div>)
 );
-jest.mock('components/common/ServiceDocPanel/ServiceDocPanel', () =>
+jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel.component</div>)
 );
 
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>

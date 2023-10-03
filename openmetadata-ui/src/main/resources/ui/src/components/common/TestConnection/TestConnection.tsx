@@ -12,42 +12,42 @@
  */
 import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { CreateWorkflow } from 'generated/api/automations/createWorkflow';
-import { ConfigClass } from 'generated/entity/automations/testServiceConnection';
+import { isEmpty, toNumber } from 'lodash';
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import Loader from '../../../components/Loader/Loader';
+import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
+import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
   WorkflowType,
-} from 'generated/entity/automations/workflow';
-import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
-import { isEmpty, toNumber } from 'lodash';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+} from '../../../generated/entity/automations/workflow';
+import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import {
   addWorkflow,
   deleteWorkflowById,
   getTestConnectionDefinitionByName,
   getWorkflowById,
   triggerWorkflowById,
-} from 'rest/workflowAPI';
-import { formatFormDataForSubmit } from 'utils/JSONSchemaFormUtils';
+} from '../../../rest/workflowAPI';
+import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
 import {
   getServiceType,
   getTestConnectionName,
   shouldTestConnection,
-} from 'utils/ServiceUtils';
+} from '../../../utils/ServiceUtils';
 
-import { ReactComponent as FailIcon } from 'assets/svg/fail-badge.svg';
-import { ReactComponent as WarningIcon } from 'assets/svg/ic-warning.svg';
-import { ReactComponent as SuccessIcon } from 'assets/svg/success-badge.svg';
-import { Transi18next } from 'utils/CommonUtils';
+import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
+import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
+import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
 import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
-import { AIRFLOW_DOCS } from 'constants/docs.constants';
+import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
   FETCH_INTERVAL,
@@ -59,9 +59,9 @@ import {
   TEST_CONNECTION_TESTING_MESSAGE,
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
-} from 'constants/Services.constant';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './test-connection.style.less';
 
 const TestConnection: FC<TestConnectionProps> = ({
