@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
@@ -293,6 +294,7 @@ public class SearchRepository {
           scriptTxt.append(
               String.format(
                   REMOVE_PROPAGATED_FIELD_SCRIPT,
+                  field.getName(),
                   field.getName(),
                   entityReference.getId().toString(),
                   field.getName()));

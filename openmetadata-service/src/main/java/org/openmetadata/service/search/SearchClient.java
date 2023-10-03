@@ -35,7 +35,7 @@ public interface SearchClient {
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
   String PROPAGATE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
   String REMOVE_PROPAGATED_FIELD_SCRIPT =
-      "if((ctx._source.%s == null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
+      "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
   String UPDATE_PROPAGATED_FIELD_SCRIPT =
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
