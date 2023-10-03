@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { mockedGlossaries } from 'mocks/Glossary.mock';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { mockedGlossaries } from '../../../mocks/Glossary.mock';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetailsRightPanel from './GlossaryDetailsRightPanel.component';
 
 const mockPermissions = {

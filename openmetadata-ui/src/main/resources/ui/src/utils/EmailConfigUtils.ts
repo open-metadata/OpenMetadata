@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const getEmailConfigFieldLabels = (fieldName: string) => {
   switch (fieldName) {

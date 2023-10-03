@@ -12,14 +12,14 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import React from 'react';
 import {
   Constraint,
   Container,
   DataType,
   FileFormat,
   StorageServiceType,
-} from 'generated/entity/data/container';
-import React from 'react';
+} from '../../../../generated/entity/data/container';
 import ContainerSummary from './ContainerSummary.component';
 
 jest.mock('../SummaryList/SummaryList.component', () =>

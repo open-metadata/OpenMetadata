@@ -16,7 +16,7 @@ import { UserSelectableList } from './UserSelectableList.component';
 
 const mockOnUpdate = jest.fn();
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockResolvedValue({ data: [], paging: { total: 5 } }),
 }));
 

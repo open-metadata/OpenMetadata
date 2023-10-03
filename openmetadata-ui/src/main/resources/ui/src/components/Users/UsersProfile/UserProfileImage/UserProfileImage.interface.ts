@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ImageList } from 'generated/type/profile';
+import { ImageList } from '../../../../generated/type/profile';
 
 export interface UserProfileImageProps {
   userData: {

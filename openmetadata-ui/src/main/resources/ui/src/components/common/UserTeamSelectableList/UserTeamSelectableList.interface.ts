@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from 'generated/entity/teams/user';
 import { ReactNode } from 'react';
+import { EntityReference } from '../../../generated/entity/teams/user';
 
 export interface UserSelectDropdownProps {
   hasPermission: boolean;

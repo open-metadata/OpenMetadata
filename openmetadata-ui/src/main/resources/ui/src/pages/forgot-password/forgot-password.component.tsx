@@ -12,11 +12,11 @@
  */
 
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
-import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandImage from 'components/common/BrandImage/BrandImage';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './forgot-password.styles.less';

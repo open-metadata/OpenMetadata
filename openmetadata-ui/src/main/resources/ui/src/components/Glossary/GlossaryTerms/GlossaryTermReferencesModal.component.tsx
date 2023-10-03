@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
-import { TermReference } from 'generated/entity/data/glossaryTerm';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { TermReference } from '../../../generated/entity/data/glossaryTerm';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 
 interface GlossaryTermReferencesModalProps {
   references: TermReference[];

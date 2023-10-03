@@ -19,9 +19,9 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import { Column } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
@@ -46,7 +46,7 @@ jest.mock('antd', () => ({
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
 }));
-jest.mock('components/common/Table/Table', () =>
+jest.mock('../../../components/common/Table/Table', () =>
   jest.fn().mockImplementation(() => <div>Table</div>)
 );
 

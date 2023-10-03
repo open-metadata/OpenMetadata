@@ -12,8 +12,8 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from 'components/AsyncSelectList/AsyncSelectList.interface';
-import { Paging } from 'generated/type/paging';
+import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
+import { Paging } from '../../../generated/type/paging';
 
 export type TagsSelectFormProps = {
   placeholder: string;

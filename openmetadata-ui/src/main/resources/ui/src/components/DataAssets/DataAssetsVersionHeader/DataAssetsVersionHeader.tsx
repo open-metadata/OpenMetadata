@@ -13,18 +13,18 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Typography } from 'antd';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
-import { DomainLabel } from 'components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { EntityType } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDataAssetsVersionHeaderInfo } from 'utils/DataAssetsVersionHeaderUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { stringToHTML } from 'utils/StringsUtils';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityType } from '../../../enums/entity.enum';
+import { getDataAssetsVersionHeaderInfo } from '../../../utils/DataAssetsVersionHeaderUtils';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { EntitiesWithDomainField } from '../DataAssetsHeader/DataAssetsHeader.interface';
 import { DataAssetsVersionHeaderProps } from './DataAssetsVersionHeader.interface';
 

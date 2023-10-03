@@ -12,14 +12,14 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { MOCK_TABLE } from 'mocks/TableData.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
-} from 'rest/tableAPI';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+} from '../../../../rest/tableAPI';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
 
@@ -35,11 +35,11 @@ const mockEntityPermissions = {
   EditCustomFields: true,
 };
 
-jest.mock('rest/testAPI', () => ({
+jest.mock('../../../../rest/testAPI', () => ({
   getListTestCase: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../../../rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest
     .fn()
     .mockImplementation(() => mockTableEntityDetails),
@@ -58,7 +58,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ pathname: '/table' }),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermission: jest
       .fn()

@@ -12,23 +12,23 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import React from 'react';
-import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SearchIndexDetailsPage from './SearchIndexDetailsPage';
 
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
-jest.mock('rest/SearchIndexAPI', () => ({
+jest.mock('../../rest/SearchIndexAPI', () => ({
   getSearchIndexDetailsByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       name: 'test',
@@ -42,7 +42,7 @@ jest.mock('rest/SearchIndexAPI', () => ({
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
@@ -51,29 +51,32 @@ jest.mock(
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
   () => {
     return jest.fn().mockImplementation(() => <p>testActivityThreadPanel</p>);
   }
 );
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-});
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
+  }
+);
 
-jest.mock('components/common/QueryViewer/QueryViewer.component', () => {
+jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
 jest.mock(
-  'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest
       .fn()
@@ -81,16 +84,16 @@ jest.mock(
   })
 );
 
-jest.mock('components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <p>testTagsContainerV2</p>);
 });
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn(),
@@ -109,7 +112,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <>testLoader</>);
 });
 

@@ -12,9 +12,9 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { Tag } from 'generated/entity/classification/tag';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Paging } from 'generated/type/paging';
+import { Tag } from '../../generated/entity/classification/tag';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { Paging } from '../../generated/type/paging';
 
 export type SelectOption = {
   label: string;

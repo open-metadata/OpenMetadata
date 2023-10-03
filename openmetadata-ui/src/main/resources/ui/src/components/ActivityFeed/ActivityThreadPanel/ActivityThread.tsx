@@ -15,12 +15,12 @@ import { Divider } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFeedById } from 'rest/feedsAPI';
 import {
   Post,
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { getFeedById } from '../../../rest/feedsAPI';
 import { getReplyText } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';

@@ -12,8 +12,8 @@
  */
 import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { TestCaseStatus } from 'generated/tests/testCase';
 import React from 'react';
+import { TestCaseStatus } from '../../../generated/tests/testCase';
 import './last-run-graph.style.less';
 
 export const StatusBox = ({ status }: { status?: string }) => {

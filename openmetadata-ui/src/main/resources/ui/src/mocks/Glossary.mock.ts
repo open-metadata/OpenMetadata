@@ -12,7 +12,7 @@
  */
 
 /* eslint-disable max-len */
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ProviderType, Status } from '../generated/entity/data/glossaryTerm';
 
 export const mockedAssetData = {
