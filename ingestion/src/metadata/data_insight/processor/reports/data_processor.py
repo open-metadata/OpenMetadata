@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import abc
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.ingestion.api.processor import ProcessorStatus
@@ -41,27 +41,30 @@ class DataProcessor(abc.ABC):
         super().__init_subclass__(*args, **kwargs)
         cls.subclasses[cls._data_processor_type] = cls
 
+    def __init__(self, metadata: OpenMetadata):
+        self.metadata = metadata
+        self.timestamp = datetime.now(timezone.utc).timestamp() * 1000
+        self.processor_status = Status()
+        self._refined_data = {}
+        self.post_hook: Optional[Callable] = None
+        self.pre_hook: Optional[Callable] = None
+
     @classmethod
     def create(cls, _data_processor_type, metadata: OpenMetadata):
         if _data_processor_type not in cls.subclasses:
             raise NotImplementedError
         return cls.subclasses[_data_processor_type](metadata)
 
-    def __init__(self, metadata: OpenMetadata):
-        self.metadata = metadata
-        self.timestamp = datetime.now(timezone.utc).timestamp() * 1000
-        self.processor_status = Status()
+    @property
+    def refined_data(self) -> Iterable:
+        return self._refined_data
 
     @abc.abstractmethod
-    def fetch_data(self):
+    def refine(self, entity) -> None:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def refine(self) -> ReportData:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def process(self) -> Iterable[ReportData]:
+    def yield_refined_data(self) -> Iterable[ReportData]:
         raise NotImplementedError
 
     @abc.abstractmethod
