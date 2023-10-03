@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,7 +55,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -77,8 +77,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   static final String FIELDS = "domain,owner,experts,assets";
 
-  public DataProductResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DataProduct.class, new DataProductRepository(dao), authorizer);
+  public DataProductResource(Authorizer authorizer) {
+    super(Entity.DATA_PRODUCT, authorizer);
   }
 
   @Override
@@ -127,7 +127,11 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Returns list of DataProduct after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
+    ListFilter filter = new ListFilter(null);
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference = Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", domainReference.getId().toString());
+    }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 

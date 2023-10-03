@@ -99,9 +99,7 @@ public class NotificationHandler {
             } else if (Entity.TEAM.equals(e.getType())) {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
-                  collectionDAO
-                      .relationshipDAO()
-                      .findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+                  collectionDAO.relationshipDAO().findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
               records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
@@ -148,7 +146,7 @@ public class NotificationHandler {
             Team team = collectionDAO.teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
-                collectionDAO.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
+                collectionDAO.relationshipDAO().findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
             WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }

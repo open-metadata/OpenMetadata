@@ -5,9 +5,11 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.StoredProcedureResource;
@@ -27,7 +29,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         dao,
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -97,6 +99,11 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     return new StoredProcedureUpdater(original, updated, operation);
   }
 
+  @Override
+  public EntityInterface getParentEntity(StoredProcedure entity, String fields) {
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+  }
+
   public void setService(StoredProcedure storedProcedure, EntityReference service) {
     if (service != null && storedProcedure != null) {
       addRelationship(
@@ -112,7 +119,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
     @Override
     public void entitySpecificUpdate() {
-      recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
+      // storedProcedureCode is a required field. Cannot be null.
+      if (updated.getStoredProcedureCode() != null) {
+        recordChange("storedProcedureCode", original.getStoredProcedureCode(), updated.getStoredProcedureCode());
+      }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
     }
   }

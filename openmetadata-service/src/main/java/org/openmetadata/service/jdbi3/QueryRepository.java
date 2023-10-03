@@ -29,8 +29,6 @@ import org.openmetadata.service.util.RestUtil;
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
   private static final String QUERY_USERS_FIELD = "users";
-
-  private static final String QUERY_USED_BY_FIELD = "usedBy";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
 
@@ -43,7 +41,7 @@ public class QueryRepository extends EntityRepository<Query> {
         dao,
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -235,11 +233,14 @@ public class QueryRepository extends EntityRepository<Query> {
       // Store Query Used in Relation
       recordChange("usedBy", original.getUsedBy(), updated.getUsedBy(), true);
       storeQueryUsedIn(updated.getId(), added, deleted);
-      String originalChecksum = EntityUtil.hash(original.getQuery());
-      String updatedChecksum = EntityUtil.hash(updated.getQuery());
-      if (!originalChecksum.equals(updatedChecksum)) {
-        recordChange("query", original.getQuery(), updated.getQuery());
-        recordChange("checkSum", original.getChecksum(), updatedChecksum);
+      // Query is a required field. Cannot be removed.
+      if (updated.getQuery() != null) {
+        String originalChecksum = EntityUtil.hash(original.getQuery());
+        String updatedChecksum = EntityUtil.hash(updated.getQuery());
+        if (!originalChecksum.equals(updatedChecksum)) {
+          recordChange("query", original.getQuery(), updated.getQuery());
+          recordChange("checkSum", original.getChecksum(), updatedChecksum);
+        }
       }
     }
   }

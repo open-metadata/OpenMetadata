@@ -106,7 +106,7 @@ public class SubscriptionUtil {
     Set<String> data = new HashSet<>();
     try {
       List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
-          daoCollection.relationshipDAO().findFrom(entityId.toString(), entityType, relationship.ordinal());
+          daoCollection.relationshipDAO().findFrom(entityId, entityType, relationship.ordinal());
       ownerOrFollowers.forEach(
           owner -> {
             if (type == CreateEventSubscription.SubscriptionType.EMAIL

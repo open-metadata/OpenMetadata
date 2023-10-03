@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -338,6 +339,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     // Create a topic without domain and ensure it inherits domain from the parent
     CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a messaging service with owner data consumer
+    MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createMessagingService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    MessagingService service = serviceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create topic under it
+    createEntity(
+        createRequest("topic").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override

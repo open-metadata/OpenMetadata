@@ -586,22 +586,19 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     dataModelType,
     fullyQualifiedName,
   } = dataModelDetails;
-  const tier = getTierFromTableTags(tags || []);
+  const tier = getTierFromTableTags(tags ?? []);
 
   const overview = [
     {
       name: i18next.t('label.owner'),
       value:
-        getOwnerNameWithProfilePic(owner) ||
+        getOwnerNameWithProfilePic(owner) ??
         i18next.t('label.no-entity', {
           entity: i18next.t('label.owner'),
         }),
       url: getOwnerValue(owner as EntityReference),
-      isLink: owner?.name ? true : false,
-      visible: [
-        DRAWER_NAVIGATION_OPTIONS.lineage,
-        DRAWER_NAVIGATION_OPTIONS.explore,
-      ],
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
       name: `${i18next.t('label.data-model')} ${i18next.t(
@@ -666,22 +663,19 @@ const getStoredProcedureOverview = (
     FQN_SEPARATOR_CHAR
   ).split(FQN_SEPARATOR_CHAR);
 
-  const tier = getTierFromTableTags(tags || []);
+  const tier = getTierFromTableTags(tags ?? []);
 
   const overview = [
     {
       name: i18next.t('label.owner'),
       value:
-        getOwnerNameWithProfilePic(owner) ||
+        getOwnerNameWithProfilePic(owner) ??
         i18next.t('label.no-entity', {
           entity: i18next.t('label.owner'),
         }),
       url: getOwnerValue(owner as EntityReference),
-      isLink: owner?.name ? true : false,
-      visible: [
-        DRAWER_NAVIGATION_OPTIONS.lineage,
-        DRAWER_NAVIGATION_OPTIONS.explore,
-      ],
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
       name: i18next.t('label.service'),
@@ -1151,7 +1145,7 @@ export const getEntityLinkFromType = (
       return getTableDetailsPath(fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
       return getTagsDetailsPath(getEncodedFqn(fullyQualifiedName));
     case EntityType.TOPIC:

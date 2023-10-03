@@ -127,11 +127,9 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
     putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
 
     assertResponse(
-        () ->
-            deleteWebAnalyticEventData(
-                TestUtils.dateToTimestamp("2022-10-11"), authHeaders(USER_WITH_DATA_CONSUMER_ROLE.getName())),
+        () -> deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(DATA_CONSUMER.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER_WITH_DATA_CONSUMER_ROLE.getName(), List.of(MetadataOperation.DELETE)));
+        permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Override

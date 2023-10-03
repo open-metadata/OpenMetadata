@@ -247,6 +247,16 @@
       <artifactId>ssm</artifactId>
       <version>${awssdk.version}</version>
     </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>rds</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sts</artifactId>
+      <version>${awssdk.version}</version>
+    </dependency>
 
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
