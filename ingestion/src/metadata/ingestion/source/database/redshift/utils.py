@@ -31,6 +31,7 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
+    REDSHIFT_GET_SCHEMA_NAMES,
     REDSHIFT_TABLE_COMMENTS,
 )
 from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
@@ -389,3 +390,37 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
         key = RelationKey(rel.relname, rel.schema, connection)
         relations[key] = rel
     return relations
+
+
+def get_filter_pattern_query(filter_pattern_name):
+    schema_patterns = [sc_name + "%" for sc_name in filter_pattern_name]
+    query_conditions = []
+    # Iterate over the list and build the query conditions
+    for pattern in schema_patterns:
+        query_conditions.append(f"nspname LIKE '{pattern}'")
+
+    # Join the query conditions with 'OR' and add them to the SQL query
+    if query_conditions:
+        query_condition = " OR ".join(query_conditions)
+        sql_query = f"AND ( {query_condition} )"
+    return sql_query
+
+
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_schema_names(self, connection, **kw):
+    query = REDSHIFT_GET_SCHEMA_NAMES
+    cursor = connection.execute(
+        query.format(get_filter_pattern_query(kw["filter_schema_name"]))
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else query.format("")
+    )
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result

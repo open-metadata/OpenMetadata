@@ -33,6 +33,7 @@ from metadata.ingestion.connections.test_connections import test_connection_db_c
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_DATABASE_NAMES,
+    REDSHIFT_GET_SCHEMA_NAMES,
     REDSHIFT_TEST_GET_QUERIES,
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
@@ -69,7 +70,8 @@ def test_connection(
     """
     queries = {
         "GetQueries": REDSHIFT_TEST_GET_QUERIES,
-        "GetDatabases": REDSHIFT_GET_DATABASE_NAMES,
+        "GetDatabases": REDSHIFT_GET_DATABASE_NAMES.format(""),
+        "GetSchemas": REDSHIFT_GET_SCHEMA_NAMES.format(""),
         "GetPartitionTableDetails": REDSHIFT_TEST_PARTITION_DETAILS,
     }
     test_connection_db_common(

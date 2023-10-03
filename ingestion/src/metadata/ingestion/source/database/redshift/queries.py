@@ -88,6 +88,7 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
 
 REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
     """
+    SELECT * FROM(
     SELECT
       c.relname as name,
       c.relkind
@@ -100,7 +101,8 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
         tablename as name,
         'e' as relkind
     FROM svv_external_tables
-    WHERE schemaname = :schema;
+    WHERE schemaname = :schema)
+    {};
     """
 )
 
@@ -218,8 +220,13 @@ REDSHIFT_TABLE_COMMENTS = """
 """
 
 REDSHIFT_GET_DATABASE_NAMES = """
-SELECT datname FROM pg_database
+SELECT datname FROM pg_database {}
 """
+
+REDSHIFT_GET_SCHEMA_NAMES = """
+        SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%%' {}
+    """
+
 
 REDSHIFT_TEST_GET_QUERIES = """
 (select 1 from pg_catalog.svv_table_info limit 1)
