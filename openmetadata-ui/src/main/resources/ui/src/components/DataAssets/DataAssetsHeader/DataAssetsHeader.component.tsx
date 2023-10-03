@@ -37,7 +37,6 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import Voting from '../../../components/Voting/Voting.component';
 import { VotingDataProps } from '../../../components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -374,7 +373,7 @@ export const DataAssetsHeader = ({
                   <Space>
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
-                        {tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]}
+                        {getEntityName(tier)}
                       </span>
                     ) : (
                       <span className="font-medium text-xs" data-testid="Tier">

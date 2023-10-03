@@ -24,6 +24,7 @@ import { ReactComponent as IconTag } from '../../../assets/svg/classification.sv
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { TagsV1Props } from './TagsV1.interface';
@@ -68,12 +69,15 @@ const TagsV1 = ({
 
   const tagName = useMemo(
     () =>
-      showOnlyName
-        ? tag.tagFQN
-            .split(FQN_SEPARATOR_CHAR)
-            .slice(-2)
-            .join(FQN_SEPARATOR_CHAR)
-        : tag.tagFQN,
+      getEntityName(tag) ||
+      getTagDisplay(
+        showOnlyName
+          ? tag.tagFQN
+              .split(FQN_SEPARATOR_CHAR)
+              .slice(-2)
+              .join(FQN_SEPARATOR_CHAR)
+          : tag.tagFQN
+      ),
     [showOnlyName, tag.tagFQN]
   );
 
@@ -105,7 +109,7 @@ const TagsV1 = ({
             ellipsis
             className="m-0 tags-label"
             data-testid={`tag-${tag.tagFQN}`}>
-            {getTagDisplay(tagName)}
+            {tagName}
           </Typography.Paragraph>
         </div>
       </div>

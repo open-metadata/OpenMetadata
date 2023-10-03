@@ -59,6 +59,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -93,6 +94,7 @@ import {
 } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
@@ -731,18 +733,9 @@ const TableDetailsPageV1 = () => {
   ]);
 
   const onTierUpdate = useCallback(
-    async (newTier?: string) => {
+    async (newTier?: Tag) => {
       if (tableDetails) {
-        const tierTag: Table['tags'] = newTier
-          ? [
-              ...getTagsWithoutTier(tableTags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : getTagsWithoutTier(tableTags ?? []);
+        const tierTag: Table['tags'] = updateTierTag(tableTags, newTier);
         const updatedTableDetails = {
           ...tableDetails,
           tags: tierTag,
