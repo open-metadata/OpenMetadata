@@ -33,7 +33,7 @@ public class GlossaryTermIndex implements SearchIndex {
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(glossaryTerm.getName()).weight(5).build());
-    if (glossaryTerm.getDisplayName() != null || !glossaryTerm.getDisplayName().isEmpty()) {
+    if (glossaryTerm.getDisplayName() != null && !glossaryTerm.getDisplayName().isEmpty()) {
       suggest.add(SearchSuggest.builder().input(glossaryTerm.getDisplayName()).weight(10).build());
     }
     doc.put(

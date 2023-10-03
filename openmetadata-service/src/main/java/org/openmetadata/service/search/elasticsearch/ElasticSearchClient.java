@@ -178,7 +178,7 @@ public class ElasticSearchClient implements SearchClient {
         CreateIndexRequest request = new CreateIndexRequest(indexMapping.getIndexName());
         request.source(indexMappingContent, XContentType.JSON);
         CreateIndexResponse createIndexResponse = client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.info("{} Created {}", indexMapping.getIndexName(), createIndexResponse.isAcknowledged());
+        LOG.debug("{} Created {}", indexMapping.getIndexName(), createIndexResponse.isAcknowledged());
         // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
@@ -200,7 +200,7 @@ public class ElasticSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(AcknowledgedResponse acknowledgedResponse) {
-              LOG.info("Created successfully: " + acknowledgedResponse.toString());
+              LOG.debug("Created successfully: " + acknowledgedResponse.toString());
             }
 
             @Override
@@ -228,7 +228,7 @@ public class ElasticSearchClient implements SearchClient {
       PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName());
       request.source(indexMappingContent, XContentType.JSON);
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
-      LOG.info("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
+      LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
       LOG.error(String.format("Failed to Update Elastic Search index %s due to", indexMapping.getIndexName()), e);
     }
@@ -239,7 +239,7 @@ public class ElasticSearchClient implements SearchClient {
     try {
       DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName());
       AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.info("{} Deleted {}", indexMapping.getIndexName(), deleteIndexResponse.isAcknowledged());
+      LOG.debug("{} Deleted {}", indexMapping.getIndexName(), deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
@@ -995,7 +995,7 @@ public class ElasticSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
-              LOG.info("Created successfully: " + updateResponse.toString());
+              LOG.debug("Created successfully: " + updateResponse.toString());
             }
 
             @Override
@@ -1015,7 +1015,7 @@ public class ElasticSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
-              LOG.info("Update by query succeeded: " + response.toString());
+              LOG.debug("Update by query succeeded: " + response.toString());
             }
 
             @Override
@@ -1045,7 +1045,7 @@ public class ElasticSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(DeleteResponse response) {
-              LOG.info("Delete succeeded: " + response.toString());
+              LOG.debug("Delete succeeded: " + response.toString());
             }
 
             @Override
@@ -1066,7 +1066,7 @@ public class ElasticSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(BulkByScrollResponse response) {
-              LOG.info("Delete by query succeeded: " + response.toString());
+              LOG.debug("Delete by query succeeded: " + response.toString());
             }
 
             @Override
