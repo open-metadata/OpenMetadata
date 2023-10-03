@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storage/storageMetadataS3Config.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Storage Metadata ADLS Config",
+  "description": "Storage Metadata Manifest file ADLS path config.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataADLSConfig",
+  "type": "object",
+  "properties": {
+    "securityConfig": {
+      "title": "S3 Security Config",
+      "$ref": "../../security/credentials/azureCredentials.json"
+    },
+    "prefixConfig": {
+      "title": "Storage Metadata Prefix Config",
+      "$ref": "./storageBucketDetails.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["prefixConfig"]
+}

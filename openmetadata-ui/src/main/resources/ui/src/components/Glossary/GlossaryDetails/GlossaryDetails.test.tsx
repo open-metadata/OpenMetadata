@@ -40,6 +40,15 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock(
+  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <p>testActivityFeedTab</p>),
+  })
+);
+
 const mockProps = {
   glossary: mockedGlossaries[0],
   glossaryTerms: [],

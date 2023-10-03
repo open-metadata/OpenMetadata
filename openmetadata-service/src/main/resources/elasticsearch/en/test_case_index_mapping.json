@@ -147,13 +147,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer"
           },
           "entityType": {
             "type": "keyword"

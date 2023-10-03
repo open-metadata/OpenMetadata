@@ -82,8 +82,7 @@ const AssetsTabs = forwardRef(
     const [activeFilter, setActiveFilter] = useState<SearchIndex>(
       SearchIndex.TABLE
     );
-    const { glossaryName, fqn } =
-      useParams<{ glossaryName: string; fqn: string }>();
+    const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [total, setTotal] = useState<number>(0);
@@ -122,9 +121,9 @@ const AssetsTabs = forwardRef(
       } else if (type === AssetsOfEntity.TEAM) {
         return `(owner.fullyQualifiedName:"${fqn}")`;
       } else {
-        return `(tags.tagFQN:"${glossaryName}")`;
+        return `(tags.tagFQN:"${fqn}")`;
       }
-    }, [type, glossaryName, fqn]);
+    }, [type, fqn]);
 
     const searchIndexes = useMemo(() => {
       const indexesToFetch = [...ASSETS_INDEXES];

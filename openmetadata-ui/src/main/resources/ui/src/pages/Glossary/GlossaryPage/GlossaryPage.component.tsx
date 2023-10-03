@@ -135,18 +135,6 @@ const GlossaryPage = () => {
     fetchGlossaryList();
   }, []);
 
-  const fetchGlossaryTermParent = async () => {
-    setIsRightPanelLoading(true);
-    try {
-      const { parent } = await getGlossaryTermByFQN(glossaryFqn, 'parent');
-      setSelectedData((data) => (data ? { ...data, parent } : undefined));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsRightPanelLoading(false);
-    }
-  };
-
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
     try {
@@ -179,12 +167,6 @@ const GlossaryPage = () => {
       }
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
-
-  useEffect(() => {
-    if (!isGlossaryActive && viewAllGlossaryPermission) {
-      fetchGlossaryTermParent();
-    }
-  }, [glossaryFqn]);
 
   const updateGlossary = async (updatedData: Glossary) => {
     const jsonPatch = compare(selectedData as Glossary, updatedData);
@@ -350,7 +332,9 @@ const GlossaryPage = () => {
   return (
     <PageLayoutV1
       className="glossary-page-layout"
-      leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
+      leftPanel={
+        isGlossaryActive && <GlossaryLeftPanel glossaries={glossaries} />
+      }
       pageTitle={t('label.glossary')}
       rightPanel={
         previewAsset && (

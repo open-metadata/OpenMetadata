@@ -61,7 +61,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -69,7 +68,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService, CreateDatabaseService> {
+public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseService, CreateDatabaseService> {
   public DatabaseServiceResourceTest() {
     super(
         Entity.DATABASE_SERVICE,

@@ -141,8 +141,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
 
     // Other roles and non-owner can't edit tests
-    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_STEWARD_ROLE.getName(), EDIT_TESTS, true);
-    entity = patchEntityAndCheckAuthorization(entity, USER_WITH_DATA_CONSUMER_ROLE.getName(), EDIT_TESTS, true);
+    entity = patchEntityAndCheckAuthorization(entity, DATA_STEWARD.getName(), EDIT_TESTS, true);
+    entity = patchEntityAndCheckAuthorization(entity, DATA_CONSUMER.getName(), EDIT_TESTS, true);
     patchEntityAndCheckAuthorization(entity, USER2.getName(), EDIT_TESTS, true);
   }
 
