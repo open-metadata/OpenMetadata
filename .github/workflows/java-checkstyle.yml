@@ -67,7 +67,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
 
       - name: Run checkstyle
         run: mvn googleformatter:format@reformat-sources
