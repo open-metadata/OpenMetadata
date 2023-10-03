@@ -19,6 +19,9 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TOPIC,
   EntityType.PIPELINE,
   EntityType.MLMODEL,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.STORED_PROCEDURE,
   EntityType.SEARCH_INDEX,
 ];
 
