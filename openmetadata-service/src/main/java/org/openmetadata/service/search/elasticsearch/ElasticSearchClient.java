@@ -871,97 +871,115 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-    updateRequest.doc(doc, XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    updateElasticSearch(updateRequest);
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      updateElasticSearch(updateRequest);
+    }
   }
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-    updateRequest.doc(doc, XContentType.JSON);
-    updateRequest.docAsUpsert(true);
-    updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-    updateElasticSearch(updateRequest);
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      updateRequest.doc(doc, XContentType.JSON);
+      updateRequest.docAsUpsert(true);
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      updateElasticSearch(updateRequest);
+    }
   }
 
   @Override
   public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
-    ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
-    DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-    deleteByQueryRequest.setQuery(scriptQuery);
-    deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+    if (isClientAvailable) {
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
+      ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
+      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      deleteByQueryRequest.setQuery(scriptQuery);
+      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+    }
   }
 
   @Override
   public void deleteEntity(String indexName, String docId) {
-    DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
-    deleteEntityFromElasticSearch(deleteRequest);
+    if (isClientAvailable) {
+      DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
+      deleteEntityFromElasticSearch(deleteRequest);
+    }
   }
 
   @Override
   public void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue) {
-    BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-    DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-    for (Pair<String, String> p : fieldAndValue) {
-      queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
+    if (isClientAvailable) {
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      for (Pair<String, String> p : fieldAndValue) {
+        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
+      }
+      deleteByQueryRequest.setQuery(queryBuilder);
+      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
     }
-    deleteByQueryRequest.setQuery(queryBuilder);
-    deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
   }
 
   @Override
   public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
-    UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-    updateRequest.script(script);
-    updateElasticSearch(updateRequest);
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateRequest.script(script);
+      updateElasticSearch(updateRequest);
+    }
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
       String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-    BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-    for (Pair<String, String> p : fieldAndValue) {
-      queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
+      for (Pair<String, String> p : fieldAndValue) {
+        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
+      }
+      updateByQueryRequest.setQuery(queryBuilder);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
     }
-    updateByQueryRequest.setQuery(queryBuilder);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-    updateByQueryRequest.setScript(script);
-    updateElasticSearchByQuery(updateByQueryRequest);
   }
 
   @Override
   public void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-    Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-    updateRequest.scriptedUpsert(true);
-    updateRequest.script(script);
-    updateElasticSearch(updateRequest);
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateRequest.scriptedUpsert(true);
+      updateRequest.script(script);
+      updateElasticSearch(updateRequest);
+    }
   }
 
   @Override
   public void updateChildren(
       String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates) {
-    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-    updateByQueryRequest.setQuery(
-        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
-    Script script =
-        new Script(
-            ScriptType.INLINE,
-            Script.DEFAULT_SCRIPT_LANG,
-            updates.getKey(),
-            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : JsonUtils.getMap(updates.getValue())));
-    updateByQueryRequest.setScript(script);
-    updateElasticSearchByQuery(updateByQueryRequest);
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      updateByQueryRequest.setQuery(
+          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()).operator(Operator.AND));
+      Script script =
+          new Script(
+              ScriptType.INLINE,
+              Script.DEFAULT_SCRIPT_LANG,
+              updates.getKey(),
+              JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : JsonUtils.getMap(updates.getValue())));
+      updateByQueryRequest.setScript(script);
+      updateElasticSearchByQuery(updateByQueryRequest);
+    }
   }
 
   public void updateElasticSearch(UpdateRequest updateRequest) {
-    if (updateRequest != null) {
+    if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       ActionListener<UpdateResponse> listener =
@@ -981,7 +999,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
-    if (updateByQueryRequest != null) {
+    if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       ActionListener<BulkByScrollResponse> listener =
@@ -1011,7 +1029,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
-    if (deleteRequest != null) {
+    if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       ActionListener<DeleteResponse> listener =
@@ -1032,7 +1050,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
-    if (deleteRequest != null) {
+    if (deleteRequest != null && isClientAvailable) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       ActionListener<BulkByScrollResponse> listener =
