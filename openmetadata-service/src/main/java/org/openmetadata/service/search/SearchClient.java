@@ -29,15 +29,6 @@ public interface SearchClient {
 
   String DELETE = "delete";
   String GLOBAL_SEARCH_ALIAS = "AllEntities";
-  String DATABASE_ALIAS = "databaseAlias";
-  String CLASSIFICATION_ALIAS = "classificationAlias";
-  String DATABASE_SCHEMA_ALIAS = "databaseSchemaAlias";
-  String DASHBOARD_SERVICE_ALIAS = "dashboardServiceAlias";
-  String MESSAGING_SERVICE_ALIAS = "messagingServiceAlias";
-  String PIPELINE_SERVICE_ALIAS = "pipelineServiceAlias";
-  String MLMODEL_SERVICE_ALIAS = "mlModelServiceAlias";
-  String STORAGE_SERVICE_ALIAS = "storageServiceAlias";
-  String TEST_SUITE_ALIAS = "testSuiteAlias";
 
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
@@ -109,6 +100,9 @@ public interface SearchClient {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException;
 

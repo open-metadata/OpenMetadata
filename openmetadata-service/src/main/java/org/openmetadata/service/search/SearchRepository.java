@@ -516,64 +516,13 @@ public class SearchRepository {
       String tier,
       String team,
       DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException {
-    return searchClient.listDataInsightChartResult(startTs, endTs, tier, team, dataInsightChartName, dataReportIndex);
+    return searchClient.listDataInsightChartResult(
+        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
   }
 
-  @SneakyThrows
-  public void updateElasticSearchFailureStatus(String failedFor, String failureMessage) {
-    try {
-      long updateTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      String recordString =
-          dao.entityExtensionTimeSeriesDao().getExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-      EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
-      long originalLastUpdate = lastRecord.getTimestamp();
-      lastRecord.setStatus(EventPublisherJob.Status.ACTIVE_WITH_ERROR);
-      lastRecord.setTimestamp(updateTime);
-      lastRecord.setFailure(
-          new Failure()
-              .withSinkError(
-                  new FailureDetails()
-                      .withContext(failedFor)
-                      .withLastFailedAt(updateTime)
-                      .withLastFailedReason(failureMessage)));
-
-      dao.entityExtensionTimeSeriesDao()
-          .update(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              ELASTIC_SEARCH_EXTENSION,
-              JsonUtils.pojoToJson(lastRecord),
-              originalLastUpdate);
-    } catch (Exception e) {
-      // Failure to update
-    }
-  }
-
-  private void registerElasticSearchJobs() {
-    try {
-      dao.entityExtensionTimeSeriesDao().delete(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-      long startTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()).getTime();
-      FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
-      EventPublisherJob streamJob =
-          new EventPublisherJob()
-              .withId(UUID.randomUUID())
-              .withName("Elastic Search Stream")
-              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
-              .withStatus(EventPublisherJob.Status.ACTIVE)
-              .withTimestamp(startTime)
-              .withStartedBy(ADMIN_USER_NAME)
-              .withStartTime(startTime)
-              .withFailure(new Failure().withSinkError(failureDetails));
-      dao.entityExtensionTimeSeriesDao()
-          .insert(
-              ELASTIC_SEARCH_ENTITY_FQN_STREAM,
-              ELASTIC_SEARCH_EXTENSION,
-              "eventPublisherJob",
-              JsonUtils.pojoToJson(streamJob));
-    } catch (Exception e) {
-      LOG.error("Failed to register Elastic Search Job");
-    }
-  }
 }
