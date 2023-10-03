@@ -67,6 +67,8 @@ public abstract class OpenMetadataApplicationTest {
   private static String HOST;
   private static String PORT;
 
+  private static Client client;
+
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
     Fernet.getInstance().setFernetKey(FERNET_KEY_1);
@@ -137,6 +139,16 @@ public abstract class OpenMetadataApplicationTest {
     validateAndRunSystemDataMigrations(
         jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), nativeMigrationScripsLocation, false);
     APP.before();
+    createClient();
+  }
+
+  private static void createClient() {
+    ClientConfig config = new ClientConfig();
+    config.connectorProvider(new GrizzlyConnectorProvider());
+    config.register(new JacksonFeature(APP.getObjectMapper()));
+    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
+    config.property(ClientProperties.READ_TIMEOUT, 0);
+    client = ClientBuilder.newClient(config);
   }
 
   @AfterAll
@@ -150,26 +162,17 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.stop();
   }
 
-  public static Client getClient() {
-    ClientConfig config = new ClientConfig();
-    config.connectorProvider(new GrizzlyConnectorProvider());
-    config.register(new JacksonFeature(APP.getObjectMapper()));
-    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
-    config.property(ClientProperties.READ_TIMEOUT, 0);
-
-    return ClientBuilder.newClient(config);
-  }
 
   public static RestClient getSearchClient() {
     return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
   }
 
   public static WebTarget getResource(String collection) {
-    return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+    return client.target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return getClient().target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
+    return client.target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
   }
 
   private static void overrideElasticSearchConfig() {
