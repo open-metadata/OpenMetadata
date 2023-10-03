@@ -30,7 +30,7 @@ class TrinoSampler(SQASampler):
         return query.where(
             or_(
                 *[
-                    text(f"is_nan({cols}) = False")
+                    text(f"is_nan({cols.name}) = False")
                     for cols in sqa_columns
                     if type(cols.type) in FLOAT_SET
                 ]
