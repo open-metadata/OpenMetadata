@@ -150,7 +150,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // as first step register all the repositories
-    Entity.initializeRepositories(collectionDAO, catalogConfig.getExtensionConfiguration().getRepositoriesPackage());
+    Entity.initializeRepositories(
+        jdbi, collectionDAO, catalogConfig.getExtensionConfiguration().getRepositoriesPackage());
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
