@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Dict, List
 
 from sqlalchemy import Column
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import TableData
@@ -216,6 +217,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 ],
             )
             return dict(row)
+        except ProgrammingError as exc:
+            return self._programming_error_static_metric(
+                runner, column, exc, session, metrics
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -282,6 +287,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         try:
             row = runner.select_first_from_sample(
                 *[metric(column).fn() for metric in metrics],
+            )
+        except ProgrammingError as exc:
+            logger.info(
+                f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
             )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
@@ -501,6 +510,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
+
+    def _programming_error_static_metric(self, runner, column, exc, _, __):
+        """
+        Override Programming Error for Static Metrics
+        """
+        logger.error(
+            f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
+        )
 
     def close(self):
         """Clean up session"""

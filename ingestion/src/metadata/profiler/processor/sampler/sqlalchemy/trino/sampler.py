@@ -27,43 +27,14 @@ class TrinoSampler(SQASampler):
     run the query in the whole table.
     """
 
-    def get_sample_percentage_cte(self):
+    def random_sampler_where_clause_(self, query):
         sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]
-        return (
-            self.client.query(
-                self.table,
-                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+        return query.where(
+            or_(
+                *[
+                    text(f"is_nan({cols}) = False")
+                    for cols in sqa_columns
+                    if type(cols.type) in FLOAT_SET
+                ]
             )
-            .where(
-                or_(
-                    *[
-                        text(f"is_nan({cols}) = False")
-                        for cols in sqa_columns
-                        if type(cols.type) in FLOAT_SET
-                    ]
-                )
-            )
-            .cte(f"{self.table.__tablename__}_rnd")
-        )
-
-    def get_sample_rows_cte(self):
-        table_query = self.client.query(self.table)
-        sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]
-        return (
-            self.client.query(
-                self.table,
-                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
-            )
-            .where(
-                or_(
-                    *[
-                        text(f"is_nan({cols}) = False")
-                        for cols in sqa_columns
-                        if type(cols.type) in FLOAT_SET
-                    ]
-                )
-            )
-            .order_by(RANDOM_LABEL)
-            .limit(self.profile_sample)
-            .cte(f"{self.table.__tablename__}_rnd")
         )
