@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Style } from 'generated/type/schema';
+import { Style } from '../../../generated/type/schema';
 
 export interface StyleModalProps {
   open: boolean;
