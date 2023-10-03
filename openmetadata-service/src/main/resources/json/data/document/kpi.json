@@ -1,0 +1,10 @@
+{
+  "name": "KPI",
+  "displayName": "KPI KnowledgePanel",
+  "description": "KPI KnowledgePanel shows the Organization's KPIs on description, owner coverage.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.KPI",
+  "data": {
+    "gridSizes": ["small", "medium"]
+  }
+}
