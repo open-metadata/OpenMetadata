@@ -12,8 +12,6 @@
  */
 
 import { Col, Row, Tag } from 'antd';
-import { GRAPH_BACKGROUND_COLOR } from 'constants/constants';
-import { DEFAULT_HISTOGRAM_DATA } from 'constants/profiler.constant';
 import { isUndefined, map } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,9 +26,11 @@ import {
   YAxis,
 } from 'recharts';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
+import { DEFAULT_HISTOGRAM_DATA } from '../../constants/profiler.constant';
 import { HistogramClass } from '../../generated/entity/data/table';
-import { axisTickFormatter, tooltipFormatter } from '../utils/ChartUtils';
-import { customFormatDateTime } from '../utils/date-time/DateTimeUtils';
+import { axisTickFormatter, tooltipFormatter } from '../../utils/ChartUtils';
+import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
 const DataDistributionHistogram = ({

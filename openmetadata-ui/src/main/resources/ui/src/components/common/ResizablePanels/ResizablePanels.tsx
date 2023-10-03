@@ -13,7 +13,7 @@
 import classNames from 'classnames';
 import React from 'react';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import DocumentTitle from '../../components/DocumentTitle/DocumentTitle';
+import DocumentTitle from '../../../components/DocumentTitle/DocumentTitle';
 import PanelContainer from './PanelContainer/PanelContainer';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
 import './ResizablePanels.less';

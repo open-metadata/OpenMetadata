@@ -20,6 +20,9 @@ import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { ReactComponent as ExitFullScreen } from '../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../assets/svg/full-screen.svg';
+import { ReactComponent as CopyIcon } from '../../assets/svg/icon-copy.svg';
 import { getTableTabPath, PIPE_SYMBOL } from '../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
@@ -36,9 +39,6 @@ import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.co
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
-import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 const { Text } = Typography;
 

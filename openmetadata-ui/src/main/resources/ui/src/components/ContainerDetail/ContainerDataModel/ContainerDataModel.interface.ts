@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { ThreadType } from '../../generated/api/feed/createThread';
-import { Container } from '../../generated/entity/data/container';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { Container } from '../../../generated/entity/data/container';
 
 export type CellRendered<T, K extends keyof T> = (
   value: T[K],

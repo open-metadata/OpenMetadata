@@ -25,12 +25,12 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { showErrorToast } from '../../utils/ToastUtils';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   formatDateTimeWithTimezone,
   formatTimeDurationFromSeconds,
-} from '../utils/date-time/DateTimeUtils';
+} from '../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 

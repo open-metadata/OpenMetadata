@@ -37,8 +37,8 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
-import { getSearchServiceConfig } from '../utils/SearchServiceUtils';
-import { getStorageServiceConfig } from '../utils/StorageServiceUtils';
+import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
+import { getStorageServiceConfig } from '../../utils/StorageServiceUtils';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;

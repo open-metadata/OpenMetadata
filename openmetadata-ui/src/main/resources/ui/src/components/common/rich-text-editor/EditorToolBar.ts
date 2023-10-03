@@ -12,7 +12,7 @@
  */
 
 import MarkdownIcon from '../../../assets/svg/markdown.svg';
-import i18n from '../utils/i18next/LocalUtil';
+import i18n from '../../../utils/i18next/LocalUtil';
 
 /**
  * Read more : https://nhn.github.io/tui.editor/latest/tutorial-example15-customizing-toolbar-buttons

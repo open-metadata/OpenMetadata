@@ -13,7 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { forwardRef } from 'react';
-import { TestCaseFailureStatusType } from '../../generated/tests/testCase';
+import { TestCaseFailureStatusType } from '../../../generated/tests/testCase';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 

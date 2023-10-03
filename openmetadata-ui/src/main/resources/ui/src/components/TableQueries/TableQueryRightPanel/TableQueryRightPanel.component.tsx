@@ -17,6 +17,7 @@ import { EntityTags } from 'Models';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import Description from '../../../components/common/description/Description';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -28,7 +29,6 @@ import { Query } from '../../../generated/entity/data/query';
 import { LabelType, State, TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { TableQueryRightPanelProps } from './TableQueryRightPanel.interface';
-import { ReactComponent as EditIcon } from '/assets/svg/edit-new.svg';
 
 const TableQueryRightPanel = ({
   query,

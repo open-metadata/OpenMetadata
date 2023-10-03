@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
-import { Transi18next } from '../utils/CommonUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 import { CreatePlaceholderProps } from './placeholder.interface';
 

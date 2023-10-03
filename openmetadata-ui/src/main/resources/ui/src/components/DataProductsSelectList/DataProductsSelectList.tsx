@@ -24,9 +24,9 @@ import React, {
 import Loader from '../../components/Loader/Loader';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
-import { getEntityName } from '../utils/EntityUtils';
-import { tagRender } from '../utils/TagsUtils';
-import { showErrorToast } from '../utils/ToastUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { tagRender } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DataProductSelectOption,
   DataProductsSelectListProps,

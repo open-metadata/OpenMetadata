@@ -12,7 +12,7 @@
  */
 import { TableDetail } from 'Models';
 import { ReactNode } from 'react';
-import { EntityReference } from '../../generated/type/entityReference';
+import { EntityReference } from '../../../generated/type/entityReference';
 
 export type CardWithListItems = {
   id: string;

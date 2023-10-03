@@ -14,7 +14,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Row, Select, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import React, { useState } from 'react';
-import { DomainType } from '../../generated/api/domains/createDomain';
+import { DomainType } from '../../../generated/api/domains/createDomain';
 import { DomainTypeSelectFormProps } from './DomainTypeSelectForm.interface';
 
 const DomainTypeSelectForm = ({

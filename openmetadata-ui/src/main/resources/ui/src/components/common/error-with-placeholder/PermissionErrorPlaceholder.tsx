@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/no-access-placeholder.svg';
-import { SIZE } from '../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { PermissionPlaceholderProps } from './placeholder.interface';
 
 const PermissionErrorPlaceholder = ({

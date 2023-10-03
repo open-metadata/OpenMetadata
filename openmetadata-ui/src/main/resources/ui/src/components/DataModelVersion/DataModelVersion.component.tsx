@@ -24,21 +24,21 @@ import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV
 import VersionTable from '../../components/VersionTable/VersionTable.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   ChangeDescription,
   Column,
   DashboardDataModel,
 } from '../../generated/entity/data/dashboardDataModel';
 import { TagSource } from '../../generated/type/schema';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import Loader from '../Loader/Loader';
-import { getPartialNameFromTableFQN } from '../utils/CommonUtils';
 import { DataModelVersionProp } from './DataModelVersion.interface';
 
 const DataModelVersion: FC<DataModelVersionProp> = ({

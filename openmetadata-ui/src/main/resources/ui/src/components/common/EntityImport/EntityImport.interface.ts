@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import React from 'react';
-import { CSVImportResult } from '../../generated/type/csvImportResult';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
 
 export interface EntityImportProps {
   entityName: string;

@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { EntityReference } from '../../generated/entity/type';
-import { EntityType } from '../enums/entity.enum';
+import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
 
 export type DomainLabelProps = {
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;

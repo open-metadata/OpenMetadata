@@ -18,7 +18,10 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import React from 'react';
-import { CSVImportResult, Status } from '../../generated/type/csvImportResult';
+import {
+  CSVImportResult,
+  Status,
+} from '../../../generated/type/csvImportResult';
 import { EntityImport } from './EntityImport.component';
 let mockCsvImportResult = {
   dryRun: true,

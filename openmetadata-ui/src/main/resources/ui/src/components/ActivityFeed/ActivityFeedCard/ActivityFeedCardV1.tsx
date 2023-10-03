@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { noop } from 'lodash';
 import React, { useState } from 'react';
+import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import Reactions from '../../../components/Reactions/Reactions';
@@ -29,7 +30,6 @@ import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card.style.less';
 import FeedCardBodyV1 from './FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from './FeedCardHeader/FeedCardHeaderV1';
-import { ReactComponent as ThreadIcon } from '/assets/svg/thread.svg';
 
 interface ActivityFeedCardV1Props {
   post: Post;

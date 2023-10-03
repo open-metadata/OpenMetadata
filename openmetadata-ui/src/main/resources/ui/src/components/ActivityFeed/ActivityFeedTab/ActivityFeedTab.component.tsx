@@ -24,6 +24,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
+import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
+import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
+import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
+import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
 import { ICON_DIMENSION } from '../../../constants/constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -55,11 +60,6 @@ import {
   ActivityFeedTabs,
   TaskFilter,
 } from './ActivityFeedTab.interface';
-import { ReactComponent as AllActivityIcon } from '/assets/svg/all-activity-v2.svg';
-import { ReactComponent as CheckIcon } from '/assets/svg/ic-check.svg';
-import { ReactComponent as MentionIcon } from '/assets/svg/ic-mentions.svg';
-import { ReactComponent as TaskIcon } from '/assets/svg/ic-task.svg';
-import { ReactComponent as TaskListIcon } from '/assets/svg/task-ic.svg';
 
 export const ActivityFeedTab = ({
   fqn,

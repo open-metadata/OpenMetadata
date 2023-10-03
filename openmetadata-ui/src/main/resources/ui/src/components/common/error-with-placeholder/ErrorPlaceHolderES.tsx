@@ -12,12 +12,12 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import { ROUTES } from 'constants/constants';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
   GLOSSARIES_DOCS,
@@ -29,9 +29,9 @@ import {
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
-} from '../enums/common.enum';
-import { Transi18next } from '../utils/CommonUtils';
-import i18n from '../utils/i18next/LocalUtil';
+} from '../../../enums/common.enum';
+import { Transi18next } from '../../../utils/CommonUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {

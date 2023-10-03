@@ -12,7 +12,7 @@
  */
 import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
-import { EntityReference } from '../../generated/entity/type';
+import { EntityReference } from '../../../generated/entity/type';
 
 export interface DomainSelectableListProps {
   onUpdate: (domain: EntityReference) => void;

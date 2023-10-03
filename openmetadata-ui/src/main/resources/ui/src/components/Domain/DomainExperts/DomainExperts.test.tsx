@@ -13,7 +13,7 @@
 import { render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import DomainExperts from './DomainExperts.component';
 
 const MOCK_DATA_PRODUCT: DataProduct = {

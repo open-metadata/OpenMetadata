@@ -33,11 +33,11 @@ import {
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { axisTickFormatter } from '../../utils/ChartUtils';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
-} from '../utils/date-time/DateTimeUtils';
+} from '../../utils/date-time/DateTimeUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';

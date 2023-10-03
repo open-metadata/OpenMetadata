@@ -13,7 +13,7 @@
 import { Col, Row } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SummaryCard } from '../../components/common/SummaryCard/SummaryCard.component';
+import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
 export const SummaryPanel: FC<SummaryPanelProps> = ({

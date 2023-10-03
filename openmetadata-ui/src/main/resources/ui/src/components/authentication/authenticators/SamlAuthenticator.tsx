@@ -30,9 +30,9 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { oidcTokenKey } from '../../../constants/constants';
+import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { SamlSSOClientConfig } from '../../generated/configuration/authenticationConfiguration';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 

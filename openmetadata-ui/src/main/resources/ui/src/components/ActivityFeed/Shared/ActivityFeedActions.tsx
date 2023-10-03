@@ -16,8 +16,10 @@ import { uniqueId } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
 import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
 import Reaction from '../../../components/Reactions/Reaction';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
@@ -30,8 +32,6 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
-import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
-import { ReactComponent as IconReply } from '/assets/svg/ic-reply.svg';
 
 interface ActivityFeedActionsProps {
   post: Post;

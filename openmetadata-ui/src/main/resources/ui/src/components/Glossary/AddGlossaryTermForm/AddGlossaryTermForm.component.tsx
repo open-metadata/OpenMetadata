@@ -15,6 +15,7 @@ import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { t } from 'i18next';
 import { includes } from 'lodash';
 import React, { useEffect, useState } from 'react';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -30,7 +31,6 @@ import { getEntityReferenceFromGlossaryTerm } from '../../../utils/GlossaryUtils
 import { UserTag } from '../../common/UserTag/UserTag.component';
 import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
-import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 const AddGlossaryTermForm = ({
   editMode,

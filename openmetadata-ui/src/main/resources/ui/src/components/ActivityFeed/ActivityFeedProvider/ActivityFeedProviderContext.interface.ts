@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
+import { EntityType } from '../../../enums/entity.enum';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
   ReactionType,
   Thread,
   ThreadType,
-} from '../../generated/entity/feed/thread';
-import { Paging } from '../../generated/type/paging';
-import { EntityType } from '../enums/entity.enum';
-import { FeedFilter } from '../enums/mydata.enum';
-import { ReactionOperation } from '../enums/reactions.enum';
+} from '../../../generated/entity/feed/thread';
+import { Paging } from '../../../generated/type/paging';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;

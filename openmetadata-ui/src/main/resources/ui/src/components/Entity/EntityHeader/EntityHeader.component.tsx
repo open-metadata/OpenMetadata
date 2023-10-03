@@ -13,11 +13,11 @@
 
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
-import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
-import { EntityType } from '../enums/entity.enum';
-import { getEntityLinkFromType } from '../utils/EntityUtils';
 
 interface Props {
   breadcrumb: TitleBreadcrumbProps['titleLinks'];

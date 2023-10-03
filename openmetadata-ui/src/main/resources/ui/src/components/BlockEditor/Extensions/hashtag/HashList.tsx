@@ -14,9 +14,9 @@ import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import { ExtensionRef, SuggestionItem } from '../BlockEditor.interface';
-import { isInViewport } from '../utils/BlockEditorUtils';
-import { getEntityIcon } from '../utils/TableUtils';
 
 export default forwardRef<
   ExtensionRef,

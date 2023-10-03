@@ -12,7 +12,7 @@
  */
 import { PagingResponse } from 'Models';
 import { ReactNode } from 'react';
-import { EntityReference } from '../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/entity/data/table';
 
 export interface SelectableListProps {
   fetchOptions: (

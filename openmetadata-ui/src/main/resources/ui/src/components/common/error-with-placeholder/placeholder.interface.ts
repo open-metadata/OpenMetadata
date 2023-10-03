@@ -12,7 +12,7 @@
  */
 
 import { ReactElement } from 'react';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
 export interface ErrorPlaceholderProps {
   children?: React.ReactNode;

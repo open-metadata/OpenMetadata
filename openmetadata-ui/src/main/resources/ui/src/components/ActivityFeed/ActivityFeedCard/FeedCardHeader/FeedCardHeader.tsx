@@ -20,6 +20,10 @@ import { Link, useHistory } from 'react-router-dom';
 import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
 import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../../utils/date-time/DateTimeUtils';
+import {
   entityDisplayName,
   getEntityFieldDisplay,
   prepareFeedLink,
@@ -28,10 +32,6 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
-import {
-  formatDateTime,
-  getRelativeTime,
-} from '../utils/date-time/DateTimeUtils';
 import './FeedCardHeader.style.css';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({

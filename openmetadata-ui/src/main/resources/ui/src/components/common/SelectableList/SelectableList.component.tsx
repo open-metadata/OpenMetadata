@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 import { Button, Checkbox, List, Space, Tooltip } from 'antd';
-import { ADD_USER_CONTAINER_HEIGHT, pagingObject } from 'constants/constants';
 import { cloneDeep, isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/Loader/Loader';
-import { EntityReference } from '../../generated/entity/data/table';
-import { Paging } from '../../generated/type/paging';
+import Loader from '../../../components/Loader/Loader';
+import {
+  ADD_USER_CONTAINER_HEIGHT,
+  pagingObject,
+} from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { Paging } from '../../../generated/type/paging';
+import { getEntityName } from '../../../utils/EntityUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import Searchbar from '../searchbar/Searchbar';
 import '../UserSelectableList/user-select-dropdown.less';
 import { UserTag } from '../UserTag/UserTag.component';
-import { getEntityName } from '../utils/EntityUtils';
-import SVGIcons, { Icons } from '../utils/SvgUtils';
 import { SelectableListProps } from './SelectableList.interface';
 
 export const SelectableList = ({

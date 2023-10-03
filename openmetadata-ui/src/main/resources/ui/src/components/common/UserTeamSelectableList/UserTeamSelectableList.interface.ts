@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { EntityReference } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/entity/teams/user';
 
 export interface UserSelectDropdownProps {
   hasPermission: boolean;

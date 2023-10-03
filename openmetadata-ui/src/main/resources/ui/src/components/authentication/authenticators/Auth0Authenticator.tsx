@@ -19,8 +19,8 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AuthProvider } from '../../../generated/settings/settings';
 import localState from '../../../utils/LocalStorageUtils';
-import { AuthProvider } from '../../generated/settings/settings';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { AuthenticatorRef } from '../auth-provider/AuthProvider.interface';
 

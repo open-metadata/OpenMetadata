@@ -12,7 +12,7 @@
  */
 import { PopoverProps } from 'antd';
 import { ReactNode } from 'react';
-import { EntityReference } from '../../generated/entity/teams/user';
+import { EntityReference } from '../../../generated/entity/teams/user';
 
 export type UserSelectableListProps =
   | {

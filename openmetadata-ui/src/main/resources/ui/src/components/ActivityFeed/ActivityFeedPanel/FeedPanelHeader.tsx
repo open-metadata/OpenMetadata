@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import {
   entityDisplayName,
   getEntityField,
@@ -25,8 +26,7 @@ import {
   getEntityType,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
-import CloseIcon from '../../components/Modals/CloseIcon.component';
-import { getEntityLink } from '../utils/TableUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({

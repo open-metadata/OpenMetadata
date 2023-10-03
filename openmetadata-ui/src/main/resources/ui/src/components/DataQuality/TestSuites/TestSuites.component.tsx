@@ -13,19 +13,19 @@
 import { Button, Col, Row } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import {
-  getTableTabPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  ROUTES,
-} from 'constants/constants';
-import { PROGRESS_BAR_COLOR } from 'constants/TestSuite.constant';
 import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import {
+  getTableTabPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  ROUTES,
+} from '../../../constants/constants';
+import { PROGRESS_BAR_COLOR } from '../../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';

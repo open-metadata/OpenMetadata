@@ -21,7 +21,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { Column } from '../../generated/entity/data/container';
+import { Column } from '../../../generated/entity/data/container';
 import ContainerDataModel from './ContainerDataModel';
 
 const props = {

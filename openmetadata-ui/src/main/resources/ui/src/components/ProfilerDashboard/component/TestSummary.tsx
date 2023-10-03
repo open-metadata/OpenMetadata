@@ -29,6 +29,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import {
   GREEN_3,
   GREEN_3_OPACITY,
@@ -59,8 +61,6 @@ import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 import './TestSummary.style.less';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 
 type ChartDataType = {
   information: { label: string; color: string }[];

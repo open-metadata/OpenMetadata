@@ -32,6 +32,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import ActivityFeedCardV1 from '../../../components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
 import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -68,8 +70,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
 
 export const TaskTab = ({
   taskThread,
