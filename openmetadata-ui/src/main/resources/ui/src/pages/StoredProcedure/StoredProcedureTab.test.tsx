@@ -12,9 +12,9 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { INITIAL_PAGING_VALUE, pagingObject } from 'constants/constants';
-import { mockStoredProcedureData } from 'mocks/StoredProcedure.mock';
 import React from 'react';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
+import { mockStoredProcedureData } from '../../mocks/StoredProcedure.mock';
 import { StoredProcedureTabProps } from './storedProcedure.interface';
 import StoredProcedureTab from './StoredProcedureTab';
 
@@ -35,11 +35,14 @@ const mockProps: StoredProcedureTabProps = {
   onShowDeletedStoreProcedureChange: mockShowDeletedHandler,
 };
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-});
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
+  }
+);
 
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(({ pagingHandler }) => (
     <p data-testid="next-previous" onClick={pagingHandler}>
       testNextPrevious
@@ -47,11 +50,16 @@ jest.mock('components/common/next-previous/NextPrevious', () => {
   ));
 });
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockImplementation(() => <p>testRichTextEditorPreviewer</p>);
-});
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <p>testRichTextEditorPreviewer</p>);
+  }
+);
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>testLoader</p>);
 });
 
@@ -62,15 +70,15 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'displayName'),
 }));
 
-jest.mock('utils/StringsUtils', () => ({
+jest.mock('../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
-jest.mock('utils/TableUtils', () => ({
+jest.mock('../../utils/TableUtils', () => ({
   getEntityLink: jest.fn().mockImplementation((link) => link),
 }));
 

@@ -11,20 +11,21 @@
  *  limitations under the License.
  */
 import { Col, Row, Space } from 'antd';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import GlossaryDetailsRightPanel from 'components/Glossary/GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagsInput from 'components/TagsInput/TagsInput.component';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { Glossary, TagLabel } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription } from 'generated/entity/type';
 import React, { useMemo, useState } from 'react';
+import { EntityField } from '../../../../constants/Feeds.constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import { Glossary } from '../../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { ChangeDescription } from '../../../../generated/entity/type';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
-} from 'utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtils';
+import DescriptionV1 from '../../../common/description/DescriptionV1';
+import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
+import TagsInput from '../../../TagsInput/TagsInput.component';
+import GlossaryDetailsRightPanel from '../../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryTermReferences from './GlossaryTermReferences';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 import RelatedTerms from './RelatedTerms';

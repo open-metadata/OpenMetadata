@@ -13,22 +13,22 @@
 
 import { Button, Card, Form, FormProps, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
-import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
 import { CookieStorage } from 'cookie-storage';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { createUser } from 'rest/userAPI';
-import { getNameFromUserData } from 'utils/AuthProvider.util';
 import appState from '../../AppState';
 import { ReactComponent as OMDLogo } from '../../assets/svg/logo-monogram.svg';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { UserProfile } from '../../components/authentication/auth-provider/AuthProvider.interface';
+import TeamsSelectable from '../../components/TeamsSelectable/TeamsSelectable';
 import {
   REDIRECT_PATHNAME,
   ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
+import { createUser } from '../../rest/userAPI';
+import { getNameFromUserData } from '../../utils/AuthProvider.util';
 import { getImages, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

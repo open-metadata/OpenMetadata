@@ -12,11 +12,11 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { t } from 'i18next';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React from 'react';
-import { generateFormFields } from 'utils/formUtils';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { generateFormFields } from '../../../utils/formUtils';
 import { ConfigureServiceProps } from './Steps.interface';
 
 const ConfigureService = ({

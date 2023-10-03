@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Container } from 'generated/entity/data/container';
-import { TagLabel } from 'generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+
+import {
+  Container,
+  TagLabel,
+} from '../../../../generated/entity/data/container';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface ContainerSummaryProps {
   entityDetails: Container;

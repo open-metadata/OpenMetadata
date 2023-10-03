@@ -14,13 +14,13 @@
 import { RowProps } from 'antd/lib/grid/row';
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../utils/date-time/DateTimeUtils';
 import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
 export const BAR_CHART_MARGIN: Margin = {

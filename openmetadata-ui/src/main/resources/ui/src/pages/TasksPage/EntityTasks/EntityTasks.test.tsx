@@ -12,10 +12,10 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType, FqnPart } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/tagLabel';
 import React from 'react';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { TagSource } from '../../../generated/type/tagLabel';
 import EntityTasks from './EntityTasks.component';
 import { EntityTasksProps } from './EntityTasks.interface';
 

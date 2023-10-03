@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 
-import { SearchIndex, TagLabel } from 'generated/entity/data/searchIndex';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import {
+  SearchIndex,
+  TagLabel,
+} from '../../../../generated/entity/data/searchIndex';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface SearchIndexSummaryProps {
   entityDetails: SearchIndex;

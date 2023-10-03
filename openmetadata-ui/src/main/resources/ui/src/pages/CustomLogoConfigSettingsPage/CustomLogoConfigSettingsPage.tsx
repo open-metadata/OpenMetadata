@@ -13,22 +13,22 @@
 import { InfoCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
-import { GRAYED_OUT_COLOR, ROUTES } from 'constants/constants';
-import { CUSTOM_LOGO_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
-import { SettingType } from 'generated/settings/settings';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getSettingsConfigFromConfigType } from 'rest/settingConfigAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from '../../components/header/PageHeader.component';
+import Loader from '../../components/Loader/Loader';
+import { GRAYED_OUT_COLOR, ROUTES } from '../../constants/constants';
+import { CUSTOM_LOGO_DOCS } from '../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { SettingType } from '../../generated/settings/settings';
+import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const CustomLogoConfigSettingsPage = () => {
   const { t } = useTranslation();

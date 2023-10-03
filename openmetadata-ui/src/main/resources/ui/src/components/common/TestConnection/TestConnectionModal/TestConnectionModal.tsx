@@ -18,12 +18,12 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { ReactComponent as IconTimeOut } from 'assets/svg/ic-time-out.svg';
-import { ReactComponent as IconTimeOutButton } from 'assets/svg/ic-timeout-button.svg';
-import { TestConnectionStepResult } from 'generated/entity/automations/workflow';
-import { TestConnectionStep } from 'generated/entity/services/connections/testConnectionDefinition';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
+import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
+import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
+import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import ConnectionStepCard from '../ConnectionStepCard/ConnectionStepCard';
 import './test-connection-modal.less';
 interface TestConnectionModalProps {

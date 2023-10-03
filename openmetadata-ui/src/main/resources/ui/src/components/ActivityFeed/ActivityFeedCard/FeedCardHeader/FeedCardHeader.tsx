@@ -17,9 +17,12 @@ import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   entityDisplayName,
   getEntityFieldDisplay,

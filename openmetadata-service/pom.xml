@@ -339,6 +339,12 @@
       <version>2.0.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.connectors</groupId>
+      <artifactId>jersey-grizzly-connector</artifactId>
+      <version>2.40</version>
+      <scope>test</scope>
+    </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
     <dependency>
       <groupId>javax.json</groupId>
@@ -576,7 +582,7 @@
                 <reuseForks>false</reuseForks>
                 <parallel>classes</parallel>
                 <forkCount>1C</forkCount>
-                <argLine>-Xmx512m</argLine>
+                <argLine>-Xmx1G</argLine>
               </configuration>
               <executions>
                 <execution>
@@ -626,7 +632,7 @@
                 <reuseForks>false</reuseForks>
                 <parallel>classes</parallel>
                 <forkCount>1C</forkCount>
-                <argLine>-Xmx512m</argLine>
+                <argLine>-Xmx1G</argLine>
               </configuration>
               <executions>
                 <execution>

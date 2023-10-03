@@ -19,7 +19,9 @@
         "MostViewedEntities",
         "PageViewsByEntities",
         "PercentageOfServicesWithDescription",
-        "PercentageOfServicesWithOwner"
+        "PercentageOfServicesWithOwner",
+        "UnusedAssets",
+        "AggregatedUnusedAssets"
       ]
     }
   },
@@ -27,6 +29,10 @@
     "chartType": {
       "description": "Chart Type that will consume the data. Must match name of dataInsightChart.",
       "$ref": "#/definitions/dataInsightChartType"
+    },
+    "total": {
+      "description": "Total number of hits returned by the aggregation.",
+      "type": "integer"
     },
     "data": {
       "description": "Array of consumable data.",
@@ -42,7 +48,9 @@
           {"$ref": "type/mostActiveUsers.json"},
           {"$ref": "type/mostViewedEntities.json"},
           {"$ref": "type/percentageOfServicesWithDescription.json"},
-          {"$ref": "type/percentageOfServicesWithOwner.json"}
+          {"$ref": "type/percentageOfServicesWithOwner.json"},
+          {"$ref": "type/unusedAssets.json"},
+          {"$ref": "type/aggregatedUnusedAsserts.json"}
         ]
       }
     }

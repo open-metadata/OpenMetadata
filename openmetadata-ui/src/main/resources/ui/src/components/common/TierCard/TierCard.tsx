@@ -21,14 +21,14 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { Tag } from 'generated/entity/classification/tag';
 import { t } from 'i18next';
 import React, { useState } from 'react';
-import { getTags } from 'rest/tagAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { Tag } from '../../../generated/entity/classification/tag';
+import { getTags } from '../../../rest/tagAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../Loader/Loader';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';

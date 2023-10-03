@@ -15,9 +15,9 @@ import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getTeamsHierarchy } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
+import { getTeamsHierarchy } from '../../rest/teamsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 

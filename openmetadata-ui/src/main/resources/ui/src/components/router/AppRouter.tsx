@@ -11,37 +11,41 @@
  *  limitations under the License.
  */
 
-import AppContainer from 'components/AppContainer/AppContainer';
-import { CustomEventTypes } from 'generated/analytics/webAnalyticEventData';
-import { AuthProvider } from 'generated/settings/settings';
-import AccountActivationConfirmation from 'pages/SignUp/account-activation-confirmation.component';
 import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
+import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
+import { AuthProvider } from '../../generated/settings/settings';
 import SamlCallback from '../../pages/SamlCallback';
+import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('pages/login'))
+  React.lazy(() => import('../../pages/login'))
 );
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found/PageNotFound'))
+  React.lazy(() => import('../../pages/page-not-found/PageNotFound'))
 );
 
 const ForgotPassword = withSuspenseFallback(
-  React.lazy(() => import('pages/forgot-password/forgot-password.component'))
+  React.lazy(
+    () => import('../../pages/forgot-password/forgot-password.component')
+  )
 );
 
 const ResetPassword = withSuspenseFallback(
-  React.lazy(() => import('pages/reset-password/reset-password.component'))
+  React.lazy(
+    () => import('../../pages/reset-password/reset-password.component')
+  )
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('pages/SignUp/BasicSignup.component'))
+  React.lazy(() => import('../../pages/SignUp/BasicSignup.component'))
 );
 
 const AppRouter = () => {

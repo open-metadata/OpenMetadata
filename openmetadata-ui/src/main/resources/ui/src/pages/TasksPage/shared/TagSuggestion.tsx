@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
-import { TagSource } from 'generated/entity/data/container';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
-import { fetchTagsElasticSearch } from 'utils/TagsUtils';
+import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { fetchTagsElasticSearch } from '../../../utils/TagsUtils';
 
 export interface TagSuggestionProps {
   onChange?: (newTags: TagLabel[]) => void;

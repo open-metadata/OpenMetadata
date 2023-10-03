@@ -11,29 +11,6 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import ContainerVersion from 'components/ContainerVersion/ContainerVersion.component';
-import DashboardVersion from 'components/DashboardVersion/DashboardVersion.component';
-import DataModelVersion from 'components/DataModelVersion/DataModelVersion.component';
-import Loader from 'components/Loader/Loader';
-import MlModelVersion from 'components/MlModelVersion/MlModelVersion.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import PipelineVersion from 'components/PipelineVersion/PipelineVersion.component';
-import SearchIndexVersion from 'components/SearchIndexVersion/SearchIndexVersion';
-import StoredProcedureVersion from 'components/StoredProcedureVersion/StoredProcedureVersion.component';
-import TableVersion from 'components/TableVersion/TableVersion.component';
-import TopicVersion from 'components/TopicVersion/TopicVersion.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { isEmpty } from 'lodash';
 import React, {
   FunctionComponent,
@@ -44,54 +21,23 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
+import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
+import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
+import Loader from '../../components/Loader/Loader';
+import MlModelVersion from '../../components/MlModelVersion/MlModelVersion.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
-  getDashboardByFqn,
-  getDashboardVersion,
-  getDashboardVersions,
-} from 'rest/dashboardAPI';
-import {
-  getDataModelDetailsByFQN,
-  getDataModelVersion,
-  getDataModelVersionsList,
-} from 'rest/dataModelsAPI';
-import {
-  getMlModelByFQN,
-  getMlModelVersion,
-  getMlModelVersions,
-} from 'rest/mlModelAPI';
-import {
-  getPipelineByFqn,
-  getPipelineVersion,
-  getPipelineVersions,
-} from 'rest/pipelineAPI';
-import {
-  getSearchIndexDetailsByFQN,
-  getSearchIndexVersion,
-  getSearchIndexVersions,
-} from 'rest/SearchIndexAPI';
-import {
-  getContainerByName,
-  getContainerVersion,
-  getContainerVersions,
-} from 'rest/storageAPI';
-import {
-  getStoredProceduresDetailsByFQN,
-  getStoredProceduresVersion,
-  getStoredProceduresVersionsList,
-} from 'rest/storedProceduresAPI';
-import {
-  getTableDetailsByFQN,
-  getTableVersion,
-  getTableVersions,
-} from 'rest/tableAPI';
-import {
-  getTopicByFqn,
-  getTopicVersion,
-  getTopicVersions,
-} from 'rest/topicsAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getSearchIndexTabPath } from 'utils/SearchIndexUtils';
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
+import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
+import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
+import TableVersion from '../../components/TableVersion/TableVersion.component';
+import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -105,14 +51,68 @@ import {
   getVersionPath,
   getVersionPathWithTab,
 } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  getDashboardByFqn,
+  getDashboardVersion,
+  getDashboardVersions,
+} from '../../rest/dashboardAPI';
+import {
+  getDataModelDetailsByFQN,
+  getDataModelVersion,
+  getDataModelVersionsList,
+} from '../../rest/dataModelsAPI';
+import {
+  getMlModelByFQN,
+  getMlModelVersion,
+  getMlModelVersions,
+} from '../../rest/mlModelAPI';
+import {
+  getPipelineByFqn,
+  getPipelineVersion,
+  getPipelineVersions,
+} from '../../rest/pipelineAPI';
+import {
+  getSearchIndexDetailsByFQN,
+  getSearchIndexVersion,
+  getSearchIndexVersions,
+} from '../../rest/SearchIndexAPI';
+import {
+  getContainerByName,
+  getContainerVersion,
+  getContainerVersions,
+} from '../../rest/storageAPI';
+import {
+  getStoredProceduresDetailsByFQN,
+  getStoredProceduresVersion,
+  getStoredProceduresVersionsList,
+} from '../../rest/storedProceduresAPI';
+import {
+  getTableDetailsByFQN,
+  getTableVersion,
+  getTableVersions,
+} from '../../rest/tableAPI';
+import {
+  getTopicByFqn,
+  getTopicVersion,
+  getTopicVersions,
+} from '../../rest/topicsAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
 

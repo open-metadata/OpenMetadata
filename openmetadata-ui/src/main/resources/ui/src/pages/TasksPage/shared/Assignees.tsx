@@ -12,12 +12,12 @@
  */
 
 import { Select, Space, Typography } from 'antd';
-import { ReactComponent as TeamIcon } from 'assets/svg/teams-grey.svg';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { OwnerType } from 'enums/user.enum';
 import { t } from 'i18next';
 import { groupBy, isUndefined } from 'lodash';
 import React, { FC, useMemo } from 'react';
+import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
+import { UserTag } from '../../../components/common/UserTag/UserTag.component';
+import { OwnerType } from '../../../enums/user.enum';
 import { Option } from '../TasksPage.interface';
 import './Assignee.less';
 
