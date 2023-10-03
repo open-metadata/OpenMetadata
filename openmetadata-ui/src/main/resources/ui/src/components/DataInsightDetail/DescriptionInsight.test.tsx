@@ -29,7 +29,7 @@ const mockProps = {
   dataInsightChartName:
     DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
 };
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('../../utils/DataInsightUtils', () => ({

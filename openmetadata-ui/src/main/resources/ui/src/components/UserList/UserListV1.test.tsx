@@ -18,7 +18,7 @@ import { act } from 'react-test-renderer';
 import { MOCK_USER_DATA } from '../../pages/UserListPage/mockUserData';
 import UserListV1 from './UserListV1';
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   updateUser: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

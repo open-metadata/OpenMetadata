@@ -87,7 +87,7 @@ jest.mock(
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
 );
-jest.mock('rest/storageAPI', () => ({
+jest.mock('../../../rest/storageAPI', () => ({
   getContainerByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ name: 'test' })),

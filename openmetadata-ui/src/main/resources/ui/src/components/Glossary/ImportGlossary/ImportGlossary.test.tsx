@@ -44,7 +44,7 @@ jest.mock('../ImportResult/GlossaryImportResult.component', () => ({
     .mockReturnValue(<div>GlossaryImportResult</div>),
 }));
 
-jest.mock('rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   importGlossaryInCSVFormat: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCsvImportResult)),

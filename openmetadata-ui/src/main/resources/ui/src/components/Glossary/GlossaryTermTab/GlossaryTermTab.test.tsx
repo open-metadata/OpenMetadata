@@ -47,7 +47,7 @@ const mockProps2 = {
   childGlossaryTerms: mockedGlossaryTerms,
 };
 
-jest.mock('rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),

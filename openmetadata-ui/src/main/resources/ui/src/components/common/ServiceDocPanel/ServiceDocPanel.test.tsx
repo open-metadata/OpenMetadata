@@ -28,7 +28,7 @@ jest.mock(
       ))
 );
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   fetchMarkdownFile: jest
     .fn()
     .mockImplementation(() => Promise.resolve('markdown text')),

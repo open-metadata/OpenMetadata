@@ -27,7 +27,7 @@ const mockProps = {
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,
 };
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   postKillIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),

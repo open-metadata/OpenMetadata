@@ -20,7 +20,7 @@ const userDetails = {
   id: '123',
 };
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../../rest/userAPI', () => ({
   getUserById: jest.fn().mockImplementation(() =>
     Promise.resolve({
       owns: [],

@@ -54,7 +54,7 @@ jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/metadataTypeAPI', () => ({
+jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       customProperties: mockCustomProperties,

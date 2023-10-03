@@ -24,7 +24,7 @@ const mockSampleData = {
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
-jest.mock('rest/topicsAPI', () => ({
+jest.mock('../../rest/topicsAPI', () => ({
   getSampleDataByTopicId: jest
     .fn()
     .mockImplementation(() => ({ sampleData: mockSampleData })),

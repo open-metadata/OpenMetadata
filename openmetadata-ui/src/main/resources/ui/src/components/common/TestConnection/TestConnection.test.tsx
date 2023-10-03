@@ -17,21 +17,19 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { ConfigData } from 'interface/service.interface';
 import React from 'react';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { WorkflowStatus } from '../../../generated/entity/automations/workflow';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
   deleteWorkflowById,
   getTestConnectionDefinitionByName,
   getWorkflowById,
   triggerWorkflowById,
-} from 'rest/workflowAPI';
-import {
-  StatusType,
-  WorkflowStatus,
-} from '../../generated/api/automations/createWorkflow';
-import { ServiceCategory } from '../enums/service.enum';
+} from '../../../rest/workflowAPI';
+import { StatusType } from '../StatusBadge/StatusBadge.interface';
 import TestConnection from './TestConnection';
 import {
   CREATE_WORKFLOW_PAYLOAD,
@@ -64,7 +62,7 @@ jest.mock('./TestConnectionModal/TestConnectionModal', () =>
     )
 );
 
-jest.mock('rest/workflowAPI', () => ({
+jest.mock('../../../rest/workflowAPI', () => ({
   addWorkflow: jest
     .fn()
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),

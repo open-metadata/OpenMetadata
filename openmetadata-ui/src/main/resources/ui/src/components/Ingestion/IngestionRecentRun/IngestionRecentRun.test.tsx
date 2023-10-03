@@ -41,7 +41,7 @@ const executionRuns = [
   },
 ];
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   getRunHistoryForPipeline: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: [

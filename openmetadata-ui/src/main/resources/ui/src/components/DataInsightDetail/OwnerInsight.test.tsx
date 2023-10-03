@@ -46,7 +46,7 @@ jest.mock('./EntitySummaryProgressBar.component', () => {
     </div>
   ));
 });
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

@@ -31,7 +31,7 @@ const mockDateRangeObject = { startTs: 1670408784000, endTs: 1670667984000 };
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
 }));
-jest.mock('rest/tableAPI');
+jest.mock('../../../rest/tableAPI');
 jest.mock('../../ProfilerDashboard/component/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
 });

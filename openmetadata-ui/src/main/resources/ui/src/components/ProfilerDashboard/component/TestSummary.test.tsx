@@ -30,7 +30,7 @@ const mockHistory = {
   goBack: jest.fn(),
 };
 
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
     getListTestCaseResults: jest
       .fn()

@@ -39,9 +39,9 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
     },
   })),
 }));
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
-    ...jest.requireActual('rest/testAPI'),
+    ...jest.requireActual('../../../rest/testAPI'),
     getListTestCase: jest
       .fn()
       .mockImplementation(() =>
@@ -50,9 +50,9 @@ jest.mock('rest/testAPI', () => {
     getTestCaseById: jest.fn().mockImplementation(() => Promise.resolve()),
   };
 });
-jest.mock('rest/searchAPI', () => {
+jest.mock('../../../rest/searchAPI', () => {
   return {
-    ...jest.requireActual('rest/searchAPI'),
+    ...jest.requireActual('../../../rest/searchAPI'),
     searchQuery: jest
       .fn()
       .mockImplementation(() =>

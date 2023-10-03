@@ -19,7 +19,7 @@ import AddTestSuiteForm from './AddTestSuiteForm';
 
 const mockOnSubmit = jest.fn();
 
-jest.mock('rest/testAPI', () => ({
+jest.mock('../../../rest/testAPI', () => ({
   getListTestSuites: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE_DATA)),

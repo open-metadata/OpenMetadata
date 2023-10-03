@@ -37,9 +37,9 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
     },
   })),
 }));
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
-    ...jest.requireActual('rest/testAPI'),
+    ...jest.requireActual('../../../rest/testAPI'),
     getListTestSuites: jest
       .fn()
       .mockImplementation(() =>

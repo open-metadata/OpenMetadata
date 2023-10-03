@@ -33,7 +33,7 @@ jest.mock('../../components/AsyncSelect/AsyncSelect', () => ({
     .mockImplementation(() => <div>AsyncSelect.component</div>),
 }));
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockReturnValue(() => Promise.resolve(MOCK_EXPLORE_SEARCH_RESULTS)),

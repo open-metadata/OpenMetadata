@@ -47,7 +47,7 @@ const MOCK_VERSION = {
   mutuallyExclusive: false,
 };
 
-jest.mock('rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryVersionsList: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_VERSIONS_LIST)),

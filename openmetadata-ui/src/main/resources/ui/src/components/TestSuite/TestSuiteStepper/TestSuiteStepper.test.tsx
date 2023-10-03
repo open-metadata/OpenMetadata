@@ -16,11 +16,11 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TestSuiteStepper from './TestSuiteStepper';
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   checkAirflowStatus: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/testAPI', () => ({
+jest.mock('../../../rest/testAPI', () => ({
   createTestSuites: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

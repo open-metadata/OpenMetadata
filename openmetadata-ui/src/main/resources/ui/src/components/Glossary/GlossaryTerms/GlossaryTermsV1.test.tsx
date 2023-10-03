@@ -38,7 +38,7 @@ jest.mock(
   })
 );
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),

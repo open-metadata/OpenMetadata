@@ -45,7 +45,7 @@ jest.mock('../../components/common/SummaryCard/SummaryCard.component', () => {
       .mockImplementation(() => <div>SummaryCard.component</div>),
   };
 });
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
     getTestCaseExecutionSummary: jest
       .fn()

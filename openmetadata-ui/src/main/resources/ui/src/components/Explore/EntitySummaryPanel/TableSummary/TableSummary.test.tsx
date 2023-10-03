@@ -35,11 +35,11 @@ const mockEntityPermissions = {
   EditCustomFields: true,
 };
 
-jest.mock('rest/testAPI', () => ({
+jest.mock('../../../../rest/testAPI', () => ({
   getListTestCase: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../../../rest/tableAPI', () => ({
   getLatestTableProfileByFqn: jest
     .fn()
     .mockImplementation(() => mockTableEntityDetails),

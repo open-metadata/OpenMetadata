@@ -99,7 +99,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('rest/userAPI', () => {
+jest.mock('../../rest/userAPI', () => {
   return {
     createUserWithPut: jest
       .fn()

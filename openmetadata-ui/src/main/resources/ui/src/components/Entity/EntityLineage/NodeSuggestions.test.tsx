@@ -24,7 +24,7 @@ const mockProps = {
 
 const entityType = ['TABLE', 'TOPIC', 'DASHBOARD', 'MLMODEL'];
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

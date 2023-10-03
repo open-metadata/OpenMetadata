@@ -39,8 +39,8 @@ jest.mock('./TableQueryRightPanel/TableQueryRightPanel.component', () => {
     .fn()
     .mockImplementation(() => <div>TableQueryRightPanel.component</div>);
 });
-jest.mock('rest/queryAPI', () => ({
-  ...jest.requireActual('rest/queryAPI'),
+jest.mock('../../rest/queryAPI', () => ({
+  ...jest.requireActual('../../rest/queryAPI'),
   getQueriesList: jest
     .fn()
     .mockImplementation(() =>
@@ -57,7 +57,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
     },
   })),
 }));
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   getSearchedUsers: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),

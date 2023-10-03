@@ -26,7 +26,7 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
 
-jest.mock('rest/topicsAPI', () => ({
+jest.mock('../../../../rest/topicsAPI', () => ({
   getTopicByFqn: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockTopicByFqnResponse)),

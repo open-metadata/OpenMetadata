@@ -38,7 +38,7 @@ jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   deployIngestionPipelineById: mockBulkDeployPipelines,
   getIngestionPipelines: mockGetIngestinoPipelines,
 }));

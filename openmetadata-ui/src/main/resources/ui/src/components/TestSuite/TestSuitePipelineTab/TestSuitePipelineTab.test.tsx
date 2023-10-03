@@ -55,7 +55,7 @@ const mockTestSuite = {
   testCaseResultSummary: [],
 } as unknown as Table['testSuite'];
 
-jest.mock('rest/ingestionPipelineAPI', () => {
+jest.mock('../../../rest/ingestionPipelineAPI', () => {
   return {
     getIngestionPipelines: jest
       .fn()

@@ -22,7 +22,7 @@ import {
 } from '../../rest/permissionAPI';
 import PermissionProvider from './PermissionProvider';
 
-jest.mock('rest/permissionAPI', () => ({
+jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: [] })),

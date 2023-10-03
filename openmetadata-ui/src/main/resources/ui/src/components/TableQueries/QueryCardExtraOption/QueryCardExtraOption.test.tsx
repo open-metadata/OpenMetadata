@@ -35,8 +35,8 @@ jest.mock('../utils/CommonUtils', () => ({
     .mockReturnValue(MOCK_QUERIES[0].votes.upVoters[0].id),
 }));
 
-jest.mock('rest/queryAPI', () => ({
-  ...jest.requireActual('rest/queryAPI'),
+jest.mock('../../../rest/queryAPI', () => ({
+  ...jest.requireActual('../../../rest/queryAPI'),
   deleteQuery: jest.fn(),
 }));
 
