@@ -12,21 +12,21 @@
  */
 import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { EntityType } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/dashboardDataModel';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, isUndefined, map } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/dashboardDataModel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import {
   updateDataModelColumnDescription,
   updateDataModelColumnTags,
-} from 'utils/DataModelsUtils';
-import { getEntityName } from 'utils/EntityUtils';
+} from '../../../utils/DataModelsUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({

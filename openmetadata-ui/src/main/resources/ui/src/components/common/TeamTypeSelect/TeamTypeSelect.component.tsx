@@ -14,10 +14,9 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
-import { getTeamOptionsFromType } from 'utils/TeamUtils';
 import { TeamType } from '../../../generated/entity/teams/team';
+import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
-import './TeamTypeSelect.style.less';
 
 function TeamTypeSelect({
   handleShowTypeSelector,
@@ -63,17 +62,23 @@ function TeamTypeSelect({
         value={value}
         onSelect={handleSelect}
       />
-      <Space className="edit-team-type-buttons" size={4}>
+      <Space className="m-l-xs" size={4}>
         <Button
+          className="h-8 p-x-xss"
           data-testid="cancel-btn"
-          icon={<CloseOutlined />}
-          onClick={handleCancel}
-        />
+          size="small"
+          type="primary"
+          onClick={handleCancel}>
+          <CloseOutlined />
+        </Button>
         <Button
+          className="h-8 p-x-xss"
           data-testid="save-btn"
-          icon={<CheckOutlined />}
-          onClick={handleSubmit}
-        />
+          size="small"
+          type="primary"
+          onClick={handleSubmit}>
+          <CheckOutlined />
+        </Button>
       </Space>
     </Space>
   );

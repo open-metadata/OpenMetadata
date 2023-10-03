@@ -13,15 +13,18 @@
 
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
+import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
 import {
   INITIAL_OPERATION_METRIC_VALUE,
   INITIAL_ROW_METRIC_VALUE,
 } from '../../../constants/profiler.constant';
+import {
+  getSystemProfileList,
+  getTableProfilesList,
+} from '../../../rest/tableAPI';
 import {
   calculateRowCountMetrics,
   calculateSystemMetrics,

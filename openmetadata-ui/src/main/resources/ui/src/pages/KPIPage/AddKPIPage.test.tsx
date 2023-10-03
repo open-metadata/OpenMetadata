@@ -33,21 +33,23 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getListDataInsightCharts: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_CHARTS })),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock(
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () =>
+    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('rest/KpiAPI', () => ({
+jest.mock('../../rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_LIST })),
@@ -58,7 +60,7 @@ jest.mock('../../utils/CommonUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>

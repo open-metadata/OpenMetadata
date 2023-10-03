@@ -3,6 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.Aggregations;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 
@@ -16,6 +17,8 @@ public abstract class DataInsightAggregatorInterface {
   protected static final String ENTITY_TIER = "entityTier";
   protected final Aggregations aggregationsEs;
   protected final org.opensearch.search.aggregations.Aggregations aggregationsOs;
+  protected final org.opensearch.search.SearchHits hitsOs;
+  protected final SearchHits hitsEs;
   protected final DataInsightChartResult.DataInsightChartType dataInsightChartType;
 
   protected DataInsightAggregatorInterface(
@@ -23,6 +26,8 @@ public abstract class DataInsightAggregatorInterface {
     this.aggregationsEs = aggregations;
     this.aggregationsOs = null;
     this.dataInsightChartType = dataInsightChartType;
+    this.hitsOs = null;
+    this.hitsEs = null;
   }
 
   protected DataInsightAggregatorInterface(
@@ -31,6 +36,26 @@ public abstract class DataInsightAggregatorInterface {
     this.aggregationsEs = null;
     this.aggregationsOs = aggregations;
     this.dataInsightChartType = dataInsightChartType;
+    this.hitsOs = null;
+    this.hitsEs = null;
+  }
+
+  protected DataInsightAggregatorInterface(
+      SearchHits hits, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
+    this.aggregationsEs = null;
+    this.aggregationsOs = null;
+    this.dataInsightChartType = dataInsightChartType;
+    this.hitsOs = null;
+    this.hitsEs = hits;
+  }
+
+  protected DataInsightAggregatorInterface(
+      org.opensearch.search.SearchHits hits, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
+    this.aggregationsEs = null;
+    this.aggregationsOs = null;
+    this.dataInsightChartType = dataInsightChartType;
+    this.hitsOs = hits;
+    this.hitsEs = null;
   }
 
   public abstract DataInsightChartResult process() throws ParseException;

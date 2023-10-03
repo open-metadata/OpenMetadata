@@ -12,7 +12,6 @@
  */
 
 import { Button } from 'antd';
-import { FqnPart } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -25,6 +24,7 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../constants/char.constants';
+import { FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { serviceTypeLogo } from './ServiceUtils';

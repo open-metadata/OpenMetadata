@@ -12,12 +12,12 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { CreateQuery } from 'generated/api/data/createQuery';
-import { Query } from 'generated/entity/data/query';
-import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { CreateQuery } from '../generated/api/data/createQuery';
+import { Query } from '../generated/entity/data/query';
+import { Include } from '../generated/type/include';
 import APIClient from './index';
 
 type Params = {

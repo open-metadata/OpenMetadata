@@ -12,17 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { OidcUser } from 'components/authentication/auth-provider/AuthProvider.interface';
-import { User } from 'generated/entity/teams/user';
 import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams } from 'Models';
-import {
-  getSearchedTeams,
-  getSearchedUsers,
-  getSuggestedTeams,
-  getSuggestedUsers,
-} from 'rest/miscAPI';
-import { getUserById, getUserByName, getUsers } from 'rest/userAPI';
 import AppState from '../AppState';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/axios.enum';
@@ -31,6 +22,15 @@ import {
   RawSuggestResponse,
   SearchResponse,
 } from '../interface/search.interface';
+import {
+  getSearchedTeams,
+  getSearchedUsers,
+  getSuggestedTeams,
+  getSuggestedUsers,
+} from '../rest/miscAPI';
+import { getUserById, getUserByName, getUsers } from '../rest/userAPI';
+import { OidcUser } from './../components/authentication/auth-provider/AuthProvider.interface';
+import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 

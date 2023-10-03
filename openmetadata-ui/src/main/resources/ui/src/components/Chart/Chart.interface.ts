@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ColumnProfile } from 'generated/entity/data/table';
+import { ColumnProfile } from '../../generated/entity/data/table';
 import { MetricChartType } from '../ProfilerDashboard/profilerDashboard.interface';
 
 export interface CustomBarChartProps {

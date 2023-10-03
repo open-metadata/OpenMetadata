@@ -14,24 +14,6 @@
 import { Button, Col, Menu, Row, Skeleton, Space } from 'antd';
 import type { ButtonType } from 'antd/lib/button';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import {
-  SearchedDataProps,
-  SourceType,
-} from 'components/searched-data/SearchedData.interface';
-import {
-  AssetsFilterOptions,
-  ASSETS_INDEXES,
-} from 'constants/Assets.constants';
-import { PAGE_SIZE } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { find, startCase } from 'lodash';
 import React, {
@@ -43,9 +25,27 @@ import React, {
   useState,
 } from 'react';
 import { useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getCountBadge } from 'utils/CommonUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import {
+  AssetsFilterOptions,
+  ASSETS_INDEXES,
+} from '../../../../constants/Assets.constants';
+import { PAGE_SIZE } from '../../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
+import { searchData } from '../../../../rest/miscAPI';
+import { getCountBadge } from '../../../../utils/CommonUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../../common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../../common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from '../../../containers/PageLayoutV1';
+import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import {
+  SearchedDataProps,
+  SourceType,
+} from '../../../searched-data/SearchedData.interface';
 import './assets-tabs.less';
 import {
   AssetsOfEntity,

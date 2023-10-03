@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Row, Typography } from 'antd';
-import AppState from 'AppState';
-import EntityListSkeleton from 'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { getUserPath, ROUTES } from 'constants/constants';
-import { AssetsType } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/data/table';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
-import { Transi18next } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from 'utils/TableUtils';
+import AppState from '../../../AppState';
+import { getUserPath, ROUTES } from '../../../constants/constants';
+import { AssetsType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { getUserById } from '../../../rest/userAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
+import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 
 const MyDataWidgetInternal = () => {
   const { t } = useTranslation();

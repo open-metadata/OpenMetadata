@@ -15,7 +15,7 @@ import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postKillIngestionPipelineById } from 'rest/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface KillIngestionModalProps {

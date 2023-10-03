@@ -21,12 +21,12 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { getAggregateFieldOptions } from 'rest/miscAPI';
-import { suggestQuery } from 'rest/searchAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
+import { suggestQuery } from '../rest/searchAPI';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
+import { getCombinedQueryFilterObject } from '../utils/ExplorePage/ExplorePageUtils';
 
 const BaseConfig = AntdConfig as BasicConfig;
 

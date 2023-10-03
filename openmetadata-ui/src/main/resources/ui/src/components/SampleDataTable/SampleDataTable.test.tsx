@@ -13,10 +13,10 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
 import React from 'react';
-import { getSampleDataByTableId } from 'rest/tableAPI';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { getSampleDataByTableId } from '../../rest/tableAPI';
 import SampleDataTable from './SampleDataTable.component';
 
 const mockProps = {
@@ -38,7 +38,7 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'test' })),
 }));
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../rest/tableAPI', () => ({
   getSampleDataByTableId: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
@@ -52,7 +52,7 @@ jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
     );
 });
 
-jest.mock('components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
+jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
   return jest.fn().mockReturnValue(<p>EntityDeleteModal</p>);
 });
 

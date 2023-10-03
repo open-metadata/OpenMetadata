@@ -14,31 +14,31 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { getVersionPathWithTab } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/schema';
 import { t } from 'i18next';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getUpdatedPipelineTasks } from 'utils/PipelineVersionUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
+import { getVersionPathWithTab } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription, Task } from '../../generated/entity/data/pipeline';
+import { TagSource } from '../../generated/type/schema';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getUpdatedPipelineTasks } from '../../utils/PipelineVersionUtils';
+import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
 const PipelineVersion: FC<PipelineVersionProp> = ({

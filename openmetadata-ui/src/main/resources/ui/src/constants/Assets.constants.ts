@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import i18n from 'utils/i18next/LocalUtil';
+import { AssetsUnion } from '../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const AssetsFilterOptions: Array<{
   label: string;

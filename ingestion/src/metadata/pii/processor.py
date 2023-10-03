@@ -35,11 +35,12 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
-from metadata.profiler.api.models import PatchColumnTagResponse, ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -79,7 +80,7 @@ class PIIProcessor(Processor):
         """Nothing to close"""
 
     @staticmethod
-    def build_column_tag(tag_fqn: str, column_fqn: str) -> PatchColumnTagResponse:
+    def build_column_tag(tag_fqn: str, column_fqn: str) -> ColumnTag:
         """
         Build the tag and run the PATCH
         """
@@ -90,7 +91,7 @@ class PIIProcessor(Processor):
             labelType=LabelType.Automated,
         )
 
-        return PatchColumnTagResponse(column_fqn=column_fqn, tag_label=tag_label)
+        return ColumnTag(column_fqn=column_fqn, tag_label=tag_label)
 
     def process_column(
         self,
@@ -98,7 +99,7 @@ class PIIProcessor(Processor):
         column: Column,
         table_data: Optional[TableData],
         confidence_threshold: float,
-    ) -> Optional[List[PatchColumnTagResponse]]:
+    ) -> Optional[List[ColumnTag]]:
         """
         Tag a column with PII if we find it using our scanners
         """

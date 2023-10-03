@@ -17,9 +17,9 @@ import {
   getByText,
   render,
 } from '@testing-library/react';
-import { TAG_CONSTANT } from 'constants/Tag.constants';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
 import { SearchedDataProps } from './SearchedData.interface';
@@ -86,7 +86,7 @@ const mockData: SearchedDataProps['data'] = [
 const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
 
-jest.mock('components/TableDataCardBody/TableDataCardBody', () => {
+jest.mock('../../components/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 

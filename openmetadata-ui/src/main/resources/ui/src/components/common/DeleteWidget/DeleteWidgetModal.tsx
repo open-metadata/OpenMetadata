@@ -30,13 +30,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { deleteEntity } from 'rest/miscAPI';
+import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
+import { deleteEntity } from '../../../rest/miscAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
   getDeleteMessage,
   prepareEntityType,
-} from 'utils/DeleteWidgetModalUtils';
-import { ENTITY_DELETE_STATE } from '../../../constants/entity.constants';
-import { Transi18next } from '../../../utils/CommonUtils';
+} from '../../../utils/DeleteWidgetModalUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './delete-widget-modal.style.less';
 import { DeleteType, DeleteWidgetModalProps } from './DeleteWidget.interface';

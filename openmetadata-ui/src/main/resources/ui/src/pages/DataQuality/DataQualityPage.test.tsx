@@ -12,8 +12,8 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -25,17 +25,20 @@ const mockUseHistory = {
 };
 
 // mock components
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock('components/DataQuality/TestSuites/TestSuites.component', () => {
-  return {
-    TestSuites: jest
-      .fn()
-      .mockImplementation(() => <div>TestSuites.component</div>),
-  };
-});
-jest.mock('components/DataQuality/TestCases/TestCases.component', () => {
+jest.mock(
+  '../../components/DataQuality/TestSuites/TestSuites.component',
+  () => {
+    return {
+      TestSuites: jest
+        .fn()
+        .mockImplementation(() => <div>TestSuites.component</div>),
+    };
+  }
+);
+jest.mock('../../components/DataQuality/TestCases/TestCases.component', () => {
   return {
     TestCases: jest
       .fn()
@@ -50,17 +53,17 @@ jest.mock('react-router-dom', () => {
 });
 
 jest.mock(
-  'components/DataQuality/SummaryPannel/SummaryPanel.component',
+  '../../components/DataQuality/SummaryPannel/SummaryPanel.component',
   () => ({ SummaryPanel: jest.fn() })
 );
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest
     .fn()
     .mockImplementation(() => ({ permissions: DEFAULT_ENTITY_PERMISSION })),
 }));
 
-jest.mock('rest/testAPI', () => ({
+jest.mock('../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn(),
 }));
 

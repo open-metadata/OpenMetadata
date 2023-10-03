@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Team } from '../../../generated/entity/teams/team';
+import { MessagingProvider, Team } from '../../../generated/entity/teams/team';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 export interface TeamHierarchyProps {
   currentTeam?: Team;
@@ -54,4 +55,24 @@ export enum TeamsPageTab {
   ASSETS = 'assets',
   ROLES = 'roles',
   POLICIES = 'policies',
+}
+
+export interface TeamsInfoProps {
+  parentTeams: Team[];
+  isGroupType: boolean;
+  childTeamsCount: number;
+  currentTeam: Team;
+  entityPermissions: OperationPermission;
+  updateTeamHandler: (data: Team) => Promise<void>;
+}
+
+export interface TeamsSubscriptionProps {
+  hasEditPermission: boolean;
+  subscription?: MessagingProvider;
+  updateTeamSubscription: (value: SubscriptionWebhook) => Promise<void>;
+}
+
+export interface SubscriptionWebhook {
+  webhook: string;
+  endpoint: string;
 }

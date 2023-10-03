@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -25,45 +24,51 @@ import PipelineVersion from './PipelineVersion.component';
 const mockPush = jest.fn();
 
 jest.mock(
-  'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
-jest.mock('components/Tag/TagsViewer/TagsViewer', () =>
+jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
-jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
-  CustomPropertyTable: jest
-    .fn()
-    .mockImplementation(() => <div>CustomPropertyTable</div>),
-}));
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: jest
+      .fn()
+      .mockImplementation(() => <div>CustomPropertyTable</div>),
+  })
+);
 
-jest.mock('components/common/description/DescriptionV1', () =>
+jest.mock('../../components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('components/Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
-  jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
+jest.mock(
+  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
+  () => jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
@@ -72,7 +77,7 @@ jest.mock('react-router-dom', () => ({
     push: mockPush,
   })),
   useParams: jest.fn().mockReturnValue({
-    tab: EntityTabs.PIPELINE,
+    tab: 'pipeline',
   }),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
