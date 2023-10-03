@@ -162,7 +162,6 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.stop();
   }
 
-
   public static RestClient getSearchClient() {
     return RestClient.builder(HttpHost.create(ELASTIC_SEARCH_CONTAINER.getHttpHostAddress())).build();
   }
