@@ -159,25 +159,26 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
     super.addHref(uriInfo, user);
     Entity.withHref(uriInfo, user.getTeams());
     Entity.withHref(uriInfo, user.getRoles());
+    Entity.withHref(uriInfo, user.getPersonas());
     Entity.withHref(uriInfo, user.getInheritedRoles());
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
   }
 
-  public UserResource(CollectionDAO dao, Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
-    super(User.class, new UserRepository(dao), authorizer);
+  public UserResource(Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
+    super(Entity.USER, authorizer);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
-    tokenRepository = new TokenRepository(dao);
-    UserTokenCache.initialize(dao);
+    tokenRepository = Entity.getTokenRepository();
+    UserTokenCache.initialize();
     authHandler = authenticatorHandler;
   }
 
@@ -723,7 +724,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           authorizer.authorizeAdmin(securityContext);
           continue;
         }
-        // if path contains team, check if team is joinable by any user
+        // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
             && patchOpObject.getString("op").equals("add")
             && path.startsWith("/teams/")) {
@@ -1141,7 +1142,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation for user import/export")
-  public String getUserCsvDocumentation(@Context SecurityContext securityContext, @PathParam("name") String name) {
+  public String getUserCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
   }
 
@@ -1215,6 +1216,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
         .withIsBot(create.getIsBot())
         .withIsAdmin(create.getIsAdmin())
         .withProfile(create.getProfile())
+        .withPersonas(create.getPersonas())
+        .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())

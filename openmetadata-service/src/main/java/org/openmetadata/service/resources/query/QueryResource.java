@@ -44,7 +44,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.Collection;
@@ -66,8 +65,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static final String COLLECTION_PATH = "v1/queries/";
   static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
-  public QueryResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Query.class, new QueryRepository(dao), authorizer);
+  public QueryResource(Authorizer authorizer) {
+    super(Entity.QUERY, authorizer);
   }
 
   @Override

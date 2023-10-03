@@ -1,0 +1,62 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/manifestMetadataConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ManifestMetadataConfig",
+  "description": "Definition of the manifest file containing entries to be ingested across multiple buckets as object storage entries",
+  "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestMetadataConfig",
+  "definitions": {
+    "manifestMetadataEntry": {
+      "description": "Config properties for a container found in a user-supplied metadata config",
+      "javaType": "org.openmetadata.schema.metadataIngestion.storage.ManifestMetadataEntry",
+      "type": "object",
+      "properties": {
+        "containerName": {
+          "title": "Container Name",
+          "description": "The top-level container name containing the data path to be ingested",
+          "type": "string"
+        },
+        "dataPath": {
+          "title": "Data path",
+          "description": "The path where the data resides in the container, excluding the bucket name",
+          "type": "string"
+        },
+        "structureFormat": {
+          "title": "Schema format",
+          "description": "What's the schema format for the container, eg. avro, parquet, csv.",
+          "type": "string",
+          "default": null
+        },
+        "isPartitioned": {
+          "title": "Is Partitioned",
+          "description": "Flag indicating whether the container's data is partitioned",
+          "type": "boolean",
+          "default": false
+        },
+        "partitionColumns": {
+          "title": "Partition Columns",
+          "description": "What are the partition columns in case the container's data is partitioned",
+          "type": "array",
+          "items": {
+            "$ref": "../../entity/data/table.json#/definitions/column"
+          },
+          "default": null
+        }
+      },
+      "required": [
+        "containerName" ,"dataPath"
+      ]
+    }
+  },
+  "properties": {
+    "entries": {
+      "description": "List of metadata entries for the bucket containing information about where data resides and its structure",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/manifestMetadataEntry"
+      },
+      "default": null
+    }
+  },
+  "required": ["entries"],
+  "additionalProperties": false
+}

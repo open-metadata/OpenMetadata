@@ -8,6 +8,7 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -27,8 +28,8 @@ public class MigrationUtil {
   private static final String POSTGRES_LIST_TABLE_FQNS = "SELECT json #>> '{fullyQualifiedName}' FROM table_entity";
 
   public static void fixTestCases(Handle handle, CollectionDAO collectionDAO) {
-    TestCaseRepository testCaseRepository = new TestCaseRepository(collectionDAO);
-    TableRepository tableRepository = new TableRepository(collectionDAO);
+    TestCaseRepository testCaseRepository = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     List<TestCase> testCases =
         testCaseRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
 

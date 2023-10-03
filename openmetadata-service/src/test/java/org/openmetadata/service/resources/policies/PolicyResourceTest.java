@@ -366,7 +366,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
               .filter(rd -> rd.getName().equals(entity))
               .findFirst()
               .orElse(null);
-      assertNotNull(resourceDescriptor);
+      assertNotNull(resourceDescriptor, String.format("Resource descriptor not found for entity %s", entity));
     }
   }
 
