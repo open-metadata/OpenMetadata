@@ -1,4 +1,4 @@
-package org.openmetadata.service.apps;
+package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.resources.teams.UserResource.getUser;
 
@@ -13,7 +13,6 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.Application;
-import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -23,11 +22,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.BotRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
@@ -149,31 +143,10 @@ public class AppRepository extends EntityRepository<Application> {
   }
 
   @SuppressWarnings("unused")
-  protected void postCreate(Application entity) {
-    super.postCreate(entity);
-
-    // Send to app scheduler
-    // TODO: here we should handle Live as well
-    if (entity.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          entity, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
-    }
-  }
-
-  @SuppressWarnings("unused")
   protected void postUpdate(Application original, Application updated) {
     super.postUpdate(original, updated);
     // TODO: here we should handle Live as well
 
-    try {
-      AppScheduler.getInstance().deleteScheduledApplication(original);
-      if (updated.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.scheduleApplication(
-            updated, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
-      }
-    } catch (SchedulerException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   public void postDelete(Application entity) {

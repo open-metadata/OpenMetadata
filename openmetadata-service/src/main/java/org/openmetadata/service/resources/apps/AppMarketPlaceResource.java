@@ -31,7 +31,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.Application;
@@ -42,9 +42,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.AppMarketPlaceRepository;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
@@ -61,6 +61,7 @@ import org.openmetadata.service.util.ResultList;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "appsMarketPlace")
+@Slf4j
 public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClient pipelineServiceClient;
@@ -68,15 +69,18 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
   private SearchRepository searchRepository;
 
   @Override
-  @SneakyThrows
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
+    try {
+      this.pipelineServiceClient =
+          PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
 
-    // Create an On Demand DAO
-    CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
-    searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
-    AppScheduler.initialize(dao, searchRepository);
+      // Create an On Demand DAO
+      CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
+      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
+      AppScheduler.initialize(dao, searchRepository);
+    } catch (Exception ex) {
+      LOG.error("Failed in initializing App MarketPlace Resource", ex);
+    }
   }
 
   public AppMarketPlaceResource(Authorizer authorizer) {

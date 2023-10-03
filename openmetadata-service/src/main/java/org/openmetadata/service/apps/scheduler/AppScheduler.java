@@ -30,9 +30,9 @@ public class AppScheduler {
   public static final String APPS_JOB_GROUP = "OMAppsJobGroup";
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_CRON_TRIGGER = "appCronTrigger";
-  public static final String APP_INFO = "applicationInfo";
-  public static final String COLLECTION_DAO_KEY = "dao";
-  public static final String SEARCH_CLIENT_KEY = "searchClient";
+  public static final String APP_INFO_KEY = "applicationInfoKey";
+  public static final String COLLECTION_DAO_KEY = "daoKey";
+  public static final String SEARCH_CLIENT_KEY = "searchClientKey";
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   private final Scheduler appScheduler;
@@ -94,7 +94,7 @@ public class AppScheduler {
 
   private JobDetail jobBuilder(Application app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(APP_INFO, app);
+    dataMap.put(APP_INFO_KEY, app);
     dataMap.put(COLLECTION_DAO_KEY, collectionDAO);
     dataMap.put(SEARCH_CLIENT_KEY, searchClient);
     dataMap.put("triggerType", AppRunType.Scheduled.value());
@@ -122,6 +122,8 @@ public class AppScheduler {
 
   public static CronScheduleBuilder getCronSchedule(AppSchedule scheduleInfo) {
     switch (scheduleInfo.getScheduleType()) {
+      case HOURLY:
+        return CronScheduleBuilder.cronSchedule("0 0 * ? * *");
       case DAILY:
         return CronScheduleBuilder.dailyAtHourAndMinute(0, 0);
       case WEEKLY:

@@ -15,16 +15,13 @@
 
 package org.openmetadata.service.search;
 
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
 import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
@@ -40,12 +37,11 @@ public class SearchEventPublisher extends AbstractEventPublisher {
   private static SearchRepository searchRepository;
   private static CollectionDAO dao;
 
-  public SearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO dao) {
+  public SearchEventPublisher(ElasticSearchConfiguration esConfig, CollectionDAO collectionDAO) {
     super(esConfig.getBatchSize());
-    SearchEventPublisher.dao = dao;
+    dao = collectionDAO;
     // needs Db connection
-    registerElasticSearchJobs();
-    searchRepository = IndexUtil.getSearchClient(esConfig, dao);
+    searchRepository = IndexUtil.getSearchClient(esConfig, collectionDAO);
     SearchIndexDefinition esIndexDefinition = new SearchIndexDefinition(searchRepository);
     esIndexDefinition.createIndexes(esConfig);
   }
@@ -102,14 +98,9 @@ public class SearchEventPublisher extends AbstractEventPublisher {
       FailureDetails failureDetails = new FailureDetails().withLastFailedAt(0L);
       EventPublisherJob streamJob =
           new EventPublisherJob()
-              .withId(UUID.randomUUID())
               .withName("Elastic Search Stream")
-              .withPublisherType(CreateEventPublisherJob.PublisherType.ELASTIC_SEARCH)
-              .withRunMode(CreateEventPublisherJob.RunMode.STREAM)
               .withStatus(EventPublisherJob.Status.ACTIVE)
               .withTimestamp(startTime)
-              .withStartedBy(ADMIN_USER_NAME)
-              .withStartTime(startTime)
               .withFailure(new Failure().withSinkError(failureDetails));
       dao.entityExtensionTimeSeriesDao()
           .insert(

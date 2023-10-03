@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.service.Entity.BOT;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -9,36 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.SneakyThrows;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.Application;
-import org.openmetadata.schema.entity.app.CreateApplication;
-import org.openmetadata.schema.entity.app.ScheduleType;
-import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.AppRepository;
-import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.apps.scheduler.AppScheduler;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
-import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.openmetadata.service.util.ResultList;
-
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -59,10 +33,36 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.util.UUID;
-
-import static org.openmetadata.service.Entity.BOT;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import lombok.SneakyThrows;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.Application;
+import org.openmetadata.schema.entity.app.CreateApplication;
+import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
+import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.IndexUtil;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.ResultList;
+import org.quartz.SchedulerException;
 
 @Path("/v1/apps")
 @Tag(name = "Apps", description = "Apps are internal/external apps used to something on top of Open-metadata.")
@@ -272,6 +272,12 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             .getMarketPlace()
             .getByName(uriInfo, appName, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     Application app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.scheduleApplication(
+          app,
+          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          searchRepository);
+    }
     return create(uriInfo, securityContext, app);
   }
 
@@ -320,6 +326,17 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             .getMarketPlace()
             .get(uriInfo, appId, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     Application app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    try {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
+      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        ApplicationHandler.scheduleApplication(
+            app,
+            JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+            searchRepository);
+      }
+    } catch (SchedulerException e) {
+      throw new RuntimeException(e);
+    }
     return createOrUpdate(uriInfo, securityContext, app);
   }
 
@@ -402,7 +419,9 @@ public class AppResource extends EntityResource<Application, AppRepository> {
     Application app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(
-          app, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
+          app,
+          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          searchRepository);
       Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -431,7 +450,9 @@ public class AppResource extends EntityResource<Application, AppRepository> {
     AppType applicationType = AppType.fromValue(appType);
     if (applicationType.equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
-          app, JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class));
+          app,
+          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          searchRepository);
       return Response.status(Response.Status.OK).entity(null).build();
     } else {
       app.setOpenMetadataServerConnection(

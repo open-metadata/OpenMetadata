@@ -128,7 +128,7 @@ public final class Entity {
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
   public static final String APPLICATION = "application";
-  public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
+  public static final String APP_MARKET_PLACE_DEF = "appmarketplacedefinition";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";

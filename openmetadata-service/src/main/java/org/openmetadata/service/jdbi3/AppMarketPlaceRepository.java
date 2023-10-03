@@ -1,9 +1,7 @@
-package org.openmetadata.service.apps;
+package org.openmetadata.service.jdbi3;
 
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.apps.AppMarketPlaceResource;
 import org.openmetadata.service.util.EntityUtil;
 
