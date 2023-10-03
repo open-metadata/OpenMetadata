@@ -160,6 +160,10 @@ public abstract class OpenMetadataApplicationTest {
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
     ELASTIC_SEARCH_CONTAINER.stop();
+
+    if (client != null) {
+      client.close();
+    }
   }
 
   public static RestClient getSearchClient() {
