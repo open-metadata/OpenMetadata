@@ -48,8 +48,7 @@ import org.openmetadata.service.events.subscription.slack.SlackEventPublisher;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.CollectionRegistry;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchIndexDefinition;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
@@ -158,8 +157,8 @@ public final class AlertUtil {
     Set<String> indexesToSearch = new HashSet<>();
     for (String entityType : entities) {
       try {
-        SearchIndexDefinition.ElasticSearchIndexType type = IndexUtil.getIndexMappingByEntityType(entityType);
-        indexesToSearch.add(type.indexName);
+        IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+        indexesToSearch.add(indexMapping.getIndexName());
       } catch (RuntimeException ex) {
         LOG.error("Failing to get Index for EntityType");
       }

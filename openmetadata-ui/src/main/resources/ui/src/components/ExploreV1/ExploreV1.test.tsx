@@ -70,7 +70,7 @@ const props = {
     container_search_index: 0,
     stored_procedure_search_index: 0,
     dashboard_data_model_search_index: 0,
-    glossary_search_index: 0,
+    glossary_term_search_index: 0,
     tag_search_index: 10,
     search_entity_index: 9,
   },

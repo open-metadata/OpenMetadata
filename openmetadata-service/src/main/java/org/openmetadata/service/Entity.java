@@ -56,6 +56,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.reflections.Reflections;
 
@@ -76,6 +77,7 @@ public final class Entity {
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
+  @Getter @Setter private static SearchRepository searchRepository;
 
   // List of all the entities
   private static final List<String> ENTITY_LIST = new ArrayList<>();
