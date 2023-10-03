@@ -24,9 +24,7 @@ from metadata.ingestion.source.dashboard.looker.models import (
 from metadata.readers.file.base import ReadException
 from metadata.utils.logger import ingestion_logger
 
-from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
-    LookMLExplore,
-)
+
 from ingestion.src.metadata.readers.file.api_reader import ApiReader
 from ingestion.src.metadata.readers.file.local import LocalReader
 
@@ -70,7 +68,7 @@ class BulkLkmlParser(metaclass=SingletonMeta):
     until we find the view we are looking for.
 
     Approach:
-    When we parse, we parse all files *.view.lkml to get all view and cached them. It can speedup the process and avoid
+    When we parse, we parse all files *.view.lkml to get all view and cached them. It can speed up the process and avoid
     infinity loop when parsing includes.
     """
 
@@ -134,27 +132,8 @@ class BulkLkmlParser(metaclass=SingletonMeta):
         if cached_view:
             return cached_view
 
-        file = self._read_file(Includes(path))
-        lkml_file = LkmlFile.parse_obj(lkml.load(file))
-        explore: LookMLExplore = next(
-            iter([i for i in lkml_file.explores if i.name == view_name]),
-            None,
-        )
-        if explore:
-            return self.get_view_from_cache(ViewName(explore.from_))
-
         logger.warning(f"BulkLkmlParser::find_view: can't find view {view_name}")
         return None
-
-    def parse_file(self, path: Includes) -> Optional[List[Includes]]:
-        """
-        Internal parser. Parse the file and cache the views
-
-        If a lkml include starts with //, means that it is pointing to
-        a external repository. we won't send it to the reader
-        """
-
-        return []
 
     def __repr__(self):
         """

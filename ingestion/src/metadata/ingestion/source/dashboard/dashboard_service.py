@@ -125,6 +125,7 @@ class DashboardServiceTopology(ServiceTopology):
                 type_=DashboardDataModel,
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
+                nullable=True,
             )
         ],
     )
@@ -163,14 +164,12 @@ class DashboardServiceTopology(ServiceTopology):
             ),
             NodeStage(
                 type_=AddLineageRequest,
-                context="lineage",
                 processor="yield_dashboard_lineage",
                 consumer=["dashboard_service"],
                 nullable=True,
             ),
             NodeStage(
                 type_=UsageRequest,
-                context="usage",
                 processor="yield_dashboard_usage",
                 consumer=["dashboard_service"],
                 nullable=True,

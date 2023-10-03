@@ -308,7 +308,8 @@ class LookerSource(DashboardServiceSource):
             if self.service_connection.gitCredentials and isinstance(
                 self.service_connection.gitCredentials, BitBucketCredentials
             ):
-                self._reader_class = BitBucketReader
+                # self._reader_class = BitBucketReader
+                self._reader_class = LocalReader
 
         return self._reader_class
 
@@ -452,8 +453,6 @@ class LookerSource(DashboardServiceSource):
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )
-                else:
-                    logger.info(f"LookerSource::yield_bulk_datamodel: yield empty")
 
         except ValidationError as err:
             yield Either(
@@ -483,9 +482,9 @@ class LookerSource(DashboardServiceSource):
                 project_parser = self.parser.get(explore.project_name)
                 if project_parser:
                     # This will only parse if the file has not been parsed yet
-                    project_parser.parse_file(
-                        Includes(get_path_from_link(explore.lookml_link))
-                    )
+                    # project_parser.parse_file(
+                    #     Includes(get_path_from_link(explore.lookml_link))
+                    # )
                     return project_parser.parsed_files.get(
                         Includes(get_path_from_link(explore.lookml_link))
                     )
@@ -579,10 +578,6 @@ class LookerSource(DashboardServiceSource):
                     )
 
             elif view.derived_table:
-                logger.info(
-                    f"LookerSource::add_view_lineage: view.derived_table = {view.derived_table}"
-                )
-
                 sql_query = view.derived_table.sql
                 if not sql_query:
                     return
@@ -600,9 +595,6 @@ class LookerSource(DashboardServiceSource):
                     )
                     if lineage_parser.source_tables:
                         for from_table_name in lineage_parser.source_tables:
-                            logger.info(
-                                f"LookerSource::add_view_lineage: from_table_name = {from_table_name} --- view.name = {view.name}"
-                            )
                             yield self.build_lineage_request(
                                 source=str(from_table_name),
                                 db_service_name=db_service_name,
