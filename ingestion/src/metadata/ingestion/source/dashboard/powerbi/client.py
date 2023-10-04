@@ -186,7 +186,7 @@ class PowerBiApiClient:
     ) -> Optional[List[PowerBiTable]]:
         """Method to fetch dataset tables
         Returns:
-            List[Tile]
+            List[PowerBiTable]
         """
         try:
             response_data = self.client.get(
