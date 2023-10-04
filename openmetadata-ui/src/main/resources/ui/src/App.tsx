@@ -33,12 +33,11 @@ import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
 interface AppProps {
-  children?: ReactNode;
   routeElements?: ReactNode;
   sideBarElements?: ReactNode;
 }
 
-const App: FC<AppProps> = ({ children, routeElements, sideBarElements }) => {
+const App: FC<AppProps> = ({ routeElements, sideBarElements }) => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
@@ -58,7 +57,6 @@ const App: FC<AppProps> = ({ children, routeElements, sideBarElements }) => {
                               <DomainProvider>
                                 <EntityExportModalProvider>
                                   <AppRouter />
-                                  {children}
                                 </EntityExportModalProvider>
                               </DomainProvider>
                             </GlobalSearchProvider>
