@@ -14,12 +14,12 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Input, InputNumber, Select, Switch } from 'antd';
 import 'codemirror/addon/fold/foldgutter.css';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from 'constants/profiler.constant';
-import { CSMode } from 'enums/codemirror.enum';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
+import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
 import {
   TestCaseParameterDefinition,
   TestDataType,

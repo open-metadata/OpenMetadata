@@ -13,25 +13,25 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import VersionTable from 'components/VersionTable/VersionTable.component';
-import { EntityTabs, EntityType, FqnPart } from 'enums/entity.enum';
+import { cloneDeep } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import VersionTable from '../../components/VersionTable/VersionTable.component';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import {
   ChangeDescription,
   Column,
   DashboardDataModel,
-} from 'generated/entity/data/dashboardDataModel';
-import { TagSource } from 'generated/type/schema';
-import { cloneDeep } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/Feeds.constants';
+} from '../../generated/entity/data/dashboardDataModel';
+import { TagSource } from '../../generated/type/schema';
+import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,

@@ -18,12 +18,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import {
-  addIngestionPipeline,
-  deployIngestionPipelineById,
-  updateIngestionPipeline as putIngestionPipeline,
-} from 'rest/ingestionPipelineAPI';
-import { getIngestionName } from 'utils/ServiceUtils';
-import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
 } from '../../constants/constants';
@@ -36,11 +30,17 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+  updateIngestionPipeline,
+} from '../../rest/ingestionPipelineAPI';
+import {
   getIngestionFrequency,
   getNameFromFQN,
   replaceAllSpacialCharWith_,
   Transi18next,
 } from '../../utils/CommonUtils';
+import { getIngestionName } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -149,7 +149,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy(ingestion.id);
   };
 
-  const updateIngestionPipeline = async (repeatFrequency: string) => {
+  const onUpdateIngestionPipeline = async (repeatFrequency: string) => {
     const {
       airflowConfig,
       description,
@@ -180,7 +180,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     };
 
     try {
-      const response = await putIngestionPipeline(
+      const response = await updateIngestionPipeline(
         updatedPipelineData as CreateIngestionPipeline
       );
       handleIngestionDeploy(response.id);
@@ -197,14 +197,14 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const handleIngestionSubmit = useCallback(
     (repeatFrequency: string) => {
       if (ingestionFQN) {
-        updateIngestionPipeline(repeatFrequency);
+        onUpdateIngestionPipeline(repeatFrequency);
       } else {
         createIngestionPipeline(repeatFrequency);
       }
     },
     [
       ingestionFQN,
-      updateIngestionPipeline,
+      onUpdateIngestionPipeline,
       createIngestionPipeline,
       ingestionPipeline,
     ]

@@ -23,14 +23,15 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
 import org.flywaydb.core.Flyway;
+import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.client.HttpUrlConnectorProvider;
-import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -65,6 +66,8 @@ public abstract class OpenMetadataApplicationTest {
 
   private static String HOST;
   private static String PORT;
+
+  private static Client client;
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
@@ -117,26 +120,10 @@ public abstract class OpenMetadataApplicationTest {
       String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
       HOST = parts[0];
       PORT = parts[1];
-      // elastic search overrides
-      configOverrides.add(ConfigOverride.config("elasticsearch.host", HOST));
-      configOverrides.add(ConfigOverride.config("elasticsearch.port", PORT));
-      configOverrides.add(ConfigOverride.config("elasticsearch.scheme", "http"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.username", ""));
-      configOverrides.add(ConfigOverride.config("elasticsearch.password", ""));
-      configOverrides.add(ConfigOverride.config("elasticsearch.truststorePath", ""));
-      configOverrides.add(ConfigOverride.config("elasticsearch.truststorePassword", ""));
-      configOverrides.add(ConfigOverride.config("elasticsearch.connectionTimeoutSecs", "5"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.socketTimeoutSecs", "60"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.batchSize", "10"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"));
-      configOverrides.add(ConfigOverride.config("elasticsearch.searchType", "elasticsearch"));
+      overrideElasticSearchConfig();
     }
-    // Database overrides
-    configOverrides.add(ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
-    configOverrides.add(ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()));
-    configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
-    configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
+    overrideDatabaseConfig(sqlContainer);
+
     // Migration overrides
     configOverrides.add(ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScripsLocation));
     configOverrides.add(ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScripsLocation));
@@ -151,8 +138,18 @@ public abstract class OpenMetadataApplicationTest {
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
     validateAndRunSystemDataMigrations(
         jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), nativeMigrationScripsLocation, false);
-
     APP.before();
+    createClient();
+  }
+
+  private static void createClient() {
+    ClientConfig config = new ClientConfig();
+    config.connectorProvider(new JettyConnectorProvider());
+    config.register(new JacksonFeature(APP.getObjectMapper()));
+    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
+    config.property(ClientProperties.READ_TIMEOUT, 0);
+    config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
+    client = ClientBuilder.newClient(config);
   }
 
   @AfterAll
@@ -164,15 +161,10 @@ public abstract class OpenMetadataApplicationTest {
       APP.getEnvironment().getApplicationContext().getServer().stop();
     }
     ELASTIC_SEARCH_CONTAINER.stop();
-  }
 
-  public static Client getClient() {
-    return new JerseyClientBuilder()
-        .register(new JacksonFeature(APP.getObjectMapper()))
-        .property(ClientProperties.CONNECT_TIMEOUT, 0)
-        .property(ClientProperties.READ_TIMEOUT, 0)
-        .property(HttpUrlConnectorProvider.SET_METHOD_WORKAROUND, true)
-        .build();
+    if (client != null) {
+      client.close();
+    }
   }
 
   public static RestClient getSearchClient() {
@@ -180,10 +172,35 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   public static WebTarget getResource(String collection) {
-    return getClient().target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
+    return client.target(format("http://localhost:%s/api/v1/%s", APP.getLocalPort(), collection));
   }
 
   public static WebTarget getConfigResource(String resource) {
-    return getClient().target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
+    return client.target(format("http://localhost:%s/api/v1/system/config/%s", APP.getLocalPort(), resource));
+  }
+
+  private static void overrideElasticSearchConfig() {
+    // elastic search overrides
+    configOverrides.add(ConfigOverride.config("elasticsearch.host", HOST));
+    configOverrides.add(ConfigOverride.config("elasticsearch.port", PORT));
+    configOverrides.add(ConfigOverride.config("elasticsearch.scheme", "http"));
+    configOverrides.add(ConfigOverride.config("elasticsearch.username", ""));
+    configOverrides.add(ConfigOverride.config("elasticsearch.password", ""));
+    configOverrides.add(ConfigOverride.config("elasticsearch.truststorePath", ""));
+    configOverrides.add(ConfigOverride.config("elasticsearch.truststorePassword", ""));
+    configOverrides.add(ConfigOverride.config("elasticsearch.connectionTimeoutSecs", "5"));
+    configOverrides.add(ConfigOverride.config("elasticsearch.socketTimeoutSecs", "60"));
+    configOverrides.add(ConfigOverride.config("elasticsearch.keepAliveTimeoutSecs", "600"));
+    configOverrides.add(ConfigOverride.config("elasticsearch.batchSize", "10"));
+    configOverrides.add(ConfigOverride.config("elasticsearch.searchIndexMappingLanguage", "EN"));
+    configOverrides.add(ConfigOverride.config("elasticsearch.searchType", "elasticsearch"));
+  }
+
+  private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {
+    // Database overrides
+    configOverrides.add(ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
+    configOverrides.add(ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()));
+    configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
+    configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
   }
 }

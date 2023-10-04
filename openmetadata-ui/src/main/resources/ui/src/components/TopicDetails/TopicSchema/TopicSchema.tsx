@@ -25,32 +25,35 @@ import {
 import Table, { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import ToggleExpandButton from 'components/ToggleExpandButton/ToggleExpandButton';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { CSMode } from 'enums/codemirror.enum';
-import { EntityType } from 'enums/entity.enum';
-import { DataTypeTopic, Field } from 'generated/entity/data/topic';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
+import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import ToggleExpandButton from '../../../components/ToggleExpandButton/ToggleExpandButton';
+import { PRIMERY_COLOR } from '../../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from 'utils/TableUtils';
+} from '../../../utils/TableUtils';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,

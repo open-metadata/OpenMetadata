@@ -12,16 +12,16 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { IngestionPipelineList } from 'components/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import Services from 'components/Services/Services';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { IngestionPipelineList } from '../../components/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import Services from '../../components/Services/Services';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';

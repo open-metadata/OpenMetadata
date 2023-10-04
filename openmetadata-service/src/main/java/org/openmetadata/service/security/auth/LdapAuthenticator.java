@@ -35,11 +35,11 @@ import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -58,15 +58,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private LoginConfiguration loginConfiguration;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
+  public void init(OpenMetadataApplicationConfig config) {
     if (config.getAuthenticationConfiguration().getProvider().equals(AuthProvider.LDAP)
         && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
       ldapLookupConnectionPool = getLdapConnectionPool(config.getAuthenticationConfiguration().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
-    this.userRepository = new UserRepository(collectionDAO);
-    this.tokenRepository = new TokenRepository(collectionDAO);
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     this.loginConfiguration = config.getApplicationConfiguration().getLoginConfig();

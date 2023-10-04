@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../generated/entity/teams/user';
 
 export interface UserProfileRolesProps {
   isUserAdmin?: boolean;

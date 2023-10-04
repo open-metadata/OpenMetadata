@@ -13,30 +13,30 @@
 
 import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import TopicSchemaFields from 'components/TopicDetails/TopicSchema/TopicSchema';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { stringToHTML } from 'utils/StringsUtils';
-import { getUpdatedMessageSchema } from 'utils/TopicVersionUtils';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import TopicSchemaFields from '../../components/TopicDetails/TopicSchema/TopicSchema';
+import { getVersionPathWithTab } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/topic';
+import { TagSource } from '../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
+import { getUpdatedMessageSchema } from '../../utils/TopicVersionUtils';
 import { TopicVersionProp } from './TopicVersion.interface';
 
 const TopicVersion: FC<TopicVersionProp> = ({

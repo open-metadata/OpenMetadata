@@ -12,21 +12,24 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space } from 'antd';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
-import { CreateDomain, DomainType } from 'generated/api/domains/createDomain';
-import { Operation } from 'generated/entity/policies/policy';
-import { EntityReference } from 'generated/entity/type';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
+import { UserTag } from '../../../components/common/UserTag/UserTag.component';
+import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import {
+  CreateDomain,
+  DomainType,
+} from '../../../generated/api/domains/createDomain';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/entity/type';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
 

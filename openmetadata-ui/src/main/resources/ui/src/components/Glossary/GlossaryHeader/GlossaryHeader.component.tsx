@@ -23,55 +23,58 @@ import {
 } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
-import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import StatusBadge from 'components/common/StatusBadge/StatusBadge.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import Voting from 'components/Voting/Voting.component';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityAction, EntityType } from 'enums/entity.enum';
-import { Glossary } from 'generated/entity/data/glossary';
-import {
-  EntityReference,
-  GlossaryTerm,
-  Status,
-} from 'generated/entity/data/glossaryTerm';
 import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
+import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import Voting from '../../../components/Voting/Voting.component';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityAction, EntityType } from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  EntityReference,
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
 import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
   getGlossaryTermsById,
-} from 'rest/glossaryAPI';
-import { getCurrentUserId, getEntityDeleteMessage } from 'utils/CommonUtils';
-import { getEntityVoteStatus } from 'utils/EntityUtils';
-import { StatusClass } from 'utils/GlossaryUtils';
+} from '../../../rest/glossaryAPI';
+import {
+  getCurrentUserId,
+  getEntityDeleteMessage,
+} from '../../../utils/CommonUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
+import { StatusClass } from '../../../utils/GlossaryUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
-} from 'utils/RouterUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import Fqn from '../../../utils/Fqn';
+} from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 export interface GlossaryHeaderProps {
   isVersionView?: boolean;

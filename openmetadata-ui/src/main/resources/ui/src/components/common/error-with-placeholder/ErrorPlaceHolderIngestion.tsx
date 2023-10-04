@@ -12,13 +12,13 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
-import Loader from 'components/Loader/Loader';
-import { AIRFLOW_DOCS } from 'constants/docs.constants';
-import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import React from 'react';
+import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
+import Loader from '../../../components/Loader/Loader';
+import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
+import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 const ErrorPlaceHolderIngestion = () => {

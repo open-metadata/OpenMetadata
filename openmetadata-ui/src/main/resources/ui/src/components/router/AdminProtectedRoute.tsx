@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React from 'react';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 
 interface AdminProtectedRouteProps extends RouteProps {

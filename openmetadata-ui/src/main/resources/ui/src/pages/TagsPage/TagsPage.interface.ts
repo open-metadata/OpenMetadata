@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Classification } from 'generated/entity/classification/classification';
-import { Tag } from 'generated/entity/classification/tag';
 import { LoadingState } from 'Models';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
 
 export type DeleteTagDetailsType = {
   id: string;
