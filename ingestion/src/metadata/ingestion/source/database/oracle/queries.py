@@ -41,6 +41,9 @@ WHERE owner NOT IN ('SYSTEM', 'SYS')
 GET_MATERIALIZED_VIEW_NAMES = """
 SELECT mview_name FROM all_mviews WHERE owner = :owner
 """
+ORACLE_GET_TABLES = """
+SELECT table_name FROM all_tables
+"""
 
 ORACLE_GET_TABLE_NAMES = """
 SELECT table_name FROM all_tables WHERE 
@@ -49,8 +52,13 @@ OWNER = :owner
 AND IOT_NAME IS NULL 
 AND DURATION IS NULL
 AND TABLE_NAME NOT IN 
-(SELECT mview_name FROM all_mviews WHERE owner = :owner)
+(SELECT mview_name FROM all_mviews WHERE owner = :owner) {table_filter}
 """
+
+ORACLE_GET_SCHEMA_NAME = """
+SELECT username FROM all_users {} ORDER BY username 
+"""
+
 
 ORACLE_IDENTITY_TYPE = """\
 col.default_on_null,

@@ -24,6 +24,7 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_ALL_TABLE_COMMENTS,
     ORACLE_ALL_VIEW_DEFINITIONS,
     ORACLE_GET_COLUMNS,
+    ORACLE_GET_SCHEMA_NAME,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_IDENTITY_TYPE,
 )
@@ -50,6 +51,35 @@ def get_table_comment(
         schema=schema.lower() if schema else None,
         query=ORACLE_ALL_TABLE_COMMENTS,
     )
+
+
+def get_table_names_reflection(self, schema=None, **kw):
+    """Return all table names in referred to within a particular schema.
+
+    The names are expected to be real tables only, not views.
+    Views are instead returned using the
+    :meth:`_reflection.Inspector.get_view_names`
+    method.
+
+
+    :param schema: Schema name. If ``schema`` is left at ``None``, the
+        database's default schema is
+        used, else the named schema is searched.  If the database does not
+        support named schemas, behavior is undefined if ``schema`` is not
+        passed as ``None``.  For special quoting, use :class:`.quoted_name`.
+
+    .. seealso::
+
+        :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
+
+        :attr:`_schema.MetaData.sorted_tables`
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_table_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
 
 
 @reflection.cache
@@ -199,8 +229,20 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
+def get_filter_pattern_query(filter_pattern_name, name):
+    query_conditions = []
+    # Iterate over the list and build the query conditions
+    for pattern in filter_pattern_name:
+        query_conditions.append(f"{name} LIKE '{pattern}'")
+
+    # Join the query conditions with 'OR' and add them to the SQL query
+    if query_conditions:
+        query_condition = " OR ".join(query_conditions)
+    return query_condition
+
+
 @reflection.cache
-def get_table_names(self, connection, schema=None, **kw):
+def get_table_names(self, connection, schema, **kw):
     """
     Exclude the materialized views from regular table names
     """
@@ -218,8 +260,21 @@ def get_table_names(self, connection, schema=None, **kw):
             "nvl(tablespace_name, 'no tablespace') "
             f"NOT IN ({exclude_tablespace}) AND "
         )
-    sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace)
-    cursor = connection.execute(sql.text(sql_str), {"owner": schema})
+    filter_query = (
+        f'AND ( {get_filter_pattern_query(kw["filter_table_name"],"table_name")} )'
+    )
+    cursor = connection.execute(
+        sql.text(
+            ORACLE_GET_TABLE_NAMES.format(
+                tablespace=tablespace, table_filter=filter_query
+            )
+        )
+        if kw["pushFilterDown"] and kw["filter_table_name"]
+        else sql.text(
+            ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, table_filter="")
+        ),
+        {"owner": schema},
+    )
     return [row[0] for row in cursor]
 
 
@@ -255,3 +310,26 @@ def get_mview_definition(self, mview_name, schema=None):
         return self.dialect.get_view_definition(
             conn, mview_name, schema, info_cache=self.info_cache
         )
+
+
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_schema_names(self, connection, **kw):
+    query = ORACLE_GET_SCHEMA_NAME
+    filter_query = (
+        f'WHERE {get_filter_pattern_query(kw["filter_schema_name"],"username")}'
+    )
+    cursor = connection.execute(
+        query.format(filter_query)
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else query.format("")
+    )
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result

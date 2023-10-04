@@ -38,6 +38,10 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_GET_SCHEMA_NAME,
+    ORACLE_GET_TABLES,
+)
 from metadata.utils.logger import ingestion_logger
 
 CX_ORACLE_LIB_VERSION = "8.3.0"
@@ -136,9 +140,14 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    queries = {
+        "GetSchemas": ORACLE_GET_SCHEMA_NAME.format(""),
+        "GetTables": ORACLE_GET_TABLES,
+    }
     test_connection_db_common(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        queries=queries,
     )
