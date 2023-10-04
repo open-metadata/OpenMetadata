@@ -16,9 +16,6 @@ import traceback
 from typing import List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import Column, TableData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
@@ -36,7 +33,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.models.table_metadata import ColumnTag
-from metadata.ingestion.ometa.client_utils import create_ometa_client
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
@@ -54,12 +51,11 @@ class PIIProcessor(Processor):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = create_ometa_client(self.metadata_config)
+        self.metadata = metadata
 
         # Init and type the source config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
@@ -70,11 +66,9 @@ class PIIProcessor(Processor):
         self.confidence_threshold = self.source_config.confidence
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection
-    ) -> "Step":
+    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
-        return cls(config=config, metadata_config=metadata_config)
+        return cls(config=config, metadata=metadata)
 
     def close(self) -> None:
         """Nothing to close"""

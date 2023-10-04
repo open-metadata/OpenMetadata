@@ -18,7 +18,6 @@ from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.utils.datalake.datalake_utils import fetch_col_types
 
 COLUMN_TYPE_PARSE = [

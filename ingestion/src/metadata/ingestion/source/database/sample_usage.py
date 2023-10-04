@@ -19,9 +19,6 @@ from typing import Dict, Iterable, Optional
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
@@ -31,6 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.usage_source import UsageSource
 
 
@@ -46,8 +44,8 @@ class SampleUsageSource(UsageSource):
 
     schema_field = ""  # filtering not required
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config, False)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata, False)
         self.analysis_date = datetime.utcnow()
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
@@ -71,7 +69,7 @@ class SampleUsageSource(UsageSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
@@ -79,7 +77,7 @@ class SampleUsageSource(UsageSource):
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_table_query(self) -> Optional[Iterable[Dict[str, str]]]:
         yield TableQueries(

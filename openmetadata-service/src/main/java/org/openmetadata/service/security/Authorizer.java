@@ -18,14 +18,13 @@ import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 public interface Authorizer {
 
   /** Initialize the authorizer */
-  void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, CollectionDAO daoObject);
+  void init(OpenMetadataApplicationConfig openMetadataApplicationConfig);
 
   /** Returns a list of operations that the authenticated user (subject) can perform */
   List<ResourcePermission> listPermissions(SecurityContext securityContext, String user);

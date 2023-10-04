@@ -297,8 +297,9 @@ public class ElasticSearchClient implements SearchClient {
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
+      case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
-            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+            buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -335,7 +336,8 @@ public class ElasticSearchClient implements SearchClient {
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
+        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -807,7 +809,7 @@ public class ElasticSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+  private static SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
     return searchBuilder(queryBuilder, null, from, size);
   }
