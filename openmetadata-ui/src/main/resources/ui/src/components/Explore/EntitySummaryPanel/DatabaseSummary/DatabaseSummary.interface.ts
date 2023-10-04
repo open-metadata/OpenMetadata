@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Database } from 'generated/entity/data/database';
-import { TagLabel } from 'generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { Database } from '../../../../generated/entity/data/database';
+import { TagLabel } from '../../../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface DatabaseSummaryProps {
   entityDetails: Database;

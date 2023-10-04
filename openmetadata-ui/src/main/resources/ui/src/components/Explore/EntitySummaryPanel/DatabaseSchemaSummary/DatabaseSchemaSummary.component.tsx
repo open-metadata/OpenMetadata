@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { ExplorePageTabs } from 'enums/Explore.enum';
 import React, { useMemo } from 'react';
+import SummaryTagsDescription from '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
+} from '../../../../utils/EntityUtils';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import { DatabaseSchemaSummaryProps } from './DatabaseSchemaSummary.interface';
 

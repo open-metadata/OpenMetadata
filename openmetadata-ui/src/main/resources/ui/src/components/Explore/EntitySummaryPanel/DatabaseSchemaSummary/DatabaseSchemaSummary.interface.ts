@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { TagLabel } from 'generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
+import { TagLabel } from '../../../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface DatabaseSchemaSummaryProps {
   entityDetails: DatabaseSchema;
