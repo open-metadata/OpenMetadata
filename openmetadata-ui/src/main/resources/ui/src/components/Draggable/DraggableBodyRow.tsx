@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,20 +11,25 @@
  *  limitations under the License.
  */
 
-import React, { useRef } from 'react';
+import { isUndefined } from 'lodash';
+import React, { useEffect, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { DRAGGABLE_BODY_ROW } from '../../../constants/Teams.constants';
-import { Team } from '../../../generated/entity/teams/team';
-import { DragCollectProps, DraggableBodyRowProps } from './team.interface';
+import { DRAGGABLE_BODY_ROW } from '../../constants/Teams.constants';
+import {
+  DragCollectProps,
+  DraggableBodyRowProps,
+  DraggableUnion,
+} from './DraggableBodyRowProps.interface';
 
-const DraggableBodyRow = ({
+const DraggableBodyRow = <T extends DraggableUnion>({
   index,
   handleMoveRow,
+  handleTableHover,
   className,
   record,
   style,
   ...restProps
-}: DraggableBodyRowProps) => {
+}: DraggableBodyRowProps<T>) => {
   const ref = useRef<HTMLTableRowElement>(null);
   const [{ isOver, dropClassName }, drop] = useDrop({
     accept: DRAGGABLE_BODY_ROW,
@@ -37,16 +42,19 @@ const DraggableBodyRow = ({
       return {
         isOver: monitor.isOver(),
         dropClassName:
-          dragIndex < index ? ' drop-over-downward' : ' drop-over-upward',
+          dragIndex < (index ?? 0) ? 'drop-over-downward' : 'drop-over-upward',
       };
     },
+    hover: () => {
+      handleTableHover?.(isUndefined(index));
+    },
     // this will going to return the drag and drop object of a table
-    drop: ({ record: dragRecord }: { record: Team }) => {
+    drop: ({ record: dragRecord }: { record: T }) => {
       handleMoveRow(dragRecord, record);
     },
   });
   // here we are passing the drag record
-  const [, drag] = useDrag({
+  const [{ isDragging }, drag] = useDrag({
     type: DRAGGABLE_BODY_ROW,
     item: { record },
     collect: (monitor) => ({
@@ -55,11 +63,20 @@ const DraggableBodyRow = ({
   });
   drop(drag(ref));
 
+  useEffect(() => {
+    if (!isDragging) {
+      handleTableHover?.(false);
+    }
+  }, [isDragging]);
+
   return (
     <tr
-      className={`${className}${isOver ? dropClassName : ''}`}
+      className={`${className} ${isOver ? dropClassName : ''}`}
       ref={ref}
-      style={{ cursor: 'move', ...style }}
+      style={{
+        cursor: 'move',
+        ...style,
+      }}
       {...restProps}
     />
   );
