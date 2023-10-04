@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Space, Typography } from 'antd';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
+import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 
 interface DataProductSummaryProps {
   entityDetails: DataProduct;

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import { VotingDataProps } from 'components/Voting/voting.interface';
 import { LoadingState } from 'Models';
+import { EntityDetailsObjectInterface } from '../../components/Explore/explore.interface';
+import { VotingDataProps } from '../../components/Voting/voting.interface';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 

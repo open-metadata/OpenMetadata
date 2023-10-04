@@ -11,21 +11,26 @@
  *  limitations under the License.
  */
 import { Form, Input, Modal, Select, Space, Typography } from 'antd';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
-import {
-  SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_OPTIONS,
-} from 'constants/Teams.constants';
+import { useForm } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-
-import { useForm } from 'antd/lib/form/Form';
-import TagsV1 from 'components/Tag/TagsV1/TagsV1.component';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { Webhook } from 'generated/type/profile';
-import { isEmpty } from 'lodash';
-import { getWebhookIcon } from 'utils/TeamUtils';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
+import {
+  TAG_CONSTANT,
+  TAG_START_WITH,
+} from '../../../../constants/Tag.constants';
+import {
+  SUBSCRIPTION_WEBHOOK,
+  SUBSCRIPTION_WEBHOOK_OPTIONS,
+} from '../../../../constants/Teams.constants';
+import { Webhook } from '../../../../generated/type/profile';
+import { getWebhookIcon } from '../../../../utils/TeamUtils';
+import TagsV1 from '../../../Tag/TagsV1/TagsV1.component';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 
 const TeamsSubscription = ({

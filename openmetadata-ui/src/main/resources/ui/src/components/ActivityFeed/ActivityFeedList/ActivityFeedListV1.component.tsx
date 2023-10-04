@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
-import { Thread } from 'generated/entity/feed/thread';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFeedListWithRelativeDays } from 'utils/FeedUtils';
 import { ReactComponent as ActivityFeedIcon } from '../../../assets/svg/activity-feed.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../../../components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { Thread } from '../../../generated/entity/feed/thread';
+import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import { ActivityFeedTabs } from '../ActivityFeedTab/ActivityFeedTab.interface';
 import './activity-feed-list.less';

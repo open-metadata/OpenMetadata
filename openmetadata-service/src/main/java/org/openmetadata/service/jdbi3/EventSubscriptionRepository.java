@@ -42,13 +42,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   static final String ALERT_PATCH_FIELDS = "trigger,enabled,batchSize,timeout";
   static final String ALERT_UPDATE_FIELDS = "trigger,enabled,batchSize,timeout,filteringRules";
 
-  public EventSubscriptionRepository(CollectionDAO dao) {
+  public EventSubscriptionRepository() {
     super(
         EventSubscriptionResource.COLLECTION_PATH,
         Entity.EVENT_SUBSCRIPTION,
         EventSubscription.class,
-        dao.eventSubscriptionDAO(),
-        dao,
+        Entity.getCollectionDAO().eventSubscriptionDAO(),
         ALERT_PATCH_FIELDS,
         ALERT_UPDATE_FIELDS);
   }

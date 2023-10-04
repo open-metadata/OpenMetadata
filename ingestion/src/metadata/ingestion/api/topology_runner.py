@@ -224,7 +224,7 @@ class TopologyRunnerMixin(Generic[C]):
         if stage.must_return and entity is None:
             # Safe access to Entity Request name
             raise MissingExpectedEntityAckException(
-                f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
+                f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
                 "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
                 "for the service connection."
             )

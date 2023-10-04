@@ -13,31 +13,33 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
-import { ReactComponent as DeleteIcon } from 'assets/svg/ic-delete.svg';
 import { AxiosError } from 'axios';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getExplorePath, PAGE_SIZE } from 'constants/constants';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { SearchIndex } from 'enums/search.enum';
 import i18next from 'i18next';
 import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
-import { searchQuery } from 'rest/searchAPI';
-import {
-  getAllClassifications,
-  getClassificationByName,
-  getTags,
-} from 'rest/tagAPI';
+import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
+import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { getExplorePath, PAGE_SIZE } from '../constants/constants';
 import { SettledStatus } from '../enums/axios.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import { searchQuery } from '../rest/searchAPI';
+import {
+  getAllClassifications,
+  getClassificationByName,
+  getTags,
+} from '../rest/tagAPI';
 import { formatSearchTagsResponse } from './APIUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
+import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -321,4 +323,21 @@ export const fetchTagsElasticSearch = async (
       total: res.hits.total.value,
     },
   };
+};
+
+export const createTierTag = (tag: Tag) => {
+  return {
+    displayName: tag.displayName,
+    name: tag.name,
+    description: tag.description,
+    tagFQN: tag.fullyQualifiedName,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  };
+};
+
+export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
+  return newTier
+    ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
+    : getTagsWithoutTier(oldTags);
 };

@@ -13,25 +13,25 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import KPIWidget from 'components/KPIWidget/KPIWidget.component';
-import { MyDataWidget } from 'components/MyData/MyDataWidget/MyDataWidget.component';
-import RightSidebar from 'components/MyData/RightSidebar/RightSidebar.component';
-import TotalDataAssetsWidget from 'components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
-import WelcomeScreen from 'components/WelcomeScreen/WelcomeScreen.component';
-import FeedsWidget from 'components/Widgets/FeedsWidget/FeedsWidget.component';
-import { LOGGED_IN_USER_STORAGE_KEY } from 'constants/constants';
 import { isEmpty, isNil } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
-import { showErrorToast } from 'utils/ToastUtils';
 import AppState from '../../AppState';
+import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import KPIWidget from '../../components/KPIWidget/KPIWidget.component';
+import { MyDataWidget } from '../../components/MyData/MyDataWidget/MyDataWidget.component';
+import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
+import TotalDataAssetsWidget from '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
+import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
+import FeedsWidget from '../../components/Widgets/FeedsWidget/FeedsWidget.component';
+import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import { AssetsType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
+import { getUserById } from '../../rest/userAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './my-data.less';
 
 const MyDataPageV1 = () => {

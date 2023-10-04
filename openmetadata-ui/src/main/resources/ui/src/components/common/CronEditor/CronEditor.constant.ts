@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { Combination, ToDisplay } from './CronEditor.interface';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

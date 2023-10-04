@@ -30,9 +30,6 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
     DashboardService,
@@ -200,12 +197,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: DashboardServiceMetadataPipeline = (
             self.config.sourceConfig.config
@@ -215,8 +211,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         # Flag the connection for the test connection
         self.connection_obj = self.client
         self.test_connection()
-
-        self.metadata_client = OpenMetadata(self.metadata_config)
 
     @abstractmethod
     def yield_dashboard(

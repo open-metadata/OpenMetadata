@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'generated/type/paging';
+import { Paging } from '../../generated/type/paging';
 
 export type SelectOption = {
   label: string;

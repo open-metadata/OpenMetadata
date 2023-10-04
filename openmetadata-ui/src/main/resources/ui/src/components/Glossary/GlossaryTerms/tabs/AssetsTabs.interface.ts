@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { EntityDetailsObjectInterface } from '../../../Explore/explore.interface';
+import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 
 export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',

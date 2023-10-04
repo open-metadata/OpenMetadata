@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 
-import {
-  ExploreProps,
-  ExploreSearchIndex,
-  SearchHitCounts,
-  UrlParams,
-} from 'components/Explore/explore.interface';
-import ExploreV1 from 'components/ExploreV1/ExploreV1.component';
-import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { mockSearchData } from 'constants/mockTourData.constants';
-import { SORT_ORDER } from 'enums/common.enum';
 import { get, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -34,17 +23,28 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchQuery } from 'rest/searchAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import AppState from '../../AppState';
+import {
+  ExploreProps,
+  ExploreSearchIndex,
+  SearchHitCounts,
+  UrlParams,
+} from '../../components/Explore/explore.interface';
+import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { withAdvanceSearch } from '../../components/router/withAdvanceSearch';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { mockSearchData } from '../../constants/mockTourData.constants';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { searchQuery } from '../../rest/searchAPI';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
