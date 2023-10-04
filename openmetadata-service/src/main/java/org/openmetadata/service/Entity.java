@@ -15,7 +15,6 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.github.classgraph.ClassGraph;
@@ -32,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
@@ -60,8 +58,6 @@ import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -69,7 +65,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
-  @Getter private static volatile CollectionDAO collectionDAO;
+  @Getter @Setter private static CollectionDAO collectionDAO;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
@@ -247,14 +243,7 @@ public final class Entity {
 
   public static void initializeRepositories(Jdbi jdbi) {
     if (!initializedRepositories) {
-      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-      JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
-      Entity.setSearchRepository(searchRepository);
-      CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
-      Entity.collectionDAO = collectionDAO;
       tokenRepository = new TokenRepository();
-      // Check Collection DAO
-      Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
@@ -277,6 +266,8 @@ public final class Entity {
 
   public static void cleanup() {
     initializedRepositories = false;
+    collectionDAO = null;
+    searchRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
   }
 
@@ -392,7 +383,6 @@ public final class Entity {
     return getEntity(entityType, id, fields, include, true);
   }
 
-  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include, boolean fromCache) {

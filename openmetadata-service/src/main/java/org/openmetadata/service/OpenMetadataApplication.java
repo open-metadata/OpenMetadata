@@ -13,6 +13,7 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
 
 import io.dropwizard.Application;
@@ -78,10 +79,13 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkApplicationEventListener;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -123,7 +127,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
 
-  private SearchRepository searchRepository;
+  private static SearchRepository searchRepository;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -137,7 +141,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-
+    JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
+    JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
+    CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+    Entity.setCollectionDAO(collectionDAO);
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // initialize Search Repository, all repositories use SearchRepository this line should always before initializing

@@ -45,6 +45,7 @@ import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -350,6 +351,7 @@ public final class TablesInitializer {
       Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(jdbi);
     workflow.runMigrationWorkflows();
     Entity.cleanup();
