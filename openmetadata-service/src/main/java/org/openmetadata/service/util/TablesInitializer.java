@@ -43,7 +43,6 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
@@ -271,16 +270,16 @@ public final class TablesInitializer {
     SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
 
     switch (schemaMigrationOption) {
-      case CREATE -> {
+      case CREATE:
         try (Connection connection = flyway.getConfiguration().getDataSource().getConnection()) {
           DatabaseMetaData databaseMetaData = connection.getMetaData();
           try (ResultSet resultSet =
-                       databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), "", null)) {
+              databaseMetaData.getTables(connection.getCatalog(), connection.getSchema(), "", null)) {
             // If the database has any entity like views, tables etc, resultSet.next() would return true here
             if (resultSet.next()) {
               throw new SQLException(
-                      "Please use an empty database or use \"migrate\" if you are already running a "
-                              + "previous version.");
+                  "Please use an empty database or use \"migrate\" if you are already running a "
+                      + "previous version.");
             }
           } catch (SQLException e) {
             throw new SQLException("Unable the obtain the state of the target database", e);
@@ -288,39 +287,51 @@ public final class TablesInitializer {
         }
         flyway.migrate();
         validateAndRunSystemDataMigrations(
-                jdbi,
-                ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
-                nativeSQLRootPath,
-                forceMigrations);
-      }
-      case MIGRATE -> {
+            jdbi,
+            ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
+            nativeSQLRootPath,
+            forceMigrations);
+        break;
+      case MIGRATE:
         flyway.migrate();
         // Validate and Run System Data Migrations
         validateAndRunSystemDataMigrations(
-                jdbi,
-                ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
-                nativeSQLRootPath,
-                forceMigrations);
-      }
-      case INFO -> printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
-      case VALIDATE -> flyway.validate();
-      case DROP -> {
+            jdbi,
+            ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
+            nativeSQLRootPath,
+            forceMigrations);
+        break;
+      case INFO:
+        printToConsoleMandatory(dumpToAsciiTable(flyway.info().all()));
+        break;
+      case VALIDATE:
+        flyway.validate();
+        break;
+      case DROP:
         flyway.clean();
         printToConsoleMandatory("DONE");
-      }
-      case CHECK_CONNECTION -> {
+        break;
+      case CHECK_CONNECTION:
         try {
           flyway.getConfiguration().getDataSource().getConnection();
         } catch (Exception e) {
           throw new SQLException(e);
         }
-      }
-      case REPAIR -> flyway.repair();
-      case ES_CREATE -> searchRepository.createIndexes();
-      case ES_MIGRATE -> searchRepository.updateIndexes();
-      case ES_DROP -> searchRepository.dropIndexes();
-      default ->
-              throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
+        break;
+      case REPAIR:
+        flyway.repair();
+        break;
+      case ES_CREATE:
+        searchRepository.createIndexes();
+        break;
+      case ES_MIGRATE:
+        searchRepository.updateIndexes();
+        break;
+      case ES_DROP:
+        searchRepository.dropIndexes();
+        break;
+      default:
+        throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
     }
   }
 
@@ -336,7 +347,7 @@ public final class TablesInitializer {
   }
 
   public static void validateAndRunSystemDataMigrations(
-          Jdbi jdbi,  ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
+      Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
     Entity.initializeRepositories(jdbi);
