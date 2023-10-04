@@ -12,13 +12,13 @@
  */
 
 import { Button } from 'antd';
-import { ReactComponent as FunctionIcon } from 'assets/svg/ic-function.svg';
-import { ReactComponent as PipelineIcon } from 'assets/svg/pipeline-grey.svg';
-import { FOREIGN_OBJECT_SIZE } from 'constants/Lineage.constants';
-import { EntityType } from 'enums/entity.enum';
 import React, { Fragment, useCallback } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
-import SVGIcons from 'utils/SvgUtils';
+import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
+import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
+import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import SVGIcons from '../../../utils/SvgUtils';
 import { CustomEdgeData } from './EntityLineage.interface';
 
 interface LineageEdgeIconProps {

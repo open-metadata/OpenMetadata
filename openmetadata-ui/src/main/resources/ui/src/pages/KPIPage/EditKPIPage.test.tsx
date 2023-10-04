@@ -26,25 +26,27 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ useParams: 'description-kpi' }),
 }));
 
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getChartById: jest
     .fn()
     .mockImplementation(() => Promise.resolve(DESCRIPTION_CHART)),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock(
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () =>
+    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('rest/KpiAPI', () => ({
+jest.mock('../../rest/KpiAPI', () => ({
   getKPIByName: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
   patchKPI: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
 }));
@@ -58,7 +60,7 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   getDisabledDates: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/common/ResizablePanels/ResizablePanels', () =>
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
       <div>{firstPanel.children}</div>

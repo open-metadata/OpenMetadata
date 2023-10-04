@@ -14,7 +14,7 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import PageLayoutV1 from './PageLayoutV1';
 
-jest.mock('components/DocumentTitle/DocumentTitle', () =>
+jest.mock('../../components/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
 

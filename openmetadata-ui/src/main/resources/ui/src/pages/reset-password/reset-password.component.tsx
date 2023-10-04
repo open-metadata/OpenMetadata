@@ -13,11 +13,11 @@
 
 import { Alert, Button, Card, Col, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandImage from 'components/common/BrandImage/BrandImage';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
+import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';

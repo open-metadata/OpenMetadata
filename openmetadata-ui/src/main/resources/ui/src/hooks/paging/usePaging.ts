@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PAGE_SIZE_BASE, pagingObject } from 'constants/constants';
-import { Paging } from 'generated/type/paging';
 import { useState } from 'react';
+import { PAGE_SIZE_BASE, pagingObject } from '../../constants/constants';
+import { Paging } from '../../generated/type/paging';
 
 export const usePaging = () => {
   const [paging, setPaging] = useState<Paging>(pagingObject);

@@ -12,13 +12,11 @@
  */
 
 import { AxiosError } from 'axios';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getUsers, UsersQueryParams } from 'rest/userAPI';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
@@ -31,6 +29,8 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
+import { searchData } from '../../rest/miscAPI';
+import { getUsers, UsersQueryParams } from '../../rest/userAPI';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

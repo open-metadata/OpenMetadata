@@ -13,7 +13,6 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import {
   getServiceDetailsPath,
   INGESTION_NAME,
@@ -41,6 +40,7 @@ import {
 import { arrServiceTypes } from '../constants/Services.constant';
 import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 

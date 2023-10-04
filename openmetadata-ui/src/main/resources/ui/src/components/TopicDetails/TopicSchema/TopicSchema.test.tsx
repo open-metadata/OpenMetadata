@@ -39,12 +39,12 @@ const mockProps: TopicSchemaFieldsProps = {
   onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('utils/TagsUtils', () => ({
+jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/GlossaryUtils', () => ({
+jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
@@ -58,7 +58,7 @@ jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
 );
 
 jest.mock(
-  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -66,7 +66,7 @@ jest.mock(
   })
 );
 
-jest.mock('components/TableTags/TableTags.component', () =>
+jest.mock('../../TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -74,7 +74,7 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -82,7 +82,7 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('components/schema-editor/SchemaEditor', () =>
+jest.mock('../../schema-editor/SchemaEditor', () =>
   jest
     .fn()
     .mockImplementation(() => (

@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
 import React from 'react';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import TagsViewer from './TagsViewer';
 import { DisplayType } from './TagsViewer.interface';
 

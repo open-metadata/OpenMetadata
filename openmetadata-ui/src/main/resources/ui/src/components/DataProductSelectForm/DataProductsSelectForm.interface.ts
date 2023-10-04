@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProductSelectOption } from 'components/DataProductsSelectList/DataProductSelectList.interface';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Paging } from 'generated/type/paging';
+import { DataProductSelectOption } from '../../components/DataProductsSelectList/DataProductSelectList.interface';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { Paging } from '../../generated/type/paging';
 
 export type DataProductsSelectFormProps = {
   placeholder: string;

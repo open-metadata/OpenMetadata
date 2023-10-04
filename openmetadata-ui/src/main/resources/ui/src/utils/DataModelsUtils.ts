@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TabSpecificField } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/dashboardDataModel';
-import { LabelType, State, TagLabel } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
+import { TabSpecificField } from '../enums/entity.enum';
+import { Column } from '../generated/entity/data/dashboardDataModel';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const updateDataModelColumnDescription = (

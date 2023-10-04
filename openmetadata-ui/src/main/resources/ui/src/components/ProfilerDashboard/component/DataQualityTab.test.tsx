@@ -19,8 +19,8 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { MOCK_TEST_CASE } from 'mocks/TestSuite.mock';
 import React from 'react';
+import { MOCK_TEST_CASE } from '../../../mocks/TestSuite.mock';
 import { DataQualityTabProps } from '../profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
@@ -54,7 +54,7 @@ jest.mock('../../../hooks/authHooks', () => ({
     };
   },
 }));
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => mockPermissionsData,
 }));
 jest.mock('../../authentication/auth-provider/AuthProvider', () => {

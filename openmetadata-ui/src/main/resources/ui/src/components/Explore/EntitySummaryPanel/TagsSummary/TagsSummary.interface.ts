@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag } from 'generated/entity/classification/tag';
-import { TagLabel } from 'generated/type/tagLabel';
+
+import { Tag } from '../../../../generated/entity/classification/tag';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 
 export interface TagsSummaryProps {
   entityDetails: Tag;

@@ -13,21 +13,21 @@
  */
 
 import { Divider, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import {
-  VersionExtraInfoLabel,
-  VersionExtraInfoLink,
-} from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import { DataAssetsVersionHeaderProps } from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { Pipeline } from 'generated/entity/data/pipeline';
-import { Topic } from 'generated/entity/data/topic';
-import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import React from 'react';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
+import {
+  VersionExtraInfoLabel,
+  VersionExtraInfoLink,
+} from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
+import { EntityField } from '../constants/Feeds.constants';
+import { EntityType } from '../enums/entity.enum';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { Topic } from '../generated/entity/data/topic';
+import { ChangeDescription } from '../generated/entity/type';
 import { getEntityName } from './EntityUtils';
 import {
   getChangedEntityName,

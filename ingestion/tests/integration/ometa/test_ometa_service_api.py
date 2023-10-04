@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Chart test
 """
+from copy import deepcopy
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -295,3 +296,84 @@ class OMetaServiceTest(TestCase):
 
         # Clean
         self.metadata.delete(entity=MessagingService, entity_id=service.id)
+
+    def test_create_db_service_without_connection(self):
+        """We can create a service via API without storing the creds"""
+        server_config = deepcopy(self.server_config)
+        server_config.storeServiceConnection = False
+
+        metadata_no_password = OpenMetadata(server_config)
+
+        data = {
+            "type": "mysql",
+            "serviceName": "mysql_no_conn",
+            "serviceConnection": {
+                "config": {
+                    "type": "Mysql",
+                    "username": "openmetadata_user",
+                    "authType": {"password": "openmetadata_password"},
+                    "hostPort": "random:3306",
+                }
+            },
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+        }
+
+        workflow_source = WorkflowSource(**data)
+
+        # Create service
+        service: DatabaseService = metadata_no_password.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
+        assert service
+        assert service.serviceType == DatabaseServiceType.Mysql
+        self.assertIsNone(service.connection)
+
+        # Check get
+        assert service == metadata_no_password.get_service_or_create(
+            entity=DatabaseService, config=workflow_source
+        )
+
+        # Clean
+        metadata_no_password.delete(entity=DatabaseService, entity_id=service.id)
+
+    def test_create_dashboard_service_without_connection(self):
+        """We can create a service via API without storing the creds"""
+
+        server_config = deepcopy(self.server_config)
+        server_config.storeServiceConnection = False
+
+        metadata_no_password = OpenMetadata(server_config)
+
+        data = {
+            "type": "tableau",
+            "serviceName": "tableau_no_conn",
+            "serviceConnection": {
+                "config": {
+                    "type": "Tableau",
+                    "authType": {"username": "tb_user", "password": "tb_pwd"},
+                    "hostPort": "http://random:1234",
+                    "siteName": "openmetadata",
+                    "apiVersion": "3.15",
+                    "env": "tableau_prod",
+                }
+            },
+            "sourceConfig": {"config": {"topicFilterPattern": {}}},
+        }
+
+        workflow_source = WorkflowSource(**data)
+
+        # Create service
+        service: DashboardService = metadata_no_password.get_service_or_create(
+            entity=DashboardService, config=workflow_source
+        )
+        assert service
+        assert service.serviceType == DashboardServiceType.Tableau
+        self.assertIsNone(service.connection)
+
+        # Check get
+        assert service == metadata_no_password.get_service_or_create(
+            entity=DashboardService, config=workflow_source
+        )
+
+        # Clean
+        metadata_no_password.delete(entity=DashboardService, entity_id=service.id)

@@ -18,7 +18,7 @@ export enum SearchIndex {
   PIPELINE = 'pipeline_search_index',
   USER = 'user_search_index',
   TEAM = 'team_search_index',
-  GLOSSARY = 'glossary_search_index',
+  GLOSSARY = 'glossary_term_search_index',
   MLMODEL = 'mlmodel_search_index',
   TAG = 'tag_search_index',
   CONTAINER = 'container_search_index',
