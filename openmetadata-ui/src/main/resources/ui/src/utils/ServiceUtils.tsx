@@ -43,6 +43,7 @@ import {
   ELASTIC_SEARCH,
   FIVETRAN,
   GLUE,
+  GREENPLUM,
   HIVE,
   IBMDB2,
   IMPALA,
@@ -220,6 +221,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Couchbase:
       return COUCHBASE;
+
+    case DatabaseServiceType.Greenplum:
+      return GREENPLUM;
 
     case MessagingServiceType.Kafka:
       return KAFKA;
