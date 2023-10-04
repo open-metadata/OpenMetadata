@@ -33,10 +33,10 @@ from metadata.generated.schema.entity.data import (
     databaseSchema,
     mlmodel,
     pipeline,
-    table,
-    topic,
     searchIndex,
     storedProcedure,
+    table,
+    topic,
 )
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference

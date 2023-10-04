@@ -24,10 +24,10 @@ from metadata.generated.schema.entity.data import (
     databaseSchema,
     mlmodel,
     pipeline,
-    table,
-    topic,
     searchIndex,
     storedProcedure,
+    table,
+    topic,
 )
 from metadata.utils.logger import data_insight_logger
 
