@@ -35,6 +35,7 @@ import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interfac
 import { getTopicDetailsPath } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Topic } from '../../generated/entity/data/topic';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -48,6 +49,7 @@ import {
 } from '../../utils/EntityUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -213,17 +215,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     [owner]
   );
 
-  const onTierUpdate = (newTier?: string) => {
-    const tierTag: Topic['tags'] = newTier
-      ? [
-          ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(topicDetails.tags ?? []);
+  const onTierUpdate = (newTier?: Tag) => {
+    const tierTag = updateTierTag(topicDetails?.tags ?? [], newTier);
     const updatedTopicDetails = {
       ...topicDetails,
       tags: tierTag,
