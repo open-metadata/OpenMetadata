@@ -118,7 +118,7 @@ jobs:
         env:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d mysql
-        timeout-minutes: 30
+        timeout-minutes: 60
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
