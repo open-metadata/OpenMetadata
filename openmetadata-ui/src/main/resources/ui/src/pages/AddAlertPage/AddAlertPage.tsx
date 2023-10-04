@@ -30,11 +30,19 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { SubscriptionType } from 'generated/events/api/createEventSubscription';
+import { intersection, isEmpty, map, startCase, trim } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { SubscriptionType } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
   Effect,
@@ -42,27 +50,17 @@ import {
   EventSubscription,
   FilteringRules,
   ProviderType,
-} from 'generated/events/eventSubscription';
-import { SubscriptionResourceDescriptor } from 'generated/events/subscriptionResourceDescriptor';
-import { intersection, isEmpty, map, startCase, trim } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+} from '../../generated/events/eventSubscription';
+import { SubscriptionResourceDescriptor } from '../../generated/events/subscriptionResourceDescriptor';
+import { Function } from '../../generated/type/function';
 import {
   createAlert,
   getAlertsFromId,
   getFilterFunctions,
   getResourceFunctions,
   updateAlert,
-} from 'rest/alertsAPI';
-import { getSuggestions } from 'rest/miscAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { searchFormattedUsersAndTeams } from 'utils/UserDataUtils';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { Function } from '../../generated/type/function';
+} from '../../rest/alertsAPI';
+import { getSuggestions } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
@@ -70,9 +68,11 @@ import {
   listLengthValidator,
   StyledCard,
 } from '../../utils/Alerts/AlertsUtil';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { searchFormattedUsersAndTeams } from '../../utils/UserDataUtils';
 import './add-alerts-page.styles.less';
 
 const AddAlertPage = () => {

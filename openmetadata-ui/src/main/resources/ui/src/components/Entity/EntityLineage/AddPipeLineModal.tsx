@@ -12,11 +12,11 @@
  */
 
 import { Button, Modal, Select } from 'antd';
-import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
-import { getEntityName } from 'utils/EntityUtils';
+import { EntityReference } from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 interface AddPipeLineModalType {
   showAddEdgeModal: boolean;

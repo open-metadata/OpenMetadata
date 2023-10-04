@@ -13,7 +13,7 @@ function to compute kpi
 """
 
 
-from metadata.data_insight.runner.run_result_registry import (
+from metadata.data_insight.processor.kpi.run_result_registry import (
     percentage_of_entities_with_description_kpi_result,
     percentage_of_entities_with_owner_kpi_result,
 )

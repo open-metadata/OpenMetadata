@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { BaseSelectRef } from 'rc-select';
 import {
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
-} from 'interface/search.interface';
-import { BaseSelectRef } from 'rc-select';
+} from '../../../interface/search.interface';
 
 export interface GlobalSearchSuggestionsProp {
   isSuggestionsLoading: boolean;

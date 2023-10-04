@@ -13,21 +13,19 @@
 
 import { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
-import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
-import { StorageServiceType } from 'generated/entity/data/container';
-import { SearchServiceType } from 'generated/entity/services/searchService';
 import { cloneDeep, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
-import { getSearchServiceConfig } from 'utils/SearchServiceUtils';
-import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
+import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
+import { StorageServiceType } from '../../generated/entity/data/container';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../../generated/entity/services/searchService';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -36,6 +34,8 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
+import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
+import { getStorageServiceConfig } from '../../utils/StorageServiceUtils';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {

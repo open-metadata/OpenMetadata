@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TestSuite } from 'generated/tests/testSuite';
+import { TestSuite } from '../../../generated/tests/testSuite';
 
 export interface TestSuiteFormDataProps {
   name: string;

@@ -12,33 +12,36 @@
  */
 
 import { Drawer, Typography } from 'antd';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { Tag } from 'generated/entity/classification/tag';
-import { Container } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { Table } from 'generated/entity/data/table';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
 import { get } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getEntityLinkFromType, getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getEncodedFqn, stringToHTML } from 'utils/StringsUtils';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
+import { Container } from '../../../generated/entity/data/container';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
+import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import {
+  getEntityLinkFromType,
+  getEntityName,
+} from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEncodedFqn, stringToHTML } from '../../../utils/StringsUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../../Loader/Loader';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../PermissionProvider/PermissionProvider.interface';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import DataModelSummary from './DataModelSummary/DataModelSummary.component';

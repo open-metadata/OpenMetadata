@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { FormInstance } from 'antd';
-import { CreateDataProduct } from 'generated/api/domains/createDataProduct';
-import { CreateDomain } from 'generated/api/domains/createDomain';
+import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
+import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { DomainFormType } from '../DomainPage.interface';
 
 export interface AddDomainFormProps {

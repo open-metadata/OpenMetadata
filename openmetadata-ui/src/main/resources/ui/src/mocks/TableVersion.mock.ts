@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { DatabaseServiceType, TableType } from 'generated/entity/data/table';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
+import { TableVersionProp } from '../components/TableVersion/TableVersion.interface';
+import { DatabaseServiceType, TableType } from '../generated/entity/data/table';
+import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
   mockDomain,
@@ -20,8 +21,7 @@ import {
   mockTier,
   mockVersionHandler,
   mockVersionList,
-} from 'mocks/VersionCommon.mock';
-import { TableVersionProp } from '../components/TableVersion/TableVersion.interface';
+} from '../mocks/VersionCommon.mock';
 
 export const mockTableData = {
   id: 'ab4f893b-c303-43d9-9375-3e620a670b02',

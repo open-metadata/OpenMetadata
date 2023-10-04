@@ -12,26 +12,26 @@
  */
 
 import { Col, Row, Tabs, Typography } from 'antd';
-import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { PersonaSelectableList } from 'components/Persona/PersonaSelectableList/PersonaSelectableList.component';
-import SearchedData from 'components/searched-data/SearchedData';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { EntityType } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/type';
 import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import SearchedData from '../../components/searched-data/SearchedData';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getUserPath } from '../../constants/constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/type';
+import { getEntityName } from '../../utils/EntityUtils';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
+import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';

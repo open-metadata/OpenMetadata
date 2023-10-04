@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING
 from astroid import nodes
 from pylint.checkers import BaseChecker
 from pylint.checkers.utils import only_required_for_messages
-from pylint.interfaces import IAstroidChecker
 
 if TYPE_CHECKING:
     from pylint.lint import PyLinter
@@ -28,7 +27,6 @@ class PrintChecker(BaseChecker):
     Check for any print statement in the code
     """
 
-    __implements__ = (IAstroidChecker,)
     name = "no_print_allowed"
     _symbol = "print-call"
     msgs = {

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import AppState from 'AppState';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
 import { observer } from 'mobx-react';
 import React, { useMemo } from 'react';
+import AppState from '../../../../AppState';
+import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
 
 interface FeedCardHeaderNameProps {
   createdBy: string;

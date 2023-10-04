@@ -16,7 +16,7 @@ import {
   PLACEHOLDER_ROUTE_TAB,
   PLACEHOLDER_SETTING_CATEGORY,
   ROUTES,
-} from 'constants/constants';
+} from '../constants/constants';
 import { getSettingPath, getSettingsPathWithFqn } from './RouterUtils';
 
 describe('Global Setting routes', () => {

@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { COMMON_UI_SCHEMA } from 'constants/Services.constant';
-import { StorageServiceType } from 'generated/entity/data/container';
-import customConnection from 'jsons/connectionSchemas/connections/storage/customStorageConnection.json';
-import s3Connection from 'jsons/connectionSchemas/connections/storage/s3Connection.json';
 import { cloneDeep } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
+import { StorageServiceType } from '../generated/entity/data/container';
+import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
+import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 
 export const getStorageServiceConfig = (type: StorageServiceType) => {
   let schema = {};

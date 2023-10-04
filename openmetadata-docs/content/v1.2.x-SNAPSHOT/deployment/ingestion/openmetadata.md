@@ -390,3 +390,76 @@ pipelineServiceClientConfiguration:
 
 You should validate if the content of the environment variables `AIRFLOW_USERNAME` and `AIRFLOW_PASSWORD` allow you to
 authenticate to the instance.
+
+### CentOS / Debian - The name 'template_blueprint' is already registered
+
+If you are using a CentOS / Debian system to install the `openmetadata-managed-apis` you might encounter the following issue
+when starting Airflow:
+
+```bash
+airflow standalone
+standalone | Starting Airflow Standalone
+standalone | Checking database is initialized
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [airflow.models.crypto] empty cryptography key - values will not be stored encrypted.
+standalone | Database ready
+[2023-08-11 05:39:28,851] {manager.py:508} INFO - Created Permission View: can create on DAGs
+[2023-08-11 05:39:28,910] {manager.py:508} INFO - Created Permission View: menu access on REST API Plugin
+[2023-08-11 05:39:28,916] {manager.py:568} INFO - Added Permission menu access on REST API Plugin to role Admin
+Traceback (most recent call last):
+  File "/home/pmcevoy/airflow233/bin/airflow", line 8, in <module>
+    sys.exit(main())
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/__main__.py", line 38, in main
+    args.func(args)
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/cli/cli_parser.py", line 51, in command
+    return func(*args, **kwargs)
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/cli/commands/standalone_command.py", line 48, in entrypoint
+    StandaloneCommand().run()
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/cli/commands/standalone_command.py", line 64, in run
+    self.initialize_database()
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/cli/commands/standalone_command.py", line 180, in initialize_database
+    appbuilder = cached_app().appbuilder
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/www/app.py", line 158, in cached_app
+    app = create_app(config=config, testing=testing)
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/www/app.py", line 140, in create_app
+    init_plugins(flask_app)
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/airflow/www/extensions/init_views.py", line 141, in init_plugins
+    app.register_blueprint(blue_print["blueprint"])
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/flask/scaffold.py", line 56, in wrapper_func
+    return f(self, *args, **kwargs)
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/flask/app.py", line 1028, in register_blueprint
+    blueprint.register(self, options)
+  File "/home/pmcevoy/airflow233/lib64/python3.9/site-packages/flask/blueprints.py", line 305, in register
+    raise ValueError(
+ValueError: The name 'template_blueprint' is already registered for this blueprint. Use 'name=' to provide a unique name.
+```
+
+The issue occurs because a symlink exists inside the `venv`
+
+```bash
+(airflow233) [pmcevoy@lab1 airflow233]$ ls -la
+total 28
+drwxr-xr-x 6 pmcevoy pmcevoy 4096 Aug 14 00:34 .
+drwx------ 6 pmcevoy pmcevoy 4096 Aug 14 00:32 ..
+drwxr-xr-x 3 pmcevoy pmcevoy 4096 Aug 14 00:34 bin
+drwxr-xr-x 3 pmcevoy pmcevoy 4096 Aug 14 00:33 include
+drwxr-xr-x 3 pmcevoy pmcevoy 4096 Aug 14 00:32 lib
+lrwxrwxrwx 1 pmcevoy pmcevoy    3 Aug 14 00:32 lib64 -> lib
+-rw-r--r-- 1 pmcevoy pmcevoy   70 Aug 14 00:32 pyvenv.cfg
+drwxr-xr-x 3 pmcevoy pmcevoy 4096 Aug 14 00:34 share
+```
+
+```bash
+(airflow233) [pmcevoy@lab1 airflow233]$ grep -r template_blueprint *
+lib/python3.9/site-packages/openmetadata_managed_apis/plugin.py:template_blueprint = Blueprint(
+lib/python3.9/site-packages/openmetadata_managed_apis/plugin.py:    "template_blueprint",
+lib/python3.9/site-packages/openmetadata_managed_apis/plugin.py:    flask_blueprints = [template_blueprint, api_blueprint]
+grep: lib/python3.9/site-packages/openmetadata_managed_apis/__pycache__/plugin.cpython-39.pyc: binary file matches
+lib64/python3.9/site-packages/openmetadata_managed_apis/plugin.py:template_blueprint = Blueprint(
+lib64/python3.9/site-packages/openmetadata_managed_apis/plugin.py:    "template_blueprint",
+lib64/python3.9/site-packages/openmetadata_managed_apis/plugin.py:    flask_blueprints = [template_blueprint, api_blueprint]
+grep: lib64/python3.9/site-packages/openmetadata_managed_apis/__pycache__/plugin.cpython-39.pyc: binary file matches
+```
+
+A workaround is to remove the `lib64` symlink: `rm lib64`.

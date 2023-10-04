@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FieldChange } from 'generated/entity/type';
+import { FieldChange } from '../generated/entity/type';
 
 export interface EntityDiffProps {
   added?: FieldChange;

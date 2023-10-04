@@ -24,31 +24,34 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('rest/lineageAPI', () => ({
+jest.mock('../../rest/lineageAPI', () => ({
   getLineageByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   addLineage: jest.fn(),
   deleteLineageEdge: jest.fn(),
 }));
 
-jest.mock('rest/pipelineAPI', () => ({
+jest.mock('../../rest/pipelineAPI', () => ({
   addFollower: jest.fn(),
   patchPipelineDetails: jest.fn(),
   removeFollower: jest.fn(),
   getPipelineByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('components/PipelineDetails/PipelineDetails.component', () => {
+jest.mock('../../components/PipelineDetails/PipelineDetails.component', () => {
   return jest.fn().mockReturnValue(<div>PipelineDetails.component</div>);
 });
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-});
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
+  }
+);
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({

@@ -12,9 +12,9 @@
  */
 import { Col, Row } from 'antd';
 import { Gutter } from 'antd/lib/grid/row';
-import { TOTAL_ENTITY_CHART_COLOR } from 'constants/DataInsight.constants';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import CustomStatistic from './CustomStatistic';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
