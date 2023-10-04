@@ -69,7 +69,7 @@ export interface TeamsInfoProps {
 export interface TeamsSubscriptionProps {
   hasEditPermission: boolean;
   subscription?: MessagingProvider;
-  updateTeamSubscription: (value: SubscriptionWebhook) => Promise<void>;
+  updateTeamSubscription: (value?: SubscriptionWebhook) => Promise<void>;
 }
 
 export interface SubscriptionWebhook {
