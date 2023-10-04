@@ -24,6 +24,7 @@ import { ReactComponent as IconTag } from '../../../assets/svg/classification.sv
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { TagsV1Props } from './TagsV1.interface';
@@ -71,7 +72,7 @@ const TagsV1 = ({
 
   const tagName = useMemo(
     () =>
-      tag.displayName ??
+      getEntityName(tag) ||
       getTagDisplay(
         showOnlyName
           ? tag.tagFQN

@@ -16,6 +16,7 @@ import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNam
 import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
 import { QueryVote } from '../../../components/TableQueries/TableQueries.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -91,7 +92,7 @@ export type DataAssetsHeaderProps = {
   isRecursiveDelete?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean) => void;
-  onTierUpdate: (tier?: string) => Promise<void>;
+  onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
   onVersionClick?: () => void;
   onFollowClick?: () => Promise<void>;

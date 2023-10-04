@@ -98,7 +98,7 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -132,6 +132,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private AuthenticatorHandler authenticatorHandler;
   private static CollectionDAO collectionDAO;
 
+  private static SearchRepository searchRepository;
+
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
@@ -148,6 +150,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
     JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
+
+    // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
+    // repository
+    searchRepository = new SearchRepository(catalogConfig.getElasticSearchConfiguration(), collectionDAO);
 
     // as first step register all the repositories
     Entity.initializeRepositories(collectionDAO);
@@ -435,12 +441,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    // register ElasticSearch Event publisher
-    if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
-      SearchEventPublisher searchEventPublisher =
-          new SearchEventPublisher(openMetadataApplicationConfig.getElasticSearchConfiguration(), collectionDAO);
-      EventPubSub.addEventHandler(searchEventPublisher);
-    }
 
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
       final EventMonitor eventMonitor =

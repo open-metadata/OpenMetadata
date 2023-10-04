@@ -341,7 +341,7 @@
     </dependency>
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
-      <artifactId>jersey-grizzly-connector</artifactId>
+      <artifactId>jersey-jetty-connector</artifactId>
       <version>2.40</version>
       <scope>test</scope>
     </dependency>

@@ -31,7 +31,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { Column } from '../generated/entity/data/table';
 import { Paging } from '../generated/type/paging';
-import { LabelType, State } from '../generated/type/tagLabel';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { searchQuery } from '../rest/searchAPI';
 import {
   getAllClassifications,
@@ -39,6 +39,7 @@ import {
   getTags,
 } from '../rest/tagAPI';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
+import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
   fields?: Array<string> | string,
@@ -324,6 +325,23 @@ export const fetchTagsElasticSearch = async (
       total: res.hits.total.value,
     },
   };
+};
+
+export const createTierTag = (tag: Tag) => {
+  return {
+    displayName: tag.displayName,
+    name: tag.name,
+    description: tag.description,
+    tagFQN: tag.fullyQualifiedName,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  };
+};
+
+export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
+  return newTier
+    ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
+    : getTagsWithoutTier(oldTags);
 };
 
 export const createTagObject = (tags: EntityTags[]) => {
