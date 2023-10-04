@@ -15,6 +15,10 @@ package org.openmetadata.service.resources;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.setup.Environment;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfo;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import io.swagger.annotations.Api;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
@@ -27,14 +31,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.ws.rs.Path;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
@@ -42,10 +44,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.reflections.Reflections;
-import org.reflections.scanners.MethodAnnotationsScanner;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
+import org.openmetadata.service.util.ClassUtil;
 
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
@@ -66,19 +65,11 @@ public final class CollectionRegistry {
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
-  public List<String> getAdditionalResources() {
-    return additionalResources;
-  }
-
-  private final List<String> additionalResources;
-
-  private CollectionRegistry(List<String> additionalResources) {
-    this.additionalResources = additionalResources;
-  }
+  private CollectionRegistry() {}
 
   public static CollectionRegistry getInstance() {
     if (!initialized) {
-      initialize(null);
+      initialize();
     }
     return instance;
   }
@@ -87,9 +78,9 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
-  public static void initialize(List<String> additionalResources) {
+  public static void initialize() {
     if (!initialized) {
-      instance = new CollectionRegistry(additionalResources);
+      instance = new CollectionRegistry();
       initialized = true;
       instance.loadCollectionDescriptors();
       instance.loadConditionFunctions();
@@ -124,29 +115,26 @@ public final class CollectionRegistry {
    * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
-    Reflections reflections =
-        new Reflections(
-            new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage("org.openmetadata.service"))
-                .setScanners(new MethodAnnotationsScanner()));
+    try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
+      for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
+        List<Method> methods = ClassUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
+        for (Method method : methods) {
+          Function annotation = method.getAnnotation(Function.class);
+          List<org.openmetadata.schema.type.Function> functionList =
+              functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
 
-    // Get classes marked with @Collection annotation
-    Set<Method> methods = reflections.getMethodsAnnotatedWith(Function.class);
-    for (Method method : methods) {
-      Function annotation = method.getAnnotation(Function.class);
-      List<org.openmetadata.schema.type.Function> functionList =
-          functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
-
-      org.openmetadata.schema.type.Function function =
-          new org.openmetadata.schema.type.Function()
-              .withName(annotation.name())
-              .withInput(annotation.input())
-              .withDescription(annotation.description())
-              .withExamples(List.of(annotation.examples()))
-              .withParameterInputType(annotation.paramInputType());
-      functionList.add(function);
-      functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-      LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
+          org.openmetadata.schema.type.Function function =
+              new org.openmetadata.schema.type.Function()
+                  .withName(annotation.name())
+                  .withInput(annotation.input())
+                  .withDescription(annotation.description())
+                  .withExamples(List.of(annotation.examples()))
+                  .withParameterInputType(annotation.paramInputType());
+          functionList.add(function);
+          functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
+          LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
+        }
+      }
     }
   }
 
@@ -210,22 +198,16 @@ public final class CollectionRegistry {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    Reflections reflections = new Reflections("org.openmetadata.service.resources");
-    // Get classes marked with @Collection annotation
-    Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);
-    // Get classes marked in other
-    if (!CommonUtil.nullOrEmpty(instance.getAdditionalResources())) {
-      for (String packageName : instance.getAdditionalResources()) {
-        Reflections packageReflections = new Reflections(packageName);
-        collectionClasses.addAll(packageReflections.getTypesAnnotatedWith(Collection.class));
+    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
+      List<Class<?>> collectionClasses = classList.loadClasses();
+      List<CollectionDetails> collections = new ArrayList<>();
+      for (Class<?> cl : collectionClasses) {
+        CollectionDetails cd = getCollection(cl);
+        collections.add(cd);
       }
+      return collections;
     }
-    List<CollectionDetails> collections = new ArrayList<>();
-    for (Class<?> cl : collectionClasses) {
-      CollectionDetails cd = getCollection(cl);
-      collections.add(cd);
-    }
-    return collections;
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
