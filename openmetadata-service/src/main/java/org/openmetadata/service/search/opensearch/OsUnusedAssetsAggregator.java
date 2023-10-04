@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,12 +9,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.search.TotalHits;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.UnusedAssets;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.SearchHits;
 
 @Slf4j
 public class OsUnusedAssetsAggregator extends DataInsightAggregatorInterface {
+  final ObjectMapper mapper = new ObjectMapper();
+
   public OsUnusedAssetsAggregator(SearchHits hits, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     super(hits, dataInsightChartType);
   }
@@ -38,18 +42,15 @@ public class OsUnusedAssetsAggregator extends DataInsightAggregatorInterface {
     for (SearchHit hit : this.hitsOs) {
       try {
         HashMap<String, Object> data = (HashMap<String, Object>) hit.getSourceAsMap().get("data");
-        String fqn = ((HashMap<String, String>) data.get("entity")).get("fullyQualifiedName");
         Long lastAccessed =
             (Long)
                 ((HashMap<String, Object>) ((HashMap<String, Object>) data.get("lifeCycle")).get("accessed"))
                     .get("timestamp");
         Double sizeInByte = (Double) data.get("sizeInByte");
-        new UnusedAssets().withFullyQualifiedName(fqn).withLastAccessedAt(lastAccessed).withSizeInBytes(sizeInByte);
-        dataList.add(
-            new UnusedAssets()
-                .withFullyQualifiedName(fqn)
-                .withLastAccessedAt(lastAccessed)
-                .withSizeInBytes(sizeInByte));
+        EntityReference entityReference = mapper.convertValue(data.get("entity"), EntityReference.class);
+        UnusedAssets unusedAssets =
+            new UnusedAssets().withEntity(entityReference).withLastAccessedAt(lastAccessed).withSizeInBytes(sizeInByte);
+        dataList.add(unusedAssets);
       } catch (Exception e) {
         LOG.error("Error while parsing hits for UnusedData chart from ES", e);
       }
