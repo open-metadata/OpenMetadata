@@ -18,11 +18,10 @@ import {
   groupBy,
   isEmpty,
   isUndefined,
-  map,
   toLower,
   uniqBy,
 } from 'lodash';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -63,18 +62,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
-      const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
-
-      if (newSelectedTags && editColumnTag) {
+      if (selectedTags && editColumnTag) {
         const containerDataModel = cloneDeep(dataModel);
 
         updateContainerColumnTags(
           containerDataModel?.columns,
           editColumnTag.fullyQualifiedName ?? '',
-          newSelectedTags
+          selectedTags
         );
 
         await onUpdate(containerDataModel);

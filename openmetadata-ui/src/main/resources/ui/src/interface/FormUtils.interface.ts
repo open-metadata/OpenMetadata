@@ -35,6 +35,7 @@ export enum FieldTypes {
   TAG_SUGGESTION = 'tag_suggestion',
   USER_TEAM_SELECT = 'user_team_select',
   USER_MULTI_SELECT = 'user_multi_select',
+  COLOR_PICKER = 'color_picker',
 }
 
 export interface FieldProp {

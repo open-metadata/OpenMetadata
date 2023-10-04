@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,22 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Style } from '../../../generated/type/schema';
 
-import { EntityTags } from 'Models';
-
-export interface TagsViewerProps {
-  tags: EntityTags[];
-  sizeCap?: number;
-  displayType?: DisplayType;
-  showNoDataPlaceholder?: boolean;
+export interface StyleModalProps {
+  open: boolean;
+  style?: Style;
+  onSubmit: (value: Style) => void;
+  onCancel: () => void;
 }
 
-export enum DisplayType {
-  READ_MORE = 'read-more',
-  POPOVER = 'popover',
-}
-
-export enum LayoutType {
-  HORIZONTAL = 'horizontal',
-  VERTICAL = 'vertical',
-}
+export type StyleWithInput = Style & {
+  colorInput: string;
+};

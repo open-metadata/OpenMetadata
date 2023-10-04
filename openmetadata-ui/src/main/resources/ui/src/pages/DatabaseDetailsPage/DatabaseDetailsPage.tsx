@@ -69,10 +69,9 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { LabelType } from '../../generated/entity/data/table';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { State, TagSource } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
@@ -89,7 +88,7 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -485,18 +484,13 @@ const DatabaseDetails: FunctionComponent = () => {
             .map((selTag) => selTag.tagFQN)
             .includes(tag?.tagFQN as string)
         ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
+      const newTags = createTagObject(
+        selectedTags.filter((tag) => {
           return !prevTags
             ?.map((prevTag) => prevTag.tagFQN)
             .includes(tag.tagFQN);
         })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
       await onTagUpdate([...prevTags, ...newTags]);
     }
   };
