@@ -15,18 +15,18 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import lkml
+
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LkmlFile,
     LookMlView,
     ViewName,
 )
+from metadata.readers.file.api_reader import ApiReader
 from metadata.readers.file.base import ReadException
+from metadata.readers.file.local import LocalReader
 from metadata.utils.logger import ingestion_logger
-
-
-from ingestion.src.metadata.readers.file.api_reader import ApiReader
-from ingestion.src.metadata.readers.file.local import LocalReader
+from metadata.utils.singleton import Singleton
 
 logger = ingestion_logger()
 
@@ -34,27 +34,7 @@ EXTENSIONS = (".lkml", ".lookml")
 IMPORTED_PROJECTS_DIR = "imported_projects"
 
 
-class SingletonMeta(type):
-    """
-    The Singleton class can be implemented in different ways in Python. Some
-    possible methods include: base class, decorator, metaclass. We will use the
-    metaclass because it is best suited for this purpose.
-    """
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        """
-        Possible changes to the value of the `__init__` argument do not affect
-        the returned instance.
-        """
-        if cls not in cls._instances:
-            instance = super().__call__(*args, **kwargs)
-            cls._instances[cls] = instance
-        return cls._instances[cls]
-
-
-class BulkLkmlParser(metaclass=SingletonMeta):
+class BulkLkmlParser(metaclass=Singleton):
     """
     Parses and caches the visited files & views.
 
@@ -122,7 +102,7 @@ class BulkLkmlParser(metaclass=SingletonMeta):
 
         return None
 
-    def find_view(self, view_name: ViewName, path: Includes) -> Optional[LookMlView]:
+    def find_view(self, view_name: ViewName) -> Optional[LookMlView]:
         """
         Parse an incoming file (either from a `source_file` or an `include`),
         cache the views and return the list of includes to parse if

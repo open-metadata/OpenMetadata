@@ -2,18 +2,18 @@ import os
 import shutil
 from typing import Optional, Union
 
+from git import Repo
+
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     NoGitCredentials,
-)
-from metadata.generated.schema.security.credentials.githubCredentials import (
-    GitHubCredentials,
 )
 from metadata.generated.schema.security.credentials.bitbucketCredentials import (
     BitBucketCredentials,
 )
-
-from ingestion.src.metadata.utils.logger import ingestion_logger
-from git import Repo
+from metadata.generated.schema.security.credentials.githubCredentials import (
+    GitHubCredentials,
+)
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

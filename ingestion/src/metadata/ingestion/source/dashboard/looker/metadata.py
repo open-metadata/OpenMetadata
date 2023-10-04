@@ -28,9 +28,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, c
 import giturlparse
 import lkml
 from looker_sdk.sdk.api40.methods import Looker40SDK
-from looker_sdk.sdk.api40.models import (
-    Dashboard as LookerDashboard,
-)
+from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
     DashboardBase,
     DashboardElement,
@@ -39,6 +37,8 @@ from looker_sdk.sdk.api40.models import (
     LookmlModelNavExplore,
     Project,
 )
+from pydantic import ValidationError
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -64,6 +64,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -79,44 +80,32 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
 )
+from metadata.ingestion.source.dashboard.looker.bulk_parser import BulkLkmlParser
 from metadata.ingestion.source.dashboard.looker.columns import get_columns_from_model
 from metadata.ingestion.source.dashboard.looker.links import get_path_from_link
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
+    LookMLManifest,
+    LookMLRepo,
     LookMlView,
     ViewName,
 )
 from metadata.ingestion.source.dashboard.looker.parser import LkmlParser
+from metadata.ingestion.source.dashboard.looker.utils import _clone_repo
 from metadata.readers.file.api_reader import ReadersCredentials
 from metadata.readers.file.base import Reader
 from metadata.readers.file.credentials import get_credentials_from_url
+from metadata.readers.file.local import LocalReader
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from pydantic import ValidationError
-
-from ingestion.src.metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-)
-
-from ingestion.src.metadata.ingestion.lineage.models import (
-    ConnectionTypeDialectMapper,
-)
-from ingestion.src.metadata.ingestion.lineage.parser import LineageParser
-from ingestion.src.metadata.ingestion.source.dashboard.looker.bulk_parser import (
-    BulkLkmlParser,
-)
-from ingestion.src.metadata.ingestion.source.dashboard.looker.models import (
-    LookMLRepo,
-    LookMLManifest,
-)
-from ingestion.src.metadata.ingestion.source.dashboard.looker.utils import _clone_repo
-from ingestion.src.metadata.readers.file.local import LocalReader
 
 logger = ingestion_logger()
 
@@ -523,10 +512,7 @@ class LookerSource(DashboardServiceSource):
 
         project_parser = self.parser.get(explore.project_name)
         if project_parser:
-            view: Optional[LookMlView] = project_parser.find_view(
-                view_name=view_name,
-                path=Includes(get_path_from_link(explore.lookml_link)),
-            )
+            view: Optional[LookMlView] = project_parser.find_view(view_name=view_name)
 
             if view:
                 yield Either(
