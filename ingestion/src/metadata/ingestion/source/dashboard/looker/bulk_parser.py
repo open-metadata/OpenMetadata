@@ -124,5 +124,4 @@ class BulkLkmlParser(metaclass=Singleton):
                 f"Parser at [{self.reader.credentials.repositoryOwner.__root__}/"
                 f"{self.reader.credentials.repositoryName.__root__}]"
             )
-        else:
-            return f"Parser at [{self.reader}]"
+        return f"Parser at [{self.reader}]"

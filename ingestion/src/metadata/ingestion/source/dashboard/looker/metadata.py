@@ -195,14 +195,8 @@ class LookerSource(DashboardServiceSource):
             ]
         ]
     ) -> "LookMLRepo":
-        repo_name = "{}/{}".format(
-            credentials.repositoryOwner.__root__,
-            credentials.repositoryName.__root__,
-        )
-        repo_path = "{}/{}".format(
-            REPO_TMP_LOCAL_PATH,
-            credentials.repositoryName.__root__,
-        )
+        repo_name = f"{credentials.repositoryOwner.__root__}/{credentials.repositoryName.__root__}"
+        repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.__root__}"
         _clone_repo(
             repo_name,
             repo_path,
@@ -222,10 +216,10 @@ class LookerSource(DashboardServiceSource):
         ],
         path="manifest.lkml",
     ) -> Optional[LookMLManifest]:
-        file_path = "{}/{}".format(self._main_lookml_repo.path, path)
+        file_path = f"{self._main_lookml_repo.path}/{path}"
         if not os.path.isfile(file_path):
             return None
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             manifest = LookMLManifest.parse_obj(lkml.load(f))
             if manifest and manifest.remote_dependency:
                 remote_name = manifest.remote_dependency["name"]
@@ -233,11 +227,8 @@ class LookerSource(DashboardServiceSource):
 
                 url_parsed = giturlparse.parse(remote_git_url)
                 _clone_repo(
-                    f"{url_parsed.owner}/{url_parsed.repo}",
-                    "{}/{}".format(
-                        self._main_lookml_repo.path,
-                        f"{IMPORTED_PROJECTS_DIR}/{remote_name}",
-                    ),
+                    f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
+                    f"{self._main_lookml_repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
                     credentials,
                 )
 
@@ -253,7 +244,6 @@ class LookerSource(DashboardServiceSource):
     def parser(self) -> Optional[Dict[str, LkmlParser]]:
         if self.repository_credentials:
             return self._project_parsers
-
         return None
 
     @parser.setter
@@ -279,7 +269,6 @@ class LookerSource(DashboardServiceSource):
                 )
                 for project_name in all_projects
             }
-
             logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
     def get_lookml_project_credentials(self, project_name: str) -> GitHubCredentials:
@@ -302,18 +291,9 @@ class LookerSource(DashboardServiceSource):
         """
         Depending on the type of the credentials we'll need a different reader
         """
-        if not self._reader_class:
-            if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, GitHubCredentials
-            ):
-                # self._reader_class = GitHubReader
-                self._reader_class = LocalReader
-
-            if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, BitBucketCredentials
-            ):
-                # self._reader_class = BitBucketReader
-                self._reader_class = LocalReader
+        if not self._reader_class and self.service_connection.gitCredentials:
+            # Both credentials from Github & Bitbucket will process by LocalReader
+            self._reader_class = LocalReader
 
         return self._reader_class
 
@@ -485,10 +465,6 @@ class LookerSource(DashboardServiceSource):
             try:
                 project_parser = self.parser.get(explore.project_name)
                 if project_parser:
-                    # This will only parse if the file has not been parsed yet
-                    # project_parser.parse_file(
-                    #     Includes(get_path_from_link(explore.lookml_link))
-                    # )
                     return project_parser.parsed_files.get(
                         Includes(get_path_from_link(explore.lookml_link))
                     )
