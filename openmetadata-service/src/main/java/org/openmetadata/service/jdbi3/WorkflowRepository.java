@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.WORKFLOW;
 
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -12,8 +13,14 @@ import org.openmetadata.service.util.EntityUtil;
 public class WorkflowRepository extends EntityRepository<Workflow> {
   private static final String PATCH_FIELDS = "status,response";
 
-  public WorkflowRepository(CollectionDAO dao) {
-    super(WorkflowResource.COLLECTION_PATH, WORKFLOW, Workflow.class, dao.workflowDAO(), dao, PATCH_FIELDS, "");
+  public WorkflowRepository() {
+    super(
+        WorkflowResource.COLLECTION_PATH,
+        WORKFLOW,
+        Workflow.class,
+        Entity.getCollectionDAO().workflowDAO(),
+        PATCH_FIELDS,
+        "");
     quoteFqn = true;
   }
 

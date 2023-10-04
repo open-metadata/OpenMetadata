@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "rawCostAnalysisReportData",
   "type": "object",
-  "javaType": "org.openmetadata.schema.analytics.RawCostAnalysisReportData.json",
+  "javaType": "org.openmetadata.schema.analytics.RawCostAnalysisReportData",
   "description": "Raw data for Cost Analysis Report.",
   "properties": {
     "entity": {

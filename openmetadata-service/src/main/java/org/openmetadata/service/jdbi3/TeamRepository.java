@@ -83,8 +83,14 @@ public class TeamRepository extends EntityRepository<Team> {
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
-  public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
+  public TeamRepository() {
+    super(
+        TeamResource.COLLECTION_PATH,
+        TEAM,
+        Team.class,
+        Entity.getCollectionDAO().teamDAO(),
+        TEAM_PATCH_FIELDS,
+        TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
   }

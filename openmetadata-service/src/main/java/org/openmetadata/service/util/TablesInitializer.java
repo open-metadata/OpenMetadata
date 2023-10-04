@@ -265,8 +265,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchRepository searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
+    SearchRepository searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
@@ -352,7 +351,8 @@ public final class TablesInitializer {
       Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class));
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(jdbi);
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }

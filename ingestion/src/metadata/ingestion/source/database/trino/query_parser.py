@@ -16,13 +16,11 @@ from abc import ABC
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 
 
@@ -34,7 +32,7 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: TrinoConnection = config.serviceConnection.__root__.config
@@ -42,4 +40,4 @@ class TrinoQueryParserSource(QueryParserSource, ABC):
             raise InvalidSourceException(
                 f"Expected TrinoConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)

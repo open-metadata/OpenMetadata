@@ -15,6 +15,9 @@ from typing import Type, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -34,6 +37,8 @@ class OMetaServiceMixin:
     To be inherited by OpenMetadata
     """
 
+    config: OpenMetadataConnection
+
     def get_create_service_from_source(
         self, entity: Type[T], config: WorkflowSource
     ) -> C:
@@ -42,13 +47,18 @@ class OMetaServiceMixin:
         :param entity: Service Type
         :param config: WorkflowSource
         :return: CreateService request
+
+        If the OpenMetadata Connection has storeServiceConnection set to false,
+        we won't pass the connection details when creating the service.
         """
 
         create_entity_class = self.get_create_entity_type(entity=entity)
         return create_entity_class(
             name=config.serviceName,
             serviceType=config.serviceConnection.__root__.config.type.value,
-            connection=config.serviceConnection.__root__,
+            connection=config.serviceConnection.__root__
+            if self.config.storeServiceConnection
+            else None,
         )
 
     def create_service_from_source(self, entity: Type[T], config: WorkflowSource) -> T:

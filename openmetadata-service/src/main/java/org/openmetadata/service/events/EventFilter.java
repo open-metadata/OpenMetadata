@@ -26,7 +26,6 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.ParallelStreamUtil;
 
@@ -38,13 +37,13 @@ public class EventFilter implements ContainerResponseFilter {
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public EventFilter(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
+  public EventFilter(OpenMetadataApplicationConfig config) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
-    registerEventHandlers(config, provider);
+    registerEventHandlers(config);
   }
 
-  private void registerEventHandlers(OpenMetadataApplicationConfig config, JdbiUnitOfWorkProvider provider) {
+  private void registerEventHandlers(OpenMetadataApplicationConfig config) {
     try {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
