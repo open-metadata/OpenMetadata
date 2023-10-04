@@ -14,46 +14,8 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
-import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DomainTabs } from 'components/Domain/DomainPage.interface';
-import DocumentationTab from 'components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
-import { DocumentationEntity } from 'components/Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import AssetsTabs, {
-  AssetsTabRef,
-} from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import {
-  AssetsOfEntity,
-  AssetsViewType,
-} from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import {
-  ChangeDescription,
-  DataProduct,
-} from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
-import { Operation } from 'generated/entity/policies/policy';
 import { cloneDeep, toString } from 'lodash';
 import React, {
   useCallback,
@@ -64,27 +26,65 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getEntityDeleteMessage } from 'utils/CommonUtils';
-import { DomainAssetsSearchIndex } from 'utils/DomainUtils';
-import { getEntityVersionByField } from 'utils/EntityVersionUtils';
-import Fqn from 'utils/Fqn.js';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import { AssetSelectionModal } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import { DomainTabs } from '../../../components/Domain/DomainPage.interface';
+import DocumentationTab from '../../../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
+import { DocumentationEntity } from '../../../components/Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
+import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
+import AssetsTabs, {
+  AssetsTabRef,
+} from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import {
+  AssetsOfEntity,
+  AssetsViewType,
+} from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  ChangeDescription,
+  DataProduct,
+} from '../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { searchData } from '../../../rest/miscAPI';
+import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { DomainAssetsSearchIndex } from '../../../utils/DomainUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import Fqn from '../../../utils/Fqn.js';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
-} from 'utils/PermissionsUtils';
+} from '../../../utils/PermissionsUtils';
 import {
   getDataProductsDetailsPath,
   getDataProductVersionsPath,
   getDomainPath,
-} from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './data-products-details-page.less';
 import {
   DataProductsDetailsPageProps,
   DataProductTabs,
 } from './DataProductsDetailsPage.interface';
-import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 const DataProductsDetailsPage = ({
   dataProduct,

@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { EntityType } from 'enums/entity.enum';
-import { MlFeature } from 'generated/entity/data/mlmodel';
-import { Task } from 'generated/entity/data/pipeline';
-import { Field } from 'generated/entity/data/topic';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { EntityTags, TagOption } from 'Models';
-import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { EntityType } from '../../enums/entity.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
+import { MlFeature } from '../../generated/entity/data/mlmodel';
+import { Task } from '../../generated/entity/data/pipeline';
 import { Column } from '../../generated/entity/data/table';
+import { Field } from '../../generated/entity/data/topic';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { ChartType } from '../../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 
 export interface TableTagsComponentProps<T> {
   tags: TagLabel[];

@@ -29,7 +29,7 @@ jest.mock('../../../../common/rich-text-editor/RichTextEditorPreviewer', () =>
     ))
 );
 
-jest.mock('components/Tag/TagsViewer/TagsViewer', () =>
+jest.mock('../../../../Tag/TagsViewer/TagsViewer', () =>
   jest
     .fn()
     .mockImplementation(() => <div data-testid="TagsViewer">TagsViewer</div>)

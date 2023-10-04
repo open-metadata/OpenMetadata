@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
-import { EntityTabs } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
-import { getPartialNameFromFQN } from 'utils/CommonUtils';
-import i18n from 'utils/i18next/LocalUtil';
+import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { EntityTabs } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { getPartialNameFromFQN } from '../utils/CommonUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';

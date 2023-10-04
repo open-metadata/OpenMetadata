@@ -65,13 +65,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
 
-  public GlossaryRepository(CollectionDAO dao) {
+  public GlossaryRepository() {
     super(
         GlossaryResource.COLLECTION_PATH,
         Entity.GLOSSARY,
         Glossary.class,
-        dao.glossaryDAO(),
-        dao,
+        Entity.getCollectionDAO().glossaryDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = true;

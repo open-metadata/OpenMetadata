@@ -14,21 +14,21 @@
 import { Card, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Table from 'components/common/Table/Table';
-import PageHeader from 'components/header/PageHeader.component';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
-import {
-  formatDateTimeWithTimezone,
-  formatTimeDurationFromSeconds,
-} from 'utils/date-time/DateTimeUtils';
+import Table from '../../components/common/Table/Table';
+import PageHeader from '../../components/header/PageHeader.component';
 import { getUserPath } from '../../constants/constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import {
+  formatDateTimeWithTimezone,
+  formatTimeDurationFromSeconds,
+} from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import './DataInsightDetail.less';

@@ -16,11 +16,11 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
-jest.mock('components/TopicDetails/TopicDetails.component', () => {
+jest.mock('../../components/TopicDetails/TopicDetails.component', () => {
   return jest.fn().mockReturnValue(<div>TopicDetails.component</div>);
 });
 
-jest.mock('rest/topicsAPI', () => ({
+jest.mock('../../rest/topicsAPI', () => ({
   addFollower: jest.fn(),
   getTopicByFqn: jest.fn().mockImplementation(() => Promise.resolve({})),
   patchTopicDetails: jest.fn(),
@@ -34,7 +34,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { Table } from 'generated/entity/data/table';
 import React from 'react';
 import { act } from 'react-test-renderer';
-import { getIngestionPipelines } from 'rest/ingestionPipelineAPI';
+import { Table } from '../../../generated/entity/data/table';
+import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
 const mockTestSuite = {
@@ -55,7 +55,7 @@ const mockTestSuite = {
   testCaseResultSummary: [],
 } as unknown as Table['testSuite'];
 
-jest.mock('rest/ingestionPipelineAPI', () => {
+jest.mock('../../../rest/ingestionPipelineAPI', () => {
   return {
     getIngestionPipelines: jest
       .fn()

@@ -12,13 +12,13 @@
  */
 
 import { Form, Modal, Typography } from 'antd';
-import { VALIDATION_MESSAGES } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { DEFAULT_FORM_VALUE } from 'constants/Tags.constant';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { generateFormFields } from 'utils/formUtils';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+import { generateFormFields } from '../../utils/formUtils';
 import { RenameFormProps } from './TagsPage.interface';
 
 const TagsForm = ({

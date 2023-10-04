@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityType } from 'enums/entity.enum';
-import { ThreadType } from 'generated/entity/feed/thread';
+import { EntityType } from '../../enums/entity.enum';
+import { ThreadType } from '../../generated/entity/feed/thread';
 
 export interface TableDescriptionProps {
   index: number;

@@ -25,15 +25,20 @@ import {
 } from './CommonUtils.mock';
 
 import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import {
   getDayCron,
   getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import { ERROR_MESSAGE } from 'constants/constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
-import { cloneDeep } from 'lodash';
+} from '../components/common/CronEditor/CronEditor.constant';
+import { ERROR_MESSAGE } from '../constants/constants';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
 import {
   digitFormatter,
   getBase64EncodedString,

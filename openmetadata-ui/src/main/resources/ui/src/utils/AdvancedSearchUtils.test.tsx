@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { SearchIndex } from 'enums/search.enum';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
+import { SearchIndex } from '../enums/search.enum';
 import {
   getChartsOptions,
   getColumnsOptions,

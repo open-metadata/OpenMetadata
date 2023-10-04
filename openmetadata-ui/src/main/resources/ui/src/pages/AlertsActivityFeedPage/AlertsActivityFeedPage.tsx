@@ -12,17 +12,17 @@
  */
 
 import { Card } from 'antd';
-import { AlertDetailsComponent } from 'components/Alerts/AlertsDetails/AlertDetails.component';
-import Loader from 'components/Loader/Loader';
-import { EventFilterRule } from 'generated/events/eventFilterRule';
-import {
-  EventSubscription,
-  FilteringRules,
-} from 'generated/events/eventSubscription';
 import { noop, trim } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAlertsFromName } from 'rest/alertsAPI';
+import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
+import Loader from '../../components/Loader/Loader';
+import { EventFilterRule } from '../../generated/events/eventFilterRule';
+import {
+  EventSubscription,
+  FilteringRules,
+} from '../../generated/events/eventSubscription';
+import { getAlertsFromName } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

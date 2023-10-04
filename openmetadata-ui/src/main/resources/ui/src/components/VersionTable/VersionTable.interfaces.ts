@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
+import { SearchIndexField } from '../../generated/entity/data/searchIndex';
 import {
   Column,
   ColumnJoins,

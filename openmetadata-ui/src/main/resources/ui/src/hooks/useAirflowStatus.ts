@@ -13,8 +13,8 @@
 
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
-import { getAirflowStatus } from 'rest/ingestionPipelineAPI';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
+import { getAirflowStatus } from '../rest/ingestionPipelineAPI';
 
 interface UseAirflowStatusProps {
   isFetchingStatus: boolean;

@@ -17,17 +17,17 @@ import {
   setSession,
 } from '@analytics/session-utils';
 import Analytics, { AnalyticsInstance } from 'analytics';
-import { AnalyticsData } from 'components/WebAnalytics/WebAnalytics.interface';
-import {
-  CustomEvent,
-  CustomEventTypes,
-} from 'generated/analytics/webAnalyticEventType/customEvent';
-import { postWebAnalyticEvent } from 'rest/WebAnalyticsAPI';
 import {
   WebAnalyticEventData,
   WebAnalyticEventType,
 } from '../generated/analytics/webAnalyticEventData';
+import {
+  CustomEvent,
+  CustomEventTypes,
+} from '../generated/analytics/webAnalyticEventType/customEvent';
 import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
+import { postWebAnalyticEvent } from '../rest/WebAnalyticsAPI';
+import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
 
 /**
  * Check if url is valid or not and return the pathname

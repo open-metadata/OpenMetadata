@@ -78,9 +78,6 @@ from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -142,8 +139,7 @@ class InvalidSampleDataException(Exception):
     """
 
 
-def get_lineage_entity_ref(edge, metadata_config) -> Optional[EntityReference]:
-    metadata = OpenMetadata(metadata_config)
+def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityReference]:
     edge_fqn = edge["fqn"]
     if edge["type"] == "table":
         table = metadata.get_by_name(entity=Table, fqn=edge_fqn)
@@ -181,12 +177,11 @@ class SampleDataSource(
     python objects to be sent to the Sink.
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.service_connection = config.serviceConnection.__root__.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.list_policies = []
 
         sample_data_folder = self.service_connection.connectionOptions.__root__.get(
@@ -526,7 +521,7 @@ class SampleDataSource(
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
@@ -534,7 +529,7 @@ class SampleDataSource(
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def prepare(self):
         """Nothing to prepare"""
@@ -1021,11 +1016,9 @@ class SampleDataSource(
 
     def ingest_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         for edge in self.lineage:
-            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata_config)
-            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata_config)
-            edge_entity_ref = get_lineage_entity_ref(
-                edge["edge_meta"], self.metadata_config
-            )
+            from_entity_ref = get_lineage_entity_ref(edge["from"], self.metadata)
+            to_entity_ref = get_lineage_entity_ref(edge["to"], self.metadata)
+            edge_entity_ref = get_lineage_entity_ref(edge["edge_meta"], self.metadata)
             lineage_details = (
                 LineageDetails(pipeline=edge_entity_ref, sqlQuery=edge.get("sql_query"))
                 if edge_entity_ref

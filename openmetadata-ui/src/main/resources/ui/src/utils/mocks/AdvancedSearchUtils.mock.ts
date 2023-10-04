@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { SearchIndex } from 'enums/search.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import {
   DatabaseServiceType,
   DataType,
   TableType,
-} from 'generated/entity/data/table';
-import { DataTypeTopic } from 'generated/entity/data/topic';
+} from '../../generated/entity/data/table';
+import { DataTypeTopic } from '../../generated/entity/data/topic';
 import {
   ExploreSearchSource,
   SuggestOption,
   TableSearchSource,
-} from 'interface/search.interface';
+} from '../../interface/search.interface';
 
 export const mockOptionsArray = [
   { key: 'option_1', label: 'option_1' },

@@ -13,7 +13,7 @@
 import { Space } from 'antd';
 import { isNil } from 'lodash';
 import React from 'react';
-import { getCountBadge } from 'utils/CommonUtils';
+import { getCountBadge } from '../../utils/CommonUtils';
 import { TabsLabelProps } from './TabsLabel.interface';
 
 const TabsLabel = ({ name, count, isActive, id }: TabsLabelProps) => {

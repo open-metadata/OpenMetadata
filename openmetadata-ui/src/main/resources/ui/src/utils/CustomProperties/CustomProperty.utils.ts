@@ -13,21 +13,21 @@
 import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
-} from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { EntityType, TabSpecificField } from 'enums/entity.enum';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from 'rest/SearchIndexAPI';
-import { getContainerByFQN } from 'rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
+} from '../../rest/databaseAPI';
+import { getGlossaryTermByFQN } from '../../rest/glossaryAPI';
+import { getMlModelByFQN } from '../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getTopicByFqn } from '../../rest/topicsAPI';
 
 export const getEntityExtentionDetailsFromEntityType = <
   T extends ExtentionEntitiesKeys
