@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import { SubscriptionType } from 'generated/events/eventSubscription';
 import i18next from 'i18next';
 import { startCase } from 'lodash';
 import React from 'react';
@@ -22,6 +21,7 @@ import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
+import { SubscriptionType } from '../../generated/events/eventSubscription';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {

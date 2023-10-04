@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
-import { Votes } from 'generated/type/votes';
+import { QueryVoteType } from '../../components/TableQueries/TableQueries.interface';
+import { Votes } from '../../generated/type/votes';
 
 export interface VotingProps {
   votes?: Votes;

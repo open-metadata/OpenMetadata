@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { EntityField } from 'constants/Feeds.constants';
+import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { EntityField } from '../constants/Feeds.constants';
 import {
   ChangeDescription,
   DataTypeTopic,
   Field,
   MessageSchemaObject,
   Topic,
-} from 'generated/entity/data/topic';
-import { EntityDiffProps } from 'interface/EntityVersion.interface';
-import { cloneDeep, isEmpty, isEqual, isUndefined } from 'lodash';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+} from '../generated/entity/data/topic';
+import { EntityDiffProps } from '../interface/EntityVersion.interface';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,

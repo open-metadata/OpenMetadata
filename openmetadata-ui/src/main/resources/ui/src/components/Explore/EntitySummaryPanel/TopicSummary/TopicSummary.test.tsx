@@ -13,7 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getTopicByFqn } from 'rest/topicsAPI';
+import { getTopicByFqn } from '../../../../rest/topicsAPI';
 import {
   mockTopicByFqnResponse,
   mockTopicEntityDetails,
@@ -26,19 +26,19 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
 
-jest.mock('rest/topicsAPI', () => ({
+jest.mock('../../../../rest/topicsAPI', () => ({
   getTopicByFqn: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockTopicByFqnResponse)),
 }));
 
 jest.mock(
-  'components/common/SummaryTagsDescription/SummaryTagsDescription.component',
+  '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component',
   () => jest.fn().mockImplementation(() => <p>SummaryTagDescription</p>)
 );
 
 jest.mock(
-  'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
+  '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component',
   () => jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
 

@@ -12,8 +12,8 @@
  */
 
 import { getByTestId, render } from '@testing-library/react';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import React from 'react';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import ErrorPlaceHolderES from './ErrorPlaceHolderES';
 
 jest.mock('react-router-dom', () => ({

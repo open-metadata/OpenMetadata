@@ -12,20 +12,20 @@
  */
 
 import { Button, Form, Input, Space } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import Loader from 'components/Loader/Loader';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getListTestSuites } from 'rest/testAPI';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import Loader from '../../../components/Loader/Loader';
 import {
   PAGE_SIZE_MEDIUM,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { getListTestSuites } from '../../../rest/testAPI';
+import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import { AddTestSuiteFormProps } from '../TestSuiteStepper/testSuite.interface';
 
 const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({

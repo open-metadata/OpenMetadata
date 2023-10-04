@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ThreadType } from 'generated/api/feed/createThread';
-import { Column } from 'generated/entity/data/dashboardDataModel';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { Column } from '../../../generated/entity/data/dashboardDataModel';
 
 export interface ModelTabProps {
   data: Column[];

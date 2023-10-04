@@ -14,20 +14,20 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageHeader from 'components/header/PageHeader.component';
-import { ROUTES } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SMTPSettings } from 'generated/email/smtpSettings';
-import { SettingType } from 'generated/settings/settings';
 import { isBoolean, isEmpty, isNumber, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getSettingsConfigFromConfigType } from 'rest/settingConfigAPI';
-import { getEmailConfigFieldLabels } from 'utils/EmailConfigUtils';
-import { showErrorToast } from 'utils/ToastUtils';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from '../../components/header/PageHeader.component';
+import { ROUTES } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { SMTPSettings } from '../../generated/email/smtpSettings';
+import { SettingType } from '../../generated/settings/settings';
+import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
+import { getEmailConfigFieldLabels } from '../../utils/EmailConfigUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 function EmailConfigSettingsPage() {
   const { t } = useTranslation();

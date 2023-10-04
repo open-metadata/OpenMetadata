@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import { EntityType } from 'enums/entity.enum';
-import { Column } from 'generated/entity/data/container';
-import { EntityReference } from 'generated/entity/type';
-import { EntityLineage } from 'generated/type/entityLineage';
 import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
 import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/container';
+import { EntityReference } from '../../../generated/entity/type';
+import { EntityLineage } from '../../../generated/type/entityLineage';
+import { SourceType } from '../../searched-data/SearchedData.interface';
 
 export interface SelectedNode {
   name: string;

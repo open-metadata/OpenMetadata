@@ -9,7 +9,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-public interface ElasticSearchIndex {
+public interface SearchIndex {
   Map<String, Object> buildESDoc();
 
   default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import { Paging } from 'generated/type/paging';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
+import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
+import { Paging } from '../../generated/type/paging';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 
 export interface DataModelTableProps {
   data: Array<ServicePageData>;

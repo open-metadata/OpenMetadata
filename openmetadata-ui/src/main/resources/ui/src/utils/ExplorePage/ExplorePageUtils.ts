@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { tabsInfo } from 'constants/explore.constants';
-import { SearchIndex } from 'enums/search.enum';
-import { Aggregations, Bucket } from 'interface/search.interface';
 import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { tabsInfo } from '../../constants/explore.constants';
+import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { Aggregations, Bucket } from '../../interface/search.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
-} from 'pages/explore/ExplorePage.interface';
-import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
+} from '../../pages/explore/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
   field: QueryFilterFieldsEnum,

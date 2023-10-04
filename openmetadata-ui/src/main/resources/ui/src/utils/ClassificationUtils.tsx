@@ -13,18 +13,18 @@
 
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconDisableTag } from 'assets/svg/disable-tag.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { ProviderType } from 'generated/entity/bot';
-import { Tag } from 'generated/entity/classification/tag';
 import { t } from 'i18next';
-import { DeleteTagsType } from 'pages/TagsPage/TagsPage.interface';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
+import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
+import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { ProviderType } from '../generated/entity/bot';
+import { Tag } from '../generated/entity/classification/tag';
+import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getDeleteIcon, getUsageCountLink } from './TagsUtils';
 
 export const getDeleteButtonData = (

@@ -13,7 +13,6 @@
 
 import { Button, Popover, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
-import { TAG_START_WITH } from 'constants/Tag.constants';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, {
@@ -24,6 +23,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';

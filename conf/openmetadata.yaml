@@ -347,6 +347,3 @@ web:
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
 
-extensionConfiguration:
-  resourcePackage: ${OM_RESOURCE_PACKAGES:-[]}
-  extensions: ${OM_EXTENSIONS:-[]}

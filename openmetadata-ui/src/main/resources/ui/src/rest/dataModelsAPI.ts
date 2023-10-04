@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { EntityReference } from 'generated/type/entityReference';
-import { Include } from 'generated/type/include';
 import { RestoreRequestType } from 'Models';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const URL = '/dashboard/datamodels';

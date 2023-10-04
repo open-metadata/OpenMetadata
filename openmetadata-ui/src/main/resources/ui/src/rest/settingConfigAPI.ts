@@ -12,9 +12,9 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
-import { Settings, SettingType } from 'generated/settings/settings';
-import axiosClient from 'rest';
+import axiosClient from '.';
+import { LogoConfiguration } from '../generated/configuration/applicationConfiguration';
+import { Settings, SettingType } from '../generated/settings/settings';
 
 export const getSettingsConfigFromConfigType = async (
   configType: SettingType

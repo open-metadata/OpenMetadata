@@ -13,21 +13,6 @@
 
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import EmailConfigForm from 'components/EmailConfigForm/EmailConfigForm.component';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
-import {
-  EMAIL_CONFIG_SERVICE_CATEGORY,
-  OPEN_METADATA,
-} from 'constants/service-guide.constant';
-import { ServiceCategory } from 'enums/service.enum';
-import { SMTPSettings } from 'generated/email/smtpSettings';
-import { Settings, SettingType } from 'generated/settings/settings';
 import React, {
   FocusEvent,
   useCallback,
@@ -37,12 +22,27 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import EmailConfigForm from '../../components/EmailConfigForm/EmailConfigForm.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import {
+  EMAIL_CONFIG_SERVICE_CATEGORY,
+  OPEN_METADATA,
+} from '../../constants/service-guide.constant';
+import { ServiceCategory } from '../../enums/service.enum';
+import { SMTPSettings } from '../../generated/email/smtpSettings';
+import { Settings, SettingType } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
-} from 'rest/settingConfigAPI';
-import { getSettingPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../rest/settingConfigAPI';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EditEmailConfigPage() {
   const { t } = useTranslation();

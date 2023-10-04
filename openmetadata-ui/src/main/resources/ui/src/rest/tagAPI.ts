@@ -13,12 +13,12 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { PagingResponse } from 'Models';
 import { CreateClassification } from '../generated/api/classification/createClassification';
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
