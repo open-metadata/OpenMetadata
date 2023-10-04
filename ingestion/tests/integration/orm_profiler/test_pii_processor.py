@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
     DataType,
-    Table,
     TableData,
     TableProfile,
 )
@@ -183,7 +182,9 @@ class PiiProcessorTest(TestCase):
     )
 
     metadata = OpenMetadata(server_config)
-    pii_processor = PIIProcessor(config=workflow_config, metadata_config=server_config)
+    pii_processor = PIIProcessor(
+        config=workflow_config, metadata=OpenMetadata(server_config)
+    )
 
     @classmethod
     def setUpClass(cls) -> None:

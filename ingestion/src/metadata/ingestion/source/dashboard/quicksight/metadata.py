@@ -24,9 +24,6 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -53,8 +50,8 @@ class QuicksightSource(DashboardServiceSource):
     config: WorkflowSource
     metadata: OpenMetadata
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
         self.aws_region = (
@@ -66,14 +63,14 @@ class QuicksightSource(DashboardServiceSource):
         }
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: QuickSightConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(
                 f"Expected QuickSightConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
         entity_summary_list = []

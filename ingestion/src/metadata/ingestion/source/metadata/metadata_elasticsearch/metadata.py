@@ -20,9 +20,6 @@ from metadata.generated.schema.api.createEventPublisherJob import (
 from metadata.generated.schema.entity.services.connections.metadata.metadataESConnection import (
     MetadataESConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -54,12 +51,11 @@ class MetadataElasticsearchSource(Source):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection: MetadataESConnection = (
             config.serviceConnection.__root__.config
         )
@@ -70,14 +66,14 @@ class MetadataElasticsearchSource(Source):
         """Nothing to prepare"""
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MetadataESConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MetadataESConnection):
             raise InvalidSourceException(
                 f"Expected MetadataESConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def create_reindex_job(self, job_config: CreateEventPublisherJob):
         """Patch table constraints"""
