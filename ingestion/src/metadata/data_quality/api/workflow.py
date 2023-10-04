@@ -27,7 +27,7 @@ from metadata.data_quality.api.models import (
     TestCaseDefinition,
     TestSuiteProcessorConfig,
 )
-from metadata.data_quality.source.test_suite_source_factory import (
+from metadata.data_quality.runner.test_suite_source_factory import (
     test_suite_source_factory,
 )
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest

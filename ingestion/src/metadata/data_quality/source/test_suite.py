@@ -8,19 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 """
-Workflow definition for the Data Quality
+Test Suite Workflow Source
+
+The main goal is to get the configured table from the API.
 """
-from metadata.workflow.base import BaseWorkflow
-
-
-class TestSuiteWorkflow(BaseWorkflow):
-    """
-    DAta Quality ingestion workflow implementation
-
-    We check the source connection test when initializing
-    this workflow. No need to do anything here if this does not pass
-    """
-
-    def set_steps(self):
-        pass

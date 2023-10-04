@@ -13,20 +13,20 @@
 Factory class for creating test suite source objects
 """
 
-from metadata.data_quality.source.base_test_suite_source import BaseTestSuiteSource
+from metadata.data_quality.runner.base_test_suite_source import BaseTestSuiteRunner
 
 
-class TestSuiteSourceFactory:
+class TestSuiteRunnerFactory:
     """Creational factory for test suite source objects"""
 
     def __init__(self):
-        self._source_type = {"base": BaseTestSuiteSource}
+        self._source_type = {"base": BaseTestSuiteRunner}
 
     def register_source(self, source_type: str, source_class):
         """Register a new source type"""
         self._source_type[source_type] = source_class
 
-    def create(self, source_type: str, *args, **kwargs) -> BaseTestSuiteSource:
+    def create(self, source_type: str, *args, **kwargs) -> BaseTestSuiteRunner:
         """Create source object based on source type"""
         source_class = self._source_type.get(source_type)
         if not source_class:
@@ -35,4 +35,4 @@ class TestSuiteSourceFactory:
         return source_class(*args, **kwargs)
 
 
-test_suite_source_factory = TestSuiteSourceFactory()
+test_suite_source_factory = TestSuiteRunnerFactory()
