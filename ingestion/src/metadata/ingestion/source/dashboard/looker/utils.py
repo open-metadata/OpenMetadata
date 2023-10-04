@@ -42,7 +42,7 @@ def _clone_repo(
         if isinstance(credential, GitHubCredentials):
             url = f"https://x-oauth-basic:{credential.token.__root__.get_secret_value()}@github.com/{repo_name}.git"
         elif isinstance(credential, BitBucketCredentials):
-            url = f"https://x-token-auth::{credential.token.__root__.get_secret_value()}@github.com/{repo_name}.git"
+            url = f"https://x-token-auth::{credential.token.__root__.get_secret_value()}@bitbucket.or/{repo_name}.git"
 
         assert url is not None
 
