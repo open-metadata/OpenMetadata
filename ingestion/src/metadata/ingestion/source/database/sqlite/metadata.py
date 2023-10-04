@@ -17,13 +17,11 @@ Useful for testing!
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
@@ -34,11 +32,11 @@ class SqliteSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection = config.serviceConnection.__root__.config
         if not isinstance(connection, SQLiteConnection):
             raise InvalidSourceException(
                 f"Expected SQLiteConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
