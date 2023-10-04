@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',

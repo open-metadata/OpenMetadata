@@ -12,25 +12,25 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { PAGE_SIZE } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/type';
-import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { includes } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { searchData } from 'rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
-import { getCurrentUserId } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { getEntityReferenceFromGlossaryTerm } from 'utils/GlossaryUtils';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { PAGE_SIZE } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { Paging } from '../../../generated/type/paging';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { searchData } from '../../../rest/miscAPI';
+import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { getCurrentUserId } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import { getEntityReferenceFromGlossaryTerm } from '../../../utils/GlossaryUtils';
+import { UserTag } from '../../common/UserTag/UserTag.component';
+import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
-import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 const AddGlossaryTermForm = ({
   editMode,

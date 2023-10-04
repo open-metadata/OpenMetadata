@@ -26,8 +26,8 @@ import org.openmetadata.service.util.JsonUtils;
 public class ChangeEventRepository {
   private final CollectionDAO.ChangeEventDAO dao;
 
-  public ChangeEventRepository(CollectionDAO dao) {
-    this.dao = dao.changeEventDAO();
+  public ChangeEventRepository() {
+    this.dao = Entity.getCollectionDAO().changeEventDAO();
     Entity.setChangeEventRepository(this);
   }
 

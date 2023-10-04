@@ -17,9 +17,9 @@ import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
 import { getUserPath } from '../../constants/constants';
 import { User } from '../../generated/entity/teams/user';
+import { getEntityName } from '../../utils/EntityUtils';
 import { LIST_CAP } from '../../utils/PermissionsUtils';
 import {
   getRoleWithFqnPath,

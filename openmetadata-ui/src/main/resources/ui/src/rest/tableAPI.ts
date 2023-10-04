@@ -12,10 +12,9 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { Include } from 'generated/type/include';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfile,
@@ -25,6 +24,7 @@ import {
 } from '../generated/entity/data/table';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';

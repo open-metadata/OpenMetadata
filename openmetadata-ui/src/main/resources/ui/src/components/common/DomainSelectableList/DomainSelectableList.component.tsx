@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/type';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDomainList } from 'rest/domainAPI';
-import { searchData } from 'rest/miscAPI';
-import { formatDomainsResponse } from 'utils/APIUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { getDomainList } from '../../../rest/domainAPI';
+import { searchData } from '../../../rest/miscAPI';
+import { formatDomainsResponse } from '../../../utils/APIUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
-} from 'utils/EntityUtils';
+} from '../../../utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';

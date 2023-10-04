@@ -12,31 +12,31 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { TestCase } from 'generated/tests/testCase';
-import {
-  SearchHitBody,
-  TestCaseSearchSource,
-} from 'interface/search.interface';
 import { PagingResponse } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchQuery } from 'rest/searchAPI';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { TestCase } from '../../../generated/tests/testCase';
+import {
+  SearchHitBody,
+  TestCaseSearchSource,
+} from '../../../interface/search.interface';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   getListTestCase,
   getTestCaseById,
   ListTestCaseParams,
-} from 'rest/testAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import Searchbar from '../../common/searchbar/Searchbar';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {

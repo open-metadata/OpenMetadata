@@ -13,18 +13,18 @@
 
 import { Col } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
-import { getDataModelDetailsPath, PAGE_SIZE } from 'constants/constants';
 import { isUndefined } from 'lodash';
-import { DataModelTableProps } from 'pages/DataModelPage/DataModelsInterface';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
+import { getDataModelDetailsPath, PAGE_SIZE } from '../../constants/constants';
+import { DataModelTableProps } from '../../pages/DataModelPage/DataModelsInterface';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEntityName } from '../../utils/EntityUtils';
 
 const DataModelTable = ({
   data,

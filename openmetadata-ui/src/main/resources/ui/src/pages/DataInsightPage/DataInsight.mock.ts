@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { formatDate } from 'utils/date-time/DateTimeUtils';
+import { formatDate } from '../../utils/date-time/DateTimeUtils';
 
 export const PIE_DATA = [
   { name: 'Tables', value: 40 },

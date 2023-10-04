@@ -232,7 +232,10 @@ def download_dbt_files(
     """
     Method to download the files from sources
     """
-    for key, blobs in blob_grouped_by_directory.items():
+    for (  # pylint: disable=too-many-nested-blocks
+        key,
+        blobs,
+    ) in blob_grouped_by_directory.items():
         dbt_catalog = None
         dbt_manifest = None
         dbt_run_results = None
@@ -241,16 +244,27 @@ def download_dbt_files(
             kwargs = {"bucket_name": bucket_name}
         try:
             for blob in blobs:
-                reader = get_reader(config_source=config, client=client)
-                if DBT_MANIFEST_FILE_NAME in blob:
-                    logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
-                    dbt_manifest = reader.read(path=blob, **kwargs)
-                if DBT_CATALOG_FILE_NAME in blob:
-                    logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
-                    dbt_catalog = reader.read(path=blob, **kwargs)
-                if DBT_RUN_RESULTS_FILE_NAME in blob:
-                    logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found in {key}")
-                    dbt_run_results = reader.read(path=blob, **kwargs)
+                if blob:
+                    reader = get_reader(config_source=config, client=client)
+                    if DBT_MANIFEST_FILE_NAME in blob:
+                        logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
+                        dbt_manifest = reader.read(path=blob, **kwargs)
+                    if DBT_CATALOG_FILE_NAME in blob:
+                        try:
+                            logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
+                            dbt_catalog = reader.read(path=blob, **kwargs)
+                        except Exception as exc:
+                            logger.warning(
+                                f"{DBT_CATALOG_FILE_NAME} not found in {key}: {exc}"
+                            )
+                    if DBT_RUN_RESULTS_FILE_NAME in blob:
+                        try:
+                            logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found in {key}")
+                            dbt_run_results = reader.read(path=blob, **kwargs)
+                        except Exception as exc:
+                            logger.warning(
+                                f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
+                            )
             if not dbt_manifest:
                 raise DBTConfigException(f"Manifest file not found at: {key}")
             yield DbtFiles(

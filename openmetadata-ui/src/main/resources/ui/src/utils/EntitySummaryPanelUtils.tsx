@@ -12,17 +12,17 @@
  */
 
 import { Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import { getEntityName } from './EntityUtils';

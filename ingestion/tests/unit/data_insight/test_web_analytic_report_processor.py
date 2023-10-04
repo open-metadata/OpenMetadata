@@ -19,7 +19,6 @@ from uuid import UUID
 
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.data_insight.processor.reports.web_analytic_report_data_processor import (
-    WebAnalyticEntityViewReportDataProcessor,
     WebAnalyticUserActivityReportDataProcessor,
 )
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType

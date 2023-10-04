@@ -12,12 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
-import KPIChartV1 from 'components/DataInsightDetail/KPIChartV1';
-import { CHART_WIDGET_DAYS_DURATION } from 'constants/constants';
-import { Kpi } from 'generated/dataInsight/kpi/kpi';
 import React, { useEffect, useState } from 'react';
-import { getListKPIs } from 'rest/KpiAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import KPIChartV1 from '../../components/DataInsightDetail/KPIChartV1';
+import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { getListKPIs } from '../../rest/KpiAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-widget.less';
 
 const KPIWidget = () => {

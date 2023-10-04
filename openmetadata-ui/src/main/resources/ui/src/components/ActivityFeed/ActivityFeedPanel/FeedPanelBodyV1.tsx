@@ -13,9 +13,13 @@
 
 import { Divider } from 'antd';
 import classNames from 'classnames';
-import { Post, Thread, ThreadType } from 'generated/entity/feed/thread';
 import React, { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { getReplyText } from '../../../utils/FeedUtils';
 import ActivityFeedCardV1 from '../ActivityFeedCard/ActivityFeedCardV1';
 import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';

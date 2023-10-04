@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 export interface GlossaryTermTabProps {
   selectedData: Glossary | GlossaryTerm;

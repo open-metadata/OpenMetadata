@@ -14,20 +14,22 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { EntityReference } from 'generated/type/entityLineage';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { toString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { CreateGlossary } from '../../../generated/api/data/createGlossary';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import {
+  CreateGlossary,
+  EntityReference,
+} from '../../../generated/api/data/createGlossary';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getCurrentUserId } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import { UserTag } from '../../common/UserTag/UserTag.component';
+import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const AddGlossary = ({

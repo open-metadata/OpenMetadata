@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Team, TeamType } from 'generated/entity/teams/team';
+import { Team, TeamType } from '../../generated/entity/teams/team';
 
 export interface AddTeamFormType {
   visible: boolean;

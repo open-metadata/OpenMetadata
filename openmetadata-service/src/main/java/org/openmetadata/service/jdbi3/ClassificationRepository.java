@@ -37,13 +37,12 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
-  public ClassificationRepository(CollectionDAO dao) {
+  public ClassificationRepository() {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
         Entity.CLASSIFICATION,
         Classification.class,
-        dao.classificationDAO(),
-        dao,
+        Entity.getCollectionDAO().classificationDAO(),
         "",
         "");
     quoteFqn = true;

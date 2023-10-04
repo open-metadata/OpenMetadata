@@ -22,12 +22,9 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { AuthProvider } from 'generated/settings/settings';
 import { isEmpty, isUndefined, map, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { checkEmailInUse, generateRandomPwd } from 'rest/auth-API';
-import { getEntityName } from 'utils/EntityUtils';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX, passwordRegex } from '../../constants/regex.constants';
 import { CreatePasswordGenerator } from '../../enums/user.enum';
@@ -36,7 +33,10 @@ import {
   CreatePasswordType,
   CreateUser as CreateUserSchema,
 } from '../../generated/api/teams/createUser';
+import { AuthProvider } from '../../generated/settings/settings';
+import { checkEmailInUse, generateRandomPwd } from '../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
