@@ -24,8 +24,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
-  public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", "");
+  public ReportRepository() {
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, Entity.getCollectionDAO().reportDAO(), "", "");
   }
 
   @Override

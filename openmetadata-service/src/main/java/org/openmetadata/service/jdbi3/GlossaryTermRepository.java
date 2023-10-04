@@ -73,13 +73,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
-  public GlossaryTermRepository(CollectionDAO dao) {
+  public GlossaryTermRepository() {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
-        dao.glossaryTermDAO(),
-        dao,
+        Entity.getCollectionDAO().glossaryTermDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

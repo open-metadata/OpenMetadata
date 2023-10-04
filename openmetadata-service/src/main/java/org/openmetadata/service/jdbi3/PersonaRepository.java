@@ -31,13 +31,12 @@ public class PersonaRepository extends EntityRepository<Persona> {
   static final String PERSONA_PATCH_FIELDS = "users";
   static final String FIELD_USERS = "users";
 
-  public PersonaRepository(CollectionDAO dao) {
+  public PersonaRepository() {
     super(
         PersonaResource.COLLECTION_PATH,
         PERSONA,
         Persona.class,
-        dao.personaDAO(),
-        dao,
+        Entity.getCollectionDAO().personaDAO(),
         PERSONA_PATCH_FIELDS,
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;

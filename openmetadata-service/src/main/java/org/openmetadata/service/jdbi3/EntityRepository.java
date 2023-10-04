@@ -222,14 +222,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String entityType,
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
-      CollectionDAO collectionDAO,
       String patchFields,
       String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
-    this.daoCollection = collectionDAO;
+    this.daoCollection = Entity.getCollectionDAO();
     this.searchRepository = Entity.getSearchRepository();
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);

@@ -15,11 +15,10 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
 
   private final SearchRepository searchRepository;
 
-  public ReportDataRepository(CollectionDAO daoCollection) {
+  public ReportDataRepository() {
     super(
         COLLECTION_PATH,
-        daoCollection,
-        daoCollection.reportDataTimeSeriesDao(),
+        Entity.getCollectionDAO().reportDataTimeSeriesDao(),
         ReportData.class,
         Entity.ENTITY_REPORT_DATA);
     searchRepository = Entity.getSearchRepository();
