@@ -66,6 +66,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { LabelType } from '../../generated/entity/data/table';
@@ -88,6 +89,7 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -438,17 +440,8 @@ const DatabaseDetails: FunctionComponent = () => {
   }, []);
 
   const handleUpdateTier = useCallback(
-    (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(database?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(database?.tags ?? []);
+    (newTier?: Tag) => {
+      const tierTag = updateTierTag(database?.tags ?? [], newTier);
       const updatedTableDetails = {
         ...database,
         tags: tierTag,

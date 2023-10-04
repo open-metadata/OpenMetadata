@@ -10,7 +10,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DatabaseIndex implements ElasticSearchIndex {
+public class DatabaseIndex implements SearchIndex {
 
   final Database database;
 

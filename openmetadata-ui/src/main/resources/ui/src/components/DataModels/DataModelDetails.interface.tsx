@@ -16,6 +16,7 @@ import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHead
 import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Column } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/type';
@@ -29,7 +30,7 @@ export interface DataModelDetailsProps {
   handleFollowDataModel: () => Promise<void>;
   handleUpdateTags: (selectedTags?: EntityTags[]) => void;
   handleUpdateOwner: (owner?: EntityReference) => Promise<void>;
-  handleUpdateTier: (tier?: string) => Promise<void>;
+  handleUpdateTier: (tier?: Tag) => Promise<void>;
   handleUpdateDescription: (value: string) => Promise<void>;
   handleColumnUpdateDataModel: (updatedDataModel: Column[]) => Promise<void>;
   onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
