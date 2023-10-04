@@ -31,6 +31,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -504,6 +505,16 @@ class MetadataRestSink(Sink):
                 )
 
         return Either(right=table)
+
+    @_run_dispatch.register
+    def write_executable_test_suite(
+        self, record: CreateTestSuiteRequest
+    ) -> Either[TestSuite]:
+        """
+        From the test suite workflow we might need to create executable test suites
+        """
+        test_suite = self.metadata.create_or_update_executable_test_suite(record)
+        return Either(right=test_suite)
 
     def close(self):
         """

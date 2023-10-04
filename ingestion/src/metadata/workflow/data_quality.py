@@ -11,7 +11,15 @@
 """
 Workflow definition for the Data Quality
 """
+from metadata.data_quality.processor.test_case_runner import TestCaseRunner
+from metadata.data_quality.source.test_suite import TestSuiteSource
+from metadata.ingestion.api.processor import Processor
+from metadata.ingestion.api.sink import Sink
+from metadata.utils.importer import import_sink_class
+from metadata.utils.logger import test_suite_logger
 from metadata.workflow.base import BaseWorkflow
+
+logger = test_suite_logger()
 
 
 class TestSuiteWorkflow(BaseWorkflow):
@@ -23,4 +31,21 @@ class TestSuiteWorkflow(BaseWorkflow):
     """
 
     def set_steps(self):
-        pass
+        self.source = TestSuiteSource.create(self.config.dict(), self.metadata)
+
+        test_runner_processor = self._get_test_runner_processor()
+        sink = self._get_sink()
+
+        self.steps = (test_runner_processor, sink)
+
+    def _get_sink(self) -> Sink:
+        sink_type = self.config.sink.type
+        sink_class = import_sink_class(sink_type=sink_type)
+        sink_config = self.config.sink.dict().get("config", {})
+        sink: Sink = sink_class.create(sink_config, self.metadata)
+        logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
+
+        return sink
+
+    def _get_test_runner_processor(self) -> Processor:
+        return TestCaseRunner.create(self.config.dict(), self.metadata)
