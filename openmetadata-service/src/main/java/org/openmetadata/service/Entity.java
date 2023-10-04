@@ -17,6 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -37,7 +40,6 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -59,7 +61,6 @@ import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.reflections.Reflections;
 
 @Slf4j
 public final class Entity {
@@ -245,7 +246,7 @@ public final class Entity {
       tokenRepository = new TokenRepository(collectionDAO);
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
-      Set<Class<?>> repositories = getRepositories();
+      List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
@@ -516,8 +517,10 @@ public final class Entity {
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
-  private static Set<Class<?>> getRepositories() {
-    Reflections reflections = new Reflections();
-    return new HashSet<>(reflections.getTypesAnnotatedWith(Repository.class));
+  private static List<Class<?>> getRepositories() {
+    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
+      return classList.loadClasses();
+    }
   }
 }

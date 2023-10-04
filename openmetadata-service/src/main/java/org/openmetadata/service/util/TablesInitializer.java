@@ -30,7 +30,6 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
-import java.util.Set;
 import javax.validation.Validator;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -356,10 +355,7 @@ public final class TablesInitializer {
   }
 
   public static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi,
-      ConnectionType connType,
-      String nativeMigrationSQLPath,
-      boolean forceMigrations) {
+      Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
     Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class));

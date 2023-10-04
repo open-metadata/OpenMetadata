@@ -233,8 +233,8 @@
       <artifactId>flyway-mysql</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.github.resilience4j</groupId>
-      <artifactId>resilience4j-retry</artifactId>
+      <groupId>io.github.classgraph</groupId>
+      <artifactId>classgraph</artifactId>
     </dependency>
     <!-- Dependencies for secret store manager providers -->
     <dependency>

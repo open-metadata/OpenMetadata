@@ -104,7 +104,6 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.28</lombok.version>
     <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
-    <resilience4j.version>1.7.0</resilience4j.version>
     <!--  We need ElasticSearch client to be compatible with both ElasticSearch and AWS OpenSearch
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
@@ -457,9 +456,9 @@
         <scope>test</scope>
       </dependency>
       <dependency>
-        <groupId>io.github.resilience4j</groupId>
-        <artifactId>resilience4j-retry</artifactId>
-        <version>${resilience4j.version}</version>
+        <groupId>io.github.classgraph</groupId>
+        <artifactId>classgraph</artifactId>
+        <version>4.8.162</version>
       </dependency>
       <dependency>
         <groupId>org.reflections</groupId>
@@ -499,6 +498,11 @@
         <groupId>com.lmax</groupId>
         <artifactId>disruptor</artifactId>
         <version>3.4.4</version>
+      </dependency>
+      <dependency>
+        <groupId>io.github.resilience4j</groupId>
+        <artifactId>resilience4j-retry</artifactId>
+        <version>2.1.0</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGECLIPSEJETTY-1090340 -->

@@ -137,7 +137,7 @@ public abstract class OpenMetadataApplicationTest {
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
     validateAndRunSystemDataMigrations(
-        jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), nativeMigrationScripsLocation, null, false);
+        jdbi, ConnectionType.from(sqlContainer.getDriverClassName()), nativeMigrationScripsLocation, false);
     APP.before();
     createClient();
   }
