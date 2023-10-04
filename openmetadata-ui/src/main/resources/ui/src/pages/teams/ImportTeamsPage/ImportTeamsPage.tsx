@@ -12,30 +12,34 @@
  */
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { EntityImport } from 'components/common/EntityImport/EntityImport.component';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { TeamImportResult } from 'components/Team/TeamImportResult/TeamImportResult.component';
-import { UserImportResult } from 'components/Team/UserImportResult/UserImportResult.component';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { Team, TeamType } from 'generated/entity/teams/team';
-import { CSVImportResult } from 'generated/type/csvImportResult';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { getTeamByName, importTeam, importUserInTeam } from 'rest/teamsAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getTeamsWithFqnPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { EntityImport } from '../../../components/common/EntityImport/EntityImport.component';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { TeamImportResult } from '../../../components/Team/TeamImportResult/TeamImportResult.component';
+import { UserImportResult } from '../../../components/Team/UserImportResult/UserImportResult.component';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { Team, TeamType } from '../../../generated/entity/teams/team';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import {
+  getTeamByName,
+  importTeam,
+  importUserInTeam,
+} from '../../../rest/teamsAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ImportType } from './ImportTeamsPage.interface';
 
 const ImportTeamsPage = () => {

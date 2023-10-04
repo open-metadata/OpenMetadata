@@ -16,17 +16,17 @@ import org.opensearch.client.RequestOptions;
 @Slf4j
 public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
-  private final SearchRepository client;
+  private final SearchRepository searchRepository;
 
-  public OpenSearchIndexSink(SearchRepository client) {
-    this.client = client;
+  public OpenSearchIndexSink(SearchRepository repository) {
+    this.searchRepository = repository;
   }
 
   @Override
   public BulkResponse write(BulkRequest data, Map<String, Object> contextData) throws SinkException {
     LOG.debug("[EsSearchIndexSink] Processing a Batch of Size: {}", data.numberOfActions());
     try {
-      BulkResponse response = client.bulk(data, RequestOptions.DEFAULT);
+      BulkResponse response = searchRepository.getSearchClient().bulk(data, RequestOptions.DEFAULT);
       //      BulkResponse response = null;
       int currentSuccess = getSuccessFromBulkResponse(response);
       int currentFailed = response.getItems().length - currentSuccess;

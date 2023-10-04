@@ -12,10 +12,10 @@
  */
 
 import { Tooltip } from 'antd';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as IconComments } from '../assets/svg/comment.svg';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { getEntityFeedLink } from './EntityUtils';
 

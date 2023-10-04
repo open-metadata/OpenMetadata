@@ -12,12 +12,12 @@
  */
 
 import { Form, Input, Typography } from 'antd';
-import IngestionWorkflowForm from 'components/IngestionWorkflowForm/IngestionWorkflowForm';
-import { LOADING_STATE } from 'enums/common.enum';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import IngestionWorkflowForm from '../../components/IngestionWorkflowForm/IngestionWorkflowForm';
 import { STEPS_FOR_ADD_INGESTION } from '../../constants/Ingestions.constant';
+import { LOADING_STATE } from '../../enums/common.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import {
   CreateIngestionPipeline,
@@ -26,12 +26,12 @@ import {
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-import { IngestionWorkflowData } from 'interface/service.interface';
-import { getIngestionName } from 'utils/ServiceUtils';
+import { IngestionWorkflowData } from '../../interface/service.interface';
 import {
   getCurrentUserId,
   getIngestionFrequency,
 } from '../../utils/CommonUtils';
+import { getIngestionName } from '../../utils/ServiceUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';

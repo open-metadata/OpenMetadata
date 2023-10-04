@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ConstraintType } from 'generated/entity/data/table';
+import { ConstraintType } from '../generated/entity/data/table';
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 

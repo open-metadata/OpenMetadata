@@ -21,9 +21,9 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import React from 'react';
-import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { searchData } from '../../rest/miscAPI';
+import { getUsers } from '../../rest/userAPI';
 import { MOCK_USER_DATA } from './mockUserData';
 import UserListPageV1 from './UserListPageV1';
 
@@ -45,14 +45,14 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => mockHistory),
   useLocation: jest.fn().mockImplementation(() => mockLocation),
 }));
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() =>
     Promise.resolve({
       MOCK_USER_DATA,
     })
   ),
 }));
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   searchData: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: MOCK_USER_DATA,
@@ -60,7 +60,7 @@ jest.mock('rest/miscAPI', () => ({
   ),
 }));
 
-jest.mock('components/UserList/UserListV1', () => {
+jest.mock('../../components/UserList/UserListV1', () => {
   return jest.fn().mockImplementation((prop) => (
     <div>
       <p>UserList.component</p>
@@ -81,7 +81,7 @@ jest.mock('components/UserList/UserListV1', () => {
     </div>
   ));
 });
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 

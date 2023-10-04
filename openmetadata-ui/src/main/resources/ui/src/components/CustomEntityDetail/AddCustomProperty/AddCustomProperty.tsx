@@ -13,19 +13,7 @@
 
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
-import { CUSTOM_PROPERTY_NAME_REGEX } from 'constants/regex.constants';
-import {
-  CUSTOM_PROPERTY_CATEGORY,
-  OPEN_METADATA,
-} from 'constants/service-guide.constant';
-import { EntityType } from 'enums/entity.enum';
-import { ServiceCategory } from 'enums/service.enum';
 import { t } from 'i18next';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import { isUndefined, map, startCase } from 'lodash';
 import React, {
   FocusEvent,
@@ -35,17 +23,29 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../constants/regex.constants';
+import {
+  CUSTOM_PROPERTY_CATEGORY,
+  OPEN_METADATA,
+} from '../../../constants/service-guide.constant';
+import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { Category, CustomProperty, Type } from '../../../generated/entity/type';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   addPropertyToEntity,
   getTypeByFQN,
   getTypeListByCategory,
-} from 'rest/metadataTypeAPI';
-import { generateFormFields } from 'utils/formUtils';
-import { getSettingOptionByEntityType } from 'utils/GlobalSettingsUtils';
-import { getSettingPath } from 'utils/RouterUtils';
-import { SUPPORTED_FIELD_TYPES } from '../../../constants/constants';
-import { Category, CustomProperty, Type } from '../../../generated/entity/type';
+} from '../../../rest/metadataTypeAPI';
+import { generateFormFields } from '../../../utils/formUtils';
+import { getSettingOptionByEntityType } from '../../../utils/GlobalSettingsUtils';
+import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 
 const AddCustomProperty = () => {
   const { entityTypeFQN } = useParams<{ entityTypeFQN: EntityType }>();

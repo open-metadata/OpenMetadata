@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { EntityUnion } from 'components/Explore/explore.interface';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { EntityUnion } from './components/Explore/explore.interface';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {

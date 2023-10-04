@@ -12,28 +12,28 @@
  */
 
 import { AxiosError } from 'axios';
-import { useWebSocketConnector } from 'components/web-scoket/web-scoket.provider';
-import {
-  ELASTIC_SEARCH_INDEX_ENTITIES,
-  ELASTIC_SEARCH_INITIAL_VALUES,
-} from 'constants/elasticsearch.constant';
-import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
 import { isEqual } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  getBatchJobReIndexStatus,
-  getStreamJobReIndexStatus,
-  reIndexByPublisher,
-  stopBatchJobReIndex,
-} from 'rest/elasticSearchReIndexAPI';
+import { useWebSocketConnector } from '../../components/web-scoket/web-scoket.provider';
 import { SOCKET_EVENTS } from '../../constants/constants';
+import {
+  ELASTIC_SEARCH_INDEX_ENTITIES,
+  ELASTIC_SEARCH_INITIAL_VALUES,
+} from '../../constants/elasticsearch.constant';
+import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../enums/ElasticSearch.enum';
 import { CreateEventPublisherJob } from '../../generated/api/createEventPublisherJob';
 import {
   EventPublisherJob,
   RunMode,
 } from '../../generated/system/eventPublisherJob';
+import {
+  getBatchJobReIndexStatus,
+  getStreamJobReIndexStatus,
+  reIndexByPublisher,
+  stopBatchJobReIndex,
+} from '../../rest/elasticSearchReIndexAPI';
 import { getJobDetailsCard } from '../../utils/EventPublisherUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ReIndexAllModal from './ElasticSearchReIndexModal.component';

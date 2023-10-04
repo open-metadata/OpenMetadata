@@ -53,8 +53,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS = "owner,entityLink,testSuite,testDefinition";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
 
-  public TestCaseRepository(CollectionDAO dao) {
-    super(COLLECTION_PATH, TEST_CASE, TestCase.class, dao.testCaseDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public TestCaseRepository() {
+    super(
+        COLLECTION_PATH,
+        TEST_CASE,
+        TestCase.class,
+        Entity.getCollectionDAO().testCaseDAO(),
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = true;
   }
 

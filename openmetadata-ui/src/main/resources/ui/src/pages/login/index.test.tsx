@@ -17,9 +17,9 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import SigninPage from './index';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;
@@ -28,11 +28,11 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
 jest.mock(
-  'components/ApplicationConfigProvider/ApplicationConfigProvider',
+  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
   () => ({
     useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
       customLogoUrlPath: 'https://customlink.source',

@@ -11,19 +11,22 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/data/table';
 import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
-import { formatUsersResponse } from 'utils/APIUtils';
-import { getEntityReferenceListFromEntities } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { searchData } from '../../../rest/miscAPI';
+import { getUsers } from '../../../rest/userAPI';
+import { formatUsersResponse } from '../../../utils/APIUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';

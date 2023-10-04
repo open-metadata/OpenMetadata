@@ -17,10 +17,10 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { EntityTabs } from '../../enums/entity.enum';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TopicDetails from './TopicDetails.component';
 import { TopicDetailsProps } from './TopicDetails.interface';
 import { TOPIC_DETAILS } from './TopicDetails.mock';
@@ -73,9 +73,12 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
+  }
+);
 
 jest.mock('../common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
@@ -85,7 +88,7 @@ jest.mock('../common/title-breadcrumb/title-breadcrumb.component', () => {
   return jest.fn().mockReturnValue(<p>Breadcrumb</p>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -93,7 +96,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockReturnValue(<p>TagsContainerV2</p>);
 });
 
@@ -117,9 +120,12 @@ jest.mock('./TopicSchema/TopicSchema', () => {
     .mockReturnValue(<div data-testid="schema-fields">TopicSchema</div>);
 });
 
-jest.mock('components/SampleDataWithMessages/SampleDataWithMessages', () => {
-  return jest.fn().mockReturnValue(<div>SampleDataWithMessages</div>);
-});
+jest.mock(
+  '../../components/SampleDataWithMessages/SampleDataWithMessages',
+  () => {
+    return jest.fn().mockReturnValue(<div>SampleDataWithMessages</div>);
+  }
+);
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),

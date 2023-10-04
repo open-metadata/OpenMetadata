@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { TagLabel } from 'generated/type/tagLabel';
+
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 
 export interface GlossaryTermSummaryProps {
   entityDetails: GlossaryTerm;

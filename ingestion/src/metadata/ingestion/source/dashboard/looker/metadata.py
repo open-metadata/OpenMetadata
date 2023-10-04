@@ -58,9 +58,6 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
     LookerConnection,
     NoGitCredentials,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
@@ -82,6 +79,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
@@ -152,15 +150,15 @@ class LookerSource(DashboardServiceSource):
     """
 
     config: WorkflowSource
-    metadata_config: OpenMetadataConnection
+    metadata: OpenMetadata
     client: Looker40SDK
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
 
         self._explores_cache = {}
@@ -174,16 +172,14 @@ class LookerSource(DashboardServiceSource):
         self._added_lineage: Optional[Dict] = {}
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection
-    ) -> "LookerSource":
+    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "LookerSource":
         config = WorkflowSource.parse_obj(config_dict)
         connection: LookerConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, LookerConnection):
             raise InvalidSourceException(
                 f"Expected LookerConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @staticmethod
     def __init_repo(

@@ -54,8 +54,8 @@ public class UsageRepository {
   private static final String POST = "createNew";
   private final CollectionDAO dao;
 
-  public UsageRepository(CollectionDAO dao) {
-    this.dao = dao;
+  public UsageRepository() {
+    this.dao = Entity.getCollectionDAO();
     Entity.setUsageRepository(this);
   }
 

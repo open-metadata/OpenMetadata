@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 
 export type TeamStateType = {
   defaultOptions: SearchDropdownOption[];
