@@ -64,7 +64,7 @@ class SQASampler(SamplerInterface):
     """
 
     def _base_sample_query(self, label=None):
-        if label:
+        if label is not None:
             return self.client.query(self.table, label)
         return self.client.query(self.table)
 
