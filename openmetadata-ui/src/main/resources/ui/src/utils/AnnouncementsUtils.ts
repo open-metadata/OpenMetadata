@@ -19,7 +19,20 @@ export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TOPIC,
   EntityType.PIPELINE,
   EntityType.MLMODEL,
+  EntityType.CONTAINER,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.STORED_PROCEDURE,
   EntityType.SEARCH_INDEX,
+  EntityType.DATABASE,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.SEARCH_SERVICE,
 ];
 
 export const isActiveAnnouncement = (startTime: number, endTime: number) => {
