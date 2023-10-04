@@ -17,6 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -36,6 +39,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -58,7 +62,6 @@ import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.reflections.Reflections;
 
 @Slf4j
 public final class Entity {
@@ -239,13 +242,13 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(CollectionDAO collectionDAO) {
+  public static void initializeRepositories(Jdbi jdbi, CollectionDAO collectionDAO) {
     if (!initializedRepositories) {
       Entity.collectionDAO = collectionDAO;
       tokenRepository = new TokenRepository(collectionDAO);
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
-      Set<Class<?>> repositories = getRepositories();
+      List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
@@ -253,6 +256,11 @@ public final class Entity {
         try {
           clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
         } catch (Exception e) {
+          try {
+            clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
+          } catch (Exception ex) {
+            LOG.warn("Exception encountered", ex);
+          }
           LOG.warn("Exception encountered", e);
         }
       }
@@ -511,9 +519,10 @@ public final class Entity {
   }
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
-  private static Set<Class<?>> getRepositories() {
-    // Get classes marked with @Repository annotation
-    Reflections reflections = new Reflections("org.openmetadata.service.jdbi3");
-    return reflections.getTypesAnnotatedWith(Repository.class);
+  private static List<Class<?>> getRepositories() {
+    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
+      return classList.loadClasses();
+    }
   }
 }

@@ -352,7 +352,7 @@ public final class TablesInitializer {
       Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class));
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }
