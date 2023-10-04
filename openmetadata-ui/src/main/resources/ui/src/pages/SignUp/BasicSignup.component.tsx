@@ -12,17 +12,17 @@
  */
 
 import { Button, Divider, Form, Input, Typography } from 'antd';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandImage from 'components/common/BrandImage/BrandImage';
-import { AuthProvider } from 'generated/settings/settings';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
+import { AuthProvider } from '../../generated/settings/settings';
 import LoginCarousel from '../login/LoginCarousel';
 import './../login/login.style.less';
 

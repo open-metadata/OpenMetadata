@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { Button } from 'antd';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-outlined.svg';
 import classNames from 'classnames';
-import { EntityLineageNodeType } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/type';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
-import { isLeafNode } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
+import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { isLeafNode } from '../../../utils/EntityUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import {
   LeafNodes,
   LineagePos,

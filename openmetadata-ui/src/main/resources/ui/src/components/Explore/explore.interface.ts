@@ -12,24 +12,24 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { SORT_ORDER } from 'enums/common.enum';
-import { Tag } from 'generated/entity/classification/tag';
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { Glossary } from 'generated/entity/data/glossary';
-import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Database } from '../../generated/entity/data/database';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Glossary } from '../../generated/entity/data/glossary';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 
 export type UrlParams = {

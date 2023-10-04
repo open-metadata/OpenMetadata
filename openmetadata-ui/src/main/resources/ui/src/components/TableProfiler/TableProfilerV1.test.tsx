@@ -20,12 +20,12 @@ import {
   screen,
 } from '@testing-library/react';
 import React from 'react';
+// internal imports
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
 import { TEST_CASE } from '../../mocks/TableData.mock';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import { TableProfilerProps } from './TableProfiler.interface';
-// internal imports
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
 import TableProfilerV1 from './TableProfilerV1';
 
 const mockLocation = {
@@ -65,12 +65,12 @@ jest.mock('../../utils/CommonUtils', () => ({
   getStatisticsDisplayValue: jest.fn(),
 }));
 
-jest.mock('rest/testAPI', () => ({
+jest.mock('../../rest/testAPI', () => ({
   getListTestCase: jest
     .fn()
     .mockImplementation(() => Promise.resolve(TEST_CASE)),
 }));
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('./QualityTab/QualityTab.component', () => ({

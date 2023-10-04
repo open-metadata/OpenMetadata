@@ -13,7 +13,6 @@
 
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -45,6 +44,7 @@ import {
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
   axisTickFormatter,
   updateActiveChartFilter,

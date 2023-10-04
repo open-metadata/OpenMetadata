@@ -12,10 +12,10 @@
  */
 import { FilterOutlined } from '@ant-design/icons';
 import { Button, Checkbox, List, Popover, Space, Typography } from 'antd';
-import AppState from 'AppState';
-import { FeedFilter } from 'enums/mydata.enum';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import AppState from '../../../AppState';
+import { FeedFilter } from '../../../enums/mydata.enum';
 import './feeds-filter-popover.less';
 import { FeedsFilterPopoverProps } from './FeedsFilterPopover.interface';
 

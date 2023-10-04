@@ -13,7 +13,6 @@
 
 import { Typography } from 'antd';
 import { diffArrays } from 'diff';
-import { TagLabel } from 'generated/type/tagLabel';
 import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,6 +20,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';

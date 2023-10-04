@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Space } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
-import { ReactComponent as UnlinkIcon } from 'assets/svg/ic-format-unlink.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as UnlinkIcon } from '../../../assets/svg/ic-format-unlink.svg';
 
 import React, { FC } from 'react';
 

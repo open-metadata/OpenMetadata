@@ -22,39 +22,46 @@ import {
   Tooltip,
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
-import { ReactComponent as PlusOutlinedIcon } from 'assets/svg/plus-outlined.svg';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import StatusBadge from 'components/common/StatusBadge/StatusBadge.component';
-import Loader from 'components/Loader/Loader';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { TABLE_CONSTANTS } from 'constants/Teams.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import {
-  EntityReference,
-  GlossaryTerm,
-  Status,
-} from 'generated/entity/data/glossaryTerm';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { patchGlossaryTerm } from 'rest/glossaryAPI';
-import { Transi18next } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { buildTree, StatusClass, StatusFilters } from 'utils/GlossaryUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
-import { FilterIcon, getTableExpandableConfig } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
+import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
+import Loader from '../../../components/Loader/Loader';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import {
+  EntityReference,
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
+import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  buildTree,
+  StatusClass,
+  StatusFilters,
+} from '../../../utils/GlossaryUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
+import {
+  FilterIcon,
+  getTableExpandableConfig,
+} from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DraggableBodyRowProps,
   GlossaryTermTabProps,

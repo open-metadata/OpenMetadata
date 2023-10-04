@@ -18,7 +18,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DomainIndex implements ElasticSearchIndex {
+public class DomainIndex implements SearchIndex {
 
   private static final List<String> excludeFields = List.of("changeDescription");
 

@@ -84,12 +84,6 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create metadata with mandatory "brokers" field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -107,6 +101,9 @@ public class MetadataServiceResourceTest extends EntityResourceTest<MetadataServ
                             .withUsername("admin")
                             .withPassword("admin"))),
         ADMIN_AUTH_HEADERS);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test

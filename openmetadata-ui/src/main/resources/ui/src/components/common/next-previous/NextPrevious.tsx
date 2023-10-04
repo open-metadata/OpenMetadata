@@ -17,13 +17,13 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
+import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
-} from 'constants/constants';
-import React, { FC } from 'react';
-import { useTranslation } from 'react-i18next';
+} from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 

@@ -23,18 +23,7 @@ import {
   Select,
   Space,
 } from 'antd';
-import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
-import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import SearchOptions from 'components/AppBar/SearchOptions';
-import Suggestions from 'components/AppBar/Suggestions';
-import BrandImage from 'components/common/BrandImage/BrandImage';
-import { useDomainProvider } from 'components/Domain/DomainProvider/DomainProvider';
-import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
 import React, {
@@ -46,19 +35,29 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getEntityDetailLink, refreshPage } from 'utils/CommonUtils';
-import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
+import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import Logo from '../../assets/svg/logo-monogram.svg';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import SearchOptions from '../../components/AppBar/SearchOptions';
+import Suggestions from '../../components/AppBar/Suggestions';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
+import { useDomainProvider } from '../../components/Domain/DomainProvider/DomainProvider';
+import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
+import WhatsNewAlert from '../../components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import {
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
+import { getEntityDetailLink, refreshPage } from '../../utils/CommonUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -68,6 +67,7 @@ import {
   languageSelectOptions,
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
+import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,

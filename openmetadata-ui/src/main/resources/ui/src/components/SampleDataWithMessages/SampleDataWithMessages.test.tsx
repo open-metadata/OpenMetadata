@@ -12,9 +12,9 @@
  */
 
 import { act, render } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityType } from '../../enums/entity.enum';
 import SampleDataWithMessages from './SampleDataWithMessages';
 
 const mockSampleData = {
@@ -24,7 +24,7 @@ const mockSampleData = {
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
 }));
-jest.mock('rest/topicsAPI', () => ({
+jest.mock('../../rest/topicsAPI', () => ({
   getSampleDataByTopicId: jest
     .fn()
     .mockImplementation(() => ({ sampleData: mockSampleData })),

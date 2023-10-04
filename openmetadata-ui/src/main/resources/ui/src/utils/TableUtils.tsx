@@ -14,16 +14,7 @@
 import Icon, { FilterOutlined, SearchOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
-import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
-import { ReactComponent as ContainerIcon } from 'assets/svg/ic-storage.svg';
 import classNames from 'classnames';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { Field } from 'generated/type/schema';
 import { t } from 'i18next';
 import {
   isUndefined,
@@ -36,15 +27,21 @@ import {
 } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import React from 'react';
+import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
+import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
@@ -54,6 +51,7 @@ import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { SourceType } from '../components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -78,11 +76,13 @@ import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constant
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
+import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import {
   getPartialNameFromTableFQN,

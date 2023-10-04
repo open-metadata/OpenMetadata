@@ -39,7 +39,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
 
@@ -73,26 +73,26 @@ jest.mock('./UsersProfile/UserProfileTeams/UserProfileTeams.component', () => {
   return jest.fn().mockReturnValue(<div>UserProfileTeams</div>);
 });
 
-jest.mock('components/searched-data/SearchedData', () => {
+jest.mock('../../components/searched-data/SearchedData', () => {
   return jest.fn().mockReturnValue(<p>SearchedData</p>);
 });
 
 jest.mock(
-  'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
+  '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component',
   () => {
     return jest.fn().mockReturnValue(<p>EntitySummaryPanel</p>);
   }
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
   }
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
@@ -100,7 +100,7 @@ jest.mock(
   })
 );
 
-jest.mock('rest/teamsAPI', () => ({
+jest.mock('../../rest/teamsAPI', () => ({
   getTeams: jest.fn().mockImplementation(() => Promise.resolve(mockTeamsData)),
 }));
 
@@ -164,7 +164,7 @@ const mockProp = {
   onSwitchChange: jest.fn(),
 };
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../rest/userAPI', () => ({
   checkValidImage: jest.fn().mockImplementation(() => Promise.resolve(true)),
 }));
 

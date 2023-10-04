@@ -13,19 +13,12 @@
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Input, Row, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createBotWithPut } from 'rest/botsAPI';
-import {
-  createUserWithPut,
-  getAuthMechanismForBotUser,
-  getRoles,
-} from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -36,6 +29,13 @@ import {
   AuthenticationMechanism,
   AuthType,
 } from '../../generated/entity/teams/user';
+import { createBotWithPut } from '../../rest/botsAPI';
+import {
+  createUserWithPut,
+  getAuthMechanismForBotUser,
+  getRoles,
+} from '../../rest/userAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Description from '../common/description/Description';

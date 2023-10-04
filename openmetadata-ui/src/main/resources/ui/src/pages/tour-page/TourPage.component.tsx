@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import Tour from 'components/tour/Tour';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
 import { observer } from 'mobx-react';
-import ExplorePageV1Component from 'pages/explore/ExplorePageV1.component';
-import MyDataPageV1 from 'pages/MyDataPage/MyDataPageV1.component';
-import TableDetailsPageV1 from 'pages/TableDetailsPageV1/TableDetailsPageV1';
 import React, { useEffect } from 'react';
+import Tour from '../../components/tour/Tour';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import ExplorePageV1Component from '../../pages/explore/ExplorePageV1.component';
+import MyDataPageV1 from '../../pages/MyDataPage/MyDataPageV1.component';
+import TableDetailsPageV1 from '../../pages/TableDetailsPageV1/TableDetailsPageV1';
 import { getTourSteps } from '../../utils/TourUtils';
 
 const TourPage = () => {

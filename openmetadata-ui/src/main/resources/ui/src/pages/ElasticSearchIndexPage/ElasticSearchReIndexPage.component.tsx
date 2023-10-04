@@ -12,19 +12,19 @@
  */
 
 import { Col, Row, Tabs, TabsProps } from 'antd';
-import PageHeader from 'components/header/PageHeader.component';
-import SettingsIngestion from 'components/SettingsIngestion/SettingsIngestion.component';
-import TriggerReIndexing from 'components/TriggerReIndexing/TriggerReIndexing.component';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
-import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from 'enums/ElasticSearch.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getSettingsPathWithFqn } from 'utils/RouterUtils';
+import PageHeader from '../../components/header/PageHeader.component';
+import SettingsIngestion from '../../components/SettingsIngestion/SettingsIngestion.component';
+import TriggerReIndexing from '../../components/TriggerReIndexing/TriggerReIndexing.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../enums/ElasticSearch.enum';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
 import './ElasticSearchReIndex.style.less';
 
 const ElasticSearchIndexPage = () => {

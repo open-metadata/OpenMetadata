@@ -17,7 +17,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class QueryIndex implements ElasticSearchIndex {
+public class QueryIndex implements SearchIndex {
   final List<String> excludeTopicFields = List.of("changeDescription");
   final Query query;
 

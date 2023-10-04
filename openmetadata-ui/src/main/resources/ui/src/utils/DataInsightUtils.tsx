@@ -13,7 +13,6 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import {
   first,
@@ -33,6 +32,7 @@ import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -40,7 +40,6 @@ import {
 } from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
-  TIER_DATA,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -68,8 +67,7 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  activeKeys = [] as string[],
-  isTier = false
+  activeKeys = [] as string[]
 ) => {
   const { payload = [] } = legendData;
 
@@ -103,9 +101,7 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {isTier
-                ? TIER_DATA[entry.value as keyof typeof TIER_DATA]
-                : entry.value}
+              {entry.value}
             </span>
           </li>
         );
@@ -150,13 +146,7 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const {
-    active,
-    payload = [],
-    isPercentage,
-    kpiTooltipRecord,
-    isTier,
-  } = props;
+  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
 
   if (active && payload && payload.length) {
     const timestamp = formatDate(payload[0].payload.timestampValue || 0);
@@ -173,9 +163,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               <Surface className="mr-2" height={12} version="1.1" width={12}>
                 <rect fill={entry.color} height="14" rx="2" width="14" />
               </Surface>
-              {isTier
-                ? TIER_DATA[entry.dataKey as keyof typeof TIER_DATA]
-                : entry.dataKey}
+              {entry.dataKey}
             </span>
             <span className="font-medium">
               {getEntryFormattedValue(
