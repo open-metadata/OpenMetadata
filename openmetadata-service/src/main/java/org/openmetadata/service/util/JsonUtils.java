@@ -117,6 +117,14 @@ public final class JsonUtils {
     return map;
   }
 
+  public static <T> T readValue(String json, String clazzName) {
+    try {
+      return (T) readValue(json, Class.forName(clazzName));
+    } catch (ClassNotFoundException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
   public static <T> T readValue(String json, Class<T> clz) {
     if (json == null) {
       return null;

@@ -63,12 +63,6 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create StorageService with mandatory connection field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -79,6 +73,9 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
 
     createAndCheckEntity(createRequest(test, 3).withConnection(TestUtils.S3_STORAGE_CONNECTION), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test

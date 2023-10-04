@@ -12,14 +12,14 @@
  *  limitations under the License.
  */
 
+import { PagingResponse } from 'Models';
+import axiosClient from '.';
 import {
   EventSubscription,
   Status,
   SubscriptionType,
-} from 'generated/events/eventSubscription';
-import { SubscriptionResourceDescriptor } from 'generated/events/subscriptionResourceDescriptor';
-import { PagingResponse } from 'Models';
-import axiosClient from '.';
+} from '../generated/events/eventSubscription';
+import { SubscriptionResourceDescriptor } from '../generated/events/subscriptionResourceDescriptor';
 import { Function } from '../generated/type/function';
 
 const BASE_URL = '/events/subscriptions';

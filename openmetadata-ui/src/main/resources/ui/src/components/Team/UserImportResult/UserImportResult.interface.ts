@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CSVImportResult } from 'generated/type/csvImportResult';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
 
 export interface UserImportResultProps {
   csvImportResult: CSVImportResult;

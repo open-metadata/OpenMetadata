@@ -59,6 +59,14 @@
       },
       "default": null
     },
+    "personas": {
+      "description": "Persona that the user belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "defaultPersona": {
+      "description": "Default Persona from User's Personas.",
+      "$ref": "../../type/entityReference.json"
+    },
     "authenticationMechanism": {
       "description": "Authentication mechanism specified ",
       "$ref": "../../entity/teams/user.json#/definitions/authenticationMechanism",

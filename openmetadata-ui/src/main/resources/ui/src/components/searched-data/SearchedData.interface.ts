@@ -77,8 +77,8 @@ export type SourceType = (
     >
 ) & {
   id: string;
-  tier?: string | Pick<TagLabel, 'tagFQN'>;
-  tags?: string[] | TagLabel[];
+  tier?: string | TagLabel;
+  tags?: TagLabel[];
   entityType?: string;
   service?: EntityReference;
   owner?: Partial<

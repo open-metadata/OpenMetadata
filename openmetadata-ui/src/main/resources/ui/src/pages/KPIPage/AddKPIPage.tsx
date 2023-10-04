@@ -27,17 +27,15 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
 import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getListDataInsightCharts } from 'rest/DataInsightAPI';
-import { getListKPIs, postKPI } from 'rest/KpiAPI';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   KPI_DATE_PICKER_FORMAT,
@@ -54,6 +52,8 @@ import {
 } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { getListDataInsightCharts } from '../../rest/DataInsightAPI';
+import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
   getDisabledDates,
   getKpiTargetValueByMetricType,

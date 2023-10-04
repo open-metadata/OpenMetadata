@@ -26,9 +26,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
@@ -38,6 +35,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -64,7 +62,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksPipelineConnection = (
@@ -74,7 +72,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             raise InvalidSourceException(
                 f"Expected DatabricksPipelineConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[dict]:
         for workflow in self.client.list_jobs():

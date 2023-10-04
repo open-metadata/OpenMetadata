@@ -14,23 +14,21 @@ Kafka source ingestion
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.common_broker_source import CommonBrokerSource
 
 
 class KafkaSource(CommonBrokerSource):
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: KafkaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, KafkaConnection):
             raise InvalidSourceException(
                 f"Expected KafkaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)

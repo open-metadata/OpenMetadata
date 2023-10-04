@@ -12,12 +12,12 @@
  */
 import Icon from '@ant-design/icons';
 import { Col, Radio, Row } from 'antd';
-import { ReactComponent as GridIcon } from 'assets/svg/ic-grid.svg';
-import { ReactComponent as ListIcon } from 'assets/svg/ic-list.svg';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import Table from 'components/common/Table/Table';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as GridIcon } from '../../assets/svg/ic-grid.svg';
+import { ReactComponent as ListIcon } from '../../assets/svg/ic-list.svg';
+import Searchbar from '../../components/common/searchbar/Searchbar';
+import Table from '../../components/common/Table/Table';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
 
 // eslint-disable-next-line @typescript-eslint/ban-types, @typescript-eslint/no-explicit-any

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { ResourcePermission } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Paging } from '../generated/type/paging';
 import APIClient from './index';

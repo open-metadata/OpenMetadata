@@ -12,35 +12,35 @@
  */
 
 import { Button, Space, Tag, Tooltip, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as ExternalLinkIcon } from 'assets/svg/external-links.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
 import classNames from 'classnames';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagButton from 'components/TagButton/TagButton.component';
+import { t } from 'i18next';
+import { cloneDeep, isEmpty, isEqual } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
+import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
+import TagButton from '../../../../components/TagButton/TagButton.component';
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
   SUCCESS_COLOR,
   TEXT_BODY_COLOR,
   TEXT_GREY_MUTED,
-} from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
+} from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import {
   GlossaryTerm,
   TermReference,
-} from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription } from 'generated/entity/type';
-import { t } from 'i18next';
-import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+} from '../../../../generated/entity/data/glossaryTerm';
+import { ChangeDescription } from '../../../../generated/entity/type';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from 'utils/EntityVersionUtils';
-import { VersionStatus } from 'utils/EntityVersionUtils.interface';
+} from '../../../../utils/EntityVersionUtils';
+import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 interface GlossaryTermReferencesProps {

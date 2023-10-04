@@ -12,48 +12,7 @@
  */
 
 import { Popover } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import QueryCount from 'components/common/QueryCount/QueryCount.component';
-import { DataAssetsWithoutServiceField } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import {
-  LeafNodes,
-  LineagePos,
-} from 'components/Entity/EntityLineage/EntityLineage.interface';
-import {
-  EntityUnion,
-  EntityWithServices,
-} from 'components/Explore/explore.interface';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import {
-  SearchedDataProps,
-  SourceType,
-} from 'components/searched-data/SearchedData.interface';
-import { QueryVoteType } from 'components/TableQueries/TableQueries.interface';
-import { EntityField } from 'constants/Feeds.constants';
-import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { Tag } from 'generated/entity/classification/tag';
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import {
-  SearchIndex as SearchIndexAsset,
-  SearchIndex as SearchIndexEntity,
-  SearchIndexField,
-} from 'generated/entity/data/searchIndex';
-import {
-  StoredProcedure,
-  StoredProcedureCodeObject,
-} from 'generated/entity/data/storedProcedure';
-import { Topic } from 'generated/entity/data/topic';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Votes } from 'generated/type/votes';
 import i18next from 'i18next';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import {
   get,
   isEmpty,
@@ -66,6 +25,23 @@ import {
 import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import QueryCount from '../components/common/QueryCount/QueryCount.component';
+import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import {
+  LeafNodes,
+  LineagePos,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
+import {
+  EntityUnion,
+  EntityWithServices,
+} from '../components/Explore/explore.interface';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+import {
+  SearchedDataProps,
+  SourceType,
+} from '../components/searched-data/SearchedData.interface';
+import { QueryVoteType } from '../components/TableQueries/TableQueries.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -83,11 +59,31 @@ import {
   getTopicDetailsPath,
   NO_DATA,
 } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
+import { Tag } from '../generated/entity/classification/tag';
+import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import {
+  SearchIndex as SearchIndexAsset,
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
+import {
+  StoredProcedure,
+  StoredProcedureCodeObject,
+} from '../generated/entity/data/storedProcedure';
 import {
   Column,
   ColumnJoins,
@@ -95,9 +91,13 @@ import {
   Table,
   TableType,
 } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
+import { Votes } from '../generated/type/votes';
+import { EntityFieldThreadCount } from '../interface/feed.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,

@@ -18,9 +18,6 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableType
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -32,7 +29,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.ometa.client_utils import create_ometa_client
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.source.base.profiler_source import ProfilerSource
 from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.utils import fqn
@@ -70,14 +67,13 @@ class OpenMetadataSource(Source):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
 
         super().__init__()
 
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = create_ometa_client(self.metadata_config)
+        self.metadata = metadata
         self.test_connection()
 
         # Init and type the source config
@@ -141,11 +137,9 @@ class OpenMetadataSource(Source):
                 )
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection
-    ) -> "Step":
+    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
-        return cls(config=config, metadata_config=metadata_config)
+        return cls(config=config, metadata=metadata)
 
     def filter_databases(self, database: Database) -> Optional[Database]:
         """Returns filtered database entities"""

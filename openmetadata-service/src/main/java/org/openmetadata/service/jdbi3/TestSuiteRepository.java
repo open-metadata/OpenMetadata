@@ -32,13 +32,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
 
-  public TestSuiteRepository(CollectionDAO dao) {
+  public TestSuiteRepository() {
     super(
         TestSuiteResource.COLLECTION_PATH,
         TEST_SUITE,
         TestSuite.class,
-        dao.testSuiteDAO(),
-        dao,
+        Entity.getCollectionDAO().testSuiteDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     quoteFqn = false;

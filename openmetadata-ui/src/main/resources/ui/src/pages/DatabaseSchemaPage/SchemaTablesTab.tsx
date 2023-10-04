@@ -13,23 +13,23 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TableAntd from 'components/common/Table/Table';
-import { PAGE_SIZE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { Table } from 'generated/entity/data/table';
 import { PagingResponse } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityLink } from 'utils/TableUtils';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import TableAntd from '../../components/common/Table/Table';
+import { PAGE_SIZE } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Table } from '../../generated/entity/data/table';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityLink } from '../../utils/TableUtils';
 
 interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;

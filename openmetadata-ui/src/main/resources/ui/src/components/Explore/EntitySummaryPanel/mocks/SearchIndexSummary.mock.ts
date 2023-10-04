@@ -18,7 +18,7 @@ import {
   SearchServiceType,
   State,
   TagSource,
-} from 'generated/entity/data/searchIndex';
+} from '../../../../generated/entity/data/searchIndex';
 
 export const mockSearchIndexEntityDetails: SearchIndex = {
   id: 'e157b054-e9d1-428b-97b6-12a36d6c1146',

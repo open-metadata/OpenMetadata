@@ -13,27 +13,14 @@
 
 import { RightOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
-import { MentionSuggestionsItem } from 'components/FeedEditor/FeedEditor.interface';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { Operation } from 'fast-json-patch';
 import i18next from 'i18next';
 import { isEqual } from 'lodash';
 import React from 'react';
-import {
-  deletePostById,
-  deleteThread,
-  getFeedById,
-  updatePost,
-  updateThread,
-} from 'rest/feedsAPI';
-import {
-  getSearchedUsers,
-  getSuggestions,
-  getUserSuggestions,
-  searchData,
-} from 'rest/miscAPI';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
+import { MentionSuggestionsItem } from '../components/FeedEditor/FeedEditor.interface';
+import { SearchedDataProps } from '../components/searched-data/SearchedData.interface';
 import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
@@ -57,6 +44,19 @@ import {
   EntityFieldThreads,
   EntityThreadField,
 } from '../interface/feed.interface';
+import {
+  deletePostById,
+  deleteThread,
+  getFeedById,
+  updatePost,
+  updateThread,
+} from '../rest/feedsAPI';
+import {
+  getSearchedUsers,
+  getSuggestions,
+  getUserSuggestions,
+  searchData,
+} from '../rest/miscAPI';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -570,6 +570,10 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
       EntityType.DASHBOARD_SERVICE,
       EntityType.MESSAGING_SERVICE,
       EntityType.PIPELINE_SERVICE,
+      EntityType.MLMODEL_SERVICE,
+      EntityType.METADATA_SERVICE,
+      EntityType.STORAGE_SERVICE,
+      EntityType.SEARCH_SERVICE,
       EntityType.TYPE,
       EntityType.MLMODEL,
     ].includes(entityType as EntityType)

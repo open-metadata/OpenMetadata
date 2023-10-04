@@ -17,9 +17,9 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AppState from 'AppState';
-import { refreshTokenKey } from 'constants/constants';
 import React from 'react';
+import AppState from '../../../AppState';
+import { refreshTokenKey } from '../../../constants/constants';
 import AuthProvider, { useAuthContext } from './AuthProvider';
 
 const localStorageMock = {
@@ -38,14 +38,14 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../../rest/miscAPI', () => ({
   fetchAuthenticationConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
   fetchAuthorizerConfig: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../../rest/userAPI', () => ({
   getLoggedInUser: jest.fn().mockImplementation(() => Promise.resolve()),
   updateUser: jest.fn().mockImplementation(() => Promise.resolve()),
 }));

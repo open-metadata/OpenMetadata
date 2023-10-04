@@ -15,8 +15,8 @@ import { uniqueId } from 'lodash';
 import { ImageShape } from 'Models';
 import React, { FC, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getOwnerValue } from 'utils/CommonUtils';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getOwnerValue } from '../../../utils/CommonUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 

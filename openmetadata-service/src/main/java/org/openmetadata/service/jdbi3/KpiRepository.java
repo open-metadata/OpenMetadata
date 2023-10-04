@@ -23,6 +23,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -37,8 +38,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
       "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
-  public KpiRepository(CollectionDAO dao) {
-    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public KpiRepository() {
+    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, Entity.getCollectionDAO().kpiDAO(), PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override
@@ -151,8 +152,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
     return JsonUtils.readValue(getLatestExtensionFromTimeseries(fqn, KPI_RESULT_EXTENSION), KpiResult.class);
   }
 
-  public ResultList<KpiResult> getKpiResults(
-      String fqn, Long startTs, Long endTs, CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+  public ResultList<KpiResult> getKpiResults(String fqn, Long startTs, Long endTs, OrderBy orderBy) {
     List<KpiResult> kpiResults;
     kpiResults =
         JsonUtils.readObjects(

@@ -15,7 +15,7 @@ import { Image, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
-import { isInViewport } from 'utils/BlockEditorUtils';
+import { isInViewport } from '../../../../utils/BlockEditorUtils';
 
 export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;

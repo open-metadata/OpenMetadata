@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import { LOADING_STATE } from 'enums/common.enum';
-import { MOCK_LINEAGE_DATA } from 'mocks/Lineage.mock';
 import React from 'react';
+import { LOADING_STATE } from '../../../enums/common.enum';
+import { MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import CustomControlsComponent from './CustomControls.component';
 
 const mockFitView = jest.fn();

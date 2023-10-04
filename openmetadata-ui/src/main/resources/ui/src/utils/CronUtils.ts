@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { isEmpty, toNumber } from 'lodash';
 import {
   combinations,
   getDayCron,
@@ -21,7 +22,7 @@ import {
   getYearCron,
   SELECTED_PERIOD_OPTIONS,
   toDisplay,
-} from 'components/common/CronEditor/CronEditor.constant';
+} from '../components/common/CronEditor/CronEditor.constant';
 import {
   Combination,
   CronType,
@@ -29,8 +30,7 @@ import {
   SelectedYearOption,
   StateValue,
   ToDisplay,
-} from 'components/common/CronEditor/CronEditor.interface';
-import { isEmpty, toNumber } from 'lodash';
+} from '../components/common/CronEditor/CronEditor.interface';
 
 export const getCron = (state: StateValue) => {
   const {

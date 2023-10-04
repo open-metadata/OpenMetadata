@@ -22,13 +22,13 @@ import org.openmetadata.service.resources.services.database.DatabaseServiceResou
 
 @Slf4j
 public class DatabaseServiceRepository extends ServiceEntityRepository<DatabaseService, DatabaseConnection> {
-  public DatabaseServiceRepository(CollectionDAO dao) {
+  public DatabaseServiceRepository() {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
         Entity.DATABASE_SERVICE,
-        dao,
-        dao.dbServiceDAO(),
+        Entity.getCollectionDAO().dbServiceDAO(),
         DatabaseConnection.class,
+        "",
         ServiceType.DATABASE);
     supportsSearch = true;
   }

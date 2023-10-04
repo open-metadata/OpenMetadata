@@ -15,8 +15,11 @@ import { List, Space, Typography } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
 import { ThreadType } from '../../generated/entity/feed/thread';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../utils/date-time/DateTimeUtils';
 import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../utils/TasksUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';

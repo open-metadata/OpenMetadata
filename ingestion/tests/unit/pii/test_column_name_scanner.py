@@ -13,7 +13,7 @@ Test Column Name Scanner
 """
 from unittest import TestCase
 
-from metadata.pii.models import TagAndConfidence, TagType
+from metadata.pii.models import TagAndConfidence
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 
 EXPECTED_SENSITIVE = TagAndConfidence(
