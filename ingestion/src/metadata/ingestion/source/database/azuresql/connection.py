@@ -33,6 +33,11 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_GET_DATABASE,
+    MSSQL_GET_SCHEMA_NAMES,
+    MSSQL_GET_TABLES_NAMES,
+)
 
 
 def get_connection_url(connection: Union[AzureSQLConnection, MssqlConnection]) -> str:
@@ -87,9 +92,15 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    queries = {
+        "GetDatabases": MSSQL_GET_DATABASE,
+        "GetSchemas": MSSQL_GET_SCHEMA_NAMES.format(""),
+        "GetTables": MSSQL_GET_TABLES_NAMES.format(""),
+    }
     test_connection_db_common(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        queries=queries,
     )

@@ -34,6 +34,8 @@ from metadata.ingestion.source.database.azuresql.connection import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
+    MSSQL_GET_SCHEMA_NAMES,
+    MSSQL_GET_TABLES_NAMES,
     MSSQL_TEST_GET_QUERIES,
 )
 
@@ -68,6 +70,8 @@ def test_connection(
     queries = {
         "GetQueries": MSSQL_TEST_GET_QUERIES,
         "GetDatabases": MSSQL_GET_DATABASE,
+        "GetSchemas": MSSQL_GET_SCHEMA_NAMES.format(""),
+        "GetTables": MSSQL_GET_TABLES_NAMES.format(""),
     }
     test_connection_db_common(
         metadata=metadata,

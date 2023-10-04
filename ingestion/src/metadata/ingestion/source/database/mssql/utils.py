@@ -34,6 +34,7 @@ from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_ALL_VIEW_DEFINITIONS,
+    MSSQL_GET_SCHEMA_NAMES,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -284,3 +285,38 @@ def get_view_definition(
         schema=owner,
         query=MSSQL_ALL_VIEW_DEFINITIONS,
     )
+
+
+def get_filter_pattern_query(filter_pattern_name, name):
+    query_conditions = []
+    # Iterate over the list and build the query conditions
+    for pattern in filter_pattern_name:
+        query_conditions.append(f"{name} LIKE '{pattern}'")
+
+    # Join the query conditions with 'OR' and add them to the SQL query
+    if query_conditions:
+        query_condition = " OR ".join(query_conditions)
+    return query_condition
+
+
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_schema_names(self, connection, **kw):
+    format_pattern = "where " + get_filter_pattern_query(
+        kw["filter_schema_name"], "name"
+    )
+    query = MSSQL_GET_SCHEMA_NAMES
+    cursor = connection.execute(
+        query.format(format_pattern)
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else query.format("")
+    )
+    result = [self.normalize_name(row[0]) for row in cursor]
+    return result

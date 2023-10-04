@@ -86,3 +86,12 @@ MSSQL_TEST_GET_QUERIES = textwrap.dedent(
         ON db.database_id = t.dbid
 """
 )
+
+MSSQL_GET_SCHEMA_NAMES = """
+SELECT name FROM sys.schemas {} """
+
+MSSQL_GET_TABLES_NAMES = """
+SELECT table_name
+FROM INFORMATION_SCHEMA.TABLES
+WHERE table_type = 'BASE TABLE' {}
+"""
