@@ -35,6 +35,8 @@ from metadata.generated.schema.entity.data import (
     pipeline,
     table,
     topic,
+    searchIndex,
+    storedProcedure,
 )
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -56,6 +58,8 @@ ENTITIES = [
     table.Table,
     topic.Topic,
     container.Container,
+    storedProcedure.StoredProcedure,
+    searchIndex.SearchIndex,
 ]
 
 T = TypeVar("T", *ENTITIES)  # type: ignore

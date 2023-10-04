@@ -26,6 +26,8 @@ from metadata.generated.schema.entity.data import (
     pipeline,
     table,
     topic,
+    searchIndex,
+    storedProcedure,
 )
 from metadata.utils.logger import data_insight_logger
 
@@ -45,6 +47,8 @@ class EntityProducer(ProducerInterface):
         table.Table,
         topic.Topic,
         container.Container,
+        storedProcedure.StoredProcedure,
+        searchIndex.SearchIndex,
     ]
 
     # pylint: disable=dangerous-default-value
