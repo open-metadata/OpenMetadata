@@ -345,7 +345,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Validating native migrations");
     ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
     MigrationWorkflow migrationWorkflow =
-        new MigrationWorkflow(jdbi, conf.getMigrationConfiguration().getNativePath(), connectionType, false);
+        new MigrationWorkflow(
+            jdbi,
+            conf.getMigrationConfiguration().getNativePath(),
+            connectionType,
+            conf.getMigrationConfiguration().getExtensionPath(),
+            false);
     migrationWorkflow.validateMigrationsForServer();
   }
 
