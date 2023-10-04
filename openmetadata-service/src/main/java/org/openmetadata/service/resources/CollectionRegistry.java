@@ -31,6 +31,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.ws.rs.Path;
 import lombok.Getter;
@@ -41,7 +42,6 @@ import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.util.ClassUtil;
@@ -148,7 +148,6 @@ public final class CollectionRegistry {
       Jdbi jdbi,
       Environment environment,
       OpenMetadataApplicationConfig config,
-      CollectionDAO daoObject,
       Authorizer authorizer,
       AuthenticatorHandler authenticatorHandler) {
     // Build list of ResourceDescriptors
@@ -156,7 +155,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, daoObject, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -214,15 +213,11 @@ public final class CollectionRegistry {
   private static Object createResource(
       Jdbi jdbi,
       String resourceClass,
-      CollectionDAO daoObject,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-
-    // Check Collection DAO
-    Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
 
     Object resource = null;
     Class<?> clz = Class.forName(resourceClass);

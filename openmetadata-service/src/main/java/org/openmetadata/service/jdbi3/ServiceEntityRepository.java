@@ -34,12 +34,11 @@ public abstract class ServiceEntityRepository<
   protected ServiceEntityRepository(
       String collectionPath,
       String service,
-      CollectionDAO dao,
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
       String updateFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
     quoteFqn = true;

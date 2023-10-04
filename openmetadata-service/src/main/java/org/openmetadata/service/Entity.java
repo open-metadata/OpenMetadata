@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import io.github.classgraph.ClassGraph;
@@ -59,6 +60,8 @@ import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
+import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -242,10 +245,14 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(Jdbi jdbi, CollectionDAO collectionDAO) {
+  public static void initializeRepositories(Jdbi jdbi) {
     if (!initializedRepositories) {
+      JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
+      JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
+      Entity.setSearchRepository(searchRepository);
+      CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       Entity.collectionDAO = collectionDAO;
-      tokenRepository = new TokenRepository(collectionDAO);
+      tokenRepository = new TokenRepository();
       // Check Collection DAO
       Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
       List<Class<?>> repositories = getRepositories();
@@ -254,7 +261,7 @@ public final class Entity {
           continue; // Don't instantiate abstract classes
         }
         try {
-          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
+          clz.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
           try {
             clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
