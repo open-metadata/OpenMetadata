@@ -39,10 +39,28 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
     cleanUpIndex(reportDataType, date);
   }
 
+  public void deletePreviousReportData(ReportDataType reportDataType) {
+    if (reportDataType == ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA) {
+      ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deletePreviousReportDataType(reportDataType.value());
+      cleanUpPreviousIndex(reportDataType);
+    } else {
+      throw new IllegalArgumentException(
+          "Invalid report data type value. Only Allowed value is "
+              + ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value());
+    }
+  }
+
   private void cleanUpIndex(ReportDataType reportDataType, String date) {
     HashMap<String, Object> params = new HashMap<>();
     params.put("date_", date);
     String scriptTxt = "doc['timestamp'].value.toLocalDate() == LocalDate.parse(params.date_);";
+    searchRepository.deleteByScript(reportDataType.toString(), scriptTxt, params);
+  }
+
+  private void cleanUpPreviousIndex(ReportDataType reportDataType) {
+
+    HashMap<String, Object> params = new HashMap<>();
+    String scriptTxt = "doc['reportDataType'].value ==  reportDataType.value()";
     searchRepository.deleteByScript(reportDataType.toString(), scriptTxt, params);
   }
 }
