@@ -68,9 +68,7 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
         """
         Method to delete the previous rows of the RawCostAnalysisReportData type report
         """
-        self.metadata.delete_report_data(
-            ReportDataType.RawCostAnalysisReportData, date=None
-        )
+        self.metadata.delete_report_data(ReportDataType.RawCostAnalysisReportData)
 
     def yield_refined_data(self) -> Iterable[ReportData]:
         """yield refined data"""

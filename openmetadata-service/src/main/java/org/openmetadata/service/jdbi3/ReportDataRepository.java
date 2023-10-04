@@ -39,15 +39,9 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
     cleanUpIndex(reportDataType, date);
   }
 
-  public void deletePreviousReportData(ReportDataType reportDataType) {
-    if (reportDataType == ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA) {
-      ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deletePreviousReportDataType(reportDataType.value());
-      cleanUpPreviousIndex(reportDataType);
-    } else {
-      throw new IllegalArgumentException(
-          "Invalid report data type value. Only Allowed value is "
-              + ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value());
-    }
+  public void deletePreviousData(ReportDataType reportDataType) {
+    ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deletePreviousReportData(reportDataType.value());
+    cleanUpPreviousIndex(reportDataType);
   }
 
   private void cleanUpIndex(ReportDataType reportDataType, String date) {
@@ -58,9 +52,9 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
   }
 
   private void cleanUpPreviousIndex(ReportDataType reportDataType) {
-
     HashMap<String, Object> params = new HashMap<>();
-    String scriptTxt = "doc['reportDataType'].value ==  reportDataType.value()";
+    params.put("reportDataType_", reportDataType.value());
+    String scriptTxt = "doc['reportDataType'].value ==  params.reportDataType_";
     searchRepository.deleteByScript(reportDataType.toString(), scriptTxt, params);
   }
 }

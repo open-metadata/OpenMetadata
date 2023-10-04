@@ -175,8 +175,8 @@ class DataInsightMixin:
         event_type_value = event_type.value
         self.client.delete(f"/analytics/web/events/{event_type_value}/{tmsp}/collect")
 
-    def delete_report_data(
-        self, report_data_type: ReportDataType, date: Optional[str]
+    def delete_report_data_at_date(
+        self, report_data_type: ReportDataType, date: str
     ) -> None:
         """Delete report data at a specific date for a specific report data type
 
@@ -184,6 +184,14 @@ class DataInsightMixin:
             report_data_type (ReportDataType): report date type to delete
             date (str): date for which to delete the report data
         """
-        base_url = f"/analytics/dataInsights/data/{report_data_type.value}"
-        date_url = f"/{date}" if date else ""
-        self.client.delete(f"{base_url}{date_url}")
+        self.client.delete(
+            f"/analytics/dataInsights/data/{report_data_type.value}/{date}"
+        )
+
+    def delete_report_data(self, report_data_type: ReportDataType) -> None:
+        """Delete report data for a specific report data type
+
+        Args:
+            report_data_type (ReportDataType): report date type to delete
+        """
+        self.client.delete(f"/analytics/dataInsights/data/{report_data_type.value}")
