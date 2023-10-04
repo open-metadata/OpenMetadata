@@ -10,21 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Form, Select } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
-import { VALIDATION_MESSAGES } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
-import { Document } from 'generated/entity/docStore/document';
-import { FieldTypes } from 'interface/FormUtils.interface';
 import { isEmpty, map } from 'lodash';
-import { CustomEntityType } from 'pages/CustomPageSettings/CustomPageSettings.interface';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createDocument, udpateDocument } from 'rest/DocStoreAPI';
-import { generateFormFields } from 'utils/formUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { Document } from '../../../generated/entity/docStore/document';
+import { FieldTypes } from '../../../interface/FormUtils.interface';
+import { CustomEntityType } from '../../../pages/CustomPageSettings/CustomPageSettings.interface';
+import { createDocument, udpateDocument } from '../../../rest/DocStoreAPI';
+import { generateFormFields } from '../../../utils/formUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddEditCustomisePageProps } from './AddEditCustomizePage.interface';
 
 export const AddEditCustomizePage = ({

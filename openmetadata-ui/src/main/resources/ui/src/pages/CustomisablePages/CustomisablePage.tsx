@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
-import Loader from 'components/Loader/Loader';
-import { EntityType } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/type';
-import { Page, PageType } from 'generated/system/ui/page';
 import { startCase } from 'lodash';
-import MyDataPageV1 from 'pages/MyDataPage/MyDataPageV1.component';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { createPage, getPageDetails } from 'rest/PageAPI';
+import Loader from '../../components/Loader/Loader';
+import { EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/type';
+import { Page, PageType } from '../../generated/system/ui/page';
+import { createPage, getPageDetails } from '../../rest/PageAPI';
+import MyDataPageV1 from '../MyDataPage/MyDataPageV1.component';
 
 export const CustomisablePage = () => {
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();

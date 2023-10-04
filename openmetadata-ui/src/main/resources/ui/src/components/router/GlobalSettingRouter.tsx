@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { CustomPageSettings } from 'pages/CustomPageSettings/CustomPageSettings';
-import { PersonaPage } from 'pages/Persona/PersonaPage';
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import {
@@ -20,6 +18,9 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
+import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
+import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
+import { PersonaPage } from '../../pages/Persona/PersonaPage';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -190,6 +191,15 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.MEMBERS,
           GlobalSettingOptions.PERSONA
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={PersonaDetailsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA,
+          true
         )}
       />
       {/* Roles route start

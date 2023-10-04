@@ -12,10 +12,10 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreatePersona } from 'generated/api/teams/createPersona';
-import { Persona } from 'generated/entity/teams/persona';
 import { PagingResponse } from 'Models';
-import axiosClient from 'rest';
+import axiosClient from '.';
+import { CreatePersona } from '../generated/api/teams/createPersona';
+import { Persona } from '../generated/entity/teams/persona';
 
 const BASE_URL = '/personas';
 
@@ -34,6 +34,16 @@ export const getAllPersonas = async (params: GetPersonasParams) => {
   return response.data;
 };
 
+export const getPersonaByName = async (fqn: string) => {
+  const response = await axiosClient.get<Persona>(`${BASE_URL}/name/${fqn}`, {
+    params: {
+      fields: 'users',
+    },
+  });
+
+  return response.data;
+};
+
 export const createPersona = async (data: CreatePersona) => {
   const response = await axiosClient.post<
     CreatePersona,
@@ -47,7 +57,7 @@ export const updatePersona = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
-  const response = await axiosClient.patch(
+  const response = await axiosClient.patch<Operation[], AxiosResponse<Persona>>(
     `${BASE_URL}/${id}`,
     data,
     configOptions

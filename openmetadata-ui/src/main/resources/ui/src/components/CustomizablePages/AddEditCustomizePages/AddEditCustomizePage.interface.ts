@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Document } from 'generated/entity/docStore/document';
+
+import { Document } from '../../../generated/entity/docStore/document';
 
 export interface AddEditCustomisePageProps {
   onCancel: () => void;

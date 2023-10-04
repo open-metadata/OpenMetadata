@@ -14,21 +14,24 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { VALIDATION_MESSAGES } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
-import { Persona } from 'generated/entity/teams/persona';
-import { EntityReference } from 'generated/entity/type';
-import { FieldTypes, FormItemLayout } from 'interface/FormUtils.interface';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createPersona, updatePersona } from 'rest/PersonaAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { Persona } from '../../../generated/entity/teams/persona';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
+import { createPersona, updatePersona } from '../../../rest/PersonaAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { UserTag } from '../../common/UserTag/UserTag.component';
+import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddPersonaFormProps } from './AddEditPersona.interface';
 
 export const AddEditPersonaForm = ({
@@ -43,7 +46,7 @@ export const AddEditPersonaForm = ({
   const usersList = Form.useWatch<EntityReference[]>('users', form) ?? [];
   const isEditMode = !isEmpty(persona);
 
-  const handleSave = useCallback(
+  const handleSubmit = useCallback(
     async (data: Persona) => {
       try {
         setIsSaving(true);
@@ -88,6 +91,18 @@ export const AddEditPersonaForm = ({
         ],
       },
       {
+        name: 'displayName',
+        required: true,
+        label: t('label.display-name'),
+        id: 'root/displayName',
+        type: FieldTypes.TEXT,
+        props: {
+          'data-testid': 'displayName',
+          autoComplete: 'off',
+        },
+        placeholder: t('label.display-name'),
+      },
+      {
         name: 'description',
         required: true,
         label: t('label.description'),
@@ -96,6 +111,7 @@ export const AddEditPersonaForm = ({
         props: {
           'data-testid': 'description',
           initialValue: '',
+          height: 'auto',
         },
       },
     ],
@@ -131,23 +147,27 @@ export const AddEditPersonaForm = ({
     []
   );
 
+  const handleSave = useCallback(() => form?.submit(), [form]);
+
   return (
     <Modal
       centered
       open
       cancelText={t('label.cancel')}
+      closable={false}
+      closeIcon={null}
       confirmLoading={isSaving}
-      okText={t('label.create')}
+      okText={isEditMode ? t('label.update') : t('label.create')}
       title={isEmpty(persona) ? 'Add Persona' : 'Edit Persona'}
       width={750}
       onCancel={onCancel}
-      onOk={() => form.submit()}>
+      onOk={handleSave}>
       <Form
         form={form}
         initialValues={persona}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}>
+        onFinish={handleSubmit}>
         {generateFormFields(fields)}
         <div>
           {getField(usersField)}

@@ -11,30 +11,32 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconDelete } from 'assets/svg/ic-delete.svg';
-import { ReactComponent as IconEdit } from 'assets/svg/ic-edit.svg';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import PageHeader from 'components/header/PageHeader.component';
-import { AddEditPersonaForm } from 'components/Persona/AddEditPersona/AddEditPersona.component';
-import { ADMIN_ONLY_ACTION } from 'constants/HelperTextUtil';
-import { PAGE_HEADERS } from 'constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { Persona } from 'generated/entity/teams/persona';
-import { EntityReference } from 'generated/entity/type';
-import { useAuth } from 'hooks/authHooks';
-import { usePaging } from 'hooks/paging/usePaging';
+import Table, { ColumnsType } from 'antd/lib/table';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllPersonas } from 'rest/PersonaAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { Link } from 'react-router-dom';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import PageHeader from '../../components/header/PageHeader.component';
+import { AddEditPersonaForm } from '../../components/Persona/AddEditPersona/AddEditPersona.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { Persona } from '../../generated/entity/teams/persona';
+import { useAuth } from '../../hooks/authHooks';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { getAllPersonas } from '../../rest/PersonaAPI';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -61,7 +63,6 @@ export const PersonaPage = () => {
       setIsLoading(true);
       const { data, paging } = await getAllPersonas({
         limit: pageSize,
-        fields: 'users',
       });
 
       setPersona(data);
@@ -87,30 +88,31 @@ export const PersonaPage = () => {
         title: t('label.persona'),
         dataIndex: 'name',
         key: 'name',
+        render: (name: string, record: Persona) => (
+          <Link
+            to={getSettingsPathWithFqn(
+              GlobalSettingsMenuCategory.MEMBERS,
+              GlobalSettingOptions.PERSONA,
+              record.fullyQualifiedName ?? ''
+            )}>
+            {name}
+          </Link>
+        ),
+      },
+      {
+        title: t('label.display-name'),
+        dataIndex: 'displayName',
+        key: 'displayName',
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         render: (description: string) => (
-          <RichTextEditorPreviewer markdown={description} />
-        ),
-      },
-      {
-        title: t('label.user-plural'),
-        dataIndex: 'users',
-        key: 'users',
-        render: (users: EntityReference[]) => (
-          <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-            {users?.map((d) => (
-              <UserTag
-                id={d.id}
-                key={d.id}
-                name={getEntityName(d)}
-                size={UserTagSize.small}
-              />
-            ))}
-          </Space>
+          <RichTextEditorPreviewer
+            className="max-two-lines"
+            markdown={description}
+          />
         ),
       },
       {

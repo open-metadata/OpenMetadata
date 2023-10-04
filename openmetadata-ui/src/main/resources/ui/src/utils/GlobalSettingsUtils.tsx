@@ -29,6 +29,7 @@ import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
@@ -107,7 +108,7 @@ export const getGlobalSettingsMenuWithPermission = (
             permissions
           ),
           key: 'members.persona',
-          icon: <AdminIcon className="side-panel-icons" />,
+          icon: <PersonasIcon className="side-panel-icons" />,
         },
       ],
     },

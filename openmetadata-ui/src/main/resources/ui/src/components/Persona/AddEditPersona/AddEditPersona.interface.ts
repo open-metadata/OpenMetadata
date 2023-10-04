@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Persona } from 'generated/entity/teams/persona';
+
+import { Persona } from '../../../generated/entity/teams/persona';
 
 export interface AddPersonaFormProps {
   onCancel: () => void;

@@ -12,10 +12,10 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreateDocument } from 'generated/api/docStore/createDocument';
-import { Document } from 'generated/entity/docStore/document';
 import { PagingResponse } from 'Models';
-import axiosClient from 'rest';
+import axiosClient from '.';
+import { CreateDocument } from '../generated/api/docStore/createDocument';
+import { Document } from '../generated/entity/docStore/document';
 
 const BASE_URL = 'docStore';
 

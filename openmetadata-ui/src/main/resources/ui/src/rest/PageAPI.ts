@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from 'enums/entity.enum';
-import { Page, PageType } from 'generated/system/ui/page';
-import axiosClient from 'rest';
+
+import axiosClient from '.';
+import { EntityType } from '../enums/entity.enum';
+import { Page, PageType } from '../generated/system/ui/page';
 
 const BASE_URL = '/page';
 
