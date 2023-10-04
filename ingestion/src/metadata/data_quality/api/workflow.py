@@ -20,7 +20,7 @@ from copy import deepcopy
 from logging import Logger
 from typing import List, Optional, cast
 
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.data_quality.api.models import (
@@ -67,22 +67,6 @@ from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 logger: Logger = test_suite_logger()
 
 
-class TestCaseToCreate(BaseModel):
-    """Test case to create"""
-
-    test_suite_name: str
-    test_case_name: str
-    entity_link: str
-
-    def __hash__(self):
-        """make this base model hashable on unique_name"""
-        return hash(f"{self.test_suite_name}.{self.test_case_name}")
-
-    def __str__(self) -> str:
-        """make this base model printable"""
-        return f"{self.test_suite_name}.{self.test_case_name}"
-
-
 class TestSuiteWorkflow(WorkflowStatusMixin):
     """workflow to run the test suite"""
 
@@ -125,7 +109,6 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 sink_type=self.config.sink.type,
                 sink_config=self.config.sink,
                 metadata_config=self.metadata_config,
-                from_="data_quality",
             )
 
     @classmethod
@@ -425,7 +408,7 @@ class TestSuiteWorkflow(WorkflowStatusMixin):
                 if not test_result:
                     continue
                 if hasattr(self, "sink"):
-                    self.sink.write_record(test_result)
+                    self.sink.run(test_result)
                 logger.debug(f"Successfully ran test case {test_case.name.__root__}")
                 self.status.processed(test_case.fullyQualifiedName.__root__)
             except Exception as exc:
