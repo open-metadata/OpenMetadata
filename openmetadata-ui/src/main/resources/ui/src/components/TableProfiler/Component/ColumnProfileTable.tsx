@@ -13,15 +13,14 @@
 
 import { Button, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import Table from 'components/common/Table/Table';
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation } from 'react-router-dom';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from '../../../components/common/Table/Table';
+import { TableProfilerTab } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import {
   DEFAULT_TEST_VALUE,
@@ -31,6 +30,7 @@ import { Column, ColumnProfile } from '../../../generated/entity/data/table';
 import { formatNumberWithComma } from '../../../utils/CommonUtils';
 import { updateTestResults } from '../../../utils/DataQualityAndProfilerUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TestIndicator from '../../common/TestIndicator/TestIndicator';
 import {

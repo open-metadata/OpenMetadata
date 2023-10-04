@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
+import { EntityType } from '../enums/entity.enum';
 import { getEntityDeleteMessage } from './CommonUtils';
 import { getTitleCase } from './EntityUtils';
 

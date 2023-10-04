@@ -12,31 +12,31 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
-import Ingestion from 'components/Ingestion/Ingestion.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { OPEN_METADATA } from 'constants/Services.constant';
-import { ServiceCategory } from 'enums/service.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { DatabaseService } from 'generated/entity/services/databaseService';
-import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Paging } from 'generated/type/paging';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { ServicesType } from 'interface/service.interface';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
+import Ingestion from '../../components/Ingestion/Ingestion.component';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { OPEN_METADATA } from '../../constants/Services.constant';
+import { ServiceCategory } from '../../enums/service.enum';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Paging } from '../../generated/type/paging';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { ServicesType } from '../../interface/service.interface';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-} from 'rest/ingestionPipelineAPI';
-import { fetchAirflowConfig } from 'rest/miscAPI';
-import { getServiceByFQN } from 'rest/serviceAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '../../rest/miscAPI';
+import { getServiceByFQN } from '../../rest/serviceAPI';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { SettingsIngestionProps } from './SettingsIngestion.interface';
 
 function SettingsIngestion({

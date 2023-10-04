@@ -44,7 +44,6 @@ import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.DatabaseServiceIndex;
 import org.openmetadata.service.search.indexes.DomainIndex;
-import org.openmetadata.service.search.indexes.ElasticSearchIndex;
 import org.openmetadata.service.search.indexes.EntityReportDataIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
@@ -56,6 +55,7 @@ import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
 import org.openmetadata.service.search.indexes.StorageServiceIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
@@ -73,7 +73,7 @@ import org.openmetadata.service.search.indexes.WebAnalyticUserActivityReportData
 public class SearchIndexFactory {
   private SearchIndexFactory() {}
 
-  public static ElasticSearchIndex buildIndex(String entityType, Object entity) {
+  public static SearchIndex buildIndex(String entityType, Object entity) {
     switch (entityType) {
       case Entity.TABLE:
         return new TableIndex((Table) entity);

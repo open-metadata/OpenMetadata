@@ -50,8 +50,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
@@ -267,9 +265,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchRepository searchRepository =
-        IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
-    SearchIndexDefinition esIndexDefinition;
+    SearchRepository searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
@@ -327,16 +323,13 @@ public final class TablesInitializer {
         flyway.repair();
         break;
       case ES_CREATE:
-        esIndexDefinition = new SearchIndexDefinition(searchRepository);
-        esIndexDefinition.createIndexes(config.getElasticSearchConfiguration());
+        searchRepository.createIndexes();
         break;
       case ES_MIGRATE:
-        esIndexDefinition = new SearchIndexDefinition(searchRepository);
-        esIndexDefinition.updateIndexes(config.getElasticSearchConfiguration());
+        searchRepository.updateIndexes();
         break;
       case ES_DROP:
-        esIndexDefinition = new SearchIndexDefinition(searchRepository);
-        esIndexDefinition.dropIndexes();
+        searchRepository.dropIndexes();
         break;
       default:
         throw new SQLException("SchemaMigrationHelper unable to execute the option : " + schemaMigrationOption);
@@ -358,7 +351,8 @@ public final class TablesInitializer {
       Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi.onDemand(CollectionDAO.class));
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(jdbi);
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }

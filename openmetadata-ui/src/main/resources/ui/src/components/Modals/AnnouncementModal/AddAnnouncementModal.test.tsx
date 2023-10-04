@@ -26,7 +26,7 @@ jest.mock('../../../AppState', () => ({
   getCurrentUserDetails: jest.fn(),
 }));
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

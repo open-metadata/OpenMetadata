@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { TableType, TagLabel } from '../../../../generated/entity/data/table';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface DataModelSummaryProps {
   entityDetails: DashboardDataModel;

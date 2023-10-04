@@ -13,15 +13,15 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import {
   EntityReference,
   SearchIndex,
-} from 'generated/entity/data/searchIndex';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
-import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+} from '../generated/entity/data/searchIndex';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 export const getSearchIndexes = async (args: {

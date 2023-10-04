@@ -12,26 +12,32 @@
  */
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { SearchIndex } from 'enums/search.enum';
-import { Paging } from 'generated/type/paging';
-import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getGlossaryTerms } from 'rest/glossaryAPI';
-import { searchQuery } from 'rest/searchAPI';
-import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { fetchTagsElasticSearch, getTagPlaceholder } from 'utils/TagsUtils';
-import { getRequestTagsPath, getUpdateTagsPath } from 'utils/TasksUtils';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { Paging } from '../../../generated/type/paging';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { getGlossaryTerms } from '../../../rest/glossaryAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import {
+  fetchTagsElasticSearch,
+  getTagPlaceholder,
+} from '../../../utils/TagsUtils';
+import {
+  getRequestTagsPath,
+  getUpdateTagsPath,
+} from '../../../utils/TasksUtils';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';

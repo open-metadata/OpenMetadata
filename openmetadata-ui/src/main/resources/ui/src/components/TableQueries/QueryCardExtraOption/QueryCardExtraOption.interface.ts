@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Query } from 'generated/entity/data/query';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { Query } from '../../../generated/entity/data/query';
 import { QueryVote } from '../TableQueries.interface';
 
 export interface QueryCardExtraOptionProps {

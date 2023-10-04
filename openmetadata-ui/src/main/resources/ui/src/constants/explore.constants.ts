@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SortingField } from 'components/Explore/SortingDropDown';
-import i18n from 'utils/i18next/LocalUtil';
+import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { SortingField } from '../components/Explore/SortingDropDown';
 import { SearchIndex } from '../enums/search.enum';
+import i18n from '../utils/i18next/LocalUtil';
 import { Icons } from '../utils/SvgUtils';
 
 export const INITIAL_SORT_FIELD = 'updatedAt';
 export const INITIAL_SORT_ORDER = 'desc';
+export const TIER_FQN_KEY = 'tier.tagFQN';
 
 export const initialFilterQS = 'initialFilter';
 export const searchFilterQS = 'searchFilter';

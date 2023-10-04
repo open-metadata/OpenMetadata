@@ -27,8 +27,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  public MetricsRepository(CollectionDAO dao) {
-    super(MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, dao.metricsDAO(), dao, "", "");
+  public MetricsRepository() {
+    super(
+        MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, Entity.getCollectionDAO().metricsDAO(), "", "");
   }
 
   @Override
