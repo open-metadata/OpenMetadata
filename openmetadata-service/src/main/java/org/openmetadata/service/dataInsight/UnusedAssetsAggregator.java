@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.RawCostAnalysisReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.UnusedAssets;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -33,11 +34,11 @@ public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T> implem
         Object dataObject = getDataFromSource(hit);
         RawCostAnalysisReportData rawCostAnalysisReportData =
             JsonUtils.readValue(mapper.writeValueAsString(dataObject), RawCostAnalysisReportData.class);
-        String fqn = rawCostAnalysisReportData.getEntity().getFullyQualifiedName();
+        EntityReference entityReference = rawCostAnalysisReportData.getEntity();
         Long lastAccessed = rawCostAnalysisReportData.getLifeCycle().getAccessed().getTimestamp();
         Double sizeInByte = rawCostAnalysisReportData.getSizeInByte();
         UnusedAssets unusedAssets =
-            new UnusedAssets().withFullyQualifiedName(fqn).withLastAccessedAt(lastAccessed).withSizeInBytes(sizeInByte);
+            new UnusedAssets().withEntity(entityReference).withLastAccessedAt(lastAccessed).withSizeInBytes(sizeInByte);
         data.add(unusedAssets);
       } catch (Exception e) {
         LOG.error("Error while parsing hits for UnusedData chart from ES", e);
