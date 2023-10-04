@@ -25,9 +25,9 @@ class TrinoSampler(SQASampler):
     run the query in the whole table.
     """
 
-    def random_sampler_where_clause_(self, query):
+    def _base_sample_query(self, label=None):
         sqa_columns = [col for col in inspect(self.table).c if col.name != RANDOM_LABEL]
-        return query.where(
+        return self.client.query(self.table, label).where(
             or_(
                 *[
                     text(f"is_nan({cols.name}) = False")
