@@ -50,6 +50,7 @@ import {
   CreateThread,
   ThreadType,
 } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
@@ -73,6 +74,7 @@ import {
   getSearchIndexTabPath,
 } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
@@ -532,18 +534,12 @@ function SearchIndexDetailsPage() {
   ]);
 
   const onTierUpdate = useCallback(
-    async (newTier?: string) => {
+    async (newTier?: Tag) => {
       if (searchIndexDetails) {
-        const tierTag: SearchIndex['tags'] = newTier
-          ? [
-              ...getTagsWithoutTier(searchIndexTags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : getTagsWithoutTier(searchIndexTags ?? []);
+        const tierTag: SearchIndex['tags'] = updateTierTag(
+          searchIndexTags,
+          newTier
+        );
         const updatedSearchIndexDetails = {
           ...searchIndexDetails,
           tags: tierTag,

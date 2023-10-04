@@ -1,11 +1,10 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
-
 import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Repository
@@ -13,6 +12,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Getter protected final String collectionPath;
   @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
   @Getter protected final CollectionDAO daoCollection;
+  @Getter protected final SearchRepository searchRepository;
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
 
@@ -29,6 +29,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     this.daoCollection = daoCollection;
     this.entityClass = entityClass;
     this.entityType = entityType;
+    this.searchRepository = Entity.getSearchRepository();
     Entity.registerEntity(entityClass, entityType, this);
   }
 

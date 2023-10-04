@@ -40,7 +40,6 @@ import { PAGE_SIZE, ROUTES } from '../../constants/constants';
 import {
   ENTITIES_CHARTS,
   INITIAL_CHART_FILTER,
-  TIER_FILTER,
 } from '../../constants/DataInsight.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -51,6 +50,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/policy';
 import {
   ChartFilter,
@@ -58,11 +58,13 @@ import {
 } from '../../interface/data-insight.interface';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { getTags } from '../../rest/tagAPI';
 import {
   getDataInsightPathWithFqn,
   getTeamFilter,
 } from '../../utils/DataInsightUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { TeamStateType, TierStateType } from './DataInsight.interface';
 import './DataInsight.less';
@@ -121,12 +123,19 @@ const DataInsightPage = () => {
   );
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+  const [tier, setTier] = useState<{ tags: Tag[]; isLoading: boolean }>({
+    tags: [],
+    isLoading: true,
+  });
 
   const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
 
   const defaultTierOptions = useMemo(() => {
-    return Object.keys(TIER_FILTER);
-  }, []);
+    return tier.tags.map((op) => ({
+      key: op.fullyQualifiedName ?? op.name,
+      label: getEntityName(op),
+    }));
+  }, [tier]);
 
   const { descriptionKpi, ownerKpi } = useMemo(() => {
     return {
@@ -147,9 +156,7 @@ const DataInsightPage = () => {
     setTierOptions((prev) => ({ ...prev, selectedOptions: tiers }));
     setChartFilter((previous) => ({
       ...previous,
-      tier: tiers.length
-        ? tiers.map((tier) => TIER_FILTER[tier.key].key).join(',')
-        : undefined,
+      tier: tiers.length ? tiers.map((tier) => tier.key).join(',') : undefined,
     }));
   };
 
@@ -202,14 +209,18 @@ const DataInsightPage = () => {
     if (query) {
       setTierOptions((prev) => ({
         ...prev,
-        options: prev.options.filter((value) =>
-          value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+        options: prev.options.filter(
+          (value) =>
+            value.label
+              .toLocaleLowerCase()
+              .includes(query.toLocaleLowerCase()) ||
+            value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
         ),
       }));
     } else {
       setTierOptions((prev) => ({
         ...prev,
-        options: defaultTierOptions.map((op) => ({ key: op, label: op })),
+        options: defaultTierOptions,
       }));
     }
   };
@@ -246,10 +257,32 @@ const DataInsightPage = () => {
     }
   };
 
+  const getTierTag = async () => {
+    setTier((prev) => ({ ...prev, isLoading: true }));
+    try {
+      const { data } = await getTags({
+        parent: 'Tier',
+      });
+
+      setTier((prev) => ({ ...prev, tags: data }));
+      setTierOptions((prev) => ({
+        ...prev,
+        options: data.map((op) => ({
+          key: op.fullyQualifiedName ?? op.name,
+          label: getEntityName(op),
+        })),
+      }));
+    } catch (error) {
+      // error
+    } finally {
+      setTier((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
   const fetchDefaultTierOptions = () => {
     setTierOptions((prev) => ({
       ...prev,
-      options: defaultTierOptions.map((op) => ({ key: op, label: op })),
+      options: defaultTierOptions,
     }));
   };
 
@@ -289,6 +322,7 @@ const DataInsightPage = () => {
   }, [selectedChart]);
 
   useEffect(() => {
+    getTierTag();
     fetchDefaultTeamOptions();
     fetchKpiList();
   }, []);
@@ -475,6 +509,7 @@ const DataInsightPage = () => {
               <TierInsight
                 chartFilter={chartFilter}
                 selectedDays={selectedDaysFilter}
+                tierTags={tier}
               />
             </Col>
           </>

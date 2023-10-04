@@ -64,6 +64,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -78,7 +79,6 @@ import { DatabaseService } from '../../generated/entity/services/databaseService
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
@@ -116,7 +116,7 @@ import {
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
@@ -750,17 +750,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const handleUpdateTier = useCallback(
-    async (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(serviceDetails?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(serviceDetails?.tags ?? []);
+    async (newTier?: Tag) => {
+      const tierTag = updateTierTag(serviceDetails?.tags ?? [], newTier);
       const updatedServiceDetails = {
         ...serviceDetails,
         tags: tierTag,

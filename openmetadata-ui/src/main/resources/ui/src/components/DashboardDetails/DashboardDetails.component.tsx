@@ -43,6 +43,7 @@ import {
   PRIMERY_COLOR,
 } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
@@ -62,6 +63,7 @@ import {
   searchTagInData,
 } from '../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -259,17 +261,8 @@ const DashboardDetails = ({
     [owner]
   );
 
-  const onTierUpdate = async (newTier?: string) => {
-    const tierTag: Dashboard['tags'] = newTier
-      ? [
-          ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(dashboardDetails.tags ?? []);
+  const onTierUpdate = async (newTier?: Tag) => {
+    const tierTag = updateTierTag(dashboardDetails?.tags ?? [], newTier);
     const updatedDashboard = {
       ...dashboardDetails,
       tags: tierTag,

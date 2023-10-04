@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.dataInsight;
+package org.openmetadata.service.resources.datainsight;
 
 import static javax.ws.rs.core.Response.Status.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;

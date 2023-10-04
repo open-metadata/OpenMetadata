@@ -1,4 +1,4 @@
-package org.openmetadata.service.resources.dataInsight;
+package org.openmetadata.service.resources.datainsight;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -50,7 +50,6 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -64,12 +63,14 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "analytics")
 public class DataInsightChartResource extends EntityResource<DataInsightChart, DataInsightChartRepository> {
-  private SearchRepository searchRepository;
+
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
   public static final String FIELDS = "owner";
+  private final SearchRepository searchRepository;
 
   public DataInsightChartResource(Authorizer authorizer) {
     super(Entity.DATA_INSIGHT_CHART, authorizer);
+    searchRepository = Entity.getSearchRepository();
   }
 
   public static class DataInsightChartList extends ResultList<DataInsightChart> {
@@ -82,11 +83,6 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    // instantiate an elasticsearch client
-    if (config.getElasticSearchConfiguration() != null) {
-      searchRepository =
-          IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), repository.getDaoCollection());
-    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts = repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
