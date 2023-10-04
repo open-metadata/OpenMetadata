@@ -32,13 +32,12 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
-  public DatabaseSchemaRepository(CollectionDAO dao) {
+  public DatabaseSchemaRepository() {
     super(
         DatabaseSchemaResource.COLLECTION_PATH,
         Entity.DATABASE_SCHEMA,
         DatabaseSchema.class,
-        dao.databaseSchemaDAO(),
-        dao,
+        Entity.getCollectionDAO().databaseSchemaDAO(),
         "",
         "");
     supportsSearch = true;

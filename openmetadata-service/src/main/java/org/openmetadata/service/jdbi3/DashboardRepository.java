@@ -44,13 +44,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_URL = "sourceUrl";
 
-  public DashboardRepository(CollectionDAO dao) {
+  public DashboardRepository() {
     super(
         DashboardResource.COLLECTION_PATH,
         Entity.DASHBOARD,
         Dashboard.class,
-        dao.dashboardDAO(),
-        dao,
+        Entity.getCollectionDAO().dashboardDAO(),
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;

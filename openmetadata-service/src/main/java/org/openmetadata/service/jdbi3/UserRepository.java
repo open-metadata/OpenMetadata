@@ -77,8 +77,14 @@ public class UserRepository extends EntityRepository<User> {
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
   private volatile EntityReference organization;
 
-  public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
+  public UserRepository() {
+    super(
+        UserResource.COLLECTION_PATH,
+        USER,
+        User.class,
+        Entity.getCollectionDAO().userDAO(),
+        USER_PATCH_FIELDS,
+        USER_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
   }
