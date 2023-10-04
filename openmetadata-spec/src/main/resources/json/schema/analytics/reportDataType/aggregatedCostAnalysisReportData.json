@@ -32,8 +32,7 @@
           "type": "number"
         }
       },
-      "additionalProperties": false,
-      "required": ["entity"]
+      "additionalProperties": false
     }
   },
   "properties": {

@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.dataInsight.type.UnusedAssets",
   "properties": {
     "entity": {
-      "description": "Fully qualified name of the asset",
+      "description": "Entity of the life cycle data",
       "$ref": "../../type/entityReference.json"
     },
     "sizeInBytes": {
