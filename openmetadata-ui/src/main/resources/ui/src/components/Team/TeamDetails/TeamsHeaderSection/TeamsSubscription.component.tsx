@@ -11,21 +11,26 @@
  *  limitations under the License.
  */
 import { Form, Input, Modal, Select, Space, Typography } from 'antd';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
-import {
-  SUBSCRIPTION_WEBHOOK,
-  SUBSCRIPTION_WEBHOOK_OPTIONS,
-} from 'constants/Teams.constants';
+import { useForm } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-
-import { useForm } from 'antd/lib/form/Form';
-import TagsV1 from 'components/Tag/TagsV1/TagsV1.component';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { Webhook } from 'generated/type/profile';
-import { isEmpty } from 'lodash';
-import { getWebhookIcon } from 'utils/TeamUtils';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
+import {
+  TAG_CONSTANT,
+  TAG_START_WITH,
+} from '../../../../constants/Tag.constants';
+import {
+  SUBSCRIPTION_WEBHOOK,
+  SUBSCRIPTION_WEBHOOK_OPTIONS,
+} from '../../../../constants/Teams.constants';
+import { Webhook } from '../../../../generated/type/profile';
+import { getWebhookIcon } from '../../../../utils/TeamUtils';
+import TagsV1 from '../../../Tag/TagsV1/TagsV1.component';
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
 
 const TeamsSubscription = ({
@@ -45,21 +50,7 @@ const TeamsSubscription = ({
   }, []);
 
   // Watchers
-  const webhooks: {
-    webhook: string;
-    endpoint: string;
-  }[] = Form.useWatch(['subscriptions'], form);
-
-  // Run time values needed for conditional rendering
-  const subscriptionOptions = useMemo(() => {
-    const exitingWebhook = webhooks?.map((f) => f?.webhook) ?? [];
-
-    return SUBSCRIPTION_WEBHOOK_OPTIONS.map((func) => ({
-      label: func.label,
-      value: func.value,
-      disabled: exitingWebhook.includes(func.value),
-    }));
-  }, [webhooks]);
+  const isWebhookEmpty = isEmpty(Form.useWatch('webhook', form));
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
@@ -89,7 +80,7 @@ const TeamsSubscription = ({
     setIsLoading(true);
 
     try {
-      await updateTeamSubscription(values);
+      await updateTeamSubscription(isWebhookEmpty ? undefined : values);
     } catch {
       // parent block will throw error
     } finally {
@@ -97,6 +88,12 @@ const TeamsSubscription = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isWebhookEmpty) {
+      form.setFieldValue('endpoint', '');
+    }
+  }, [isWebhookEmpty]);
 
   useEffect(() => {
     if (subscription) {
@@ -150,7 +147,7 @@ const TeamsSubscription = ({
             onFinish={handleSave}>
             <Form.Item label={t('label.webhook')} name="webhook">
               <Select
-                options={subscriptionOptions}
+                options={SUBSCRIPTION_WEBHOOK_OPTIONS}
                 placeholder={t('label.select-field', {
                   field: t('label.condition'),
                 })}
@@ -161,7 +158,7 @@ const TeamsSubscription = ({
               name="endpoint"
               rules={[
                 {
-                  required: true,
+                  required: !isWebhookEmpty,
                   message: t('label.field-required-plural', {
                     field: t('label.endpoint'),
                   }),
@@ -172,6 +169,7 @@ const TeamsSubscription = ({
                 },
               ]}>
               <Input
+                disabled={isWebhookEmpty}
                 placeholder={t('label.enter-entity-value', {
                   entity: t('label.endpoint'),
                 })}

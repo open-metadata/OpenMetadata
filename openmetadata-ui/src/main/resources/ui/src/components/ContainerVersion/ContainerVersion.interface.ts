@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Container } from 'generated/entity/data/container';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { Container } from '../../generated/entity/data/container';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';

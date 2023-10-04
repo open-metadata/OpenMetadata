@@ -15,15 +15,15 @@ import { Button, Dropdown, Space } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   getIngestionButtonText,
   getIngestionTypes,
   getMenuItems,
   getSupportedPipelineTypes,
-} from 'utils/IngestionUtils';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
-import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
-import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+} from '../../utils/IngestionUtils';
 import { getAddIngestionPath } from '../../utils/RouterUtils';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 

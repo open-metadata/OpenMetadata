@@ -26,15 +26,13 @@ from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -66,9 +64,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client

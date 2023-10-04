@@ -22,9 +22,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
@@ -36,6 +33,7 @@ from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dagster.models import (
     DagsterPipeline,
     RunStepStats,
@@ -64,14 +62,14 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DagsterConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DagsterConnection):
             raise InvalidSourceException(
                 f"Expected DagsterConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
         """Method to get downstream tasks"""

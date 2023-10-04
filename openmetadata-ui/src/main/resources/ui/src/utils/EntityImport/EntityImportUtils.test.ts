@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TeamCSVRecord } from 'components/Team/TeamImportResult/TeamImportResult.interface';
-import { MOCK_CSV_GLOSSARY_DATA } from 'mocks/Glossary.mock';
-import { MOCK_CSV_TEAM_DATA } from 'mocks/Teams.mock';
+import { TeamCSVRecord } from '../../components/Team/TeamImportResult/TeamImportResult.interface';
+import { MOCK_CSV_GLOSSARY_DATA } from '../../mocks/Glossary.mock';
+import { MOCK_CSV_TEAM_DATA } from '../../mocks/Teams.mock';
 import { parseCSV } from './EntityImportUtils';
 
 describe('EntityImportUtils', () => {

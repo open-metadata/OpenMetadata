@@ -12,31 +12,31 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
   updateMlModelVotes,
-} from 'rest/mlModelAPI';
-import { getVersionPath } from '../../constants/constants';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
+} from '../../rest/mlModelAPI';
 import {
   addToRecentViewed,
   getCurrentUserId,

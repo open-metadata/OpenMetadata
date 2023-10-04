@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 import { ReactRenderer } from '@tiptap/react';
-import tippy, { Instance, Props } from 'tippy.js';
-
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { EntityUrlMapType, ENTITY_URL_MAP } from 'constants/Feeds.constants';
-import { getSearchedUsers, getUserSuggestions } from 'rest/miscAPI';
-import { buildMentionLink } from 'utils/FeedUtils';
+import tippy, { Instance, Props } from 'tippy.js';
+import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
+import {
+  EntityUrlMapType,
+  ENTITY_URL_MAP,
+} from '../../../../constants/Feeds.constants';
+import { getSearchedUsers, getUserSuggestions } from '../../../../rest/miscAPI';
+import { buildMentionLink } from '../../../../utils/FeedUtils';
 import { ExtensionRef } from '../BlockEditor.interface';
 import MentionList from './MentionList';
 

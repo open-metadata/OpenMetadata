@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { User } from 'generated/entity/teams/user';
+import { User } from '../../../../generated/entity/teams/user';
 
 export interface UserProfileInheritedRolesProps {
   inheritedRoles: User['inheritedRoles'];

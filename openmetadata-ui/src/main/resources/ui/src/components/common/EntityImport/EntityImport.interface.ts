@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CSVImportResult } from 'generated/type/csvImportResult';
 import React from 'react';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
 
 export interface EntityImportProps {
   entityName: string;

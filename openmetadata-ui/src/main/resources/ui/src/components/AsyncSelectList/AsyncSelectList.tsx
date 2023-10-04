@@ -12,14 +12,14 @@
  */
 import { Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { Paging } from 'generated/type/paging';
 import { debounce } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
-import { tagRender } from 'utils/TagsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import Loader from '../../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { Paging } from '../../generated/type/paging';
 import Fqn from '../../utils/Fqn';
+import { tagRender } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   AsyncSelectListProps,
   SelectOption,

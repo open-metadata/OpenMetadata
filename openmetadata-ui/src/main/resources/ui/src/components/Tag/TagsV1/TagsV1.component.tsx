@@ -12,20 +12,21 @@
  */
 import { Tag, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { ROUTES } from 'constants/constants';
-import { TagSource } from 'generated/type/tagLabel';
 import React, { useCallback, useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getTagDisplay, getTagTooltip } from 'utils/TagsUtils';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { ROUTES } from '../../../constants/constants';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
 
-import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
-import { TAG_START_WITH } from 'constants/Tag.constants';
-import { reduceColorOpacity } from 'utils/CommonUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
+import { ReactComponent as IconTag } from '../../../assets/svg/classification.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
@@ -68,12 +69,15 @@ const TagsV1 = ({
 
   const tagName = useMemo(
     () =>
-      showOnlyName
-        ? tag.tagFQN
-            .split(FQN_SEPARATOR_CHAR)
-            .slice(-2)
-            .join(FQN_SEPARATOR_CHAR)
-        : tag.tagFQN,
+      getEntityName(tag) ||
+      getTagDisplay(
+        showOnlyName
+          ? tag.tagFQN
+              .split(FQN_SEPARATOR_CHAR)
+              .slice(-2)
+              .join(FQN_SEPARATOR_CHAR)
+          : tag.tagFQN
+      ),
     [showOnlyName, tag.tagFQN]
   );
 
@@ -105,7 +109,7 @@ const TagsV1 = ({
             ellipsis
             className="m-0 tags-label"
             data-testid={`tag-${tag.tagFQN}`}>
-            {getTagDisplay(tagName)}
+            {tagName}
           </Typography.Paragraph>
         </div>
       </div>

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { MessagingProvider } from 'generated/type/profile';
-import { Team } from '../../../generated/entity/teams/team';
+import { MessagingProvider, Team } from '../../../generated/entity/teams/team';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 export interface TeamHierarchyProps {
   currentTeam?: Team;
@@ -70,7 +69,7 @@ export interface TeamsInfoProps {
 export interface TeamsSubscriptionProps {
   hasEditPermission: boolean;
   subscription?: MessagingProvider;
-  updateTeamSubscription: (value: SubscriptionWebhook) => Promise<void>;
+  updateTeamSubscription: (value?: SubscriptionWebhook) => Promise<void>;
 }
 
 export interface SubscriptionWebhook {

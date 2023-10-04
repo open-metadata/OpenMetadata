@@ -15,27 +15,27 @@ import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Space } from 'antd';
 import classNames from 'classnames';
-import BooleanFieldTemplate from 'components/JSONSchemaTemplate/BooleanFieldTemplate';
-import DescriptionFieldTemplate from 'components/JSONSchemaTemplate/DescriptionFieldTemplate';
-import { FieldErrorTemplate } from 'components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
-import { ObjectFieldTemplate } from 'components/JSONSchemaTemplate/ObjectFieldTemplate';
-import WorkflowArrayFieldTemplate from 'components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
+import { isUndefined, omit, omitBy } from 'lodash';
+import React, { FC, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import BooleanFieldTemplate from '../../components/JSONSchemaTemplate/BooleanFieldTemplate';
+import DescriptionFieldTemplate from '../../components/JSONSchemaTemplate/DescriptionFieldTemplate';
+import { FieldErrorTemplate } from '../../components/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
+import { ObjectFieldTemplate } from '../../components/JSONSchemaTemplate/ObjectFieldTemplate';
+import WorkflowArrayFieldTemplate from '../../components/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import {
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_NAME_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
-} from 'constants/Services.constant';
-import { FormSubmitType } from 'enums/form.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
+} from '../../constants/Services.constant';
+import { FormSubmitType } from '../../enums/form.enum';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
-} from 'interface/service.interface';
-import { isUndefined, omit, omitBy } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { transformErrors } from 'utils/formUtils';
-import { getSchemaByWorkflowType } from 'utils/IngestionWorkflowUtils';
+} from '../../interface/service.interface';
+import { transformErrors } from '../../utils/formUtils';
+import { getSchemaByWorkflowType } from '../../utils/IngestionWorkflowUtils';
 
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,

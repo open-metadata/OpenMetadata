@@ -13,16 +13,6 @@
 import { FilterOutlined } from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { EntityType } from 'enums/entity.enum';
-import { Column, TagLabel } from 'generated/entity/data/container';
-import { TagSource } from 'generated/type/tagLabel';
 import {
   cloneDeep,
   groupBy,
@@ -35,13 +25,26 @@ import {
 import { EntityTags, TagFilterOptions, TagOption } from 'Models';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import { PRIMERY_COLOR } from '../../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column, TagLabel } from '../../../generated/entity/data/container';
+import { TagSource } from '../../../generated/type/tagLabel';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from 'utils/ContainerDetailUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+} from '../../../utils/ContainerDetailUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({

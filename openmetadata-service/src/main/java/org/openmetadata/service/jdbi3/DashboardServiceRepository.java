@@ -23,12 +23,11 @@ import org.openmetadata.service.resources.services.dashboard.DashboardServiceRes
 @Slf4j
 public class DashboardServiceRepository extends ServiceEntityRepository<DashboardService, DashboardConnection> {
 
-  public DashboardServiceRepository(CollectionDAO dao) {
+  public DashboardServiceRepository() {
     super(
         DashboardServiceResource.COLLECTION_PATH,
         Entity.DASHBOARD_SERVICE,
-        dao,
-        dao.dashboardServiceDAO(),
+        Entity.getCollectionDAO().dashboardServiceDAO(),
         DashboardConnection.class,
         "",
         ServiceType.DASHBOARD);

@@ -17,20 +17,20 @@ import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
-  basicAuthRegister,
-  basicAuthSignIn,
-  checkEmailInUse,
-  generatePasswordResetLink,
-  logoutUser,
-  resetPassword,
-} from 'rest/auth-API';
-import {
   HTTP_STATUS_CODE,
   LOGIN_FAILED_ERROR,
 } from '../../../constants/auth.constants';
 import { ROUTES } from '../../../constants/constants';
 import { PasswordResetRequest } from '../../../generated/auth/passwordResetRequest';
 import { RegistrationRequest } from '../../../generated/auth/registrationRequest';
+import {
+  basicAuthRegister,
+  basicAuthSignIn,
+  checkEmailInUse,
+  generatePasswordResetLink,
+  logoutUser,
+  resetPassword,
+} from '../../../rest/auth-API';
 import { getBase64EncodedString } from '../../../utils/CommonUtils';
 import localState from '../../../utils/LocalStorageUtils';
 import {

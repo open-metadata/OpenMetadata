@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { ServiceCategoryPlural } from 'enums/service.enum';
-import { SearchIndexMappingLanguage } from 'generated/configuration/elasticSearchConfiguration';
 import { t } from 'i18next';
 import { map, startCase } from 'lodash';
+import { ServiceCategoryPlural } from '../enums/service.enum';
+import { SearchIndexMappingLanguage } from '../generated/configuration/elasticSearchConfiguration';
 
 export const ELASTIC_SEARCH_INDEX_ENTITIES = [
   {

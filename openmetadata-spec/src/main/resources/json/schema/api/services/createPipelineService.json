@@ -52,6 +52,6 @@
       "$ref": "../../type/lifeCycle.json"
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

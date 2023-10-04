@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
+import { Edge } from 'reactflow';
 import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from 'components/Entity/EntityLineage/EntityLineage.interface';
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
 import {
   getDashboardDetailsPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getTableTabPath,
   getTopicDetailsPath,
-} from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
-import { Edge } from 'reactflow';
+} from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { LineageDetails } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';

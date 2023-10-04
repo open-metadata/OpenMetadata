@@ -12,17 +12,20 @@
  */
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
-import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import { ReactComponent as IconUser } from 'assets/svg/user.svg';
 import classNames from 'classnames';
-import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
-import { OwnerType } from 'enums/user.enum';
-import { EntityReference } from 'generated/entity/data/table';
 import { isUndefined } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
+import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../constants/constants';
+import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { getEntityName } from '../../../utils/EntityUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 

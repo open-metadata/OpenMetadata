@@ -12,24 +12,24 @@
  */
 
 import { Card } from 'antd';
-import { AlertDetailsComponent } from 'components/Alerts/AlertsDetails/AlertDetails.component';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import {
-  EventFilterRule,
-  EventSubscription,
-  FilteringRules,
-} from 'generated/events/eventSubscription';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getAlertsFromId } from 'rest/alertsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
+import {
+  EventFilterRule,
+  EventSubscription,
+  FilteringRules,
+} from '../../generated/events/eventSubscription';
+import { getAlertsFromId } from '../../rest/alertsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 

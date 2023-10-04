@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CursorType } from 'enums/pagination.enum';
-import { Paging } from 'generated/type/paging';
+
+import { CursorType } from '../../../enums/pagination.enum';
+import { Paging } from '../../../generated/type/paging';
 
 export type NextPreviousProps = BasicProps | (BasicProps & PagingProps);
 

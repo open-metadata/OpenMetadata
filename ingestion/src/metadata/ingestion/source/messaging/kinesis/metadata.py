@@ -21,15 +21,13 @@ from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.kinesis.models import (
     KinesisArgs,
     KinesisData,
@@ -59,20 +57,20 @@ class KinesisSource(MessagingServiceSource):
     topics metadata from Kinesis Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.kinesis = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: KinesisConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, KinesisConnection):
             raise InvalidSourceException(
                 f"Expected KinesisConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_stream_names_list(self) -> List[str]:
         """Get the list of all the streams"""
