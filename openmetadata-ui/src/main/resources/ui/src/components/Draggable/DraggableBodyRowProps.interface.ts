@@ -11,27 +11,20 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { Team } from '../../generated/entity/teams/team';
 
-.right-panel-heading {
-  margin-bottom: 8px !important;
-  color: @text-grey-muted;
+export type DraggableUnion = Team | GlossaryTerm;
+
+export interface DraggableBodyRowProps<T>
+  extends React.HTMLAttributes<HTMLTableRowElement> {
+  index?: number;
+  record?: T;
+  handleMoveRow: (dragRecord: T, dropRecord?: T) => void;
+  handleTableHover?: (value: boolean) => void;
 }
 
-.right-panel-list-item:last-child {
-  border-bottom: none;
-}
-
-.right-panel-list-item {
-  .entity-button-icon {
-    height: 24px;
-    width: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    svg {
-      height: 18px;
-      width: 18px;
-    }
-  }
+export interface DragCollectProps {
+  getItem: () => { index: number };
+  isOver: (options?: { shallow?: boolean }) => boolean;
 }

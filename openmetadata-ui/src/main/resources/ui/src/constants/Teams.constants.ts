@@ -12,11 +12,14 @@
  */
 
 import { t } from 'i18next';
-import DraggableBodyRow from '../components/Team/TeamDetails/DraggableBodyRow';
+import DraggableBodyRow from '../components/Draggable/DraggableBodyRow';
 
 export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';
 
 export const TABLE_CONSTANTS = {
+  header: {
+    row: DraggableBodyRow,
+  },
   body: {
     row: DraggableBodyRow,
   },
