@@ -99,20 +99,17 @@ class BigqueryUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
     )
-    @patch("metadata.ingestion.source.database.bigquery.metadata.get_connection")
     @patch("metadata.ingestion.source.database.common_db_source.get_connection")
     def __init__(
         self,
         methodName,
         get_connection_common,
-        get_connection_bq,
         test_connection,
         set_project_id,
         create_generic_connection,
         client,
     ) -> None:
         super().__init__(methodName)
-        get_connection_bq.return_value = Mock()
         get_connection_common.return_value = Mock()
         client.return_value = Mock()
         create_generic_connection.return_value = Mock()
