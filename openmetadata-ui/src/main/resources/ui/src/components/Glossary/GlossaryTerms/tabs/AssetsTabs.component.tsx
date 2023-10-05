@@ -150,6 +150,16 @@ const AssetsTabs = forwardRef(
             containerResponse,
             storedProcedureResponse,
             dashboardDataModelResponse,
+            databaseResponse,
+            databaseSchemaResponse,
+            searchResponse,
+            databaseServiceResponse,
+            messagingServiceResponse,
+            dashboardServiceResponse,
+            mlmodelServiceResponse,
+            pipelineServiceResponse,
+            storageServiceResponse,
+            searchServiceResponse,
             glossaryResponse,
           ]) => {
             const counts = {
@@ -163,6 +173,25 @@ const AssetsTabs = forwardRef(
                 storedProcedureResponse.data.hits.total.value,
               [EntityType.DASHBOARD_DATA_MODEL]:
                 dashboardDataModelResponse.data.hits.total.value,
+              [EntityType.DATABASE]: databaseResponse.data.hits.total.value,
+              [EntityType.DATABASE_SCHEMA]:
+                databaseSchemaResponse.data.hits.total.value,
+              [EntityType.SEARCH_INDEX]: searchResponse.data.hits.total.value,
+              [EntityType.DATABASE_SERVICE]:
+                databaseServiceResponse.data.hits.total.value,
+              [EntityType.MESSAGING_SERVICE]:
+                messagingServiceResponse.data.hits.total.value,
+              [EntityType.DASHBOARD_SERVICE]:
+                dashboardServiceResponse.data.hits.total.value,
+              [EntityType.MLMODEL_SERVICE]:
+                mlmodelServiceResponse.data.hits.total.value,
+              [EntityType.PIPELINE_SERVICE]:
+                pipelineServiceResponse.data.hits.total.value,
+              [EntityType.STORAGE_SERVICE]:
+                storageServiceResponse.data.hits.total.value,
+              [EntityType.SEARCH_SERVICE]:
+                searchServiceResponse.data.hits.total.value,
+
               [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value

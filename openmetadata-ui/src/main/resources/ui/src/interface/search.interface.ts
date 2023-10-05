@@ -185,7 +185,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
   [SearchIndex.DATABASE]: DatabaseSearchSource;
   [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
-  [SearchIndex.DASHBOARD_SERCVICE]: DashboardServiceSearchSource;
+  [SearchIndex.DASHBOARD_SERVICE]: DashboardServiceSearchSource;
   [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
   [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
