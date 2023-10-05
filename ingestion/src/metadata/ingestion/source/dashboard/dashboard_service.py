@@ -349,16 +349,17 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def process_owner(self, dashboard_details):
         try:
-            owner = self.get_owner_details(  # pylint: disable=assignment-from-none
-                dashboard_details=dashboard_details
-            )
-            if owner and self.source_config.includeOwners:
-                self.metadata.patch_owner(
-                    entity=Dashboard,
-                    source=self.context.dashboard,
-                    owner=owner,
-                    force=False,
+            if self.source_config.includeOwners:
+                owner = self.get_owner_details(  # pylint: disable=assignment-from-none
+                    dashboard_details=dashboard_details
                 )
+                if owner:
+                    self.metadata.patch_owner(
+                        entity=Dashboard,
+                        source=self.context.dashboard,
+                        owner=owner,
+                        force=False,
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for {dashboard_details}: {exc}")
