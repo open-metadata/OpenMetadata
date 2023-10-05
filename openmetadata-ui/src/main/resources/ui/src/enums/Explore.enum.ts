@@ -28,4 +28,13 @@ export enum ExplorePageTabs {
   DASHBOARD_DATA_MODEL = 'dashboardDataModel',
   STORED_PROCEDURE = 'storedProcedure',
   SEARCH_INDEX = 'searchIndexes',
+  DATABASE = 'database',
+  DATABASE_SCHEMA = 'databaseSchema',
+  DATABASE_SERVICE = 'databaseService',
+  MESSAGING_SERVICE = 'messagingService',
+  DASHBOARD_SERVICE = 'dashboardService',
+  PIPELINE_SERVICE = 'pipelineService',
+  ML_MODEL_SERVICE = 'mlmodelService',
+  STORAGE_SERVICE = 'storageService',
+  SEARCH_INDEX_SERVICE = 'searchIndexService',
 }

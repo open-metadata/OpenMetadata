@@ -39,10 +39,22 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
     cleanUpIndex(reportDataType, date);
   }
 
+  public void deleteReportData(ReportDataType reportDataType) {
+    ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deletePreviousReportData(reportDataType.value());
+    cleanUpPreviousIndex(reportDataType);
+  }
+
   private void cleanUpIndex(ReportDataType reportDataType, String date) {
     HashMap<String, Object> params = new HashMap<>();
     params.put("date_", date);
     String scriptTxt = "doc['timestamp'].value.toLocalDate() == LocalDate.parse(params.date_);";
+    searchRepository.deleteByScript(reportDataType.toString(), scriptTxt, params);
+  }
+
+  private void cleanUpPreviousIndex(ReportDataType reportDataType) {
+    HashMap<String, Object> params = new HashMap<>();
+    params.put("reportDataType_", reportDataType.value());
+    String scriptTxt = "doc['reportDataType'].value ==  params.reportDataType_";
     searchRepository.deleteByScript(reportDataType.toString(), scriptTxt, params);
   }
 }

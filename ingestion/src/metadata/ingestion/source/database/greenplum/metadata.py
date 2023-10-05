@@ -116,14 +116,14 @@ class GreenplumSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadataConnection):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GreenplumConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GreenplumConnection):
             raise InvalidSourceException(
                 f"Expected GreenplumConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def query_table_names_and_types(
         self, schema_name: str
