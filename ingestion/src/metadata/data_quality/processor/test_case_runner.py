@@ -153,8 +153,12 @@ class TestCaseRunner(Processor):
         """
         if not cli_test_cases_definitions:
             return test_cases
-        test_cases = deepcopy(test_cases)
-        test_case_names = {test_case.name.__root__ for test_case in test_cases}
+        test_cases = deepcopy(test_cases) or []
+        test_case_names = (
+            {test_case.name.__root__ for test_case in test_cases}
+            if test_cases
+            else set()
+        )
 
         # we'll check the test cases defined in the CLI config file and not present in the platform
         test_cases_to_create = [

@@ -214,6 +214,7 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         workflow = TestSuiteWorkflow.create(test_suite_config)
         workflow.execute()
+        workflow.raise_from_status()
 
         test_case_1 = self.metadata.get_by_name(
             entity=TestCase,
