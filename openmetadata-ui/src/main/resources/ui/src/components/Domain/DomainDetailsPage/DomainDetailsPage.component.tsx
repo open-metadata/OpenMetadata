@@ -379,7 +379,7 @@ const DomainDetailsPage = ({
                   entity: t('label.domain'),
                 })}
                 icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
-                id="rename-button"
+                id="edit-style-button"
                 name={t('label.style')}
               />
             ),

@@ -43,7 +43,8 @@ const DomainPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
-  const { domains, refreshDomains, updateDomains } = useDomainProvider();
+  const { domains, refreshDomains, updateDomains, domainLoading } =
+    useDomainProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
@@ -114,8 +115,8 @@ const DomainPage = () => {
             ? getDomainPath(updatedDomains[0].fullyQualifiedName)
             : getDomainPath();
 
-        history.push(domainPath);
         refreshDomains();
+        history.push(domainPath);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -144,13 +145,13 @@ const DomainPage = () => {
   };
 
   useEffect(() => {
-    if (domainFqn) {
+    if (domainFqn && domains.length > 0) {
       fetchDomainByName(domainFqn);
     }
-  }, [domainFqn]);
+  }, [domainFqn, domains]);
 
   useEffect(() => {
-    if (domains.length > 0 && !domainFqn) {
+    if (domains.length > 0 && !domainFqn && !domainLoading) {
       history.push(getDomainPath(domains[0].fullyQualifiedName));
     }
   }, [domains, domainFqn]);
