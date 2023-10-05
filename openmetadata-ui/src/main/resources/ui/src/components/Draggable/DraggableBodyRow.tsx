@@ -41,8 +41,13 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
       return {
         isOver: monitor.isOver(),
-        dropClassName:
-          dragIndex < (index ?? 0) ? 'drop-over-downward' : 'drop-over-upward',
+        dropClassName: isUndefined(record?.children)
+          ? dragIndex !== index
+            ? 'drop-over-not-having-child'
+            : ''
+          : dragIndex !== index
+          ? 'drop-over-having-child'
+          : '',
       };
     },
     hover: () => {
@@ -56,7 +61,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
   // here we are passing the drag record
   const [{ isDragging }, drag] = useDrag({
     type: DRAGGABLE_BODY_ROW,
-    item: { record },
+    item: { record, index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
