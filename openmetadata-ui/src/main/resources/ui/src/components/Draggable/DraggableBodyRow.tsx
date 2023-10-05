@@ -41,13 +41,12 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
       return {
         isOver: monitor.isOver(),
-        dropClassName: isUndefined(record?.children)
-          ? dragIndex !== index
-            ? 'drop-over-not-having-child'
-            : ''
-          : dragIndex !== index
-          ? 'drop-over-having-child'
-          : '',
+        dropClassName:
+          dragIndex !== index
+            ? isUndefined(record?.children)
+              ? 'drop-over-not-having-child'
+              : 'drop-over-having-child'
+            : '',
       };
     },
     hover: () => {
