@@ -92,9 +92,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         return dashboard
 
-    def _get_user_by_email(
-        self, email: Union[FetchDashboard, DashboardResult]
-    ) -> EntityReference:
+    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:
@@ -105,11 +103,12 @@ class SupersetSourceMixin(DashboardServiceSource):
     def get_owner_details(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> EntityReference:
-        for owner in dashboard_details.owners:
-            if owner.email:
-                user = self._get_user_by_email(owner.email)
-                if user:
-                    return user
+        if hasattr(dashboard_details, "owner"):
+            for owner in dashboard_details.owners or []:
+                if owner.email:
+                    user = self._get_user_by_email(owner.email)
+                    if user:
+                        return user
         if dashboard_details.email:
             user = self._get_user_by_email(dashboard_details.email)
             if user:
@@ -204,7 +203,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         return None
 
     def get_column_info(
-        self, data_source: Union[DataSourceResult, FetchColumn]
+        self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
         """
         Args:
