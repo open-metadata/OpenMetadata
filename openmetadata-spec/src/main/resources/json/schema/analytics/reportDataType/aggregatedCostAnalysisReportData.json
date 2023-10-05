@@ -7,45 +7,71 @@
   "javaType": "org.openmetadata.schema.analytics.AggregatedCostAnalysisReportData",
   "description": "Aggregated data for Cost Analysis Report.",
   "definitions": {
-    "dataAssetCount": {
-      "description": "Count of Data Assets over a time period",
+    "dataAssetValues": {
+      "description": "Count or Size in bytes of Data Assets over a time period",
       "type": "object",
       "properties": {
         "threeDays": {
-          "description": "Data Asset Count for 3 days",
+          "description": "Data Asset Count or Size for 3 days",
           "type": "number"
         },
         "sevenDays": {
-          "description": "Data Asset Count for 7 days",
+          "description": "Data Asset Count or Size for 7 days",
           "type": "number"
         },
         "fourteenDays": {
-          "description": "Data Asset Count for 14 days",
+          "description": "Data Asset Count or Size for 14 days",
           "type": "number"
         },
         "thirtyDays": {
-          "description": "Data Asset Count for 30 days",
+          "description": "Data Asset Count or Size for 30 days",
           "type": "number"
         },
         "sixtyDays": {
-          "description": "Data Asset Count for 60 days",
+          "description": "Data Asset Count or Size for 60 days",
           "type": "number"
         }
       },
       "additionalProperties": false
+    },
+    "dataAssetMetrics": {
+      "description": "Store the Count and Size in bytes of the Data Assets over a time period",
+      "type": "object",
+      "properties": {
+        "size": {
+          "description": "Size of the Data Assets over a period of time",
+          "$ref": "#/definitions/dataAssetValues"
+        },
+        "count": {
+          "description": "Count of the Data Assets over a period of time",
+          "$ref": "#/definitions/dataAssetValues"
+        },
+        "totalSize": {
+          "description": "Total Size based in Bytes",
+          "type": "number"
+        },
+        "totalCount": {
+          "description": "Total Count",
+          "type": "number"
+        }
+      }
     }
   },
   "properties": {
     "unusedDataAssets": {
-      "description": "Number of unused Data Assets over a period of time",
-      "$ref": "#/definitions/dataAssetCount"
+      "description": "Count and Size of the unused Data Assets over a period of time",
+      "$ref": "#/definitions/dataAssetMetrics"
     },
     "frequentlyUsedDataAssets": {
-      "description": "Number of frequently used Data Assets over a period of time",
-      "$ref": "#/definitions/dataAssetCount"
+      "description": "Count and Size of the frequently used Data Assets over a period of time",
+      "$ref": "#/definitions/dataAssetMetrics"
     },
     "totalSize": {
       "description": "Total Size based in Bytes",
+      "type": "number"
+    },
+    "totalCount": {
+      "description": "Total Count",
       "type": "number"
     },
     "serviceName": {
