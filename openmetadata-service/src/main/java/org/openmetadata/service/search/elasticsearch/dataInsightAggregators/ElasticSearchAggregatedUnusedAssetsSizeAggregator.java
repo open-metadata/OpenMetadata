@@ -7,9 +7,9 @@ import org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.service.dataInsight.AggregatedUnusedAssetsSizeAggregator;
 
-public class ElasticSearchAggregatedUnusedAssetsAggregator
+public class ElasticSearchAggregatedUnusedAssetsSizeAggregator
     extends AggregatedUnusedAssetsSizeAggregator<Aggregations, Histogram, Bucket, Sum> {
-  public ElasticSearchAggregatedUnusedAssetsAggregator(Aggregations aggregations) {
+  public ElasticSearchAggregatedUnusedAssetsSizeAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 

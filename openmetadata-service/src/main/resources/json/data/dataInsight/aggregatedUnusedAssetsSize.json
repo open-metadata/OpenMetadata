@@ -1,17 +1,18 @@
 {
-  "name": "AggregatedUnusedAssets",
-  "fullyQualifiedName": "AggregatedUnusedAssets",
-  "displayName": "Aggregated Unused Assets",
-  "description": "Displays the list of unused assets over time",
+  "name": "AggregatedUnusedAssetsSize",
+  "fullyQualifiedName": "AggregatedUnusedAssetsSize",
+  "displayName": "Unused Assets Size",
+  "description": "Displays the total size of unused assets over time.",
   "dataIndexType": "aggregated_cost_analysis_report_data_index",
   "dimensions": [
     {"name": "timestamp","chartDataType":"INT"}
   ],
   "metrics": [
-    {"name": "threeDays", "displayName": "3 Days", "chartDataType": "INT"},
-    {"name": "sevenDays", "displayName": "7 Days", "chartDataType": "INT"},
-    {"name": "fourteenDays", "displayName": "14 Days", "chartDataType": "INT"},
-    {"name": "thirtyDays", "displayName": "30 Days", "chartDataType": "INT"},
-    {"name": "sixtyDays", "displayName": "60 Days", "chartDataType": "INT"}
+    {"name": "threeDays", "displayName": "3 Days", "chartDataType": "FLOAT"},
+    {"name": "sevenDays", "displayName": "7 Days", "chartDataType": "FLOAT"},
+    {"name": "fourteenDays", "displayName": "14 Days", "chartDataType": "FLOAT"},
+    {"name": "thirtyDays", "displayName": "30 Days", "chartDataType": "FLOAT"},
+    {"name": "sixtyDays", "displayName": "60 Days", "chartDataType": "FLOAT"},
+    {"name": "totalAssetSize", "displayName": "Total Asset Size", "chartDataType": "FLOAT"}
   ]
 }

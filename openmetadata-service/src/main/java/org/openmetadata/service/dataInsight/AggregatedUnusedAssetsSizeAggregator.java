@@ -3,12 +3,13 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssets;
+import java.util.Objects;
+import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsSize;
 
-public abstract class AggregatedUnusedAssetsAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
+public abstract class AggregatedUnusedAssetsSizeAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public AggregatedUnusedAssetsAggregator(A aggregations) {
+  public AggregatedUnusedAssetsSizeAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
@@ -24,15 +25,21 @@ public abstract class AggregatedUnusedAssetsAggregator<A, H, B, S> implements Da
       S fourteenDays = getAggregations(bucket, "fourteenDays");
       S thirtyDays = getAggregations(bucket, "thirtyDays");
       S sixtyDays = getAggregations(bucket, "sixtyDays");
+      S totalUnused = getAggregations(bucket, "totalUnused");
+      S totalUsed = getAggregations(bucket, "totalUsed");
+      Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
+      Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
+      Double total = unused + used;
 
       data.add(
-          new AggregatedUnusedAssets()
+          new AggregatedUnusedAssetsSize()
               .withTimestamp(timestamp)
               .withThreeDays(getValue(threeDays))
               .withSevenDays(getValue(sevenDays))
               .withFourteenDays(getValue(fourteenDays))
               .withThirtyDays(getValue(thirtyDays))
-              .withSixtyDays(getValue(sixtyDays)));
+              .withSixtyDays(getValue(sixtyDays))
+              .withTotal(total));
     }
     return data;
   }
