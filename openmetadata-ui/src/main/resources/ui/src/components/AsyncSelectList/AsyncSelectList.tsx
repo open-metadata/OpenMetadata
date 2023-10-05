@@ -13,7 +13,7 @@
 import { Select, SelectProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import Loader from '../../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -70,8 +70,9 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
       .map((tag) => {
         const displayName = tag.data?.displayName;
         const parts = Fqn.split(tag.label);
-        const lastPartOfTag =
-          displayName ?? parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        const lastPartOfTag = isEmpty(displayName)
+          ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
+          : displayName;
         parts.pop();
 
         return {
