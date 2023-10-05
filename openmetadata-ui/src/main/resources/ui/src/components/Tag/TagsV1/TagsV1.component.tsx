@@ -97,7 +97,7 @@ const TagsV1 = ({
   const tagColorBar = useMemo(
     () =>
       color ? (
-        <div className="tag-color-bar" style={{ background: color }} />
+        <div className="tag-color-bar" style={{ borderColor: color }} />
       ) : null,
     [color]
   );
