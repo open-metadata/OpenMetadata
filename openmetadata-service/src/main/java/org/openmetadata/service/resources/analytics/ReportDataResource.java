@@ -167,7 +167,7 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    repository.deletePreviousData(reportDataType);
+    repository.deleteReportData(reportDataType);
     return Response.ok().build();
   }
 }

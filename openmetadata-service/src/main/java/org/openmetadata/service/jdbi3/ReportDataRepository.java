@@ -39,7 +39,7 @@ public class ReportDataRepository extends EntityTimeSeriesRepository<ReportData>
     cleanUpIndex(reportDataType, date);
   }
 
-  public void deletePreviousData(ReportDataType reportDataType) {
+  public void deleteReportData(ReportDataType reportDataType) {
     ((CollectionDAO.ReportDataTimeSeriesDAO) timeSeriesDao).deletePreviousReportData(reportDataType.value());
     cleanUpPreviousIndex(reportDataType);
   }
