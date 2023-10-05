@@ -17,6 +17,6 @@ export enum CustomEntityType {
   RecentlyVisited = 'RecentlyVisited',
   ActivityFeed = 'ActivityFeed',
   KPI = 'KPI',
-  TotalDataAssets = 'ToatlDataAssets',
+  TotalDataAssets = 'TotalDataAssets',
   Announcement = 'Announcement',
 }

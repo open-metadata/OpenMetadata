@@ -10,31 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
-import { startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { compare } from 'fast-json-patch';
+import { isEmpty, startCase } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import AddWidgetModal from '../../components/CustomizableComponents/AddWidgetModal/AddWidgetModal';
+import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
 import { EntityType } from '../../enums/entity.enum';
-import { EntityReference } from '../../generated/entity/type';
-import { Page, PageType } from '../../generated/system/ui/page';
-import { createPage, getPageDetails } from '../../rest/PageAPI';
-import MyDataPageV1 from '../MyDataPage/MyDataPageV1.component';
+import { Document } from '../../generated/entity/docStore/document';
+import { PageType } from '../../generated/system/ui/page';
+import { getDocumentByFQN, updateDocument } from '../../rest/DocStoreAPI';
+import { WidgetConfig } from './CustomisablePage.interface';
 
 export const CustomisablePage = () => {
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
-
-  const [page, setPage] = useState<Page>();
+  const [page, setPage] = useState<Document>({} as Document);
+  const [layout, setLayout] = useState<Document>({} as Document);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const { t } = useTranslation();
 
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      const page = await getPageDetails(fqn, pageFqn);
-
-      setPage(page);
+      const pageData = await getDocumentByFQN(
+        `${EntityType.PERSONA}.${fqn}.${EntityType.PAGE}.${pageFqn}`
+      );
+      setPage(pageData);
+      setLayout(pageData);
     } catch (error) {
       // Error
     } finally {
@@ -42,94 +50,160 @@ export const CustomisablePage = () => {
     }
   };
 
+  const handleRemoveWidget = useCallback((widgetKey: string) => {
+    setLayout((pageData) => {
+      if (widgetKey.endsWith('.EmptyWidgetPlaceholder')) {
+        return {
+          ...pageData,
+          data: {
+            page: {
+              ...pageData.data.page,
+              layout: pageData.data.page.layout.filter(
+                (widget: WidgetConfig) => widget.i !== widgetKey
+              ),
+            },
+          },
+        };
+      } else {
+        return {
+          ...pageData,
+          data: {
+            page: {
+              ...pageData.data.page,
+              layout: pageData.data.page.layout.map((widget: WidgetConfig) =>
+                widget.i === widgetKey
+                  ? {
+                      ...widget,
+                      i: widgetKey + '.EmptyWidgetPlaceholder',
+                      h: widget.h > 3 ? 3 : widget.h,
+                    }
+                  : widget
+              ),
+            },
+          },
+        };
+      }
+    });
+  }, []);
+
+  const handleAddWidget = useCallback(
+    (newWidgetData: Document) => {
+      setLayout((pageData) => {
+        const isEmptyPlaceholderPresent = pageData.data.page.layout.find(
+          (widget: WidgetConfig) =>
+            widget.i ===
+            `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
+        );
+
+        if (isEmptyPlaceholderPresent) {
+          return {
+            ...pageData,
+            data: {
+              page: {
+                ...pageData.data.page,
+                layout: pageData.data.page.layout.map((widget: WidgetConfig) =>
+                  widget.i ===
+                  `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
+                    ? {
+                        ...widget,
+                        i: newWidgetData.fullyQualifiedName,
+                        h: newWidgetData.data.height,
+                      }
+                    : widget
+                ),
+              },
+            },
+          };
+        } else {
+          return {
+            ...pageData,
+            data: {
+              page: {
+                ...pageData.data.page,
+                layout: [
+                  ...pageData.data.page.layout,
+                  {
+                    w: newWidgetData.data.gridSizes[0],
+                    h: newWidgetData.data.height,
+                    x: 0,
+                    y: 0,
+                    i: newWidgetData.fullyQualifiedName,
+                    static: false,
+                  },
+                ],
+              },
+            },
+          };
+        }
+      });
+      setIsWidgetModalOpen(false);
+    },
+    [layout]
+  );
+
+  const handleLayoutUpdate = useCallback(
+    (updatedLayout: Layout[]) => {
+      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
+        setLayout((pageData) => ({
+          ...pageData,
+          data: {
+            page: {
+              ...pageData.data.page,
+              layout: updatedLayout.map((widget) => {
+                const widgetData = pageData.data.page.layout.find(
+                  (a: WidgetConfig) => a.i === widget.i
+                );
+
+                return {
+                  w: widget.x,
+                  h: widget.h,
+                  i: widget.i,
+                  static: widget.static ?? false,
+                  ...widgetData,
+                  x: widget.x,
+                  y: widget.y,
+                };
+              }),
+            },
+          },
+        }));
+      }
+    },
+    [layout]
+  );
+
+  const handleOpenAddWidgetModal = useCallback(() => {
+    setIsWidgetModalOpen(true);
+  }, []);
+
+  const handleCloseAddWidgetModal = useCallback(() => {
+    setIsWidgetModalOpen(false);
+  }, []);
+
   const pageRendered = useMemo(() => {
     switch (pageFqn) {
       case PageType.LandingPage:
-        return <MyDataPageV1 />;
+        return (
+          <CustomizeMyData
+            handleLayoutUpdate={handleLayoutUpdate}
+            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+            handleRemoveWidget={handleRemoveWidget}
+            widgetsData={layout}
+          />
+        );
     }
 
     return null;
-  }, [pageFqn]);
+  }, [pageFqn, layout, handleRemoveWidget, handleOpenAddWidgetModal]);
 
   useEffect(() => {
     fetchDocument();
   }, [fqn, pageFqn]);
 
   const handleSave = async () => {
-    const pageData = {
-      pageType: pageFqn,
-      knowledgePanels: [
-        {
-          name: 'KnowledgePanel.AvtivityFeed',
-          type: EntityType.knowledgePanels,
-        },
-        {
-          name: 'KnowledgePanel.MyData',
-          type: EntityType.knowledgePanels,
-        },
-        {
-          name: 'KnowledgePanel.KPI',
-          type: EntityType.knowledgePanels,
-        },
+    const jsonPatch = compare(page, layout);
 
-        {
-          name: 'KnowledgePanel.TotalDataAssets',
-          type: EntityType.knowledgePanels,
-        },
-      ],
-      name: pageFqn,
-      persona: { name: fqn, type: EntityType.PERSONA } as EntityReference,
-      fullyQualifiedName: `${EntityType.PERSONA}.${fqn}.${EntityType.PAGE}.${pageFqn}`,
-      entityType: EntityType.PAGE,
-      layout: [
-        {
-          w: 9,
-          h: 4,
-          x: 0,
-          y: 0,
-          i: 'FeedsWidget',
-          moved: false,
-          static: false,
-        },
-        {
-          w: 3,
-          h: 2,
-          x: 0,
-          y: 4,
-          i: 'MyDataWidget',
-          moved: false,
-          static: false,
-        },
-        {
-          w: 6,
-          h: 2,
-          x: 3,
-          y: 4,
-          i: 'KPIWidget',
-          moved: false,
-          static: false,
-        },
-        {
-          w: 9,
-          h: 2.2,
-          x: 0,
-          y: 6,
-          i: 'TotalDataAssetsWidget',
-          moved: false,
-          static: false,
-        },
-        {
-          w: 3,
-          h: 9,
-          x: 9,
-          y: 0,
-          i: 'RightSidebar',
-          moved: false,
-          static: true,
-        },
-      ],
-    };
-    await createPage(pageData as unknown as Page);
+    await updateDocument(page?.id ?? '', jsonPatch);
   };
 
   if (isLoading) {
@@ -148,13 +222,27 @@ export const CustomisablePage = () => {
           <span className="text-body">({startCase(fqn)})</span>
         </div>
         <Space>
+          <Button
+            ghost
+            data-testid="add-widget-placeholder-button"
+            icon={<PlusOutlined />}
+            size="small"
+            type="primary"
+            onClick={handleOpenAddWidgetModal}>
+            {t('label.add')}
+          </Button>
           <Button size="small">{t('label.cancel')}</Button>
           <Button size="small" type="primary" onClick={handleSave}>
             {t('label.save')}
           </Button>
         </Space>
       </Col>
-      <Col>{pageRendered}</Col>
+      <Col span={24}>{pageRendered}</Col>
+      <AddWidgetModal
+        handleAddWidget={handleAddWidget}
+        handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+        open={isWidgetModalOpen}
+      />
     </Row>
   );
 };

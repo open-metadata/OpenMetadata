@@ -10,24 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Tooltip } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
+import { Button, Col, Row, Skeleton, Space } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageHeader from '../../components/header/PageHeader.component';
 import { AddEditPersonaForm } from '../../components/Persona/AddEditPersona/AddEditPersona.component';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
+import { PersonaDetailsCard } from '../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -35,8 +27,6 @@ import { Persona } from '../../generated/entity/teams/persona';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../rest/PersonaAPI';
-import { getEntityName } from '../../utils/EntityUtils';
-import { getSettingsPathWithFqn } from '../../utils/RouterUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -63,6 +53,7 @@ export const PersonaPage = () => {
       setIsLoading(true);
       const { data, paging } = await getAllPersonas({
         limit: pageSize,
+        fields: 'users',
       });
 
       setPersona(data);
@@ -82,87 +73,87 @@ export const PersonaPage = () => {
     setAddEditPersona({} as Persona);
   };
 
-  const columns: ColumnsType<Persona> = useMemo(() => {
-    return [
-      {
-        title: t('label.persona'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (name: string, record: Persona) => (
-          <Link
-            to={getSettingsPathWithFqn(
-              GlobalSettingsMenuCategory.MEMBERS,
-              GlobalSettingOptions.PERSONA,
-              record.fullyQualifiedName ?? ''
-            )}>
-            {name}
-          </Link>
-        ),
-      },
-      {
-        title: t('label.display-name'),
-        dataIndex: 'displayName',
-        key: 'displayName',
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: string) => (
-          <RichTextEditorPreviewer
-            className="max-two-lines"
-            markdown={description}
-          />
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 90,
-        render: (_, record) => (
-          <Space
-            align="center"
-            className="w-full justify-center action-icons"
-            size={8}>
-            <Tooltip
-              placement="left"
-              title={
-                isAdminUser
-                  ? t('label.edit')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                className="flex-center"
-                data-testid={`edit-action-${getEntityName(record)}`}
-                disabled={!isAdminUser}
-                icon={<IconEdit width="16px" />}
-                type="text"
-                onClick={() => setAddEditPersona(record)}
-              />
-            </Tooltip>
-            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
-              <Button
-                disabled={!isAdminUser}
-                icon={
-                  <IconDelete
-                    data-testid={`delete-user-btn-${getEntityName(record)}`}
-                    name={t('label.delete')}
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => {
-                  setPersonaDeleting(record);
-                }}
-              />
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ];
-  }, []);
+  //   const columns: ColumnsType<Persona> = useMemo(() => {
+  //     return [
+  //       {
+  //         title: t('label.persona'),
+  //         dataIndex: 'name',
+  //         key: 'name',
+  //         render: (name: string, record: Persona) => (
+  //           <Link
+  //             to={getSettingsPathWithFqn(
+  //               GlobalSettingsMenuCategory.MEMBERS,
+  //               GlobalSettingOptions.PERSONA,
+  //               record.fullyQualifiedName ?? ''
+  //             )}>
+  //             {name}
+  //           </Link>
+  //         ),
+  //       },
+  //       {
+  //         title: t('label.display-name'),
+  //         dataIndex: 'displayName',
+  //         key: 'displayName',
+  //       },
+  //       {
+  //         title: t('label.description'),
+  //         dataIndex: 'description',
+  //         key: 'description',
+  //         render: (description: string) => (
+  //           <RichTextEditorPreviewer
+  //             className="max-two-lines"
+  //             markdown={description}
+  //           />
+  //         ),
+  //       },
+  //       {
+  //         title: t('label.action-plural'),
+  //         dataIndex: 'actions',
+  //         key: 'actions',
+  //         width: 90,
+  //         render: (_, record) => (
+  //           <Space
+  //             align="center"
+  //             className="w-full justify-center action-icons"
+  //             size={8}>
+  //             <Tooltip
+  //               placement="left"
+  //               title={
+  //                 isAdminUser
+  //                   ? t('label.edit')
+  //                   : t('message.no-permission-for-action')
+  //               }>
+  //               <Button
+  //                 className="flex-center"
+  //                 data-testid={`edit-action-${getEntityName(record)}`}
+  //                 disabled={!isAdminUser}
+  //                 icon={<IconEdit width="16px" />}
+  //                 type="text"
+  //                 onClick={() => setAddEditPersona(record)}
+  //               />
+  //             </Tooltip>
+  //             <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
+  //               <Button
+  //                 disabled={!isAdminUser}
+  //                 icon={
+  //                   <IconDelete
+  //                     data-testid={`delete-user-btn-${getEntityName(record)}`}
+  //                     name={t('label.delete')}
+  //                     width="16px"
+  //                   />
+  //                 }
+  //                 size="small"
+  //                 type="text"
+  //                 onClick={() => {
+  //                   setPersonaDeleting(record);
+  //                 }}
+  //               />
+  //             </Tooltip>
+  //           </Space>
+  //         ),
+  //       },
+  //     ];
+  //   }, []);
 
   const errorPlaceHolder = useMemo(
     () => (
@@ -187,6 +178,10 @@ export const PersonaPage = () => {
     fetchPersonas();
   };
 
+  const handlePersonaEdit = (editPersona: Persona) => {
+    setAddEditPersona(editPersona);
+  };
+
   return (
     <Row
       className="user-listing p-b-md"
@@ -206,7 +201,18 @@ export const PersonaPage = () => {
         </Space>
       </Col>
 
-      <Col span={24}>
+      {isLoading &&
+        [1, 2, 3].map((key) => <Skeleton active paragraph title key={key} />)}
+
+      {isEmpty(persona) && errorPlaceHolder}
+
+      {persona?.map((persona) => (
+        <Col key={persona.id} span={8}>
+          <PersonaDetailsCard persona={persona} onEdit={handlePersonaEdit} />
+        </Col>
+      ))}
+
+      {/* <Col span={24}>
         <Table
           bordered
           className="user-list-table"
@@ -221,7 +227,7 @@ export const PersonaPage = () => {
           rowKey="id"
           size="small"
         />
-      </Col>
+      </Col> */}
       <Col span={24}>
         <NextPrevious
           currentPage={currentPage}

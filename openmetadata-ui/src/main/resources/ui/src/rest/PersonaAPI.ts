@@ -12,7 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import axiosClient from '.';
 import { CreatePersona } from '../generated/api/teams/createPersona';
 import { Persona } from '../generated/entity/teams/persona';
@@ -62,6 +62,15 @@ export const updatePersona = async (id: string, data: Operation[]) => {
     data,
     configOptions
   );
+
+  return response.data;
+};
+
+export const restorePersona = async (id: string) => {
+  const response = await axiosClient.put<
+    RestoreRequestType,
+    AxiosResponse<Persona>
+  >(`${BASE_URL}/restore`, { id });
 
   return response.data;
 };

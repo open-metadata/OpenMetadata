@@ -43,7 +43,8 @@ export const AddEditPersonaForm = ({
   const [isSaving, setIsSaving] = useState(false);
   const { t } = useTranslation();
 
-  const usersList = Form.useWatch<EntityReference[]>('users', form) ?? [];
+  const usersList =
+    Form.useWatch<EntityReference[]>('users', form) ?? persona?.users ?? [];
   const isEditMode = !isEmpty(persona);
 
   const handleSubmit = useCallback(
@@ -152,6 +153,7 @@ export const AddEditPersonaForm = ({
   return (
     <Modal
       centered
+      destroyOnClose
       open
       cancelText={t('label.cancel')}
       closable={false}

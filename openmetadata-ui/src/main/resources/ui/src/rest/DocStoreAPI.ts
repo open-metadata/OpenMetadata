@@ -30,6 +30,12 @@ export const getAllKnowledgePanels = async (params: { fqnPrefix: string }) => {
   return response.data;
 };
 
+export const getDocumentByFQN = async (fqn: string) => {
+  const response = await axiosClient.get<Document>(`${BASE_URL}/name/${fqn}`);
+
+  return response.data;
+};
+
 export const createDocument = async (data: CreateDocument) => {
   const response = await axiosClient.post<
     CreateDocument,
@@ -39,7 +45,7 @@ export const createDocument = async (data: CreateDocument) => {
   return response.data;
 };
 
-export const udpateDocument = async (id: string, data: Operation[]) => {
+export const updateDocument = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };

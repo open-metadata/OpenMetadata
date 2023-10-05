@@ -14,6 +14,7 @@
 import { Form, Select } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, map } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -23,7 +24,7 @@ import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { Document } from '../../../generated/entity/docStore/document';
 import { FieldTypes } from '../../../interface/FormUtils.interface';
 import { CustomEntityType } from '../../../pages/CustomPageSettings/CustomPageSettings.interface';
-import { createDocument, udpateDocument } from '../../../rest/DocStoreAPI';
+import { createDocument, updateDocument } from '../../../rest/DocStoreAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddEditCustomisePageProps } from './AddEditCustomizePage.interface';
@@ -63,13 +64,13 @@ export const AddEditCustomizePage = ({
         if (page && isEditMode) {
           const jsonPatch = compare(page, updatedData);
 
-          await udpateDocument(page?.id ?? '', jsonPatch);
+          await updateDocument(page?.id ?? '', jsonPatch);
         } else {
           await createDocument(updatedData);
         }
         onSave();
       } catch (error) {
-        showErrorToast(error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsSaving(false);
       }

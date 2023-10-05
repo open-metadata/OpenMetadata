@@ -10,23 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
-import { ReactNode } from 'react';
-import { EntityReference } from '../../../generated/entity/type';
 
-export type PersonaSelectableListProps = {
-  hasPermission: boolean;
-  selectedPersonas: EntityReference[];
-  children?: ReactNode;
-  popoverProps?: PopoverProps;
-  personaList?: EntityReference[];
-} & (
-  | {
-      multiSelect?: true;
-      onUpdate: (updatedPersonas: EntityReference[]) => void;
-    }
-  | {
-      multiSelect: false;
-      onUpdate: (updatedPersonas: EntityReference) => void;
-    }
-);
+import { EntityReference } from '../../../generated/entity/type';
+import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+
+export interface RightSidebarProps {
+  isEditView?: boolean;
+  followedDataCount: number;
+  followedData: Array<EntityReference>;
+  isLoadingOwnedData: boolean;
+  layoutConfigData?: WidgetConfig['data'];
+}

@@ -10,23 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
-import { ReactNode } from 'react';
-import { EntityReference } from '../../../generated/entity/type';
 
-export type PersonaSelectableListProps = {
-  hasPermission: boolean;
-  selectedPersonas: EntityReference[];
-  children?: ReactNode;
-  popoverProps?: PopoverProps;
-  personaList?: EntityReference[];
-} & (
-  | {
-      multiSelect?: true;
-      onUpdate: (updatedPersonas: EntityReference[]) => void;
-    }
-  | {
-      multiSelect: false;
-      onUpdate: (updatedPersonas: EntityReference) => void;
-    }
-);
+import { Layout } from 'react-grid-layout';
+import { Document } from '../../../generated/entity/docStore/document';
+
+export interface CustomizeMyDataProps {
+  widgetsData: Document;
+  handleRemoveWidget: (widgetKey: string) => void;
+  handleOpenAddWidgetModal: () => void;
+  handleLayoutUpdate: (currentLayout: Layout[]) => void;
+}

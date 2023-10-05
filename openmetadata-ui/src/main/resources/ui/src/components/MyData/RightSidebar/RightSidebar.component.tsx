@@ -10,37 +10,81 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import AppState from '../../../AppState';
-import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
-import FeedCardBodyV1 from '../../../components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
-import FeedCardHeaderV1 from '../../../components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
-import { EntityListWithV1 } from '../../../components/Entity/EntityList/EntityList';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Responsive, WidthProvider } from 'react-grid-layout';
 import RecentlyViewed from '../../../components/recently-viewed/RecentlyViewed';
-import { getUserPath } from '../../../constants/constants';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../generated/entity/type';
+import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AnnouncementsWidget from './AnnouncementsWidget';
+import FollowingWidget from './FollowingWidget';
 import './right-sidebar.less';
+import { RightSidebarProps } from './RightSidebar.interface';
 
-interface RightSidebarProps {
-  followedDataCount: number;
-  followedData: Array<EntityReference>;
-  isLoadingOwnedData: boolean;
-}
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const RightSidebar = ({
+  isEditView = false,
   followedData,
   followedDataCount,
   isLoadingOwnedData,
+  layoutConfigData,
 }: RightSidebarProps) => {
-  const { t } = useTranslation();
-  const currentUserDetails = AppState.getCurrentUserDetails();
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
+
+  const getWidgetFromKey = useCallback(
+    (widgetConfig: WidgetConfig) => {
+      switch (widgetConfig.i) {
+        case 'KnowledgePanel.Announcements':
+          return (
+            <AnnouncementsWidget
+              announcements={announcements}
+              isEditView={isEditView}
+            />
+          );
+
+        case 'KnowledgePanel.Following':
+          return (
+            <FollowingWidget
+              followedData={followedData}
+              followedDataCount={followedDataCount}
+              isEditView={isEditView}
+              isLoadingOwnedData={isLoadingOwnedData}
+            />
+          );
+
+        case 'KnowledgePanel.RecentlyViewed':
+          return <RecentlyViewed isEditView={isEditView} />;
+        default:
+          return;
+      }
+    },
+    [
+      announcements,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+      isEditView,
+    ]
+  );
+
+  const widgets = useMemo(
+    () =>
+      layoutConfigData?.page?.layout
+        .filter((widget: WidgetConfig) =>
+          widget.i === 'KnowledgePanel.Announcements'
+            ? !isEmpty(announcements)
+            : true
+        )
+        .map((widget: WidgetConfig) => (
+          <div data-grid={widget} key={widget.i}>
+            {getWidgetFromKey(widget)}
+          </div>
+        )),
+    [layoutConfigData, announcements, getWidgetFromKey]
+  );
 
   useEffect(() => {
     getActiveAnnouncement()
@@ -52,85 +96,29 @@ const RightSidebar = ({
       });
   }, []);
 
+  if (isEditView) {
+    return (
+      <ResponsiveGridLayout
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+        cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
+        draggableHandle=".drag-widget-icon"
+        isResizable={false}>
+        {widgets}
+      </ResponsiveGridLayout>
+    );
+  }
+
   return (
     <>
-      {announcements.length > 0 && (
-        <>
-          <div className="p-md p-b-xss">
-            <Typography.Paragraph className="right-panel-label m-b-sm">
-              {t('label.recent-announcement-plural')}
-            </Typography.Paragraph>
-            <div className="announcement-container-list">
-              {announcements.map((item) => {
-                return (
-                  <Alert
-                    className="m-b-xs right-panel-announcement"
-                    description={
-                      <>
-                        <FeedCardHeaderV1
-                          about={item.about}
-                          className="d-inline"
-                          createdBy={item.createdBy}
-                          showUserAvatar={false}
-                          timeStamp={item.threadTs}
-                        />
-                        <FeedCardBodyV1
-                          isOpenInDrawer
-                          announcement={item.announcement}
-                          className="p-t-xs"
-                          isEditPost={false}
-                          message={item.message}
-                          showSchedule={false}
-                        />
-                      </>
-                    }
-                    key={item.id}
-                    message={
-                      <div className="d-flex announcement-alert-heading">
-                        <AnnouncementIcon width={20} />
-                        <span className="text-sm p-l-xss">
-                          {t('label.announcement')}
-                        </span>
-                      </div>
-                    }
-                    type="info"
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </>
+      {!isEmpty(announcements) && (
+        <AnnouncementsWidget announcements={announcements} />
       )}
-
-      <div className="p-md" data-testid="following-data-container">
-        <EntityListWithV1
-          entityList={followedData}
-          headerText={
-            <>
-              {followedData.length ? (
-                <Link
-                  className="view-all-btn text-grey-muted"
-                  data-testid="following-data"
-                  to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
-                  <span className="font-normal text-xs">
-                    {t('label.view-all')}{' '}
-                    <span data-testid="following-data-total-count">
-                      {`(${followedDataCount})`}
-                    </span>
-                  </span>
-                </Link>
-              ) : null}
-            </>
-          }
-          headerTextLabel={t('label.following')}
-          loading={isLoadingOwnedData}
-          noDataPlaceholder={t('message.not-followed-anything')}
-          testIDText="following"
-        />
-      </div>
-      <div className="p-md" data-testid="recently-viewed-container">
-        <RecentlyViewed />
-      </div>
+      <FollowingWidget
+        followedData={followedData}
+        followedDataCount={followedDataCount}
+        isLoadingOwnedData={isLoadingOwnedData}
+      />
+      <RecentlyViewed />
     </>
   );
 };

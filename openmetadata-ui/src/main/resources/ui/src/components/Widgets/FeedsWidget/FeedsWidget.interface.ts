@@ -10,23 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
-import { ReactNode } from 'react';
-import { EntityReference } from '../../../generated/entity/type';
 
-export type PersonaSelectableListProps = {
-  hasPermission: boolean;
-  selectedPersonas: EntityReference[];
-  children?: ReactNode;
-  popoverProps?: PopoverProps;
-  personaList?: EntityReference[];
-} & (
-  | {
-      multiSelect?: true;
-      onUpdate: (updatedPersonas: EntityReference[]) => void;
-    }
-  | {
-      multiSelect: false;
-      onUpdate: (updatedPersonas: EntityReference) => void;
-    }
-);
+export interface FeedsWidgetProps {
+  isEditView?: boolean;
+  handleRemoveWidget?: (widgetKey: string) => void;
+}

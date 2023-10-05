@@ -15,18 +15,11 @@ import { noop } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { searchData } from '../../../rest/miscAPI';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
-import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
 import { SelectableList } from '../../common/SelectableList/SelectableList.component';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
@@ -37,34 +30,34 @@ export const PersonaSelectableList = ({
   onUpdate = noop,
   children,
   popoverProps,
+  multiSelect = false,
+  personaList,
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
+  const [allPersona, setAllPersona] = useState<EntityReference[]>(
+    personaList ?? []
+  );
 
   const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
       try {
-        const res = await searchData(
-          searchText,
-          1,
-          PAGE_SIZE_MEDIUM,
-          '',
-          '',
-          '',
-          SearchIndex.USER
+        const filteredData = allPersona.filter(
+          (persona) =>
+            persona.name?.includes(searchText) ||
+            persona.displayName?.includes(searchText) ||
+            persona.description?.includes(searchText)
         );
 
-        const data = getEntityReferenceListFromEntities(
-          formatUsersResponse(res.data.hits.hits),
-          EntityType.USER
-        );
-
-        return { data, paging: { total: res.data.hits.total.value } };
+        return { data: filteredData, paging: { total: filteredData.length } };
       } catch (error) {
         return { data: [], paging: { total: 0 } };
       }
     } else {
       try {
+        if (personaList) {
+          return { data: personaList, paging: { total: personaList.length } };
+        }
         const { data, paging } = await getAllPersonas({
           limit: PAGE_SIZE_LARGE,
           after: after ?? undefined,
@@ -73,6 +66,8 @@ export const PersonaSelectableList = ({
           data,
           EntityType.PERSONA
         );
+
+        setAllPersona(filterData);
 
         return { data: filterData, paging };
       } catch (error) {
@@ -83,7 +78,11 @@ export const PersonaSelectableList = ({
 
   const handleUpdate = useCallback(
     (users: EntityReference[]) => {
-      (onUpdate as (users: EntityReference[]) => void)(users);
+      if (multiSelect) {
+        (onUpdate as (users: EntityReference[]) => void)(users);
+      } else {
+        (onUpdate as (users: EntityReference) => void)(users[0]);
+      }
 
       setPopupVisible(false);
     },
@@ -95,8 +94,8 @@ export const PersonaSelectableList = ({
       destroyTooltipOnHide
       content={
         <SelectableList
-          multiSelect
           fetchOptions={fetchOptions}
+          multiSelect={multiSelect}
           searchPlaceholder={t('label.search-for-type', {
             type: t('label.persona'),
           })}

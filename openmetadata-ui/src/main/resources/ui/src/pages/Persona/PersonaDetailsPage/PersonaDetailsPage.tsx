@@ -10,28 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Row, Table, Tabs } from 'antd';
+import { Row, Tabs } from 'antd';
 import Col from 'antd/es/grid/col';
-import { ColumnsType } from 'antd/lib/table';
 import { compare } from 'fast-json-patch';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DescriptionV1 from '../../../components/common/description/DescriptionV1';
-import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import ManageButton from '../../../components/common/entityPageInfo/ManageButton/ManageButton';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import PageHeader from '../../../components/header/PageHeader.component';
 import Loader from '../../../components/Loader/Loader';
-import { commonUserDetailColumns } from '../../../components/Users/Users.util';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../../constants/GlobalSettings.constants';
+import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { UserTab } from '../../../components/Team/TeamDetails/UserTab/UserTab.component';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
-import { EntityReference } from '../../../generated/entity/type';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getSettingPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -77,6 +70,40 @@ export const PersonaDetailsPage = () => {
     }
   };
 
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    if (!personaDetails) {
+      return;
+    }
+    const updatedData = { ...personaDetails, ...data };
+    const diff = compare(personaDetails, updatedData);
+
+    try {
+      const response = await updatePersona(personaDetails?.id, diff);
+      setPersonaDetails(response);
+    } catch (error) {
+      // Error
+    } finally {
+      setIsEdit(false);
+    }
+  };
+
+  const handleRestorePersona = async () => {
+    if (!personaDetails) {
+      return;
+    }
+    const updatedData = { ...personaDetails };
+    const diff = compare(personaDetails, updatedData);
+
+    try {
+      const response = await updatePersona(personaDetails?.id, diff);
+      setPersonaDetails(response);
+    } catch (error) {
+      // Error
+    } finally {
+      setIsEdit(false);
+    }
+  };
+
   if (isLoading || !personaDetails) {
     return <Loader />;
   }
@@ -85,30 +112,24 @@ export const PersonaDetailsPage = () => {
     <PageLayoutV1 pageTitle={personaDetails.name}>
       <Row gutter={[16, 16]}>
         <Col span={24}>
-          <TitleBreadcrumb
-            loading={isLoading}
-            titleLinks={[
-              {
-                name: 'Persona',
-                url: getSettingPath(
-                  GlobalSettingsMenuCategory.MEMBERS,
-                  GlobalSettingOptions.PERSONA
-                ),
-              },
-              {
-                name: getEntityName(personaDetails),
-                url: '',
-                activeTitle: true,
-              },
-            ]}
-          />
-        </Col>
-        <Col span={24}>
           <PageHeader
             data={{
               header: personaDetails.displayName,
               subHeader: personaDetails.name,
             }}
+          />
+          <ManageButton
+            canDelete
+            editDisplayNamePermission
+            allowSoftDelete={false}
+            deleted={false}
+            displayName={personaDetails.displayName}
+            entityFQN={personaDetails.fullyQualifiedName}
+            entityId={personaDetails.id}
+            entityName={personaDetails.name}
+            entityType={EntityType.PERSONA}
+            onEditDisplayName={handleDisplayNameUpdate}
+            onRestoreEntity={handleRestorePersona}
           />
         </Col>
         <Col span={24}>
@@ -130,15 +151,16 @@ export const PersonaDetailsPage = () => {
                 label: 'Users',
                 key: 'users',
                 children: (
-                  <Table
-                    columns={
-                      commonUserDetailColumns() as ColumnsType<EntityReference>
-                    }
-                    dataSource={personaDetails.users}
-                    pagination={false}
-                    rowKey="fullyQualifiedName"
-                    size="small"
-                  />
+                  <UserTab users={personaDetails.users ?? []} />
+                  //   <Table
+                  //     columns={
+                  //       commonUserDetailColumns() as ColumnsType<EntityReference>
+                  //     }
+                  //     dataSource={personaDetails.users}
+                  //     pagination={false}
+                  //     rowKey="fullyQualifiedName"
+                  //     size="small"
+                  //   />
                 ),
               },
             ]}

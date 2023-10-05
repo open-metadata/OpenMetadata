@@ -12,11 +12,13 @@
  */
 
 import { Col, Row, Tabs, Typography } from 'antd';
+import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { ReactComponent as PersonaIcon } from '../../assets/svg/ic-personas.svg';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -28,7 +30,7 @@ import { getUserPath } from '../../constants/constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { getEntityName } from '../../utils/EntityUtils';
+import Chip from '../common/Chip/Chip.component';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -120,6 +122,13 @@ const Users = ({
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
       await updateUserDetails({ ...userData, personas });
+    },
+    [updateUserDetails, userData]
+  );
+
+  const handleDefaultPersonaUpdate = useCallback(
+    async (defaultPersona?: EntityReference) => {
+      await updateUserDetails({ ...userData, defaultPersona });
     },
     [updateUserDetails, userData]
   );
@@ -233,17 +242,53 @@ const Users = ({
             />
           </Col>
           <Col span={5}>
-            <Typography.Text
-              className="right-panel-label m-b-0 d-flex gap-2"
-              data-testid="inherited-roles">
-              {t('label.persona')}
-              <PersonaSelectableList
-                hasPermission
-                selectedPersonas={userData.personas ?? []}
-                onUpdate={handlePersonaUpdate}
+            <Card
+              className="ant-card-feed relative card-body-border-none card-padding-y-0"
+              title={
+                <Typography.Text
+                  className="right-panel-label items-center d-flex gap-2"
+                  data-testid="inherited-roles">
+                  {t('label.persona')}
+                  <PersonaSelectableList
+                    hasPermission
+                    multiSelect
+                    selectedPersonas={userData.personas ?? []}
+                    onUpdate={handlePersonaUpdate}
+                  />
+                </Typography.Text>
+              }>
+              <Chip
+                showNoDataPlaceholder
+                data={userData.personas ?? []}
+                icon={<PersonaIcon height={18} />}
+                noDataPlaceholder={t('message.no-persona')}
               />
-            </Typography.Text>
-            <div>{userData.personas?.map(getEntityName).join(', ')}</div>
+            </Card>
+            <Card
+              className="ant-card-feed relative card-body-border-none card-padding-y-0"
+              title={
+                <Typography.Text
+                  className="right-panel-label m-b-0 d-flex gap-2"
+                  data-testid="inherited-roles">
+                  {t('label.default-persona')}
+                  <PersonaSelectableList
+                    hasPermission
+                    multiSelect={false}
+                    personaList={userData.personas}
+                    selectedPersonas={
+                      userData.defaultPersona ? [userData.defaultPersona] : []
+                    }
+                    onUpdate={handleDefaultPersonaUpdate}
+                  />
+                </Typography.Text>
+              }>
+              <Chip
+                showNoDataPlaceholder
+                data={userData.defaultPersona ? [userData.defaultPersona] : []}
+                icon={<PersonaIcon height={18} />}
+                noDataPlaceholder={t('message.no-default-persona')}
+              />
+            </Card>
           </Col>
         </Row>
         <Tabs

@@ -73,7 +73,10 @@ const UserPage = () => {
 
   const fetchUserData = async () => {
     try {
-      const res = await getUserByName(username, 'profile,roles,teams,personas');
+      const res = await getUserByName(
+        username,
+        'profile,roles,teams,personas,defaultPersona'
+      );
       setUserData(res);
     } catch (error) {
       showErrorToast(
@@ -183,7 +186,7 @@ const UserPage = () => {
     try {
       const response = await updateUserDetail(userData.id, jsonPatch);
       if (response) {
-        setUserData((prevData) => ({ ...prevData, ...response }));
+        setUserData(response);
       } else {
         throw t('message.unexpected-error');
       }

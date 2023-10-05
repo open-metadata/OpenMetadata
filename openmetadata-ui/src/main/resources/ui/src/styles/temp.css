@@ -11,6 +11,18 @@
  *  limitations under the License.
  */
 
+@import '/node_modules/react-grid-layout/css/styles.css';
+@import '/node_modules/react-resizable/css/styles.css';
+
+.react-grid-item {
+  transition: all 500ms ease;
+  transition-property: left, top, width, height;
+}
+.react-grid-layout {
+  position: relative;
+  transition: height 500ms ease;
+}
+
 .main-container {
   display: flex;
   height: 100vh;

@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.total-data-assets-widget-container {
-  .entity-data {
-    min-width: 170px;
-    margin-right: 8px;
-  }
-  .total-data-insight-card {
-    border-radius: 10px;
-    box-shadow: none;
-  }
+
+import { Layout } from 'react-grid-layout';
+import { Document } from '../../generated/entity/docStore/document';
+
+export interface WidgetConfig
+  extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static'> {
+  data?: Document['data'];
 }

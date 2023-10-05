@@ -565,3 +565,14 @@ export const getClassificationVersionsPath = (
 
   return path;
 };
+
+export const getPersonaDetailsPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
