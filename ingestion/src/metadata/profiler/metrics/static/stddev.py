@@ -55,6 +55,12 @@ def _(element, compiler, **kw):
     return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
 
 
+@compiles(StdDevFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    proc = compiler.process(element.clauses, **kw)
+    return f"IF(is_nan(STDDEV_POP({proc})), NULL, STDDEV_POP({proc}))"
+
+
 @compiles(StdDevFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Returns stdv for clickhouse database and handle empty tables.

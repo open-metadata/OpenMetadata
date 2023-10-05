@@ -15,7 +15,10 @@ import { Form, Modal, Typography } from 'antd';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import {
+  ENTITY_NAME_REGEX,
+  HEX_COLOR_CODE_REGEX,
+} from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
@@ -39,7 +42,11 @@ const TagsForm = ({
   const [form] = Form.useForm();
 
   useEffect(() => {
-    form.setFieldsValue(initialValues);
+    form.setFieldsValue({
+      ...initialValues,
+      iconURL: initialValues?.style?.iconURL,
+      color: initialValues?.style?.color,
+    });
   }, [initialValues]);
 
   const disableNameField = useMemo(
@@ -120,6 +127,34 @@ const TagsForm = ({
         readonly: disableDescriptionField,
       },
     },
+    ...(!isClassification
+      ? [
+          {
+            name: 'iconURL',
+            id: 'root/iconURL',
+            label: t('label.icon-url'),
+            required: false,
+            placeholder: t('label.icon-url'),
+            type: FieldTypes.TEXT,
+            props: {
+              'data-testid': 'icon-url',
+            },
+          },
+          {
+            name: 'color',
+            id: 'root/color',
+            label: t('label.color'),
+            required: false,
+            type: FieldTypes.COLOR_PICKER,
+            rules: [
+              {
+                pattern: HEX_COLOR_CODE_REGEX,
+                message: t('message.hex-color-validation'),
+              },
+            ],
+          },
+        ]
+      : []),
     ...(isSystemTag && !isTier
       ? ([
           {
