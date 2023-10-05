@@ -234,7 +234,10 @@ def _(record: OMetaLifeCycleData) -> str:
 
 @get_log_name.register
 def _(record: TableAndTests) -> str:
-    return f"Tests for [{record.table.fullyQualifiedName.__root__}]"
+    if record.table:
+        return f"Tests for [{record.table.fullyQualifiedName.__root__}]"
+    else:
+        return f"Test Suite [{record.executable_test_suite.name.__root__}]"
 
 
 @get_log_name.register

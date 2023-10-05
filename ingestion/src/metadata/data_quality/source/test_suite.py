@@ -157,8 +157,8 @@ class TestSuiteSource(Source):
             yield Either(
                 left=StackTraceError(
                     name="Missing Table",
-                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}. "
-                    "Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid.",
+                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.__root__}."
+                    " Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid.",
                 )
             )
 
@@ -180,6 +180,12 @@ class TestSuiteSource(Source):
                 description="Test Suite created from YAML processor config file",
                 owner=None,
                 executableEntityReference=self.source_config.entityFullyQualifiedName.__root__,
+            )
+            yield Either(
+                right=TableAndTests(
+                    executable_test_suite=executable_test_suite,
+                    service_type=self.service.serviceType.value,
+                )
             )
 
         if table.testSuite and not table.testSuite.executable:

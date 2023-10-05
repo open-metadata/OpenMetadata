@@ -517,7 +517,7 @@ class MetadataRestSink(Sink):
         return Either(right=test_suite)
 
     @_run_dispatch.register
-    def write_test_case_results(self, record: TestCaseResults):
+    def write_test_case_result_list(self, record: TestCaseResults):
         """Record the list of test case result responses"""
 
         for result in record.test_results or []:
