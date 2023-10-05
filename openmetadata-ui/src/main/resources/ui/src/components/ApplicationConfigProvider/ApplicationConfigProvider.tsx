@@ -21,8 +21,13 @@ import React, {
 import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
-export const ApplicationConfigContext = createContext<LogoConfiguration>(
-  {} as LogoConfiguration
+interface ContextConfig extends LogoConfiguration {
+  routeElements?: ReactNode;
+  sideBarElements?: ReactNode;
+}
+
+export const ApplicationConfigContext = createContext<ContextConfig>(
+  {} as ContextConfig
 );
 
 export const useApplicationConfigProvider = () =>
@@ -30,10 +35,14 @@ export const useApplicationConfigProvider = () =>
 
 interface ApplicationConfigProviderProps {
   children: ReactNode;
+  routeElements?: ReactNode;
+  sideBarElements?: ReactNode;
 }
 
 const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
+  routeElements,
+  sideBarElements,
 }) => {
   const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
     {} as LogoConfiguration
@@ -57,7 +66,8 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   }, []);
 
   return (
-    <ApplicationConfigContext.Provider value={{ ...applicationConfig }}>
+    <ApplicationConfigContext.Provider
+      value={{ ...applicationConfig, routeElements, sideBarElements }}>
       {children}
     </ApplicationConfigContext.Provider>
   );

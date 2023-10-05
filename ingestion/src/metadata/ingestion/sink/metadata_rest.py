@@ -40,9 +40,6 @@ from metadata.generated.schema.entity.data.searchIndex import (
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -96,22 +93,19 @@ class MetadataRestSink(Sink):
     # We want to catch any errors that might happen during the sink
     # pylint: disable=broad-except
 
-    def __init__(
-        self, config: MetadataRestSinkConfig, metadata_config: OpenMetadataConnection
-    ):
+    def __init__(self, config: MetadataRestSinkConfig, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.wrote_something = False
         self.charts_dict = {}
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.role_entities = {}
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @singledispatchmethod
     def _run_dispatch(self, record: Entity) -> Either[Any]:

@@ -32,7 +32,7 @@ class EntityLinkBuildingException(Exception):
     """
 
 
-def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+def split(s: str) -> List[str]:
     """
     Method to handle the splitting logic
     """

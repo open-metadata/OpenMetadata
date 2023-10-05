@@ -31,6 +31,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = (
@@ -196,7 +197,7 @@ class MongoDBUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mongo_config)
         self.mongo_source = MongodbSource.create(
             mock_mongo_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.mongo_source.context.__dict__["database_service"] = MOCK_DATABASE_SERVICE
         self.mongo_source.context.__dict__["database"] = MOCK_DATABASE

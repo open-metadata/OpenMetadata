@@ -33,6 +33,8 @@ from metadata.generated.schema.entity.data import (
     databaseSchema,
     mlmodel,
     pipeline,
+    searchIndex,
+    storedProcedure,
     table,
     topic,
 )
@@ -56,6 +58,8 @@ ENTITIES = [
     table.Table,
     topic.Topic,
     container.Container,
+    storedProcedure.StoredProcedure,
+    searchIndex.SearchIndex,
 ]
 
 T = TypeVar("T", *ENTITIES)  # type: ignore

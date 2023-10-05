@@ -31,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
@@ -66,7 +65,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
-  @Getter private static volatile CollectionDAO collectionDAO;
+  @Getter @Setter private static CollectionDAO collectionDAO;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
@@ -242,19 +241,16 @@ public final class Entity {
 
   private Entity() {}
 
-  public static void initializeRepositories(Jdbi jdbi, CollectionDAO collectionDAO) {
+  public static void initializeRepositories(Jdbi jdbi) {
     if (!initializedRepositories) {
-      Entity.collectionDAO = collectionDAO;
-      tokenRepository = new TokenRepository(collectionDAO);
-      // Check Collection DAO
-      Objects.requireNonNull(collectionDAO, "CollectionDAO must not be null");
+      tokenRepository = new TokenRepository();
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
           continue; // Don't instantiate abstract classes
         }
         try {
-          clz.getDeclaredConstructor(CollectionDAO.class).newInstance(collectionDAO);
+          clz.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
           try {
             clz.getDeclaredConstructor(Jdbi.class).newInstance(jdbi);
@@ -270,6 +266,8 @@ public final class Entity {
 
   public static void cleanup() {
     initializedRepositories = false;
+    collectionDAO = null;
+    searchRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
   }
 
@@ -385,7 +383,6 @@ public final class Entity {
     return getEntity(entityType, id, fields, include, true);
   }
 
-  // TODO remove throwing IOException
   /** Retrieve the entity using id from given entity reference and fields */
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include, boolean fromCache) {

@@ -66,7 +66,7 @@ class SplitTestCaseFqn(BaseModel):
     test_case: Optional[str]
 
 
-def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+def split(s: str) -> List[str]:
     """
     Equivalent of Java's FullyQualifiedName#split
     """

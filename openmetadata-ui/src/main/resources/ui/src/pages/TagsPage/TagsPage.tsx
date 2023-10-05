@@ -15,7 +15,7 @@ import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -591,10 +591,15 @@ const TagsPage = () => {
   );
 
   const handleAddTagSubmit = (data: SubmitProps) => {
+    const updatedData = omit(data, 'color', 'iconURL');
+    const style = {
+      color: data.color,
+      iconURL: data.iconURL,
+    };
     if (editTag) {
-      handleUpdatePrimaryTag({ ...editTag, ...data });
+      handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
     } else {
-      handleCreatePrimaryTag(data);
+      handleCreatePrimaryTag({ ...updatedData, style });
     }
   };
 

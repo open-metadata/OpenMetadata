@@ -55,11 +55,11 @@ class DataInsightWorkflow(BaseWorkflow):
             )
 
     def _get_sink(self) -> Sink:
-        """Retrive sink for data insight workflow"""
+        """Retrieve sink for data insight workflow"""
         sink_type = "metadata-rest"
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = {"api_endpoint": self.metadata_config.hostPort}
-        sink: Sink = sink_class.create(sink_config, self.metadata_config)
+        sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink

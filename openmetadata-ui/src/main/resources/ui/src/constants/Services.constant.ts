@@ -35,6 +35,7 @@ import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
+import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
@@ -181,6 +182,7 @@ export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
 export const COUCHBASE = couchbase;
+export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
 
@@ -414,6 +416,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
   SearchServiceType.ElasticSearch,
+  DatabaseServiceType.Greenplum,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

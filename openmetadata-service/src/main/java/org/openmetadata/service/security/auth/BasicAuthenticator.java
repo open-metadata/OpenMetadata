@@ -65,7 +65,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -90,7 +89,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private boolean isSelfSignUpAvailable;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, CollectionDAO collectionDAO) {
+  public void init(OpenMetadataApplicationConfig config) {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
