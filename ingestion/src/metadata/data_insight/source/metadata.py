@@ -114,7 +114,7 @@ class DataInsightSource(Source):
         for report_data_type in ReportDataType:
             logger.info(f"Processing data for report type {report_data_type}")
             try:
-                self.metadata.delete_report_data(report_data_type, self.date)
+                self.metadata.delete_report_data_at_date(report_data_type, self.date)
                 producer = producer_factory.create(
                     report_data_type.value, self.metadata
                 )

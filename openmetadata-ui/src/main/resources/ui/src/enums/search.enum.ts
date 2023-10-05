@@ -30,7 +30,7 @@ export enum SearchIndex {
   MESSAGING_SERVICE = 'messaging_service_search_index',
   PIPELINE_SERVICE = 'pipeline_service_search_index',
   SEARCH_SERVICE = 'search_service_search_index',
-  DASHBOARD_SERCVICE = 'dashboard_service_search_index',
+  DASHBOARD_SERVICE = 'dashboard_service_search_index',
   ML_MODEL_SERVICE = 'mlmodel_service_search_index',
   STORAGE_SERVICE = 'storage_service_search_index',
   DOMAIN = 'domain_search_index',
