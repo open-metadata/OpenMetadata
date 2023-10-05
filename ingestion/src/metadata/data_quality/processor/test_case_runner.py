@@ -292,6 +292,7 @@ class TestCaseRunner(Processor):
                     stack_trace=traceback.format_exc(),
                 )
             )
+        return None
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
