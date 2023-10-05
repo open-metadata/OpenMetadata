@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 import { Alert, Typography } from 'antd';
-import AppState from 'AppState';
-import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
-import FeedCardBodyV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
-import FeedCardHeaderV1 from 'components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
-import { EntityListWithV1 } from 'components/Entity/EntityList/EntityList';
-import RecentlyViewed from 'components/recently-viewed/RecentlyViewed';
-import { getUserPath } from 'constants/constants';
-import { Thread } from 'generated/entity/feed/thread';
-import { EntityReference } from 'generated/entity/type';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getActiveAnnouncement } from 'rest/feedsAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import AppState from '../../../AppState';
+import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
+import FeedCardBodyV1 from '../../../components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
+import FeedCardHeaderV1 from '../../../components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
+import { EntityListWithV1 } from '../../../components/Entity/EntityList/EntityList';
+import RecentlyViewed from '../../../components/recently-viewed/RecentlyViewed';
+import { getUserPath } from '../../../constants/constants';
+import { Thread } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './right-sidebar.less';
 
 interface RightSidebarProps {

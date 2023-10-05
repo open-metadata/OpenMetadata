@@ -12,16 +12,11 @@
  */
 
 import { AxiosError } from 'axios';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { StorageServiceType } from 'generated/entity/data/container';
-import { SearchServiceType } from 'generated/entity/services/searchService';
 import { t } from 'i18next';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { getEntityCount } from 'rest/miscAPI';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import {
   AIRBYTE,
@@ -48,6 +43,7 @@ import {
   ELASTIC_SEARCH,
   FIVETRAN,
   GLUE,
+  GREENPLUM,
   HIVE,
   IBMDB2,
   IMPALA,
@@ -95,7 +91,10 @@ import {
   VERTICA,
 } from '../constants/Services.constant';
 import { PROMISE_STATE } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { StorageServiceType } from '../generated/entity/data/container';
 import { Database } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import {
@@ -114,7 +113,9 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServicesType } from '../interface/service.interface';
+import { getEntityCount } from '../rest/miscAPI';
 import {
   getEntityDeleteMessage,
   pluralize,
@@ -220,6 +221,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Couchbase:
       return COUCHBASE;
+
+    case DatabaseServiceType.Greenplum:
+      return GREENPLUM;
 
     case MessagingServiceType.Kafka:
       return KAFKA;

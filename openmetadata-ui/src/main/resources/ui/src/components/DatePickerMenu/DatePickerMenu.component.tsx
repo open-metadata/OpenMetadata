@@ -14,21 +14,24 @@
 import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
-import {
-  DEFAULT_SELECTED_RANGE,
-  PROFILER_FILTER_RANGE,
-} from 'constants/profiler.constant';
 import { isUndefined } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
+import {
+  DEFAULT_SELECTED_RANGE,
+  PROFILER_FILTER_RANGE,
+} from '../../constants/profiler.constant';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
-import { getDaysCount, getTimestampLabel } from 'utils/DatePickerMenuUtils';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+} from '../../utils/date-time/DateTimeUtils';
+import {
+  getDaysCount,
+  getTimestampLabel,
+} from '../../utils/DatePickerMenuUtils';
 import './DatePickerMenu.style.less';
 
 interface DatePickerMenuProps {

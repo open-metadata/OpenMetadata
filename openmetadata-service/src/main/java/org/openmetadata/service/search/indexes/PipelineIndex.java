@@ -21,7 +21,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class PipelineIndex implements ElasticSearchIndex {
+public class PipelineIndex implements SearchIndex {
   final Pipeline pipeline;
   final List<String> excludeFields = List.of("changeDescription");
 

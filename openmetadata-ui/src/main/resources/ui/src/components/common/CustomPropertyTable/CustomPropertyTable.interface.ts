@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { Container } from 'generated/entity/data/container';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
 import { EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { Database } from '../../../generated/entity/data/database';
+import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 

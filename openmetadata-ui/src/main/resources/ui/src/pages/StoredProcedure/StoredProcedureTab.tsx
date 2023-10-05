@@ -12,20 +12,20 @@
  */
 import { Col, Row, Switch, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
-import { PAGE_SIZE } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { getEntityLink } from 'utils/TableUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../../components/Loader/Loader';
+import { PAGE_SIZE } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import { getEntityLink } from '../../utils/TableUtils';
 import { StoredProcedureTabProps } from './storedProcedure.interface';
 
 const StoredProcedureTab = ({

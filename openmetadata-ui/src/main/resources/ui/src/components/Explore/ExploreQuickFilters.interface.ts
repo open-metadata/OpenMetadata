@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Aggregations } from 'interface/search.interface';
 import { SearchIndex } from '../../enums/search.enum';
+import { Aggregations } from '../../interface/search.interface';
 import { ExploreQuickFilterField } from './explore.interface';
 
 export interface ExploreQuickFiltersProps {

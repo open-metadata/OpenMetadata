@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ThreadType } from 'generated/api/feed/createThread';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 
 export interface SearchIndexFieldsTabProps {
   fields: Array<SearchIndexField>;

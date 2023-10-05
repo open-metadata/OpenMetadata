@@ -106,13 +106,12 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
 
-  public TableRepository(CollectionDAO daoCollection) {
+  public TableRepository() {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        daoCollection.tableDAO(),
-        daoCollection,
+        Entity.getCollectionDAO().tableDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

@@ -14,21 +14,17 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { Chart } from 'generated/entity/data/chart';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
-import { getEntityDetailLink } from 'utils/CommonUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -36,13 +32,17 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Chart } from '../../../generated/entity/data/chart';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { postThread } from '../../../rest/feedsAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,

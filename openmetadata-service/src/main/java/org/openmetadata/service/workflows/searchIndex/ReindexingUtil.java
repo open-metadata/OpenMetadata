@@ -18,7 +18,6 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.search.SearchIndexDefinition;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkResponse;
 
@@ -32,9 +31,7 @@ public class ReindexingUtil {
   }
 
   public static boolean isDataInsightIndex(String entityType) {
-    return entityType.equalsIgnoreCase(SearchIndexDefinition.ENTITY_REPORT_DATA)
-        || entityType.equalsIgnoreCase(SearchIndexDefinition.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA)
-        || entityType.equalsIgnoreCase(SearchIndexDefinition.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
+    return Entity.getSearchRepository().getDataInsightReports().contains(entityType);
   }
 
   public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {

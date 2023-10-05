@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import {
   mockDashboardEntityDetails,
   mockFetchChartsResponse,

@@ -20,11 +20,10 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public interface AuthenticatorHandler {
-  void init(OpenMetadataApplicationConfig config, CollectionDAO daoObject);
+  void init(OpenMetadataApplicationConfig config);
 
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
 

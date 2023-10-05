@@ -13,13 +13,6 @@
 
 import { ReloadOutlined } from '@ant-design/icons';
 import { Badge, Button, Card, Col, Divider, Row, Space } from 'antd';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
-import {
-  EventPublisherJob,
-  SourceError,
-  Status,
-} from 'generated/system/eventPublisherJob';
 import { t } from 'i18next';
 import { isEmpty, startCase } from 'lodash';
 import React from 'react';
@@ -27,6 +20,13 @@ import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconTaskOpen } from '../assets/svg/in-progress.svg';
 import { ReactComponent as IconTaskStopped } from '../assets/svg/pending-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
+import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../components/Loader/Loader';
+import {
+  EventPublisherJob,
+  SourceError,
+  Status,
+} from '../generated/system/eventPublisherJob';
 import { formatDateTimeWithTimezone } from './date-time/DateTimeUtils';
 
 export const getStatusResultBadgeIcon = (status?: string) => {

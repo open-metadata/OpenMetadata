@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Table } from 'generated/entity/data/table';
-import { TestCase } from 'generated/tests/testCase';
+import { Table } from '../generated/entity/data/table';
+import { TestCase } from '../generated/tests/testCase';
 
 export const MOCK_TABLE_DATA = {
   data: [

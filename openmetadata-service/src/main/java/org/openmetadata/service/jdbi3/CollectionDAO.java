@@ -3386,6 +3386,9 @@ public interface CollectionDAO {
             "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
         connectionType = POSTGRES)
     void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+
+    @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType")
+    void deletePreviousReportData(@BindFQN("reportDataType") String reportDataType);
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {

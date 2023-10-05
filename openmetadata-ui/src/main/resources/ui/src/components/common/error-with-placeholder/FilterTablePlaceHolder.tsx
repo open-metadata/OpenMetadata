@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from 'enums/common.enum';
 import React from 'react';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 const FilterTablePlaceHolder = () => {

@@ -10,41 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Operation } from 'fast-json-patch';
 import {
   AssetsUnion,
   MapPatchAPIResponse,
-} from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { AssetsOfEntity } from 'components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { Operation } from 'fast-json-patch';
-import { getDashboardByFqn, patchDashboardDetails } from 'rest/dashboardAPI';
+} from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import {
+  getDashboardByFqn,
+  patchDashboardDetails,
+} from '../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
   patchDatabaseDetails,
   patchDatabaseSchemaDetails,
-} from 'rest/databaseAPI';
-import { getDataModelsByName, patchDataModelDetails } from 'rest/dataModelsAPI';
-import { getGlossaryTermByFQN, patchGlossaryTerm } from 'rest/glossaryAPI';
-import { getMlModelByFQN, patchMlModelDetails } from 'rest/mlModelAPI';
-import { getPipelineByFqn, patchPipelineDetails } from 'rest/pipelineAPI';
+} from '../../rest/databaseAPI';
+import {
+  getDataModelsByName,
+  patchDataModelDetails,
+} from '../../rest/dataModelsAPI';
+import {
+  getGlossaryTermByFQN,
+  patchGlossaryTerm,
+} from '../../rest/glossaryAPI';
+import { getMlModelByFQN, patchMlModelDetails } from '../../rest/mlModelAPI';
+import { getPipelineByFqn, patchPipelineDetails } from '../../rest/pipelineAPI';
 import {
   getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
-} from 'rest/SearchIndexAPI';
+} from '../../rest/SearchIndexAPI';
 import {
   getDomainSupportedServiceByFQN,
   patchDomainSupportedService,
-} from 'rest/serviceAPI';
-import { getContainerByName, patchContainerDetails } from 'rest/storageAPI';
+} from '../../rest/serviceAPI';
+import {
+  getContainerByName,
+  patchContainerDetails,
+} from '../../rest/storageAPI';
 import {
   getStoredProceduresByName,
   patchStoredProceduresDetails,
-} from 'rest/storedProceduresAPI';
-import { getTableDetailsByFQN, patchTableDetails } from 'rest/tableAPI';
-import { getTopicByFqn, patchTopicDetails } from 'rest/topicsAPI';
-import { getServiceCategoryFromEntityType } from 'utils/ServiceUtils';
+} from '../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
+import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
+import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 
 export const getAPIfromSource = (
   source: AssetsUnion
@@ -83,6 +95,7 @@ export const getAPIfromSource = (
     case EntityType.MLMODEL_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -128,6 +141,7 @@ export const getEntityAPIfromSource = (
     case EntityType.MLMODEL_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -146,6 +160,14 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.CONTAINER]: SearchIndex.CONTAINER,
     [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
     [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
+    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
+    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
+    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
+    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
+    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
+    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
+    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
+    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
   };
 
   if (

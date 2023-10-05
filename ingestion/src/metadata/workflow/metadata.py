@@ -51,9 +51,7 @@ class MetadataWorkflow(BaseWorkflow):
             )
         )
 
-        source: Source = source_class.create(
-            self.config.source.dict(), self.metadata_config
-        )
+        source: Source = source_class.create(self.config.source.dict(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -64,7 +62,7 @@ class MetadataWorkflow(BaseWorkflow):
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.dict().get("config", {})
-        sink: Sink = sink_class.create(sink_config, self.metadata_config)
+        sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink

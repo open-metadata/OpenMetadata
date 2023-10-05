@@ -14,9 +14,6 @@ Test Postgres connector with CLI
 """
 from typing import List
 
-import pytest
-import yaml
-
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
 

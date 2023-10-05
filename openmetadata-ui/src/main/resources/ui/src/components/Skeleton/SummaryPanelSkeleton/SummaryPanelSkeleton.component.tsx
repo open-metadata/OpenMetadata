@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import ButtonSkeleton from 'components/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import LabelCountSkeleton from 'components/Skeleton/CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
-import { SkeletonInterface } from 'components/Skeleton/Skeleton.interfaces';
-import { getSkeletonMockData } from 'components/Skeleton/SkeletonUtils/Skeleton.utils';
 import { uniqueId } from 'lodash';
 import React from 'react';
+import ButtonSkeleton from '../../../components/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
+import LabelCountSkeleton from '../../../components/Skeleton/CommonSkeletons/LabelCountSkeleton/LabelCountSkeleton.component';
+import { SkeletonInterface } from '../../../components/Skeleton/Skeleton.interfaces';
+import { getSkeletonMockData } from '../../../components/Skeleton/SkeletonUtils/Skeleton.utils';
 
 const SummaryPanelSkeleton = ({ loading, children }: SkeletonInterface) => {
   return loading ? (

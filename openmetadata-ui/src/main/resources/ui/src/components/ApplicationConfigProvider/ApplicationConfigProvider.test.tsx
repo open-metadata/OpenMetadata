@@ -12,7 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getCustomLogoConfig } from 'rest/settingConfigAPI';
+import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 import ApplicationConfigProvider, {
   useApplicationConfigProvider,
 } from './ApplicationConfigProvider';
@@ -22,7 +22,7 @@ const mockApplicationConfig = {
   customMonogramUrlPath: 'https://customlink.source',
 };
 
-jest.mock('rest/settingConfigAPI', () => ({
+jest.mock('../../rest/settingConfigAPI', () => ({
   getCustomLogoConfig: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockApplicationConfig)),

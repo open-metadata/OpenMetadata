@@ -233,8 +233,8 @@
       <artifactId>flyway-mysql</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.github.resilience4j</groupId>
-      <artifactId>resilience4j-retry</artifactId>
+      <groupId>io.github.classgraph</groupId>
+      <artifactId>classgraph</artifactId>
     </dependency>
     <!-- Dependencies for secret store manager providers -->
     <dependency>
@@ -337,6 +337,12 @@
       <groupId>org.opensearch</groupId>
       <artifactId>opensearch-testcontainers</artifactId>
       <version>2.0.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.connectors</groupId>
+      <artifactId>jersey-jetty-connector</artifactId>
+      <version>2.40</version>
       <scope>test</scope>
     </dependency>
     <!-- JSON-P: Java API for JSON Processing (JSR 374) -->
@@ -576,7 +582,7 @@
                 <reuseForks>false</reuseForks>
                 <parallel>classes</parallel>
                 <forkCount>1C</forkCount>
-                <argLine>-Xmx512m</argLine>
+                <argLine>-Xmx1G</argLine>
               </configuration>
               <executions>
                 <execution>
@@ -626,7 +632,7 @@
                 <reuseForks>false</reuseForks>
                 <parallel>classes</parallel>
                 <forkCount>1C</forkCount>
-                <argLine>-Xmx512m</argLine>
+                <argLine>-Xmx1G</argLine>
               </configuration>
               <executions>
                 <execution>

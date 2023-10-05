@@ -40,9 +40,6 @@ from metadata.generated.schema.entity.data.searchIndex import (
 )
 from metadata.generated.schema.entity.data.table import DataModel, Table
 from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -96,22 +93,19 @@ class MetadataRestSink(Sink):
     # We want to catch any errors that might happen during the sink
     # pylint: disable=broad-except
 
-    def __init__(
-        self, config: MetadataRestSinkConfig, metadata_config: OpenMetadataConnection
-    ):
+    def __init__(self, config: MetadataRestSinkConfig, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.wrote_something = False
         self.charts_dict = {}
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.role_entities = {}
         self.team_entities = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @singledispatchmethod
     def _run_dispatch(self, record: Entity) -> Either[Any]:
@@ -480,11 +474,9 @@ class MetadataRestSink(Sink):
                     f"Successfully ingested sample data for {record.table.fullyQualifiedName.__root__}"
                 )
 
-        for column_tag_response in record.column_tags or []:
-            patched = self.metadata.patch_column_tag(
-                table=record.table,
-                column_fqn=column_tag_response.column_fqn,
-                tag_label=column_tag_response.tag_label,
+        if record.column_tags:
+            patched = self.metadata.patch_column_tags(
+                table=record.table, column_tags=record.column_tags
             )
             if not patched:
                 self.status.failed(
@@ -495,8 +487,7 @@ class MetadataRestSink(Sink):
                 )
             else:
                 logger.debug(
-                    f"Successfully patched tag {column_tag_response.tag_label} for"
-                    f" {record.table.fullyQualifiedName.__root__}.{column_tag_response.column_fqn}"
+                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.__root__}"
                 )
 
         return Either(right=table)

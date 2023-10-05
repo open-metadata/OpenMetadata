@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node, nodeInputRule } from '@tiptap/core';
-import { IMAGE_INPUT_REGEX } from 'constants/BlockEditor.constants';
+import { IMAGE_INPUT_REGEX } from '../../../../constants/BlockEditor.constants';
 
 export interface ImageOptions {
   inline: boolean;

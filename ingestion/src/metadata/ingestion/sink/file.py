@@ -15,12 +15,10 @@ Useful for local testing without having OM up.
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import get_log_name, ingestion_logger
 
@@ -41,11 +39,9 @@ class FileSink(Sink):
     def __init__(
         self,
         config: FileSinkConfig,
-        metadata_config: OpenMetadataConnection,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         fpath = pathlib.Path(self.config.filename)
         # pylint: disable=consider-using-with
         self.file = fpath.open("w", encoding=UTF_8)
@@ -53,9 +49,9 @@ class FileSink(Sink):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, _: OpenMetadata):
         config = FileSinkConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config)
 
     def _run(self, record: Entity, *_, **__) -> Either[str]:
         if self.wrote_something:

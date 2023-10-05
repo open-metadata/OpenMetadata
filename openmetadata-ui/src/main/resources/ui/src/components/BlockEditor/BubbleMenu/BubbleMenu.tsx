@@ -14,18 +14,18 @@ import { Editor } from '@tiptap/core';
 import { BubbleMenu as CoreBubbleMenu } from '@tiptap/react';
 import { Button, Dropdown, Tooltip, Typography } from 'antd';
 import { TitleProps } from 'antd/lib/typography/Title';
-import { ReactComponent as FormatBoldIcon } from 'assets/svg/ic-format-bold.svg';
-import { ReactComponent as FormatBulletListIcon } from 'assets/svg/ic-format-bullet-list.svg';
-import { ReactComponent as FormatCodeBlockIcon } from 'assets/svg/ic-format-code-block.svg';
-import { ReactComponent as FormatDividerIcon } from 'assets/svg/ic-format-divider.svg';
-import { ReactComponent as FormatInlineCodeIcon } from 'assets/svg/ic-format-inline-code.svg';
-import { ReactComponent as FormatItalicIcon } from 'assets/svg/ic-format-italic.svg';
-import { ReactComponent as FormatLinkIcon } from 'assets/svg/ic-format-link.svg';
-import { ReactComponent as FormatNumberListIcon } from 'assets/svg/ic-format-numbered-list.svg';
-import { ReactComponent as FormatQuoteIcon } from 'assets/svg/ic-format-quote.svg';
-import { ReactComponent as FormatStrikeIcon } from 'assets/svg/ic-format-strike.svg';
 import classNames from 'classnames';
 import React, { FC, useMemo } from 'react';
+import { ReactComponent as FormatBoldIcon } from '../../../assets/svg/ic-format-bold.svg';
+import { ReactComponent as FormatBulletListIcon } from '../../../assets/svg/ic-format-bullet-list.svg';
+import { ReactComponent as FormatCodeBlockIcon } from '../../../assets/svg/ic-format-code-block.svg';
+import { ReactComponent as FormatDividerIcon } from '../../../assets/svg/ic-format-divider.svg';
+import { ReactComponent as FormatInlineCodeIcon } from '../../../assets/svg/ic-format-inline-code.svg';
+import { ReactComponent as FormatItalicIcon } from '../../../assets/svg/ic-format-italic.svg';
+import { ReactComponent as FormatLinkIcon } from '../../../assets/svg/ic-format-link.svg';
+import { ReactComponent as FormatNumberListIcon } from '../../../assets/svg/ic-format-numbered-list.svg';
+import { ReactComponent as FormatQuoteIcon } from '../../../assets/svg/ic-format-quote.svg';
+import { ReactComponent as FormatStrikeIcon } from '../../../assets/svg/ic-format-strike.svg';
 
 interface BubbleMenuProps {
   editor: Editor;

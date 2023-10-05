@@ -29,10 +29,10 @@ jest.mock('../../utils/LogsViewer.utils', () => ({
 }));
 
 jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => () => <>TitleBreadcrumb.component</>
 );
-jest.mock('components/containers/PageLayoutV1', () =>
+jest.mock('../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
@@ -42,7 +42,7 @@ jest.mock('react-lazylog', () => ({
     .mockImplementation(() => <div data-testid="logs">LazyLog</div>),
 }));
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../rest/ingestionPipelineAPI', () => ({
   getIngestionPipelineLogById: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockLogsData })),
@@ -52,7 +52,7 @@ jest.mock('rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock(
-  'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
+  '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component',
   () => ({
     IngestionRecentRuns: jest
       .fn()

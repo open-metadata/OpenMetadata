@@ -15,16 +15,10 @@
 import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getPolicyFunctions,
-  getPolicyResources,
-  validateRuleCondition,
-} from 'rest/rolesAPIV1';
-import { ALL_TYPE_RESOURCE_LIST } from 'utils/PermissionsUtils';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   Effect,
@@ -33,6 +27,12 @@ import {
 } from '../../../generated/api/policies/createPolicy';
 import { ResourceDescriptor } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { Function } from '../../../generated/type/function';
+import {
+  getPolicyFunctions,
+  getPolicyResources,
+  validateRuleCondition,
+} from '../../../rest/rolesAPIV1';
+import { ALL_TYPE_RESOURCE_LIST } from '../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 

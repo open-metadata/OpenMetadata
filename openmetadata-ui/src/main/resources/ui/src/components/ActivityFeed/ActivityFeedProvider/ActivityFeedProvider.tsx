@@ -10,20 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AppState from 'AppState';
+
 import { AxiosError } from 'axios';
-import { EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import { ReactionOperation } from 'enums/reactions.enum';
 import { compare, Operation } from 'fast-json-patch';
-import {
-  Post,
-  Reaction,
-  ReactionType,
-  Thread,
-  ThreadType,
-} from 'generated/entity/feed/thread';
-import { Paging } from 'generated/type/paging';
 import { isEqual } from 'lodash';
 import React, {
   createContext,
@@ -34,6 +23,17 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import AppState from '../../../AppState';
+import { EntityType } from '../../../enums/entity.enum';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  Post,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { Paging } from '../../../generated/type/paging';
+import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import {
   deletePostById,
   deleteThread,
@@ -42,10 +42,10 @@ import {
   postFeedById,
   updatePost,
   updateThread,
-} from 'rest/feedsAPI';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { getUpdatedThread } from 'utils/FeedUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/feedsAPI';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getUpdatedThread } from '../../../utils/FeedUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 

@@ -84,6 +84,14 @@ link="/connectors/database/bigquery/roles"
   / %}
 {% /tilesContainer %}
 
+
+{% note %}
+If you are using BigQuery and have sharded tables, you might want to consider using partitioned tables instead. Partitioned tables allow you to efficiently query data by date or other criteria, without having to manage multiple tables. Partitioned tables also have lower storage and query costs than sharded tables. 
+You can learn more about the benefits of partitioned tables [here](https://cloud.google.com/bigquery/docs/partitioned-tables#dt_partition_shard). 
+If you want to convert your existing sharded tables to partitioned tables, you can follow the steps in this [guide](https://cloud.google.com/bigquery/docs/creating-partitioned-tables#convert-date-sharded-tables).
+This will help you simplify your data management and optimize your performance in BigQuery.
+{% /note %}
+
 ## Metadata Ingestion
 
 {% partial
@@ -142,6 +150,7 @@ Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data.
 If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
 the GCP credentials empty. This is why they are not marked as required.
 {% /note %}
+
 
 {% partial file="/v1.2/connectors/database/advanced-configuration.md" /%}
 

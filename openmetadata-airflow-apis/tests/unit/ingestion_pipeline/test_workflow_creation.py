@@ -34,7 +34,6 @@ from openmetadata_managed_apis.workflows.ingestion.usage import (
 )
 
 from metadata.data_quality.api.workflow import TestSuiteWorkflow
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -66,7 +65,6 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.models.encoders import show_secrets_encoder

@@ -13,14 +13,14 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
+import { getUserById } from '../../../rest/userAPI';
 import { MyDataWidget } from './MyDataWidget.component';
 
 const userDetails = {
   id: '123',
 };
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../../rest/userAPI', () => ({
   getUserById: jest.fn().mockImplementation(() =>
     Promise.resolve({
       owns: [],
@@ -28,11 +28,11 @@ jest.mock('rest/userAPI', () => ({
   ),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('utils/TableUtils', () => ({
+jest.mock('../../../utils/TableUtils', () => ({
   getEntityLink: jest.fn().mockImplementation((link) => link),
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
@@ -44,7 +44,7 @@ jest.mock('./../../../AppState', () => ({
 }));
 
 jest.mock(
-  'components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
+  '../../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
   }

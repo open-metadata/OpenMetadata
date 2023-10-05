@@ -11,33 +11,33 @@
  *  limitations under the License.
  */
 
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { Query } from 'generated/entity/data/query';
-import { SearchIndex as SearchIndexEntity } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
-import { DashboardService } from 'generated/entity/services/dashboardService';
-import { DatabaseService } from 'generated/entity/services/databaseService';
-import { MessagingService } from 'generated/entity/services/messagingService';
-import { MlmodelService } from 'generated/entity/services/mlmodelService';
-import { PipelineService } from 'generated/entity/services/pipelineService';
-import { SearchService } from 'generated/entity/services/searchService';
-import { TestCase } from 'generated/tests/testCase';
-import { TestSuite } from 'generated/tests/testSuite';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { Query } from '../generated/entity/data/query';
+import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
+import { DashboardService } from '../generated/entity/services/dashboardService';
+import { DatabaseService } from '../generated/entity/services/databaseService';
+import { MessagingService } from '../generated/entity/services/messagingService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import { PipelineService } from '../generated/entity/services/pipelineService';
+import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
+import { TestCase } from '../generated/tests/testCase';
+import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 
 /**
@@ -185,7 +185,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
   [SearchIndex.DATABASE]: DatabaseSearchSource;
   [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
-  [SearchIndex.DASHBOARD_SERCVICE]: DashboardServiceSearchSource;
+  [SearchIndex.DASHBOARD_SERVICE]: DashboardServiceSearchSource;
   [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
   [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;

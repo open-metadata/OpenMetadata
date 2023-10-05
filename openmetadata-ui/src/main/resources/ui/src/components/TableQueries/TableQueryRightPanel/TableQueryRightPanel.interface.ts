@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { Query } from 'generated/entity/data/query';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { Query } from '../../../generated/entity/data/query';
 
 export interface TableQueryRightPanelProps {
   query: Query;

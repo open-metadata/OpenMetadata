@@ -12,21 +12,23 @@
  */
 import { Button, Col, Menu, MenuProps, Row, Tooltip, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
-import { ReactComponent as GovernIcon } from 'assets/svg/bank.svg';
-import { ReactComponent as LogoutIcon } from 'assets/svg/logout.svg';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { NavLink } from 'react-router-dom';
+import { ReactComponent as GovernIcon } from '../../../assets/svg/bank.svg';
+import { ReactComponent as LogoutIcon } from '../../../assets/svg/logout.svg';
+import { useAuthContext } from '../../../components/authentication/auth-provider/AuthProvider';
 import {
   SETTING_ITEM,
   SIDEBAR_GOVERN_LIST,
   SIDEBAR_LIST,
-} from 'constants/LeftSidebar.constants';
-import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { NavLink } from 'react-router-dom';
+} from '../../../constants/LeftSidebar.constants';
+import { useApplicationConfigProvider } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import './left-sidebar.less';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
+  const { sideBarElements } = useApplicationConfigProvider();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthContext();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
@@ -113,6 +115,7 @@ const LeftSidebar = () => {
           selectedKeys={subMenuItemSelected}
           triggerSubMenuAction="click"
         />
+        {sideBarElements}
       </Row>
       <Row className="p-y-sm">
         <Col span={24}>

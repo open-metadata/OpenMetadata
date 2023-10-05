@@ -15,45 +15,47 @@ import Icon, { FilterOutlined } from '@ant-design/icons';
 import { Table, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { ColumnFilter } from 'components/Table/ColumnFilter/ColumnFilter.component';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { LabelType, State, TagSource } from 'generated/type/schema';
 import {
   cloneDeep,
   groupBy,
   isEmpty,
   isUndefined,
   lowerCase,
-  map,
-  reduce,
   set,
   sortBy,
   toLower,
   uniqBy,
 } from 'lodash';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAllTags, searchTagInData } from 'utils/TableTags/TableTags.utils';
+import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../components/TableDescription/TableDescription.component';
+import TableTags from '../../components/TableTags/TableTags.component';
+import { PRIMERY_COLOR } from '../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Column } from '../../generated/entity/data/table';
+import { TagSource } from '../../generated/type/schema';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getEntityName,
   getFrequentlyJoinedColumns,
 } from '../../utils/EntityUtils';
 import {
+  getAllTags,
+  searchTagInData,
+} from '../../utils/TableTags/TableTags.utils';
+import {
   getDataTypeString,
   getTableExpandableConfig,
   makeData,
   prepareConstraintIcon,
+  updateFieldTags,
 } from '../../utils/TableUtils';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
@@ -121,53 +123,6 @@ const SchemaTable = ({
     });
   };
 
-  const getUpdatedTags = (
-    column: Column,
-    newColumnTags: Array<EntityTags>
-  ): TagLabel[] => {
-    const prevTagsFqn = column?.tags?.map((tag) => tag.tagFQN);
-
-    return reduce(
-      newColumnTags,
-      (acc: Array<EntityTags>, cv: TagOption) => {
-        if (prevTagsFqn?.includes(cv.fqn)) {
-          const prev = column?.tags?.find((tag) => tag.tagFQN === cv.fqn);
-
-          return [...acc, prev];
-        } else {
-          return [
-            ...acc,
-            {
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: cv.source,
-              tagFQN: cv.fqn,
-            },
-          ];
-        }
-      },
-      []
-    );
-  };
-
-  const updateColumnTags = (
-    tableCols: Column[],
-    changedColFQN: string,
-    newColumnTags: Array<TagOption>
-  ) => {
-    tableCols?.forEach((col) => {
-      if (col.fullyQualifiedName === changedColFQN) {
-        col.tags = getUpdatedTags(col, newColumnTags);
-      } else {
-        updateColumnTags(
-          col?.children as Column[],
-          changedColFQN,
-          newColumnTags
-        );
-      }
-    });
-  };
-
   const handleEditColumnChange = async (columnDescription: string) => {
     if (editColumn && editColumn.fullyQualifiedName) {
       const tableCols = cloneDeep(tableColumns);
@@ -188,16 +143,13 @@ const SchemaTable = ({
     selectedTags: EntityTags[],
     editColumnTag: Column
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-    if (newSelectedTags && editColumnTag) {
+    if (selectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
-      updateColumnTags(
-        tableCols,
+
+      updateFieldTags<Column>(
         editColumnTag.fullyQualifiedName ?? '',
-        newSelectedTags
+        selectedTags,
+        tableCols
       );
       await onUpdate(tableCols);
     }

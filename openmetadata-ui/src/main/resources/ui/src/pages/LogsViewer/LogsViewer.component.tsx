@@ -13,11 +13,6 @@
 
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CopyToClipboardButton } from 'components/buttons/CopyToClipboardButton/CopyToClipboardButton';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import Loader from 'components/Loader/Loader';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import React, {
   Fragment,
@@ -29,15 +24,20 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { useParams } from 'react-router-dom';
-import {
-  getIngestionPipelineByName,
-  getIngestionPipelineLogById,
-} from 'rest/ingestionPipelineAPI';
-import { getDecodedFqn } from 'utils/StringsUtils';
+import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
+import Loader from '../../components/Loader/Loader';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
+import {
+  getIngestionPipelineByName,
+  getIngestionPipelineLogById,
+} from '../../rest/ingestionPipelineAPI';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
 import { LogViewerParams } from './LogsViewer.interfaces';
