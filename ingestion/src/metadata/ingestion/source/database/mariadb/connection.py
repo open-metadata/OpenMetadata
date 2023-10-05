@@ -31,6 +31,10 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.mysql.queries import (
+    MYSQL_GET_SCHEMA,
+    MYSQL_GET_TABLE,
+)
 
 
 def get_connection(connection: MariaDBConnection) -> Engine:
@@ -54,9 +58,14 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
+    queries = {
+        "GetSchemas": MYSQL_GET_SCHEMA.format(""),
+        "GetTables": MYSQL_GET_TABLE.format(""),
+    }
     test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        queries=queries,
     )

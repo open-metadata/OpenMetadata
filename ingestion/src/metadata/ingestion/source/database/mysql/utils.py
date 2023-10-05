@@ -20,6 +20,7 @@ from sqlalchemy.dialects.mysql.types import DATETIME, TIME, TIMESTAMP
 from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_SCHEMA
 from metadata.utils.sqlalchemy_utils import get_display_datatype
 
 col_type_map = {
@@ -33,6 +34,39 @@ col_type_map = {
     "multipoint": create_sqlalchemy_type("GEOMETRY"),
     "multipolygon": create_sqlalchemy_type("GEOMETRY"),
 }
+
+
+def get_filter_pattern_query(filter_pattern_name, name):
+    query_conditions = []
+    # Iterate over the list and build the query conditions
+    for pattern in filter_pattern_name:
+        query_conditions.append(f"{name} LIKE '{pattern}'")
+
+    # Join the query conditions with 'OR' and add them to the SQL query
+    if query_conditions:
+        query_condition = " OR ".join(query_conditions)
+    return query_condition
+
+
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
+    sc_patterns = [sc_name + "%" for sc_name in kw["filter_schema_name"]]
+    format_pattern = f" where {get_filter_pattern_query(sc_patterns, 'schema_name')}"
+    cursor = connection.execute(
+        MYSQL_GET_SCHEMA.format(format_pattern)
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else MYSQL_GET_SCHEMA.format("")
+    )
+    result = [row[0] for row in cursor]
+    return result
 
 
 def parse_column(self, line, state):
