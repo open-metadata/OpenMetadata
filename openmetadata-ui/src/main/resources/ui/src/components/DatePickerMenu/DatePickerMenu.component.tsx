@@ -19,6 +19,7 @@ import { DateFilterType } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
 import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
 import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
 import {
@@ -52,7 +53,7 @@ function DatePickerMenu({
 }: DatePickerMenuProps) {
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions =
-      options && defaultValue
+      options && defaultValue && !isUndefined(options[defaultValue]?.title)
         ? { title: options[defaultValue].title, key: defaultValue }
         : DEFAULT_SELECTED_RANGE;
 

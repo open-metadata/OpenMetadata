@@ -12,9 +12,12 @@
  */
 
 import { TooltipProps } from 'recharts';
+import { DataInsightIndex } from '../enums/DataInsight.enum';
+import { ReportData } from '../generated/analytics/reportData';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { KpiResult, KpiTargetType } from '../generated/dataInsight/kpi/kpi';
+import { KeysOfUnion } from './search.interface';
 
 export interface ChartAggregateParam {
   dataInsightChartName: DataInsightChartType;
@@ -50,6 +53,7 @@ export enum DataInsightTabs {
   DATA_ASSETS = 'data-assets',
   APP_ANALYTICS = 'app-analytics',
   KPIS = 'kpi',
+  COST_ANALYSIS = 'cost-analysis',
 }
 
 export enum KpiDate {
@@ -62,3 +66,31 @@ export type KpiDates = {
 };
 
 export type ChartValue = string | number | undefined;
+
+export type AggregatedCostAnalysisReportDataSearchSource = ReportData; // extends EntityInterface
+
+export type DataInsightSearchSourceMapping = {
+  [DataInsightIndex.AGGREGATED_COST_ANALYSIS_REPORT_DATA]: AggregatedCostAnalysisReportDataSearchSource;
+};
+
+export type DataInsightSearchRequest = {
+  pageNumber?: number;
+  pageSize?: number;
+  searchIndex?: DataInsightIndex.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+  query?: string;
+  queryFilter?: Record<string, unknown>;
+  postFilter?: Record<string, unknown>;
+  sortField?: string;
+  sortOrder?: string;
+  includeDeleted?: boolean;
+  trackTotalHits?: boolean;
+  filters?: string;
+} & (
+  | {
+      fetchSource: true;
+      includeFields?: KeysOfUnion<AggregatedCostAnalysisReportDataSearchSource>[];
+    }
+  | {
+      fetchSource?: false;
+    }
+);
