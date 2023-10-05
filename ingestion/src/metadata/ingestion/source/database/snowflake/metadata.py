@@ -245,9 +245,19 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             self.set_database_description_map()
             yield configured_db
         else:
-            format_pattern = "WHERE DATABASE_NAME LIKE ANY " + get_filter_pattern_tuple(
-                self.source_config.databaseFilterPattern.includes
-            )  # pylint: disable=line-too-long
+            if self.source_config.databaseFilterPattern:
+                if (
+                    self.source_config.databaseFilterPattern.includes
+                    and self.source_config.databaseFilterPattern.excludes
+                ):
+                    format_pattern = f"WHERE DATABASE_NAME LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.includes)} OR DATABASE_NAME NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.excludes)}"  # pylint: disable=line-too-long
+                else:
+                    format_pattern = (
+                        f"WHERE DATABASE_NAME LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.includes)}"  # pylint: disable=line-too-long
+                        if self.source_config.databaseFilterPattern.includes
+                        else f"WHERE DATABASE_NAME NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.excludes)}"  # pylint: disable=line-too-long
+                    )
+
             filter_query = SNOWFLAKE_GET_FILTER_DATABASES.format(format_pattern)
             query = SNOWFLAKE_GET_FILTER_DATABASES.format("")
             results = self.connection.execute(
@@ -294,9 +304,14 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                 if self.source_config.schemaFilterPattern
-                else None,
+                and self.source_config.schemaFilterPattern.includes
+                else [],
+                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                if self.source_config.schemaFilterPattern
+                and self.source_config.schemaFilterPattern.excludes
+                else [],
             ):
                 yield schema_name
 
@@ -518,9 +533,14 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_table_name=self.source_config.tableFilterPattern.includes
+                filter_include_table_name=self.source_config.tableFilterPattern.includes
                 if self.source_config.tableFilterPattern
-                else None,
+                and self.source_config.tableFilterPattern.includes
+                else [],
+                filter_exclude_table_name=self.source_config.tableFilterPattern.excludes
+                if self.source_config.tableFilterPattern
+                and self.source_config.tableFilterPattern.excludes
+                else [],
             )
         ]
 
@@ -531,9 +551,14 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                     schema=schema_name,
                     external_tables=True,
                     pushFilterDown=self.source_config.pushFilterDown,
-                    filter_table_name=self.source_config.tableFilterPattern.includes
+                    filter_include_table_name=self.source_config.tableFilterPattern.includes
                     if self.source_config.tableFilterPattern
-                    else None,
+                    and self.source_config.tableFilterPattern.includes
+                    else [],
+                    filter_exclude_table_name=self.source_config.tableFilterPattern.excludes
+                    if self.source_config.tableFilterPattern
+                    and self.source_config.tableFilterPattern.excludes
+                    else [],
                 )
             ]
         )
@@ -546,9 +571,14 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                         schema=schema_name,
                         include_transient_tables=True,
                         pushFilterDown=self.source_config.pushFilterDown,
-                        filter_table_name=self.source_config.tableFilterPattern.includes
+                        filter_include_table_name=self.source_config.tableFilterPattern.includes
                         if self.source_config.tableFilterPattern
-                        else None,
+                        and self.source_config.tableFilterPattern.includes
+                        else [],
+                        filter_exclude_table_name=self.source_config.tableFilterPattern.excludes
+                        if self.source_config.tableFilterPattern
+                        and self.source_config.tableFilterPattern.excludes
+                        else [],
                     )
                 ]
             )

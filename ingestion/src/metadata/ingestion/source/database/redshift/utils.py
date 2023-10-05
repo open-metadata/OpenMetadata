@@ -392,18 +392,18 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
     return relations
 
 
-def get_filter_pattern_query(filter_pattern_name):
-    schema_patterns = [sc_name.replace("%", "%%") for sc_name in filter_pattern_name]
+def get_filter_pattern_query(filter_pattern_name, name, exclude=False):
     query_conditions = []
+    # Define the operator based on whether it's an inclusion or exclusion query
+    operator = "NOT LIKE" if exclude else "LIKE"
     # Iterate over the list and build the query conditions
-    for pattern in schema_patterns:
-        query_conditions.append(f"nspname LIKE '{pattern}'")
-
+    for pattern in filter_pattern_name:
+        query_conditions.append(f"{name} {operator} '{pattern}'")
     # Join the query conditions with 'OR' and add them to the SQL query
     if query_conditions:
         query_condition = " OR ".join(query_conditions)
-        sql_query = f"AND ( {query_condition} )"
-    return sql_query
+        return query_condition
+    return ""
 
 
 def get_schema_names_reflection(self, **kw):
@@ -416,10 +416,31 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
+    """Return all schema names."""
+
+    sc_patterns_include = [
+        sc_name.replace("%", "%%")
+        for sc_name in kw["filter_include_schema_name"]
+        if kw["filter_include_schema_name"]
+    ]
+    sc_patterns_exclude = [
+        sc_name.replace("%", "%%")
+        for sc_name in kw["filter_exclude_schema_name"]
+        if kw["filter_exclude_schema_name"]
+    ]
+    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
+        format_pattern = f'and ({get_filter_pattern_query(sc_patterns_include,"nspname")} or {get_filter_pattern_query(sc_patterns_exclude, "snspname",exclude=True)})'  # pylint: disable=line-too-long
+    else:
+        format_pattern = (
+            f'and ({get_filter_pattern_query(sc_patterns_include,"nspname")})'
+            if kw["filter_include_schema_name"]
+            else f'and ( {get_filter_pattern_query(sc_patterns_exclude, "nspname",exclude=True)})'
+        )
     query = REDSHIFT_GET_SCHEMA_NAMES
     cursor = connection.execute(
-        query.format(get_filter_pattern_query(kw["filter_schema_name"]))
-        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        query.format(format_pattern)
+        if kw.get("pushFilterDown") is not None
+        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

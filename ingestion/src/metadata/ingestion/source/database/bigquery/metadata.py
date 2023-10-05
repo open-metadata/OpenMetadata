@@ -242,9 +242,14 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
                 for schema_name in self.inspector.get_schema_names(
                     project_id=project_id,
                     pushFilterDown=self.source_config.pushFilterDown,
-                    filter_schema_name=self.source_config.schemaFilterPattern.includes
+                    filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                     if self.source_config.schemaFilterPattern
-                    else None,
+                    and self.source_config.schemaFilterPattern.includes
+                    else [],
+                    filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                    if self.source_config.schemaFilterPattern
+                    and self.source_config.schemaFilterPattern.excludes
+                    else [],
                 ):
                     yield schema_name
 
@@ -282,9 +287,19 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
-        format_pattern = "AND table_name LIKE ANY" + get_filter_pattern_tuple(
-            self.source_config.tableFilterPattern.includes
-        )
+        if self.source_config.tableFilterPattern:
+            if (
+                self.source_config.tableFilterPattern.includes
+                and self.source_config.tableFilterPattern.excludes
+            ):
+                format_pattern = f"AND (table_name LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.includes)} OR table_name NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.excludes)})"  # pylint: disable=line-too-long
+            else:
+                format_pattern = (
+                    f"AND table_name LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.includes)}"  # pylint: disable=line-too-long
+                    if self.source_config.tableFilterPattern.includes
+                    else f"AND table_name NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.excludes)}"  # pylint: disable=line-too-long
+                )
+
         return [
             TableNameAndType(
                 name=table_name,

@@ -149,14 +149,31 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
         """
         Handle custom table types
         """
-        result = self.connection.execute(
-            sql.text(
-                REDSHIFT_GET_ALL_RELATION_INFO.format(
-                    get_filter_pattern_query(
-                        self.source_config.tableFilterPattern.includes
-                    )
+
+        if self.source_config.tableFilterPattern:
+            tb_patterns_include = [
+                tb_name.replace("%", "%%")
+                for tb_name in self.source_config.tableFilterPattern.includes
+                if self.source_config.tableFilterPattern.includes
+            ]
+            tb_patterns_exclude = [
+                tb_name.replace("%", "%%")
+                for tb_name in self.source_config.tableFilterPattern.excludes
+                if self.source_config.tableFilterPattern.excludes
+            ]
+            if (
+                self.source_config.tableFilterPattern.includes
+                and self.source_config.tableFilterPattern.excludes
+            ):
+                format_pattern = f"where {get_filter_pattern_query(tb_patterns_include, 'name')} or {get_filter_pattern_query(tb_patterns_exclude,'name', exclude=True)} "  # pylint: disable=line-too-long
+            else:
+                format_pattern = (
+                    f"where {get_filter_pattern_query(tb_patterns_include,'name')}"
+                    if self.source_config.tableFilterPattern.includes
+                    else f"and ({get_filter_pattern_query(tb_patterns_exclude, 'name',exclude=True)}"
                 )
-            )
+        result = self.connection.execute(
+            sql.text(REDSHIFT_GET_ALL_RELATION_INFO.format(format_pattern))
             if self.source_config.pushFilterDown
             and self.source_config.tableFilterPattern
             else sql.text(REDSHIFT_GET_ALL_RELATION_INFO.format("")),
@@ -243,12 +260,31 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
             self.get_partition_details()
             yield self.config.serviceConnection.__root__.config.database
         else:
-            results = self.connection.execute(
-                REDSHIFT_GET_DATABASE_NAMES.format(
-                    get_filter_pattern_query(
-                        self.source_config.databaseFilterPattern.includes
+            if self.source_config.databaseFilterPattern:
+                db_patterns_include = [
+                    db_name.replace("%", "%%")
+                    for db_name in self.source_config.databaseFilterPattern.includes
+                    if self.source_config.databaseFilterPattern.includes
+                ]
+                db_patterns_exclude = [
+                    db_name.replace("%", "%%")
+                    for db_name in self.source_config.databaseFilterPattern.excludes
+                    if self.source_config.databaseFilterPattern.excludes
+                ]
+                if (
+                    self.source_config.databaseFilterPattern.includes
+                    and self.source_config.databaseFilterPattern.excludes
+                ):
+                    format_pattern = f"where {get_filter_pattern_query(db_patterns_include,'datname')} or {get_filter_pattern_query(db_patterns_exclude,'datname', exclude=True)} "  # pylint: disable=line-too-long
+                else:
+                    format_pattern = (
+                        f"where {get_filter_pattern_query(db_patterns_include,'datname')}"
+                        if self.source_config.databaseFilterPattern.includes
+                        else f"where {get_filter_pattern_query(db_patterns_exclude,'datname', exclude=True)}"
                     )
-                )
+
+            results = self.connection.execute(
+                REDSHIFT_GET_DATABASE_NAMES.format(format_pattern)
                 if self.source_config.pushFilterDown
                 and self.source_config.databaseFilterPattern
                 else REDSHIFT_GET_DATABASE_NAMES.format("")
@@ -288,9 +324,14 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                 if self.source_config.schemaFilterPattern
-                else None,
+                and self.source_config.schemaFilterPattern.includes
+                else [],
+                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                if self.source_config.schemaFilterPattern
+                and self.source_config.schemaFilterPattern.excludes
+                else [],
             ):
                 yield schema_name
 
