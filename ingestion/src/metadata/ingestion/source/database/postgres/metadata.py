@@ -142,10 +142,10 @@ class PostgresSource(CommonDbSourceService):
         and foreign types
         """
 
-        db_patterns = [
-            db_name + "%" for db_name in self.source_config.tableFilterPattern.includes
+        tb_patterns = [
+            tb_name.replace('%', '%%') for tb_name in self.source_config.tableFilterPattern.includes
         ]
-        format_pattern = f"AND c.relname LIKE ANY (ARRAY{db_patterns})"
+        format_pattern = f"AND c.relname LIKE ANY (ARRAY{tb_patterns})"
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES.format(format_pattern))
             if self.source_config.pushFilterDown
@@ -237,7 +237,7 @@ class PostgresSource(CommonDbSourceService):
             yield configured_db
         else:
             db_patterns = [
-                db_name + "%"
+                db_name.replace('%', '%%')
                 for db_name in self.source_config.databaseFilterPattern.includes
             ]
             format_pattern = f"WHERE datname LIKE ANY (ARRAY{db_patterns})"

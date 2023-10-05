@@ -265,7 +265,7 @@ def get_filter_pattern_query(filter_pattern_name, name):
 
 
 def get_table_names(self, connection, schema, **kw):
-    tb_patterns = [tb_name + "%" for tb_name in kw["filter_table_name"]]
+    tb_patterns = [tb_name.replace('%', '%%') for tb_name in kw["filter_table_name"]]
     format_pattern = f"and ( {get_filter_pattern_query(tb_patterns, 'name')} )"
     cursor = connection.execute(
         CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), format_pattern)
@@ -287,7 +287,7 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
-    sc_patterns = [sc_name + "%" for sc_name in kw["filter_schema_name"]]
+    sc_patterns = [sc_name.replace('%', '%%') for sc_name in kw["filter_schema_name"]]
     format_pattern = f" where {get_filter_pattern_query(sc_patterns, 'schema_name')}"
     cursor = connection.execute(
         CLICKHOUSE_GET_SCHEMA.format(format_pattern)

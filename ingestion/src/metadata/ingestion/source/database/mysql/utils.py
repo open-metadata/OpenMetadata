@@ -58,7 +58,7 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
-    sc_patterns = [sc_name + "%" for sc_name in kw["filter_schema_name"]]
+    sc_patterns = [sc_name.replace('%', '%%') for sc_name in kw["filter_schema_name"]]
     format_pattern = f" where {get_filter_pattern_query(sc_patterns, 'schema_name')}"
     cursor = connection.execute(
         MYSQL_GET_SCHEMA.format(format_pattern)

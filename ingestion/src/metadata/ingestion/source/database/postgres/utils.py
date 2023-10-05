@@ -399,8 +399,8 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
-    db_patterns = [db_name + "%" for db_name in kw["filter_schema_name"]]
-    format_pattern = f"and nspname like any (array{db_patterns})"
+    sc_patterns = [sc_name.replace('%', '%%') for sc_name in kw["filter_schema_name"]]
+    format_pattern = f"and nspname like any (array{sc_patterns})"
     query = POSTGRES_GET_SCHEMA_NAMES
     cursor = connection.execute(
         query.format(format_pattern)

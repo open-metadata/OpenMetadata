@@ -118,7 +118,7 @@ class MariadbSource(CommonDbSourceService):
         and foreign types
         """
         tb_patterns = [
-            tb_name + "%" for tb_name in self.source_config.tableFilterPattern.includes
+            tb_name.replace('%', '%%') for tb_name in self.source_config.tableFilterPattern.includes
         ]
         format_pattern = (
             f" and ({get_filter_pattern_query(tb_patterns, 'table_name')} )"
