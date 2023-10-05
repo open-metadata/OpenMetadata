@@ -205,7 +205,6 @@ class TestSuiteSource(Source):
                 right=TableAndTests(
                     table=table,
                     test_cases=test_suite_cases,
-                    executable_test_suite=executable_test_suite,
                     service_type=self.service.serviceType.value,
                 )
             )
