@@ -43,7 +43,6 @@ jobs:
       matrix:
         job: [0]
     environment: test
-    timeout-minutes: 120
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -118,14 +117,15 @@ jobs:
         env:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d postgresql
-        timeout-minutes: 30
+        timeout-minutes: 60
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
+        timeout-minutes: 120
         with:
           install: false
           record: true
-          parallel: true
+          parallel: false
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group: Tests with database postgresql

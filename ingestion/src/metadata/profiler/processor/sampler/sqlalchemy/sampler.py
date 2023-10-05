@@ -63,13 +63,17 @@ class SQASampler(SamplerInterface):
     run the query in the whole table.
     """
 
+    def _base_sample_query(self, label=None):
+        if label is not None:
+            return self.client.query(self.table, label)
+        return self.client.query(self.table)
+
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = (
-                self.client.query(
-                    self.table,
+                self._base_sample_query(
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .suffix_with(
@@ -79,17 +83,16 @@ class SQASampler(SamplerInterface):
                 .cte(f"{self.table.__tablename__}_rnd")
             )
             session_query = self.client.query(rnd)
-
             return session_query.where(rnd.c.random <= self.profile_sample).cte(
                 f"{self.table.__tablename__}_sample"
             )
+
         table_query = self.client.query(self.table)
+        session_query = self._base_sample_query(
+            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+        )
         return (
-            self.client.query(
-                self.table,
-                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
-            )
-            .order_by(RANDOM_LABEL)
+            session_query.order_by(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )

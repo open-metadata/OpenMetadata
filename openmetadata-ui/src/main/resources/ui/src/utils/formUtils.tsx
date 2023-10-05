@@ -25,6 +25,7 @@ import { compact, startCase } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/AsyncSelectList/AsyncSelectList.interface';
+import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import RichTextEditor from '../components/common/rich-text-editor/RichTextEditor';
@@ -169,6 +170,10 @@ export const getField = (field: FieldProp) => {
           </UserSelectableList>
         );
       }
+
+      break;
+    case FieldTypes.COLOR_PICKER:
+      fieldElement = <ColorPicker />;
 
       break;
 

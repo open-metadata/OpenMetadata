@@ -55,7 +55,7 @@ class BigQuerySampler(SQASampler):
             and self.table_type != TableType.View
         ):
             return (
-                self.client.query(self.table)
+                self._base_sample_query()
                 .suffix_with(
                     f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
                 )

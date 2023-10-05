@@ -15,6 +15,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
+import { omit } from 'lodash';
 import { EntityTags, TagOption } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
@@ -37,7 +38,6 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
-import { formatSearchTagsResponse } from './APIUtils';
 import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
@@ -302,6 +302,7 @@ export const fetchTagsElasticSearch = async (
   data: {
     label: string;
     value: string;
+    data: Tag;
   }[];
   paging: Paging;
 }> => {
@@ -315,9 +316,10 @@ export const fetchTagsElasticSearch = async (
   });
 
   return {
-    data: formatSearchTagsResponse(res.hits.hits ?? []).map((item) => ({
-      label: item.fullyQualifiedName ?? '',
-      value: item.fullyQualifiedName ?? '',
+    data: res.hits.hits.map(({ _source }) => ({
+      label: _source.fullyQualifiedName ?? '',
+      value: _source.fullyQualifiedName ?? '',
+      data: _source,
     })),
     paging: {
       total: res.hits.total.value,
@@ -340,4 +342,14 @@ export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
   return newTier
     ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
     : getTagsWithoutTier(oldTags);
+};
+
+export const createTagObject = (tags: EntityTags[]) => {
+  return tags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source,
+    tagFQN: tag.tagFQN,
+  }));
 };

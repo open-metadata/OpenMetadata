@@ -95,6 +95,7 @@ NOT_COMPUTE = {
     CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
 }
+FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
 QUANTIFIABLE_SET = {
     DataType.INT.value,

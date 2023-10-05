@@ -173,6 +173,9 @@ describe('Tags page should work', () => {
       .type(NEW_TAG.displayName);
     cy.get(descriptionBox).should('be.visible').type(NEW_TAG.description);
 
+    cy.get('[data-testid="icon-url"]').scrollIntoView().type(NEW_TAG.icon);
+    cy.get('[data-testid="color-input"]').scrollIntoView().type(NEW_TAG.color);
+
     interceptURL('POST', '/api/v1/tags', 'createTag');
     submitForm();
 

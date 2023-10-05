@@ -114,6 +114,7 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
       {t('message.made-announcement-for-entity', { entity: entityType })}{' '}
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
         <Link
+          className="break-all"
           data-testid="entitylink"
           to={prepareFeedLink(entityType, entityFQN)}>
           {entityDisplayName(entityType, entityFQN)}
