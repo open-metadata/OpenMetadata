@@ -393,7 +393,7 @@ def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-ar
 
 
 def get_filter_pattern_query(filter_pattern_name):
-    schema_patterns = [sc_name.replace('%', '%%') for sc_name in filter_pattern_name]
+    schema_patterns = [sc_name.replace("%", "%%") for sc_name in filter_pattern_name]
     query_conditions = []
     # Iterate over the list and build the query conditions
     for pattern in schema_patterns:

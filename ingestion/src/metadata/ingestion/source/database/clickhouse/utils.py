@@ -252,24 +252,47 @@ def _get_column_info(
     return result
 
 
-def get_filter_pattern_query(filter_pattern_name, name):
+def get_filter_pattern_query(filter_pattern_name, name, exclude=False):
     query_conditions = []
+    # Define the operator based on whether it's an inclusion or exclusion query
+    operator = "NOT LIKE" if exclude else "LIKE"
     # Iterate over the list and build the query conditions
     for pattern in filter_pattern_name:
-        query_conditions.append(f"{name} LIKE '{pattern}'")
-
+        query_conditions.append(f"{name} {operator} '{pattern}'")
     # Join the query conditions with 'OR' and add them to the SQL query
     if query_conditions:
         query_condition = " OR ".join(query_conditions)
-    return query_condition
+        return query_condition
+    return ""
 
 
 def get_table_names(self, connection, schema, **kw):
-    tb_patterns = [tb_name.replace('%', '%%') for tb_name in kw["filter_table_name"]]
-    format_pattern = f"and ( {get_filter_pattern_query(tb_patterns, 'name')} )"
+    """Return all table names."""
+
+    tb_patterns_include = [
+        tb_name.replace("%", "%%")
+        for tb_name in kw["filter_include_table_name"]
+        if kw["filter_include_table_name"]
+    ]
+    tb_patterns_exclude = [
+        tb_name.replace("%", "%%")
+        for tb_name in kw["filter_exclude_table_name"]
+        if kw["filter_exclude_table_name"]
+    ]
+
+    if kw["filter_include_table_name"] and kw["filter_exclude_table_name"]:
+        format_pattern = f'and ({get_filter_pattern_query(tb_patterns_include,"name")} or {get_filter_pattern_query(tb_patterns_exclude, "name",exclude=True)})'  # pylint: disable=line-too-long
+    else:
+        format_pattern = (
+            f'and( {get_filter_pattern_query(tb_patterns_include,"name")})'
+            if kw["filter_include_table_name"]
+            else f'and({get_filter_pattern_query(tb_patterns_exclude, "name",exclude=True)})'
+        )
+
     cursor = connection.execute(
         CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), format_pattern)
-        if kw.get("pushFilterDown") and kw["filter_table_name"] is not None
+        if kw.get("pushFilterDown") is not None
+        and (kw["filter_include_table_name"] or kw["filter_exclude_table_name"])
         else CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), "")
     )
     result = [row[0] for row in cursor]
@@ -287,11 +310,30 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
-    sc_patterns = [sc_name.replace('%', '%%') for sc_name in kw["filter_schema_name"]]
-    format_pattern = f" where {get_filter_pattern_query(sc_patterns, 'schema_name')}"
+    """Return all schema names."""
+
+    sc_patterns_include = [
+        sc_name.replace("%", "%%")
+        for sc_name in kw["filter_include_schema_name"]
+        if kw["filter_include_schema_name"]
+    ]
+    sc_patterns_exclude = [
+        sc_name.replace("%", "%%")
+        for sc_name in kw["filter_exclude_schema_name"]
+        if kw["filter_exclude_schema_name"]
+    ]
+    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
+        format_pattern = f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")} or {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'  # pylint: disable=line-too-long
+    else:
+        format_pattern = (
+            f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
+            if kw["filter_include_schema_name"]
+            else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
+        )
     cursor = connection.execute(
         CLICKHOUSE_GET_SCHEMA.format(format_pattern)
-        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        if kw.get("pushFilterDown") is not None
+        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
         else CLICKHOUSE_GET_SCHEMA.format("")
     )
     result = [row[0] for row in cursor]

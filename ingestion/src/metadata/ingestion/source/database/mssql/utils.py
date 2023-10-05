@@ -287,16 +287,18 @@ def get_view_definition(
     )
 
 
-def get_filter_pattern_query(filter_pattern_name, name):
+def get_filter_pattern_query(filter_pattern_name, name, exclude=False):
     query_conditions = []
+    # Define the operator based on whether it's an inclusion or exclusion query
+    operator = "NOT LIKE" if exclude else "LIKE"
     # Iterate over the list and build the query conditions
     for pattern in filter_pattern_name:
-        query_conditions.append(f"{name} LIKE '{pattern}'")
-
+        query_conditions.append(f"{name} {operator} '{pattern}'")
     # Join the query conditions with 'OR' and add them to the SQL query
     if query_conditions:
         query_condition = " OR ".join(query_conditions)
-    return query_condition
+        return query_condition
+    return ""
 
 
 def get_schema_names_reflection(self, **kw):
@@ -309,13 +311,20 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
-    format_pattern = "where " + get_filter_pattern_query(
-        kw["filter_schema_name"], "name"
-    )
+    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
+        format_pattern = f'where {get_filter_pattern_query(kw["filter_include_schema_name"],"name")} or {get_filter_pattern_query(kw["filter_exclude_schema_name"], "name",exclude=True)}'  # pylint: disable=line-too-long
+    else:
+        format_pattern = (
+            f'where {get_filter_pattern_query(kw["filter_include_schema_name"],"name")}'
+            if kw["filter_include_schema_name"]
+            else f'where {get_filter_pattern_query(kw["filter_exclude_schema_name"], "name",exclude=True)}'
+        )
+
     query = MSSQL_GET_SCHEMA_NAMES
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        if kw.get("pushFilterDown") is not None
+        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

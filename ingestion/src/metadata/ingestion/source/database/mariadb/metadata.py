@@ -81,9 +81,14 @@ class MariadbSource(CommonDbSourceService):
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                 if self.source_config.schemaFilterPattern
-                else None,
+                and self.source_config.schemaFilterPattern.includes
+                else [],
+                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                if self.source_config.schemaFilterPattern
+                and self.source_config.schemaFilterPattern.excludes
+                else [],
             ):
                 yield schema_name
 
@@ -117,12 +122,28 @@ class MariadbSource(CommonDbSourceService):
         Overwrite the inspector implementation to handle partitioned
         and foreign types
         """
-        tb_patterns = [
-            tb_name.replace('%', '%%') for tb_name in self.source_config.tableFilterPattern.includes
+        tb_patterns_include = [
+            tb_name.replace("%", "%%")
+            for tb_name in self.source_config.tableFilterPattern.includes
+            if self.source_config.tableFilterPattern.includes
         ]
-        format_pattern = (
-            f" and ({get_filter_pattern_query(tb_patterns, 'table_name')} )"
-        )
+        tb_patterns_exclude = [
+            tb_name.replace("%", "%%")
+            for tb_name in self.source_config.tableFilterPattern.excludes
+            if self.source_config.tableFilterPattern.excludes
+        ]
+        if self.source_config.tableFilterPattern:
+            if (
+                self.source_config.tableFilterPattern.includes
+                and self.source_config.tableFilterPattern.excludes
+            ):
+                format_pattern = f"and ({get_filter_pattern_query(tb_patterns_include, 'table_name')} or {get_filter_pattern_query(tb_patterns_exclude,'table_name', exclude=True)} )"  # pylint: disable=line-too-long
+            else:
+                format_pattern = (
+                    f"and ({get_filter_pattern_query(tb_patterns_include,'table_name')})"
+                    if self.source_config.tableFilterPattern.includes
+                    else f"and ({get_filter_pattern_query(tb_patterns_exclude, 'table_name',exclude=True)})"
+                )
         query = MYSQL_GET_TABLE
         result = self.connection.execute(
             query.format(format_pattern)

@@ -91,7 +91,7 @@ MSSQL_GET_SCHEMA_NAMES = """
 SELECT name FROM sys.schemas {} """
 
 MSSQL_GET_TABLES_NAMES = """
-SELECT table_name
+SELECT table_name as name
 FROM INFORMATION_SCHEMA.TABLES
 WHERE table_type = 'BASE TABLE' {}
 """

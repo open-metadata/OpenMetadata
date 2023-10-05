@@ -106,9 +106,19 @@ class AzuresqlSource(CommonDbSourceService):
             yield configured_db
         else:
             query = "SELECT name FROM master.sys.databases {} order by name"
-            format_pattern = "where " + get_filter_pattern_query(
-                self.source_config.databaseFilterPattern.includes, "name"
-            )
+            if self.source_config.databaseFilterPattern:
+                if (
+                    self.source_config.databaseFilterPattern.includes
+                    and self.source_config.databaseFilterPattern.excludes
+                ):
+                    format_pattern = f"where {get_filter_pattern_query(self.source_config.databaseFilterPattern.includes,'name')} or {get_filter_pattern_query(self.source_config.databaseFilterPattern.excludes,'name', exclude=True)} "  # pylint: disable=line-too-long
+                else:
+                    format_pattern = (
+                        f"where {get_filter_pattern_query(self.source_config.databaseFilterPattern.includes,'name')}"
+                        if self.source_config.databaseFilterPattern.includes
+                        else f"where {get_filter_pattern_query(self.source_config.databaseFilterPattern.excludes,'name', exclude=True)}"  # pylint: disable=line-too-long
+                    )
+
             results = self.connection.execute(
                 query.format(format_pattern)
                 if self.source_config.pushFilterDown
@@ -150,9 +160,14 @@ class AzuresqlSource(CommonDbSourceService):
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                 if self.source_config.schemaFilterPattern
-                else None,
+                and self.source_config.schemaFilterPattern.includes
+                else [],
+                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                if self.source_config.schemaFilterPattern
+                and self.source_config.schemaFilterPattern.excludes
+                else [],
             ):
                 yield schema_name
 
@@ -188,13 +203,23 @@ class AzuresqlSource(CommonDbSourceService):
         """
 
         query = MSSQL_GET_TABLES_NAMES
-        format_pattern = "and " + get_filter_pattern_query(
-            self.source_config.tableFilterPattern.includes, "table_name"
-        )
+        if self.source_config.tableFilterPattern:
+            if (
+                self.source_config.tableFilterPattern.includes
+                and self.source_config.tableFilterPattern.excludes
+            ):
+                format_pattern = f"and ({get_filter_pattern_query(self.source_config.tableFilterPattern.includes, 'table_name')} or {get_filter_pattern_query(self.source_config.tableFilterPattern.excludes,'table_name', exclude=True)} )"  # pylint: disable=line-too-long
+            else:
+                format_pattern = (
+                    f"and ({get_filter_pattern_query(self.source_config.tableFilterPattern.includes,'table_name')})"
+                    if self.source_config.tableFilterPattern.includes
+                    else f"and ({get_filter_pattern_query(self.source_config.tableFilterPattern.excludes, 'table_name',exclude=True)})"  # pylint: disable=line-too-long
+                )
+
         result = self.connection.execute(
             query.format(format_pattern)
             if self.source_config.pushFilterDown
-            and self.source_config.databaseFilterPattern
+            and self.source_config.tableFilterPattern
             else query.format("")
         )
 

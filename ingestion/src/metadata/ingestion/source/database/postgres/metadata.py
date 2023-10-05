@@ -142,10 +142,28 @@ class PostgresSource(CommonDbSourceService):
         and foreign types
         """
 
-        tb_patterns = [
-            tb_name.replace('%', '%%') for tb_name in self.source_config.tableFilterPattern.includes
+        tb_patterns_include = [
+            tb_name.replace("%", "%%")
+            for tb_name in self.source_config.tableFilterPattern.includes
+            if self.source_config.tableFilterPattern.includes
         ]
-        format_pattern = f"AND c.relname LIKE ANY (ARRAY{tb_patterns})"
+        tb_patterns_exclude = [
+            tb_name.replace("%", "%%")
+            for tb_name in self.source_config.tableFilterPattern.excludes
+            if self.source_config.tableFilterPattern.excludes
+        ]
+        if (
+            self.source_config.databaseFilterPattern.excludes
+            and self.source_config.databaseFilterPattern.includes
+        ):
+            format_pattern = f"AND (c.relname LIKE ANY (ARRAY{tb_patterns_include}) or c.relname NOT LIKE ANY (ARRAY{tb_patterns_exclude}))"  # pylint: disable=line-too-long
+        else:
+            format_pattern = (
+                f"AND c.relname LIKE ANY (ARRAY{tb_patterns_include})"
+                if self.source_config.databaseFilterPattern.includes
+                else f"AND c.relname NOT LIKE ANY (ARRAY{tb_patterns_exclude})"
+            )
+
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES.format(format_pattern))
             if self.source_config.pushFilterDown
@@ -236,11 +254,29 @@ class PostgresSource(CommonDbSourceService):
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
-            db_patterns = [
-                db_name.replace('%', '%%')
-                for db_name in self.source_config.databaseFilterPattern.includes
-            ]
-            format_pattern = f"WHERE datname LIKE ANY (ARRAY{db_patterns})"
+            if self.source_config.databaseFilterPattern:
+                db_patterns_include = [
+                    db_name.replace("%", "%%")
+                    for db_name in self.source_config.databaseFilterPattern.includes
+                    if self.source_config.databaseFilterPattern.includes
+                ]
+                db_patterns_exclude = [
+                    db_name.replace("%", "%%")
+                    for db_name in self.source_config.databaseFilterPattern.excludes
+                    if self.source_config.databaseFilterPattern.excludes
+                ]
+                if (
+                    self.source_config.databaseFilterPattern.excludes
+                    and self.source_config.databaseFilterPattern.includes
+                ):
+                    format_pattern = f"WHERE datname LIKE ANY (ARRAY{db_patterns_include}) or datname NOT LIKE ANY (ARRAY{db_patterns_exclude})"  # pylint: disable=line-too-long
+                else:
+                    format_pattern = (
+                        f"WHERE datname LIKE ANY (ARRAY{db_patterns_include})"
+                        if self.source_config.databaseFilterPattern.includes
+                        else f"WHERE datname NOT LIKE ANY (ARRAY{db_patterns_exclude})"
+                    )
+
             results = self.connection.execute(
                 POSTGRES_GET_DB_NAMES.format(format_pattern)
                 if self.source_config.pushFilterDown
@@ -281,9 +317,14 @@ class PostgresSource(CommonDbSourceService):
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                 if self.source_config.schemaFilterPattern
-                else None,
+                and self.source_config.schemaFilterPattern.includes
+                else [],
+                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                if self.source_config.schemaFilterPattern
+                and self.source_config.schemaFilterPattern.excludes
+                else [],
             ):
                 yield schema_name
 
