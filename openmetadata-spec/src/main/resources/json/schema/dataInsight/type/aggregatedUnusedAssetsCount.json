@@ -1,10 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/dataInsight/type/aggregatedUnusedAssets.json",
+  "$id": "https://open-metadata.org/schema/dataInsight/type/aggregatedUnusedAssetsCount.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AggregatedUnusedAssets",
-  "description": "AggregatedUnusedAssets data blob",
+  "title": "AggregatedUnusedAssetsCount",
+  "description": "AggregatedUnusedAssetsCount data blob",
   "type": "object",
-  "javaType": "org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssets",
+  "javaType": "org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsCount",
   "properties": {
     "timestamp": {
       "description": "timestamp",
@@ -28,6 +28,10 @@
     },
     "sixtyDays": {
       "description": "Number of unused assets in the last 60 days",
+      "type": "number"
+    },
+    "total": {
+      "description": "Total number of unused assets",
       "type": "number"
     }
   },

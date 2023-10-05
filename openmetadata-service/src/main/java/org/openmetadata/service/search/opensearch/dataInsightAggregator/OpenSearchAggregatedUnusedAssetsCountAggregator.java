@@ -1,15 +1,15 @@
-package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
+package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
-import org.elasticsearch.search.aggregations.metrics.Sum;
 import org.openmetadata.service.dataInsight.AggregatedUnusedAssetsCountAggregator;
+import org.opensearch.search.aggregations.Aggregations;
+import org.opensearch.search.aggregations.bucket.histogram.Histogram;
+import org.opensearch.search.aggregations.bucket.histogram.Histogram.Bucket;
+import org.opensearch.search.aggregations.metrics.Sum;
 
-public class ElasticSearchAggregatedUnusedAssetsCountAggregator
+public class OpenSearchAggregatedUnusedAssetsCountAggregator
     extends AggregatedUnusedAssetsCountAggregator<Aggregations, Histogram, Bucket, Sum> {
-  public ElasticSearchAggregatedUnusedAssetsCountAggregator(Aggregations aggregations) {
+  public OpenSearchAggregatedUnusedAssetsCountAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
