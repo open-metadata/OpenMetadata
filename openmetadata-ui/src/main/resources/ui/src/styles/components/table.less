@@ -92,6 +92,18 @@
   .drop-over-upward {
     td {
       background: @active-color;
+      border-bottom: 2px solid @primary-color;
+    }
+  }
+}
+
+.drop-over-table {
+  .ant-table-tbody {
+    .ant-table-cell {
+      background: @active-color;
+    }
+    tr.ant-table-row:hover > td {
+      background: @active-color;
     }
   }
 }

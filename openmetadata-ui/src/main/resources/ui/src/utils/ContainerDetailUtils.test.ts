@@ -19,11 +19,11 @@ import {
 
 const mockTagOptions = [
   {
-    fqn: 'PII.Sensitive',
+    tagFQN: 'PII.Sensitive',
     source: 'Classification',
   },
   {
-    fqn: 'PersonalData.Personal',
+    tagFQN: 'PersonalData.Personal',
     source: 'Classification',
   },
 ];

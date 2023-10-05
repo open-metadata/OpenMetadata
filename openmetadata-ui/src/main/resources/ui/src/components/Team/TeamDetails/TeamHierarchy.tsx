@@ -33,11 +33,8 @@ import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { getMovedTeamData } from '../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import {
-  DraggableBodyRowProps,
-  MovedTeamProps,
-  TeamHierarchyProps,
-} from './team.interface';
+import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
+import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
@@ -181,6 +178,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
+  const onTableRow = (record: Team, index?: number) =>
+    ({ index, handleMoveRow, record } as DraggableBodyRowProps<Team>);
+
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
       ...getTableExpandableConfig<Team>(true),
@@ -211,15 +211,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           pagination={false}
           rowKey="name"
           size="small"
-          onRow={(record, index) => {
-            const attr = {
-              index,
-              handleMoveRow,
-              record,
-            };
-
-            return attr as DraggableBodyRowProps;
-          }}
+          onRow={onTableRow}
         />
       </DndProvider>
 
