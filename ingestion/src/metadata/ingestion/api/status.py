@@ -37,9 +37,13 @@ class Status(BaseModel):
 
     def scanned(self, record: Any) -> None:
         """
-        Clean up the status results we want to show
+        Clean up the status results we want to show.
+
+        We allow to not consider specific records that
+        are not worth keeping record of.
         """
-        self.records.append(get_log_name(record))
+        if log_name := get_log_name(record):
+            self.records.append(log_name)
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})

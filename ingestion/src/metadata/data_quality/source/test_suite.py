@@ -17,9 +17,7 @@ The main goal is to get the configured table from the API.
 import traceback
 from typing import Iterable, List, Optional, cast
 
-from pydantic import BaseModel, Field
-
-from build.lib.metadata.ometa.fqn import split
+from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
@@ -39,19 +37,11 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
+from metadata.utils.fqn import split
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
-
-
-class TableAndTests(BaseModel):
-    """Source response bringing together the table and test cases"""
-
-    table: Table = Field(None, description="Table being processed by the DQ workflow")
-    test_cases: Optional[List[TestCase]] = Field(
-        None, description="Test Cases already existing in the Test Suite, if any"
-    )
-    executable_test_suite: Optional[CreateTestSuiteRequest] = Field(None, description="If no executable test suite is found, we'll create one")
 
 
 class TestSuiteSource(Source):
@@ -121,7 +111,7 @@ class TestSuiteSource(Source):
                 __root__=self.service.connection
             )
 
-    def _get_table_entity(self, entity_fqn: str) -> Optional[Table]:
+    def _get_table_entity(self) -> Optional[Table]:
         """given an entity fqn return the table entity
 
         Args:
@@ -129,7 +119,7 @@ class TestSuiteSource(Source):
         """
         table: Table = self.metadata.get_by_name(
             entity=Table,
-            fqn=entity_fqn,
+            fqn=self.source_config.entityFullyQualifiedName.__root__,
             fields=["tableProfilerConfig", "testSuite"],
         )
 
@@ -158,9 +148,7 @@ class TestSuiteSource(Source):
         self.metadata.health_check()
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
-        table: Table = self._get_table_entity(
-            self.source_config.entityFullyQualifiedName.__root__
-        )
+        table: Table = self._get_table_entity()
 
         if table:
             yield from self._process_table_suite(table)
@@ -180,23 +168,26 @@ class TestSuiteSource(Source):
         """
 
         # If there is no executable test suite yet for the table, we'll need to create one
+        executable_test_suite = None
         if not table.testSuite:
-            yield Either(right=TableAndTests(
-                executable_test_suite=CreateTestSuiteRequest(
-                    name=f"{self.source_config.entityFullyQualifiedName.__root__}.testSuite",
-                    displayName=f"{self.source_config.entityFullyQualifiedName.__root__} Test Suite",
-                    description="Test Suite created from YAML processor config file",
-                    owner=None,
-                    executableEntityReference=self.source_config.entityFullyQualifiedName.__root__,
-                )
-            ))
+            executable_test_suite = CreateTestSuiteRequest(
+                name=fqn.build(
+                    None,
+                    TestSuite,
+                    table_fqn=self.source_config.entityFullyQualifiedName.__root__,
+                ),
+                displayName=f"{self.source_config.entityFullyQualifiedName.__root__} Test Suite",
+                description="Test Suite created from YAML processor config file",
+                owner=None,
+                executableEntityReference=self.source_config.entityFullyQualifiedName.__root__,
+            )
 
         if table.testSuite and not table.testSuite.executable:
             yield Either(
                 left=StackTraceError(
                     name="Non-executable Test Suite",
                     error=f"The table {self.source_config.entityFullyQualifiedName.__root__} "
-                          "has a test suite that is not executable.",
+                    "has a test suite that is not executable.",
                 )
             )
 
@@ -208,6 +199,8 @@ class TestSuiteSource(Source):
                 right=TableAndTests(
                     table=table,
                     test_cases=test_suite_cases,
+                    executable_test_suite=executable_test_suite,
+                    service_type=self.service.serviceType.value,
                 )
             )
 

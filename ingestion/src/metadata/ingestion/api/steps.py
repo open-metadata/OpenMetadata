@@ -14,7 +14,6 @@ Abstract definition of each step
 from abc import ABC, abstractmethod
 from typing import Any
 
-from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.step import BulkStep, IterStep, ReturnStep, StageStep
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
@@ -51,22 +50,9 @@ class Source(IterStep, ABC):
 class Sink(ReturnStep, ABC):
     """All Sinks must inherit this base class."""
 
-    @abstractmethod
-    def _run(self, record: Entity) -> Either:
-        """
-        Send the data somewhere, e.g., the OM API
-        """
-
 
 class Processor(ReturnStep, ABC):
     """All Processor must inherit this base class"""
-
-    @abstractmethod
-    def _run(self, record: Entity) -> Either:
-        """
-        Post process a given entity and return it
-        or a new one
-        """
 
 
 class Stage(StageStep, ABC):

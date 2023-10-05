@@ -17,7 +17,6 @@ from airflow import DAG
 from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
 
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
@@ -29,6 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.workflow_output_handler import print_test_suite_status
 
 

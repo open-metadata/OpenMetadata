@@ -22,7 +22,7 @@ from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.data_insight.source.metadata import DataInsightRecord
-from metadata.data_quality.runner.models import TestCaseResultResponse
+from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -515,6 +515,19 @@ class MetadataRestSink(Sink):
         """
         test_suite = self.metadata.create_or_update_executable_test_suite(record)
         return Either(right=test_suite)
+
+    @_run_dispatch.register
+    def write_test_case_results(self, record: TestCaseResults):
+        """Record the list of test case result responses"""
+
+        for result in record.test_results or []:
+            self.metadata.add_test_case_results(
+                test_results=result.testCaseResult,
+                test_case_fqn=result.testCase.fullyQualifiedName.__root__,
+            )
+            self.status.scanned(result)
+
+        return Either(right=record)
 
     def close(self):
         """

@@ -14,17 +14,19 @@ Validate workflow configs and filters
 """
 
 import unittest
-from collections.abc import MutableSequence
 from copy import deepcopy
+from typing import List
 
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
+from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.data_quality import TestSuiteWorkflow
 
 sqlite_shared = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 
@@ -88,10 +90,51 @@ class TestSuiteWorkflowTests(unittest.TestCase):
     def test_create_workflow_object(self):
         """Test workflow object is correctly instantiated"""
         TestSuiteWorkflow.create(test_suite_config)
-        assert True
 
-    def test_create_workflow_object_from_cli_config(self):
+    def test_create_workflow_object_with_table_with_test_suite(self):
         """test workflow object is instantiated correctly from cli config"""
+        workflow = TestSuiteWorkflow.create(test_suite_config)
+
+        table: Table = workflow.source._get_table_entity()
+
+        table_and_tests: TableAndTests = list(
+            workflow.source._process_table_suite(table=table)
+        )[0]
+
+        # If the table already has a test suite, we won't be generating one
+        self.assertIsNotNone(table.testSuite)
+        self.assertIsNone(table_and_tests.right.executable_test_suite)
+
+        # We will pick up the tests from it
+        # Note that this number comes from what is defined in the sample data
+        self.assertEquals(len(table_and_tests.right.test_cases), 5)
+
+    def test_create_workflow_config_with_table_without_suite(self):
+        """We'll prepare the test suite creation payload"""
+
+        _test_suite_config = deepcopy(test_suite_config)
+        _test_suite_config["source"]["sourceConfig"]["config"][
+            "entityFullyQualifiedName"
+        ] = "sample_data.ecommerce_db.shopify.dim_staff"
+
+        workflow = TestSuiteWorkflow.create(_test_suite_config)
+
+        # If the table does not have a test suite, we'll prepare the request to create one
+        table: Table = workflow.source._get_table_entity()
+
+        table_and_tests: Either[TableAndTests] = list(
+            workflow.source._process_table_suite(table=table)
+        )[0]
+
+        self.assertIsNone(table.testSuite)
+        self.assertEquals(
+            table_and_tests.right.executable_test_suite.name.__root__,
+            "sample_data.ecommerce_db.shopify.dim_staff.testSuite",
+        )
+
+    def test_create_workflow_config_with_tests(self):
+        """We'll get the tests from the workflow YAML"""
+
         _test_suite_config = deepcopy(test_suite_config)
 
         processor = {
@@ -113,67 +156,34 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         }
 
         _test_suite_config.update(processor)
-
         workflow = TestSuiteWorkflow.create(_test_suite_config)
-        workflow_test_suite = workflow.create_or_return_test_suite_entity()
 
-        test_suite = self.metadata.get_by_name(
-            entity=TestSuite,
-            fqn="sample_data.ecommerce_db.shopify.dim_address.testSuite",
+        table: Table = workflow.source._get_table_entity()
+        table_and_tests: Either[TableAndTests] = list(
+            workflow.source._process_table_suite(table=table)
+        )[0]
+
+        test_cases: List[TestCase] = workflow.steps[0].get_test_cases(
+            test_cases=table_and_tests.right.test_cases,
+            test_suite_fqn="sample_data.ecommerce_db.shopify.dim_address.testSuite",
+            table_fqn="sample_data.ecommerce_db.shopify.dim_address",
         )
 
-        assert workflow_test_suite.id == test_suite.id
-        self.test_suite_ids = [test_suite.id]
+        # 5 defined test cases + the new one in the YAML
+        self.assertEquals(len(test_cases), 6)
 
-    def test_create_or_return_test_suite_entity(self):
-        """test we can correctly retrieve a test suite"""
-        _test_suite_config = deepcopy(test_suite_config)
-
-        workflow = TestSuiteWorkflow.create(_test_suite_config)
-        test_suite = workflow.create_or_return_test_suite_entity()
-
-        expected_test_suite = self.metadata.get_by_name(
-            entity=TestSuite, fqn="critical_metrics_suite"
+        new_test_case = next(
+            (test for test in test_cases if test.name.__root__ == "my_test_case"), None
         )
+        self.assertIsNotNone(new_test_case)
 
-        assert test_suite
-
-    def test_get_test_cases_from_test_suite(self):
-        """test test cases are correctly returned for specific test suite"""
-        _test_suite_config = deepcopy(test_suite_config)
-
-        processor = {
-            "processor": {
-                "type": "orm-test-runner",
-                "config": {
-                    "testCases": [
-                        {
-                            "name": "my_test_case",
-                            "testDefinitionName": "tableColumnCountToBeBetween",
-                            "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
-                            ],
-                        }
-                    ]
-                },
-            }
-        }
-
-        _test_suite_config.update(processor)
-
-        workflow = TestSuiteWorkflow.create(_test_suite_config)
-        test_suite = workflow.create_or_return_test_suite_entity()
-        test_cases = workflow.get_test_cases_from_test_suite(test_suite)
-
-        assert isinstance(test_cases, MutableSequence)
-        assert isinstance(test_cases[0], TestCase)
-        assert {"my_test_case"}.intersection(
-            {test_case.name.__root__ for test_case in test_cases}
+        # cleanup
+        self.metadata.delete(
+            entity=TestCase,
+            entity_id=new_test_case.id,
+            recursive=True,
+            hard_delete=True,
         )
-
-        for test_case in test_cases:
-            self.metadata.delete(entity=TestCase, entity_id=test_case.id)
 
     def test_get_test_case_names_from_cli_config(self):
         """test we can get all test case names from cli config"""
@@ -208,7 +218,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         _test_suite_config.update(processor)
 
         workflow = TestSuiteWorkflow.create(_test_suite_config)
-        test_cases_def = workflow.get_test_case_from_cli_config()
+        test_cases_def = workflow.steps[0].get_test_case_from_cli_config()
 
         assert [test_case_def.name for test_case_def in test_cases_def] == [
             "my_test_case",
@@ -259,15 +269,17 @@ class TestSuiteWorkflowTests(unittest.TestCase):
             fqn="sample_data.ecommerce_db.shopify.dim_address.address_id.my_test_case_two",
         )
 
-        test_suite = workflow.create_or_return_test_suite_entity()
-        test_cases = self.metadata.list_entities(
-            entity=TestCase,
-            fields=["testSuite", "entityLink", "testDefinition"],
-            params={"testSuiteId": test_suite.id.__root__},
-        ).entities
-        config_test_cases_def = workflow.get_test_case_from_cli_config()
-        created_test_case = workflow.compare_and_create_test_cases(
-            config_test_cases_def, test_cases, test_suite
+        table: Table = workflow.source._get_table_entity()
+        table_and_tests: Either[TableAndTests] = list(
+            workflow.source._process_table_suite(table=table)
+        )[0]
+
+        config_test_cases_def = workflow.steps[0].get_test_case_from_cli_config()
+        created_test_case = workflow.steps[0].compare_and_create_test_cases(
+            cli_test_cases_definitions=config_test_cases_def,
+            test_cases=table_and_tests.right.test_cases,
+            test_suite_fqn="sample_data.ecommerce_db.shopify.dim_address.testSuite",
+            table_fqn="sample_data.ecommerce_db.shopify.dim_address",
         )
 
         # clean up test
@@ -285,28 +297,8 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         assert my_test_case
         assert my_test_case_two
 
-        assert len(created_test_case) == 2
+        # We return the 5 sample data tests & the 2 new ones
+        assert len(created_test_case) == 7
 
         self.metadata.delete(entity=TestCase, entity_id=my_test_case.id)
         self.metadata.delete(entity=TestCase, entity_id=my_test_case_two.id)
-
-    def test_get_table_entity(self):
-        """test get service connection returns correct info"""
-        workflow = TestSuiteWorkflow.create(test_suite_config)
-        service_connection = workflow._get_table_entity(
-            "sample_data.ecommerce_db.shopify.dim_address"
-        )
-
-        assert isinstance(service_connection, Table)
-
-    # def test_filter_for_om_test_cases(self):
-    #     """test filter for OM test cases method"""
-    #     om_test_case_1 = TestCase(
-    #         name="om_test_case_1",
-    #         testDefinition=self.metadata.get_entity_reference(
-    #             TestDefinition,
-    #             "columnValuesToMatchRegex"
-    #         ),
-    #         entityLink="<entityLink>",
-    #         testSuite=self.metadata.get_entity_reference("sample_data.ecommerce_db.shopify.dim_address.TestSuite"),
-    #     )
