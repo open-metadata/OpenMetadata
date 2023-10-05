@@ -4,69 +4,71 @@
       "id": {
         "type": "keyword"
       },
-      "data": {
-        "properties": {
-          "totalSize": {
-            "type": "double"
-          },
-          "entityType": {
-            "type": "keyword"
-          },
-          "serviceName": {
-            "type": "keyword"
-          },
-          "serviceType": {
-            "type": "keyword"
-          },
-          "serviceOwner": {
-            "type": "keyword"
-          },
-          "unusedDataAssets": {
-            "properties": {
-              "sevenDays": {
-                "type": "double"
-              },
-              "sixtyDays": {
-                "type": "double"
-              },
-              "threeDays": {
-                "type": "double"
-              },
-              "thirtyDays": {
-                "type": "double"
-              },
-              "fourteenDays": {
-                "type": "double"
-              }
-            }
-          },
-          "frequentlyUsedDataAssets": {
-            "properties": {
-              "sevenDays": {
-                "type": "double"
-              },
-              "sixtyDays": {
-                "type": "double"
-              },
-              "threeDays": {
-                "type": "double"
-              },
-              "thirtyDays": {
-                "type": "double"
-              },
-              "fourteenDays": {
-                "type": "double"
-              }
-            }
-          }
-        }
-      },
       "timestamp": {
         "type": "date"
       },
       "reportDataType": {
         "type": "keyword"
-      }
+      },
+      "data": {
+        "properties": {
+          "unusedDataAssets": {
+            "properties": {
+              "count": {
+                "properties": {
+                  "threeDays": {"type": "float"},
+                  "sevenDays": {"type": "float"},
+                  "fourteenDays": {"type": "float"},
+                  "thirtyDays": {"type": "float"},
+                  "sixtyDays": {"type": "float"}
+                }
+              },
+              "size": {
+                "properties": {
+                  "threeDays": {"type": "float"},
+                  "sevenDays": {"type": "float"},
+                  "fourteenDays": {"type": "float"},
+                  "thirtyDays": {"type": "float"},
+                  "sixtyDays": {"type": "float"}
+                }
+              },
+              "totalSize": {"type": "float"},
+              "totalCount": {"type": "float"}
+            }
+          },
+          "frequentlyUsedDataAssets": {
+            "properties": {
+              "count": {
+                "properties": {
+                  "threeDays": {"type": "float"},
+                  "sevenDays": {"type": "float"},
+                  "fourteenDays": {"type": "float"},
+                  "thirtyDays": {"type": "float"},
+                  "sixtyDays": {"type": "float"}
+                }
+              },
+              "size": {
+                "properties": {
+                  "threeDays": {"type": "float"},
+                  "sevenDays": {"type": "float"},
+                  "fourteenDays": {"type": "float"},
+                  "thirtyDays": {"type": "float"},
+                  "sixtyDays": {"type": "float"}
+                }
+              },
+              "totalSize": {"type": "float"},
+              "totalCount": {"type": "float"}
+            }
+          },
+          "totalCount": {"type": "float"},
+          "totalSize": {"type": "float"},
+          "serviceName": {"type": "keyword"},
+          "serviceType": {"type": "keyword"},
+          "entityType": {"type": "keyword"},
+          "serviceOwner": {"type": "keyword"}
+        }
+      },
+      "entityType": {"type": "keyword"}
     }
   }
 }
