@@ -24,6 +24,8 @@ from metadata.generated.schema.entity.data import (
     databaseSchema,
     mlmodel,
     pipeline,
+    searchIndex,
+    storedProcedure,
     table,
     topic,
 )
@@ -45,6 +47,8 @@ class EntityProducer(ProducerInterface):
         table.Table,
         topic.Topic,
         container.Container,
+        storedProcedure.StoredProcedure,
+        searchIndex.SearchIndex,
     ]
 
     # pylint: disable=dangerous-default-value

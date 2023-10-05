@@ -143,4 +143,31 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
     repository.deleteReportDataAtDate(reportDataType, date);
     return Response.ok().build();
   }
+
+  @DELETE
+  @Path("/{reportDataType}")
+  @Operation(
+      operationId = "deletePreviousReportData",
+      summary = "Delete all the previous report data for a given report data type",
+      description = "Delete all the previous report data for a given report data type.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted previous report data.",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReportData.class)))
+      })
+  public Response deletePreviousReportData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
+          @NonNull
+          @PathParam("reportDataType")
+          ReportDataType reportDataType)
+      throws IOException {
+    OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
+    ResourceContextInterface resourceContext = ReportDataContext.builder().build();
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    repository.deleteReportData(reportDataType);
+    return Response.ok().build();
+  }
 }

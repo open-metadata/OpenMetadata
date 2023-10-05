@@ -5,7 +5,7 @@
   "description": "Displays the list of unused assets filtered by last accessed",
   "dataIndexType": "raw_cost_analysis_report_data_index",
   "dimensions": [
-    {"name": "fullyQualifiedName","chartDataType":"STRING"}
+    {"name": "entity","chartDataType":"STRING"}
   ],
   "metrics": [
     {"name": "sizeInBytes", "displayName": "Size in Bytes", "chartDataType": "FLOAT"},
