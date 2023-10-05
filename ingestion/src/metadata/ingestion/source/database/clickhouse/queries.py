@@ -38,7 +38,17 @@ CLICKHOUSE_SQL_STATEMENT = textwrap.dedent(
         LIMIT {result_limit}
 """
 )
+CLICKHOUSE_TEST_GET_TABLE = """
+SELECT
+      name as table_name
+  FROM system.tables
+"""
 
+CLICKHOUSE_GET_TABLE = """
+SELECT
+      name as table_name
+  FROM system.tables where database='{}' {}
+"""
 
 CLICKHOUSE_TABLE_COMMENTS = textwrap.dedent(
     """
@@ -76,4 +86,7 @@ CLICKHOUSE_SQL_STATEMENT_TEST = """
           tables tables
         From system.query_log
         LIMIT 2
+"""
+CLICKHOUSE_GET_SCHEMA = """
+SELECT schema_name FROM information_schema.schemata {}
 """

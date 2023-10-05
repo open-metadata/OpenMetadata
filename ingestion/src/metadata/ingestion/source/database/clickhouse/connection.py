@@ -33,7 +33,9 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_GET_SCHEMA,
     CLICKHOUSE_SQL_STATEMENT_TEST,
+    CLICKHOUSE_TEST_GET_TABLE,
 )
 
 HTTPS_PROTOCOL = "https"
@@ -73,7 +75,11 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    queries = {"GetQueries": CLICKHOUSE_SQL_STATEMENT_TEST}
+    queries = {
+        "GetQueries": CLICKHOUSE_SQL_STATEMENT_TEST,
+        "GetSchemas": CLICKHOUSE_GET_SCHEMA.format(""),
+        "GetTables": CLICKHOUSE_TEST_GET_TABLE,
+    }
 
     test_connection_db_common(
         metadata=metadata,

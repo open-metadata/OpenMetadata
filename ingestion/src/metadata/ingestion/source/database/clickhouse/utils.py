@@ -22,10 +22,13 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.util import warn
 
 from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_GET_SCHEMA,
+    CLICKHOUSE_GET_TABLE,
     CLICKHOUSE_TABLE_COMMENTS,
     CLICKHOUSE_VIEW_DEFINITIONS,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
+from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
@@ -115,6 +118,35 @@ def _get_column_type(
     except KeyError:
         warn(f"Did not recognize type '{spec}' of column '{name}'")
         return sqltypes.NullType
+
+
+def get_table_names_reflection(self, schema=None, **kw):
+    """Return all table names in referred to within a particular schema.
+
+    The names are expected to be real tables only, not views.
+    Views are instead returned using the
+    :meth:`_reflection.Inspector.get_view_names`
+    method.
+
+
+    :param schema: Schema name. If ``schema`` is left at ``None``, the
+        database's default schema is
+        used, else the named schema is searched.  If the database does not
+        support named schemas, behavior is undefined if ``schema`` is not
+        passed as ``None``.  For special quoting, use :class:`.quoted_name`.
+
+    .. seealso::
+
+        :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
+
+        :attr:`_schema.MetaData.sorted_tables`
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_table_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
 
 
 def get_mview_names(self, schema=None):
@@ -217,4 +249,50 @@ def _get_column_info(
 
     if col_type == Array:
         result["is_complex"] = True
+    return result
+
+
+def get_filter_pattern_query(filter_pattern_name, name):
+    query_conditions = []
+    # Iterate over the list and build the query conditions
+    for pattern in filter_pattern_name:
+        query_conditions.append(f"{name} LIKE '{pattern}'")
+
+    # Join the query conditions with 'OR' and add them to the SQL query
+    if query_conditions:
+        query_condition = " OR ".join(query_conditions)
+    return query_condition
+
+
+def get_table_names(self, connection, schema, **kw):
+    tb_patterns = [tb_name + "%" for tb_name in kw["filter_table_name"]]
+    format_pattern = f"and ( {get_filter_pattern_query(tb_patterns, 'name')} )"
+    cursor = connection.execute(
+        CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), format_pattern)
+        if kw.get("pushFilterDown") and kw["filter_table_name"] is not None
+        else CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), "")
+    )
+    result = [row[0] for row in cursor]
+
+    return result
+
+
+def get_schema_names_reflection(self, **kw):
+    """Return all schema names."""
+
+    if hasattr(self.dialect, "get_schema_names"):
+        with self._operation_context() as conn:  # pylint: disable=protected-access
+            return self.dialect.get_schema_names(conn, info_cache=self.info_cache, **kw)
+    return []
+
+
+def get_schema_names(self, connection, **kw):
+    sc_patterns = [sc_name + "%" for sc_name in kw["filter_schema_name"]]
+    format_pattern = f" where {get_filter_pattern_query(sc_patterns, 'schema_name')}"
+    cursor = connection.execute(
+        CLICKHOUSE_GET_SCHEMA.format(format_pattern)
+        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        else CLICKHOUSE_GET_SCHEMA.format("")
+    )
+    result = [row[0] for row in cursor]
     return result
