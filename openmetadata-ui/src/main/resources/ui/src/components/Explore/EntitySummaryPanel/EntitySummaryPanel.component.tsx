@@ -17,10 +17,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Database } from '../../../generated/entity/data/database';
+import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
@@ -29,6 +32,13 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { DashboardService } from '../../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { MessagingService } from '../../../generated/entity/services/messagingService';
+import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
+import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { SearchService } from '../../../generated/entity/services/searchService';
+import { StorageService } from '../../../generated/entity/services/storageService';
 import {
   getEntityLinkFromType,
   getEntityName,
@@ -44,6 +54,8 @@ import {
 } from '../../PermissionProvider/PermissionProvider.interface';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
+import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary.component';
+import DatabaseSummary from './DatabaseSummary/DatabaseSummary.component';
 import DataModelSummary from './DataModelSummary/DataModelSummary.component';
 import DataProductSummary from './DataProductSummary/DataProductSummary.component';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
@@ -52,6 +64,7 @@ import GlossaryTermSummary from './GlossaryTermSummary/GlossaryTermSummary.compo
 import MlModelSummary from './MlModelSummary/MlModelSummary.component';
 import PipelineSummary from './PipelineSummary/PipelineSummary.component';
 import SearchIndexSummary from './SearchIndexSummary/SearchIndexSummary.component';
+import ServiceSummary from './ServiceSummary/ServiceSummary.component';
 import StoredProcedureSummary from './StoredProcedureSummary/StoredProcedureSummary.component';
 import TableSummary from './TableSummary/TableSummary.component';
 import TagsSummary from './TagsSummary/TagsSummary.component';
@@ -152,6 +165,67 @@ export default function EntitySummaryPanel({
 
       case EntityType.SEARCH_INDEX:
         return <SearchIndexSummary entityDetails={entity as SearchIndex} />;
+
+      case EntityType.DATABASE:
+        return <DatabaseSummary entityDetails={entity as Database} />;
+
+      case EntityType.DATABASE_SCHEMA:
+        return (
+          <DatabaseSchemaSummary entityDetails={entity as DatabaseSchema} />
+        );
+
+      case EntityType.DATABASE_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as DatabaseService}
+            type={ExplorePageTabs.DATABASE_SERVICE}
+          />
+        );
+      case EntityType.MESSAGING_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as MessagingService}
+            type={ExplorePageTabs.MESSAGING_SERVICE}
+          />
+        );
+      case EntityType.DASHBOARD_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as DashboardService}
+            type={ExplorePageTabs.DASHBOARD_SERVICE}
+          />
+        );
+      case EntityType.PIPELINE_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as PipelineService}
+            type={ExplorePageTabs.PIPELINE_SERVICE}
+          />
+        );
+
+      case EntityType.MLMODEL_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as MlmodelService}
+            type={ExplorePageTabs.ML_MODEL_SERVICE}
+          />
+        );
+
+      case EntityType.STORAGE_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as StorageService}
+            type={ExplorePageTabs.STORAGE_SERVICE}
+          />
+        );
+
+      case EntityType.SEARCH_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as SearchService}
+            type={ExplorePageTabs.SEARCH_INDEX_SERVICE}
+          />
+        );
 
       default:
         return null;

@@ -29,6 +29,7 @@ import { DatabaseService } from '../../../generated/entity/services/databaseServ
 import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { MlmodelService } from '../../../generated/entity/services/mlmodelService';
 import { PipelineService } from '../../../generated/entity/services/pipelineService';
+import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 
 export interface AssetSelectionModalProps {
@@ -57,7 +58,8 @@ export type AssetsUnion =
   | EntityType.PIPELINE_SERVICE
   | EntityType.MLMODEL_SERVICE
   | EntityType.STORAGE_SERVICE
-  | EntityType.DATABASE_SERVICE;
+  | EntityType.DATABASE_SERVICE
+  | EntityType.SEARCH_SERVICE;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -78,4 +80,5 @@ export type MapPatchAPIResponse = {
   [EntityType.MLMODEL_SERVICE]: MlmodelService;
   [EntityType.STORAGE_SERVICE]: StorageService;
   [EntityType.DATABASE_SERVICE]: DatabaseService;
+  [EntityType.SEARCH_SERVICE]: SearchService;
 };

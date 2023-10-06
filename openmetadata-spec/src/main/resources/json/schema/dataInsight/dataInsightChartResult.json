@@ -21,7 +21,10 @@
         "PercentageOfServicesWithDescription",
         "PercentageOfServicesWithOwner",
         "UnusedAssets",
-        "AggregatedUnusedAssets"
+        "AggregatedUnusedAssetsSize",
+        "AggregatedUnusedAssetsCount",
+        "AggregatedUsedVsUnusedAssetsSize",
+        "AggregatedUsedVsUnusedAssetsCount"
       ]
     }
   },
@@ -50,7 +53,10 @@
           {"$ref": "type/percentageOfServicesWithDescription.json"},
           {"$ref": "type/percentageOfServicesWithOwner.json"},
           {"$ref": "type/unusedAssets.json"},
-          {"$ref": "type/aggregatedUnusedAsserts.json"}
+          {"$ref": "type/aggregatedUnusedAssetsSize.json"},
+          {"$ref": "type/aggregatedUnusedAssetsCount.json"},
+          {"$ref": "type/aggregatedUsedVsUnusedAssetsSize.json"},
+          {"$ref": "type/aggregatedUsedVsUnusedAssetsCount.json"}
         ]
       }
     }
