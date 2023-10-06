@@ -364,6 +364,7 @@ public final class TablesInitializer {
         new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(jdbi);
+    workflow.loadMigrations();
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }

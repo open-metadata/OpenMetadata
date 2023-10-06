@@ -351,6 +351,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
             false);
+    migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();
   }
 

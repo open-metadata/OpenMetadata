@@ -18,8 +18,11 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class MigrationWorkflow {
-  private final List<MigrationProcess> migrations;
+  private List<MigrationProcess> migrations;
 
+  private final String nativeSQLScriptRootPath;
+  private final ConnectionType connectionType;
+  private final String extensionSQLScriptRootPath;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
 
@@ -34,6 +37,12 @@ public class MigrationWorkflow {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
     this.forceMigrations = forceMigrations;
+    this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
+    this.connectionType = connectionType;
+    this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
+  }
+
+  public void loadMigrations() {
     // Sort Migration on the basis of version
     List<MigrationFile> availableMigrations =
         getMigrationFiles(nativeSQLScriptRootPath, connectionType, extensionSQLScriptRootPath);
