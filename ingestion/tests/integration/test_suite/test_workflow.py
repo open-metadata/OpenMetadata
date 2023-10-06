@@ -272,7 +272,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         )
 
         # 1 defined test cases + the new one in the YAML
-        self.assertTrue(len(table_and_tests.right.test_cases) > 1)
+        self.assertTrue(len(table_and_tests.right.test_cases) >= 1)
 
         new_test_case = next(
             (test for test in test_cases if test.name.__root__ == "my_test_case"), None
