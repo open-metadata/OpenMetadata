@@ -191,10 +191,7 @@ export const DataAssetsHeader = ({
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(
-          entityType,
-          encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-        )
+        getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
       if (!isEmpty(announcements.data)) {
@@ -208,10 +205,7 @@ export const DataAssetsHeader = ({
   const fetchTaskCount = () => {
     // To get open tasks count
     getFeedCount(
-      getEntityFeedLink(
-        entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-      ),
+      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? ''),
       ThreadType.Task,
       ThreadTaskStatus.Open
     )

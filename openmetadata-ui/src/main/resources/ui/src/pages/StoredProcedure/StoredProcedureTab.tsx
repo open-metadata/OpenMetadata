@@ -24,7 +24,6 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 import { StoredProcedureTabProps } from './storedProcedure.interface';
 
@@ -48,7 +47,7 @@ const StoredProcedureTab = ({
           <Link
             to={getEntityLink(
               EntityType.STORED_PROCEDURE,
-              getEncodedFqn(record.fullyQualifiedName ?? '')
+              record.fullyQualifiedName ?? ''
             )}>
             {getEntityName(record)}
           </Link>

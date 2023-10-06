@@ -74,6 +74,11 @@ const RequestTag = () => {
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
   }`;
 
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(entityFQN),
+    [entityType]
+  );
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -98,7 +103,7 @@ const RequestTag = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || message,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,

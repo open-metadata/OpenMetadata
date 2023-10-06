@@ -141,7 +141,7 @@ export const ActivityFeedTab = ({
     if (!isUserEntity) {
       // To get conversation count
       getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
+        getEntityFeedLink(entityType, fqn),
         ThreadType.Conversation
       ).then((res) => {
         if (res) {
@@ -152,16 +152,15 @@ export const ActivityFeedTab = ({
       });
 
       // To get open tasks count
-      getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
-        ThreadType.Task
-      ).then((res) => {
-        if (res) {
-          setTasksCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
+      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+        (res) => {
+          if (res) {
+            setTasksCount(res.totalCount);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
         }
-      });
+      );
     } else {
       // count for task on userProfile page
       getAllFeeds(
