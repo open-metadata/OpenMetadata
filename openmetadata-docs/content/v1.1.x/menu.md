@@ -623,6 +623,14 @@ site_menu:
     url: /how-to-guides/openmetadata/data-quality-profiler
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage
     url: /how-to-guides/openmetadata/data-lineage
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Deploy a Lineage Workflow
+    url: /how-to-guides/openmetadata/data-lineage/workflow
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / Explore the Lineage View
+    url: /how-to-guides/openmetadata/data-lineage/explore
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How Column-Level Lineage Works
+    url: /how-to-guides/openmetadata/data-lineage/column
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Manually Add or Edit Lineage
+    url: /how-to-guides/openmetadata/data-lineage/manual
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights
     url: /how-to-guides/openmetadata/data-insights
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance
