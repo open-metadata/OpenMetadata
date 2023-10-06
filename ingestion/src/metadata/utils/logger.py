@@ -18,6 +18,11 @@ from functools import singledispatch
 from types import DynamicClassAttribute
 from typing import Optional, Union
 
+from metadata.data_quality.api.models import (
+    TableAndTests,
+    TestCaseResultResponse,
+    TestCaseResults,
+)
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -171,7 +176,7 @@ def log_ansi_encoded_string(
 
 
 @singledispatch
-def get_log_name(record: Entity) -> str:
+def get_log_name(record: Entity) -> Optional[str]:
     try:
         return f"{type(record).__name__} [{record.name.__root__}]"
     except Exception:
@@ -225,3 +230,22 @@ def _(record: OMetaLifeCycleData) -> str:
     Capture the lifecycle changes of an Entity
     """
     return f"{type(record.entity).__name__} Lifecycle [{record.entity.name.__root__}]"
+
+
+@get_log_name.register
+def _(record: TableAndTests) -> str:
+    if record.table:
+        return f"Tests for [{record.table.fullyQualifiedName.__root__}]"
+
+    return f"Test Suite [{record.executable_test_suite.name.__root__}]"
+
+
+@get_log_name.register
+def _(_: TestCaseResults) -> Optional[str]:
+    """We don't want to log this in the status"""
+    return None
+
+
+@get_log_name.register
+def _(record: TestCaseResultResponse) -> str:
+    return record.testCase.fullyQualifiedName.__root__
