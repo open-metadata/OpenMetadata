@@ -3,12 +3,14 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssets;
+import java.util.Objects;
+import org.openmetadata.schema.dataInsight.type.AggregatedUsedVsUnusedAssetsCount;
 
-public abstract class AggregatedUnusedAssetsAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
+public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
+    implements DataInsightAggregatorInterface {
   private final A aggregations;
 
-  public AggregatedUnusedAssetsAggregator(A aggregations) {
+  public AggregatedUsedvsUnusedAssetsCountAggregator(A aggregations) {
     this.aggregations = aggregations;
   }
 
@@ -19,20 +21,21 @@ public abstract class AggregatedUnusedAssetsAggregator<A, H, B, S> implements Da
     for (B bucket : getBuckets(histogramBucket)) {
       String dateTimeString = getKeyAsString(bucket);
       Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
-      S threeDays = getAggregations(bucket, "threeDays");
-      S sevenDays = getAggregations(bucket, "sevenDays");
-      S fourteenDays = getAggregations(bucket, "fourteenDays");
-      S thirtyDays = getAggregations(bucket, "thirtyDays");
-      S sixtyDays = getAggregations(bucket, "sixtyDays");
+      S totalUnused = getAggregations(bucket, "totalUnused");
+      S totalUsed = getAggregations(bucket, "totalUsed");
+      Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
+      Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
+      Double total = used + unused;
+      Double usedPercentage = used / total;
+      Double unusedPercentage = unused / total;
 
       data.add(
-          new AggregatedUnusedAssets()
+          new AggregatedUsedVsUnusedAssetsCount()
               .withTimestamp(timestamp)
-              .withThreeDays(getValue(threeDays))
-              .withSevenDays(getValue(sevenDays))
-              .withFourteenDays(getValue(fourteenDays))
-              .withThirtyDays(getValue(thirtyDays))
-              .withSixtyDays(getValue(sixtyDays)));
+              .withUnused(unused)
+              .withUnusedPercentage(unusedPercentage)
+              .withUsed(used)
+              .withUsedPercentage(usedPercentage));
     }
     return data;
   }
