@@ -15,12 +15,12 @@ import { Menu, MenuProps } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
-import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import { ReactComponent as AppAnalyticsIcon } from '../../../assets/svg/app-analytics.svg';
+import { ReactComponent as DataAssetsIcon } from '../../../assets/svg/data-asset.svg';
+import { ReactComponent as KPIIcon } from '../../../assets/svg/kpi.svg';
+import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
+import { DataInsightTabs } from '../../../interface/data-insight.interface';
+import { getDataInsightPathWithFqn } from '../../../utils/DataInsightUtils';
 
 const DataInsightLeftPanel = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
@@ -47,7 +47,7 @@ const DataInsightLeftPanel = () => {
   ];
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
-    history.push(getDataInsightPathWithFqn(e.key));
+    history.push(getDataInsightPathWithFqn(e.key as DataInsightTabs));
   };
 
   return (

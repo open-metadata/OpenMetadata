@@ -53,6 +53,7 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
+  DataInsightTabs,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
@@ -656,5 +657,15 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   }
 };
 
-export const getDataInsightPathWithFqn = (fqn: string) =>
-  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
+export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>
+  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+export const getOptionalDataInsightTabFlag = (tab: DataInsightTabs) => {
+  return {
+    showDataInsightSummary:
+      tab === DataInsightTabs.APP_ANALYTICS ||
+      tab === DataInsightTabs.DATA_ASSETS,
+    showKpiChart:
+      tab === DataInsightTabs.KPIS || tab === DataInsightTabs.DATA_ASSETS,
+  };
+};
