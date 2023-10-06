@@ -328,7 +328,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);
