@@ -496,7 +496,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     queryParams.put("parentTeam", ORGANIZATION_NAME);
     teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertTrue(teams.getData().stream().anyMatch(t -> t.getName().equals("t1")));
-    t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).collect(Collectors.toList()).get(0);
+    t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).toList().get(0);
     assertEquals(3, t1.getChildrenCount());
     assertEquals(0, t1.getUserCount());
 
@@ -922,7 +922,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

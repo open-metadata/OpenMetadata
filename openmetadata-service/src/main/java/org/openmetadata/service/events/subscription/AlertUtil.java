@@ -132,17 +132,17 @@ public final class AlertUtil {
           func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
           break;
         case matchAnyEventType:
-          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
+          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
           break;
         case matchIngestionPipelineState:
           List<String> ingestionPipelineState =
-              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).collect(Collectors.toList());
+                  Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
           break;
         case matchTestResult:
           List<String> testResultStatus =
-              Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).collect(Collectors.toList());
+                  Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
           break;
         default:

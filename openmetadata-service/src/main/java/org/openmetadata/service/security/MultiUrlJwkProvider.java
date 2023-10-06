@@ -26,7 +26,7 @@ final class MultiUrlJwkProvider implements JwkProvider {
   private final List<UrlJwkProvider> urlJwkProviders;
 
   public MultiUrlJwkProvider(List<URL> publicKeyUris) {
-    this.urlJwkProviders = publicKeyUris.stream().map(UrlJwkProvider::new).collect(Collectors.toUnmodifiableList());
+    this.urlJwkProviders = publicKeyUris.stream().map(UrlJwkProvider::new).toList();
   }
 
   @Override

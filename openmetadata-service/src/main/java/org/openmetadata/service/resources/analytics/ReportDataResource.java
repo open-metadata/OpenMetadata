@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -135,8 +134,7 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
       @Parameter(description = "date in format YYYY-MM-DD", schema = @Schema(type = "String"))
           @NonNull
           @PathParam("date")
-          String date)
-      throws IOException {
+          String date) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -162,8 +160,7 @@ public class ReportDataResource extends EntityTimeSeriesResource<ReportData, Rep
       @Parameter(description = "report data type", schema = @Schema(implementation = ReportDataType.class))
           @NonNull
           @PathParam("reportDataType")
-          ReportDataType reportDataType)
-      throws IOException {
+          ReportDataType reportDataType) {
     OperationContext operationContext = new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.DELETE);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
     authorizer.authorize(securityContext, operationContext, resourceContext);

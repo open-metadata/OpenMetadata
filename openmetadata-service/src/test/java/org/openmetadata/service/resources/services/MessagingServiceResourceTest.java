@@ -239,7 +239,7 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

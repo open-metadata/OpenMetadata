@@ -73,7 +73,7 @@ public class GenericPublisher extends SubscriptionPublisher {
   }
 
   @Override
-  public void sendAlert(EventResource.EventList list) throws EventPublisherException, InterruptedException {
+  public void sendAlert(EventResource.EventList list) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
       // Post Message to default

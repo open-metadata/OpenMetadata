@@ -5,7 +5,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,8 +53,7 @@ public class WebhookCallbackResource {
       @HeaderParam(RestUtil.SIGNATURE_HEADER) String signature,
       @Parameter(description = "Name of the Webhook callback", schema = @Schema(type = "string")) @PathParam("name")
           String name,
-      EventList events)
-      throws IOException {
+      EventList events) {
     String payload = JsonUtils.pojoToJson(events);
     String computedSignature = "sha256=" + CommonUtil.calculateHMAC("webhookTest", payload);
     assertEquals(computedSignature, signature);

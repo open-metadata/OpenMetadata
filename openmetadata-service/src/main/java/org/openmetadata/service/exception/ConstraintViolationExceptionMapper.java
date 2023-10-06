@@ -34,13 +34,12 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
   public Response toResponse(ConstraintViolationException exception) {
     Set<ConstraintViolation<?>> constraintViolations = exception.getConstraintViolations();
     List<String> errorMessages =
-        constraintViolations.stream()
-            .map(
-                constraintViolation -> {
-                  String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
-                  return name + " " + constraintViolation.getMessage();
-                })
-            .collect(Collectors.toList());
+            constraintViolations.stream()
+                    .map(
+                            constraintViolation -> {
+                              String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
+                              return name + " " + constraintViolation.getMessage();
+                            }).toList();
     return Response.status(Response.Status.BAD_REQUEST)
         .entity(new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
         .build();

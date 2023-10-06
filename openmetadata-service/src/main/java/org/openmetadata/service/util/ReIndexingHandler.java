@@ -194,7 +194,7 @@ public class ReIndexingHandler {
     List<EventPublisherJob> result = new ArrayList<>();
     List<SearchIndexWorkflow> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
     List<EventPublisherJob> activeEventPubJob =
-        activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).collect(Collectors.toList());
+            activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).toList();
     List<EventPublisherJob> jobsFromDatabase =
         JsonUtils.readObjects(
             dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION), EventPublisherJob.class);
