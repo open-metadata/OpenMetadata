@@ -116,7 +116,10 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
@@ -1186,8 +1189,14 @@ public class ElasticSearchClient implements SearchClient {
         return new ElasticSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
       case UNUSED_ASSETS:
         return new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
-      case AGGREGATED_UNUSED_ASSETS:
-        return new ElasticSearchAggregatedUnusedAssetsAggregator(aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+        return new ElasticSearchAggregatedUnusedAssetsSizeAggregator(aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        return new ElasticSearchAggregatedUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        return new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+        return new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(aggregations.getAggregations());
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
@@ -1306,23 +1315,48 @@ public class ElasticSearchClient implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
-      case AGGREGATED_UNUSED_ASSETS:
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        boolean isSize =
+            dataInsightChartName.equals(DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
+        String fieldType = isSize ? "size" : "count";
+        String totalField = isSize ? "totalSize" : "totalCount";
         SumAggregationBuilder threeDaysAgg =
-            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+            AggregationBuilders.sum("threeDays").field(String.format("data.unusedDataAssets.%s.threeDays", fieldType));
         SumAggregationBuilder sevenDaysAgg =
-            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+            AggregationBuilders.sum("sevenDays").field(String.format("data.unusedDataAssets.%s.sevenDays", fieldType));
         SumAggregationBuilder fourteenDaysAgg =
-            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+            AggregationBuilders.sum("fourteenDays")
+                .field(String.format("data.unusedDataAssets.%s.fourteenDays", fieldType));
         SumAggregationBuilder thirtyDaysAgg =
-            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+            AggregationBuilders.sum("thirtyDays")
+                .field(String.format("data.unusedDataAssets.%s.thirtyDays", fieldType));
         SumAggregationBuilder sixtyDaysAgg =
-            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+            AggregationBuilders.sum("sixtyDays").field(String.format("data.unusedDataAssets.%s.sixtyDays", fieldType));
+        SumAggregationBuilder totalUnused =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalField));
+        SumAggregationBuilder totalUsed =
+            AggregationBuilders.sum("totalUsed").field(String.format("data.frequentlyUsedDataAssets.%s", totalField));
         return dateHistogramAggregationBuilder
             .subAggregation(threeDaysAgg)
             .subAggregation(sevenDaysAgg)
             .subAggregation(fourteenDaysAgg)
             .subAggregation(thirtyDaysAgg)
-            .subAggregation(sixtyDaysAgg);
+            .subAggregation(sixtyDaysAgg)
+            .subAggregation(totalUnused)
+            .subAggregation(totalUsed);
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        boolean isSizeReport =
+            dataInsightChartName.equals(
+                DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);
+        String totalFieldString = isSizeReport ? "totalSize" : "totalCount";
+        SumAggregationBuilder totalUnusedAssets =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalFieldString));
+        SumAggregationBuilder totalUsedAssets =
+            AggregationBuilders.sum("totalUsed")
+                .field(String.format("data.frequentlyUsedDataAssets.%s", totalFieldString));
+        return dateHistogramAggregationBuilder.subAggregation(totalUnusedAssets).subAggregation(totalUsedAssets);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)

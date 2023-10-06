@@ -5,11 +5,11 @@ import org.elasticsearch.search.aggregations.Aggregations;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import org.elasticsearch.search.aggregations.metrics.Sum;
-import org.openmetadata.service.dataInsight.AggregatedUnusedAssetsAggregator;
+import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsSizeAggregator;
 
-public class ElasticSearchAggregatedUnusedAssetsAggregator
-    extends AggregatedUnusedAssetsAggregator<Aggregations, Histogram, Bucket, Sum> {
-  public ElasticSearchAggregatedUnusedAssetsAggregator(Aggregations aggregations) {
+public class ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator
+    extends AggregatedUsedvsUnusedAssetsSizeAggregator<Aggregations, Histogram, Bucket, Sum> {
+  public ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(Aggregations aggregations) {
     super(aggregations);
   }
 
