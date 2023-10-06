@@ -13,8 +13,7 @@ Workflow definition for the Data Quality
 """
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
 from metadata.data_quality.source.test_suite import TestSuiteSource
-from metadata.ingestion.api.processor import Processor
-from metadata.ingestion.api.sink import Sink
+from metadata.ingestion.api.steps import Processor, Sink
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import test_suite_logger
 from metadata.workflow.base import BaseWorkflow
