@@ -66,11 +66,11 @@ class SplitTestCaseFqn(BaseModel):
     test_case: Optional[str]
 
 
-def split(s: str) -> List[str]:
+def split(str_: str) -> List[str]:
     """
     Equivalent of Java's FullyQualifiedName#split
     """
-    lexer = FqnLexer(InputStream(s))
+    lexer = FqnLexer(InputStream(str_))
     stream = CommonTokenStream(lexer)
     parser = FqnParser(stream)
     parser._errHandler = BailErrorStrategy()  # pylint: disable=protected-access
