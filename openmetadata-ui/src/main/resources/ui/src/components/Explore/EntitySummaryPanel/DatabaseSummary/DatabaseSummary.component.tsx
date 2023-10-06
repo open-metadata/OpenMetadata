@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,53 +10,48 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Col, Divider, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import SummaryTagsDescription from '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
-import { Pipeline, TagLabel } from '../../../../generated/entity/data/pipeline';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
-import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
+import { DatabaseSummaryProps } from './DatabaseSummary.interface';
 
-interface PipelineSummaryProps {
-  entityDetails: Pipeline;
-  componentType?: DRAWER_NAVIGATION_OPTIONS;
-  tags?: TagLabel[];
-  isLoading?: boolean;
-}
-
-function PipelineSummary({
+const DatabaseSummary = ({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   tags,
   isLoading,
-}: PipelineSummaryProps) {
+}: DatabaseSummaryProps) => {
   const { t } = useTranslation();
-
-  const formattedTasksData: BasicEntityInfo[] = useMemo(
-    () => getFormattedEntityData(SummaryEntityType.TASK, entityDetails.tasks),
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.DATABASE, entityDetails),
     [entityDetails]
   );
 
-  const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.PIPELINES, entityDetails),
+  const formattedSchemaData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        entityDetails.databaseSchemas
+      ),
     [entityDetails]
   );
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <>
-        <Row className="m-md m-t-0" gutter={[0, 4]}>
+        <Row className="m-md" gutter={[0, 4]}>
           <Col span={24}>
             <CommonEntitySummaryInfo
               componentType={componentType}
@@ -64,29 +59,34 @@ function PipelineSummary({
             />
           </Col>
         </Row>
+
         <Divider className="m-y-xs" />
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
           tags={tags ?? entityDetails.tags ?? []}
         />
+
         <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
-              data-testid="tasks-header">
-              {t('label.task-plural')}
+              data-testid="schema-header">
+              {t('label.schema')}
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <SummaryList formattedEntityData={formattedTasksData} />
+            <SummaryList
+              entityType={SummaryEntityType.SCHEMAFIELD}
+              formattedEntityData={formattedSchemaData}
+            />
           </Col>
         </Row>
       </>
     </SummaryPanelSkeleton>
   );
-}
+};
 
-export default PipelineSummary;
+export default DatabaseSummary;

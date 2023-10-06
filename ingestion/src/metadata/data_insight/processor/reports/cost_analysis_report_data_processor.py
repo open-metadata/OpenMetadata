@@ -60,6 +60,16 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
 
     _data_processor_type = ReportDataType.RawCostAnalysisReportData.value
 
+    def __init__(self, metadata: OpenMetadata):
+        super().__init__(metadata)
+        self.pre_hook = self._pre_hook_fn
+
+    def _pre_hook_fn(self):
+        """
+        Method to delete the previous rows of the RawCostAnalysisReportData type report
+        """
+        self.metadata.delete_report_data(ReportDataType.RawCostAnalysisReportData)
+
     def yield_refined_data(self) -> Iterable[ReportData]:
         """yield refined data"""
         for _, value in self._refined_data.items():

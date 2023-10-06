@@ -74,7 +74,7 @@ const DataModelSummary = ({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={tags ?? entityDetails.tags ?? []}
         />
         <Divider className="m-y-xs" />
 
