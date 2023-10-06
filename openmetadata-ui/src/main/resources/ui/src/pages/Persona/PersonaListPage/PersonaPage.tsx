@@ -11,22 +11,24 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Skeleton, Space } from 'antd';
+import Card from 'antd/lib/card/Card';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/next-previous/NextPrevious';
-import PageHeader from '../../components/header/PageHeader.component';
-import { AddEditPersonaForm } from '../../components/Persona/AddEditPersona/AddEditPersona.component';
-import { PersonaDetailsCard } from '../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
-import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
-import { Persona } from '../../generated/entity/teams/persona';
-import { useAuth } from '../../hooks/authHooks';
-import { usePaging } from '../../hooks/paging/usePaging';
-import { getAllPersonas } from '../../rest/PersonaAPI';
+import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../../components/common/next-previous/NextPrevious';
+import PageHeader from '../../../components/header/PageHeader.component';
+import { AddEditPersonaForm } from '../../../components/Persona/AddEditPersona/AddEditPersona.component';
+import { PersonaDetailsCard } from '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
+import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { Persona } from '../../../generated/entity/teams/persona';
+import { useAuth } from '../../../hooks/authHooks';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { getAllPersonas } from '../../../rest/PersonaAPI';
+import { showPagination } from '../../../utils/CommonUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -69,7 +71,7 @@ export const PersonaPage = () => {
     fetchPersonas();
   }, []);
 
-  const handleAddNewUser = () => {
+  const handleAddNewPersona = () => {
     setAddEditPersona({} as Persona);
   };
 
@@ -157,14 +159,14 @@ export const PersonaPage = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <div className="mt-24">
+      <Col className="mt-24 text-center" span={24}>
         <ErrorPlaceHolder
           heading={t('label.persona')}
           permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
-          onClick={handleAddNewUser}
+          onClick={handleAddNewPersona}
         />
-      </div>
+      </Col>
     ),
     [isAdminUser]
   );
@@ -195,16 +197,22 @@ export const PersonaPage = () => {
           <Button
             data-testid="add-user"
             type="primary"
-            onClick={handleAddNewUser}>
+            onClick={handleAddNewPersona}>
             {t('label.add-entity', { entity: t('label.persona') })}
           </Button>
         </Space>
       </Col>
 
       {isLoading &&
-        [1, 2, 3].map((key) => <Skeleton active paragraph title key={key} />)}
+        [1, 2, 3].map((key) => (
+          <Col key={key} span={8}>
+            <Card>
+              <Skeleton active paragraph title />
+            </Card>
+          </Col>
+        ))}
 
-      {isEmpty(persona) && errorPlaceHolder}
+      {isEmpty(persona) && !isLoading && errorPlaceHolder}
 
       {persona?.map((persona) => (
         <Col key={persona.id} span={8}>
@@ -228,15 +236,17 @@ export const PersonaPage = () => {
           size="small"
         />
       </Col> */}
-      <Col span={24}>
-        <NextPrevious
-          currentPage={currentPage}
-          pageSize={pageSize}
-          paging={paging}
-          pagingHandler={({ currentPage }) => handlePageChange(currentPage)}
-          onShowSizeChange={handlePageSizeChange}
-        />
-      </Col>
+      {showPagination(paging) && (
+        <Col span={24}>
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={({ currentPage }) => handlePageChange(currentPage)}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        </Col>
+      )}
 
       {Boolean(addEditPersona) && (
         <AddEditPersonaForm

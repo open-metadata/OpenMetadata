@@ -10,30 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Row, Tabs } from 'antd';
+import { Button, Row, Tabs } from 'antd';
 import Col from 'antd/es/grid/col';
 import { compare } from 'fast-json-patch';
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import DescriptionV1 from '../../../components/common/description/DescriptionV1';
 import ManageButton from '../../../components/common/entityPageInfo/ManageButton/ManageButton';
+import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import PageHeader from '../../../components/header/PageHeader.component';
 import Loader from '../../../components/Loader/Loader';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { UserTab } from '../../../components/Team/TeamDetails/UserTab/UserTab.component';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { UsersTab } from '../../../components/Users/UsersTab/UsersTabs.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getSettingPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 export const PersonaDetailsPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
-
+  const history = useHistory();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
   const [isEdit, setIsEdit] = useState(false);
+  const { t } = useTranslation();
+  const [entityPermission, setEntityPermission] = useState(
+    DEFAULT_ENTITY_PERMISSION
+  );
+
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  useEffect(() => {
+    getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
+      setEntityPermission
+    );
+  }, []);
 
   const fetchPersonaDetails = async () => {
     try {
@@ -64,7 +86,7 @@ export const PersonaDetailsPage = () => {
       const response = await updatePersona(personaDetails?.id, diff);
       setPersonaDetails(response);
     } catch (error) {
-      // Error
+      showErrorToast(error);
     } finally {
       setIsEdit(false);
     }
@@ -81,7 +103,7 @@ export const PersonaDetailsPage = () => {
       const response = await updatePersona(personaDetails?.id, diff);
       setPersonaDetails(response);
     } catch (error) {
-      // Error
+      showErrorToast(error);
     } finally {
       setIsEdit(false);
     }
@@ -98,10 +120,49 @@ export const PersonaDetailsPage = () => {
       const response = await updatePersona(personaDetails?.id, diff);
       setPersonaDetails(response);
     } catch (error) {
-      // Error
+      showErrorToast(error);
     } finally {
       setIsEdit(false);
     }
+  };
+
+  const handlePersonaUpdate = useCallback(
+    async (data: Partial<Persona>) => {
+      if (!personaDetails) {
+        return;
+      }
+      const diff = compare(personaDetails, { ...personaDetails, ...data });
+
+      try {
+        const response = await updatePersona(personaDetails?.id, diff);
+        setPersonaDetails(response);
+      } catch (error) {
+        showErrorToast(error);
+      } finally {
+        setIsEdit(false);
+      }
+    },
+    [personaDetails]
+  );
+
+  const handleRemoveUser = useCallback(
+    (userId: string) => {
+      const updatedUsers = personaDetails?.users?.filter(
+        (user) => user.id !== userId
+      );
+
+      handlePersonaUpdate({ users: updatedUsers });
+    },
+    [personaDetails]
+  );
+
+  const handleAfterDeleteAction = () => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.PERSONA
+      )
+    );
   };
 
   if (isLoading || !personaDetails) {
@@ -110,27 +171,32 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row gutter={[16, 16]}>
+      <Row className="m-b-md" gutter={[16, 16]}>
         <Col span={24}>
-          <PageHeader
-            data={{
-              header: personaDetails.displayName,
-              subHeader: personaDetails.name,
-            }}
-          />
-          <ManageButton
-            canDelete
-            editDisplayNamePermission
-            allowSoftDelete={false}
-            deleted={false}
-            displayName={personaDetails.displayName}
-            entityFQN={personaDetails.fullyQualifiedName}
-            entityId={personaDetails.id}
-            entityName={personaDetails.name}
-            entityType={EntityType.PERSONA}
-            onEditDisplayName={handleDisplayNameUpdate}
-            onRestoreEntity={handleRestorePersona}
-          />
+          <div className="d-flex justify-between items-start">
+            <PageHeader
+              data={{
+                header: personaDetails.displayName,
+                subHeader: personaDetails.name,
+              }}
+            />
+            <ManageButton
+              afterDeleteAction={handleAfterDeleteAction}
+              allowSoftDelete={false}
+              canDelete={entityPermission.EditAll || entityPermission.Delete}
+              deleted={false}
+              displayName={personaDetails.displayName}
+              editDisplayNamePermission={
+                entityPermission.EditAll || entityPermission.EditDescription
+              }
+              entityFQN={personaDetails.fullyQualifiedName}
+              entityId={personaDetails.id}
+              entityName={personaDetails.name}
+              entityType={EntityType.PERSONA}
+              onEditDisplayName={handleDisplayNameUpdate}
+              onRestoreEntity={handleRestorePersona}
+            />
+          </div>
         </Col>
         <Col span={24}>
           <DescriptionV1
@@ -138,6 +204,7 @@ export const PersonaDetailsPage = () => {
             description={personaDetails.description}
             entityType={EntityType.PERSONA}
             isEdit={isEdit}
+            showCommentsIcon={false}
             onCancel={() => setIsEdit(false)}
             onDescriptionEdit={() => setIsEdit(true)}
             onDescriptionUpdate={handleDescriptionUpdate}
@@ -151,19 +218,24 @@ export const PersonaDetailsPage = () => {
                 label: 'Users',
                 key: 'users',
                 children: (
-                  <UserTab users={personaDetails.users ?? []} />
-                  //   <Table
-                  //     columns={
-                  //       commonUserDetailColumns() as ColumnsType<EntityReference>
-                  //     }
-                  //     dataSource={personaDetails.users}
-                  //     pagination={false}
-                  //     rowKey="fullyQualifiedName"
-                  //     size="small"
-                  //   />
+                  <UsersTab
+                    users={personaDetails.users ?? []}
+                    onRemoveUser={handleRemoveUser}
+                  />
                 ),
               },
             ]}
+            tabBarExtraContent={
+              <UserSelectableList
+                hasPermission
+                multiSelect
+                selectedUsers={personaDetails.users ?? []}
+                onUpdate={(users) => handlePersonaUpdate({ users })}>
+                <Button size="small" type="primary">
+                  {t('label.add-user')}
+                </Button>
+              </UserSelectableList>
+            }
           />
         </Col>
       </Row>

@@ -20,7 +20,7 @@ import {
 import { TeamType } from '../../generated/entity/teams/team';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
-import { PersonaPage } from '../../pages/Persona/PersonaPage';
+import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
