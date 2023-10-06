@@ -1,7 +1,12 @@
 package org.openmetadata.service.migration.api;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +51,7 @@ public class MigrationWorkflow {
     }
   }
 
-  private List<MigrationFile> getMigrationFiles(
+  public List<MigrationFile> getMigrationFiles(
       String nativeSQLScriptRootPath, ConnectionType connectionType, String extensionSQLScriptRootPath) {
     List<MigrationFile> availableOMNativeMigrations =
         getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
@@ -71,7 +76,7 @@ public class MigrationWorkflow {
         .collect(Collectors.toList());
   }
 
-  private List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
+  public List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
     return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
         .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
         .sorted()
