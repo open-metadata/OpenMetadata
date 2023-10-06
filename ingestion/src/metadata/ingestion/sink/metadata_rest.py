@@ -22,6 +22,7 @@ from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.data_insight.source.metadata import DataInsightRecord
+from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
@@ -30,6 +31,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
+from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -370,6 +372,18 @@ class MetadataRestSink(Sink):
         return Either(right=record.test_case_results)
 
     @_run_dispatch.register
+    def write_test_case_results(self, record: TestCaseResultResponse):
+        """Write the test case result"""
+        res = self.metadata.add_test_case_results(
+            test_results=record.testCaseResult,
+            test_case_fqn=record.testCase.fullyQualifiedName.__root__,
+        )
+        logger.debug(
+            f"Successfully ingested test case results for test case {record.testCase.name.__root__}"
+        )
+        return Either(right=res)
+
+    @_run_dispatch.register
     def write_data_insight_sample(
         self, record: OMetaDataInsightSample
     ) -> Either[ReportData]:
@@ -379,7 +393,7 @@ class MetadataRestSink(Sink):
         self.metadata.add_data_insight_report_data(
             record.record,
         )
-        return Either(left=None, right=record.record)
+        return Either(right=record.record)
 
     @_run_dispatch.register
     def write_data_insight(self, record: DataInsightRecord) -> Either[ReportData]:
@@ -491,6 +505,29 @@ class MetadataRestSink(Sink):
                 )
 
         return Either(right=table)
+
+    @_run_dispatch.register
+    def write_executable_test_suite(
+        self, record: CreateTestSuiteRequest
+    ) -> Either[TestSuite]:
+        """
+        From the test suite workflow we might need to create executable test suites
+        """
+        test_suite = self.metadata.create_or_update_executable_test_suite(record)
+        return Either(right=test_suite)
+
+    @_run_dispatch.register
+    def write_test_case_result_list(self, record: TestCaseResults):
+        """Record the list of test case result responses"""
+
+        for result in record.test_results or []:
+            self.metadata.add_test_case_results(
+                test_results=result.testCaseResult,
+                test_case_fqn=result.testCase.fullyQualifiedName.__root__,
+            )
+            self.status.scanned(result)
+
+        return Either(right=record)
 
     def close(self):
         """
