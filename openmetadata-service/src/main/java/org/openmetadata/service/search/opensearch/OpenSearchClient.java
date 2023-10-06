@@ -64,6 +64,18 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesDescriptionAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesOwnerAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchServicesDescriptionAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchServicesOwnerAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -291,8 +303,9 @@ public class OpenSearchClient implements SearchClient {
         searchSourceBuilder = buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
+      case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
-            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+            buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -329,7 +342,8 @@ public class OpenSearchClient implements SearchClient {
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
+        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -799,7 +813,7 @@ public class OpenSearchClient implements SearchClient {
     return addAggregation(searchSourceBuilder);
   }
 
-  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+  private static SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -1148,7 +1162,7 @@ public class OpenSearchClient implements SearchClient {
       SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
       throws ParseException {
     DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartName);
-    return processor.process();
+    return processor.process(dataInsightChartName);
   }
 
   private static DataInsightAggregatorInterface createDataAggregator(
@@ -1156,29 +1170,29 @@ public class OpenSearchClient implements SearchClient {
       throws IllegalArgumentException {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new OsEntitiesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchEntitiesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new OsServicesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchServicesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new OsEntitiesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchEntitiesOwnerAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new OsServicesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchServicesOwnerAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TYPE:
-        return new OsTotalEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchTotalEntitiesAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TIER:
-        return new OsTotalEntitiesByTierAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchTotalEntitiesByTierAggregator(aggregations.getAggregations());
       case DAILY_ACTIVE_USERS:
-        return new OsDailyActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchDailyActiveUsersAggregator(aggregations.getAggregations());
       case PAGE_VIEWS_BY_ENTITIES:
-        return new OsPageViewsByEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchPageViewsByEntitiesAggregator(aggregations.getAggregations());
       case MOST_ACTIVE_USERS:
-        return new OsMostActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchMostActiveUsersAggregator(aggregations.getAggregations());
       case MOST_VIEWED_ENTITIES:
-        return new OsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
       case UNUSED_ASSETS:
-        return new OsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
+        return new OpenSearchUnusedAssetsAggregator(aggregations.getHits());
       case AGGREGATED_UNUSED_ASSETS:
-        return new OsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new OpenSearchAggregatedUnusedAssetsAggregator(aggregations.getAggregations());
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));

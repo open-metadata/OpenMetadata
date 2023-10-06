@@ -48,7 +48,8 @@
         "Dbt",
         "SapHana",
         "MongoDB",
-        "Couchbase"
+        "Couchbase",
+        "Greenplum"
       ],
       "javaEnums": [
         {
@@ -152,6 +153,9 @@
         },
         {
           "name": "Couchbase"
+        },
+        {
+          "name": "Greenplum"
         }
       ]
     },
@@ -260,6 +264,9 @@
             },
             {
               "$ref": "./connections/database/couchbaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/greenplumConnection.json"
             }
           ]
         }

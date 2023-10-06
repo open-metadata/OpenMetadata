@@ -60,10 +60,11 @@ const AnnouncementDrawer: FC<Props> = ({
 
   const title = (
     <Space
+      align="start"
       className="justify-between"
       data-testid="title"
       style={{ width: '100%' }}>
-      <Typography.Text className="font-medium">
+      <Typography.Text className="font-medium break-all">
         {t('label.announcement-on-entity', { entity: entityName })}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />

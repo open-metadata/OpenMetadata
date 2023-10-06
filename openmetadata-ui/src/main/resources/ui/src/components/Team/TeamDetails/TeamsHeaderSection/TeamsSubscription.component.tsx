@@ -50,21 +50,7 @@ const TeamsSubscription = ({
   }, []);
 
   // Watchers
-  const webhooks: {
-    webhook: string;
-    endpoint: string;
-  }[] = Form.useWatch(['subscriptions'], form);
-
-  // Run time values needed for conditional rendering
-  const subscriptionOptions = useMemo(() => {
-    const exitingWebhook = webhooks?.map((f) => f?.webhook) ?? [];
-
-    return SUBSCRIPTION_WEBHOOK_OPTIONS.map((func) => ({
-      label: func.label,
-      value: func.value,
-      disabled: exitingWebhook.includes(func.value),
-    }));
-  }, [webhooks]);
+  const isWebhookEmpty = isEmpty(Form.useWatch('webhook', form));
 
   const cellItem = useCallback(
     (key: string, value: Webhook) => (
@@ -94,7 +80,7 @@ const TeamsSubscription = ({
     setIsLoading(true);
 
     try {
-      await updateTeamSubscription(values);
+      await updateTeamSubscription(isWebhookEmpty ? undefined : values);
     } catch {
       // parent block will throw error
     } finally {
@@ -102,6 +88,12 @@ const TeamsSubscription = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isWebhookEmpty) {
+      form.setFieldValue('endpoint', '');
+    }
+  }, [isWebhookEmpty]);
 
   useEffect(() => {
     if (subscription) {
@@ -155,7 +147,7 @@ const TeamsSubscription = ({
             onFinish={handleSave}>
             <Form.Item label={t('label.webhook')} name="webhook">
               <Select
-                options={subscriptionOptions}
+                options={SUBSCRIPTION_WEBHOOK_OPTIONS}
                 placeholder={t('label.select-field', {
                   field: t('label.condition'),
                 })}
@@ -166,7 +158,7 @@ const TeamsSubscription = ({
               name="endpoint"
               rules={[
                 {
-                  required: true,
+                  required: !isWebhookEmpty,
                   message: t('label.field-required-plural', {
                     field: t('label.endpoint'),
                   }),
@@ -177,6 +169,7 @@ const TeamsSubscription = ({
                 },
               ]}>
               <Input
+                disabled={isWebhookEmpty}
                 placeholder={t('label.enter-entity-value', {
                   entity: t('label.endpoint'),
                 })}

@@ -131,28 +131,28 @@
     "alias": "team",
     "parentAliases": []
   },
-  "entityReportData": {
+  "EntityReportData": {
     "indexName": "entity_report_data_index",
     "indexMappingFile": "/elasticsearch/entity_report_data_index.json",
     "alias": "entityReportData",
     "parentAliases": []
   },
-  "webAnalyticEntityViewReportData": {
+  "WebAnalyticEntityViewReportData": {
     "indexName": "web_analytic_entity_view_report_data_index",
     "indexMappingFile": "/elasticsearch/web_analytic_entity_view_report_data_index.json",
     "alias": "webAnalyticEntityViewReportData",
     "parentAliases": []
   },
-  "webAnalyticUserActivityReportData": {
+  "WebAnalyticUserActivityReportData": {
     "indexName": "web_analytic_user_activity_report_data_index",
     "indexMappingFile": "/elasticsearch/web_analytic_user_activity_report_data_index.json",
     "alias": "webAnalyticUserActivityReportData",
     "parentAliases": []
   },
-  "rawCostAnalysisReportData": {
+  "RawCostAnalysisReportData": {
     "indexName": "raw_cost_analysis_report_data_index",
     "indexMappingFile": "/elasticsearch/raw_cost_analysis_report_data_index.json",
-    "alias": "rawCostAnalysisReportData",
+    "alias": "RawCostAnalysisReportData",
     "parentAliases": []
   },
   "AggregatedCostAnalysisReportData": {

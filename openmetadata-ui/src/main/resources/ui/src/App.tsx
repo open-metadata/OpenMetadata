@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FunctionComponent } from 'react';
+import React, { FC, ReactNode } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
@@ -32,14 +32,21 @@ import { TOAST_OPTIONS } from './constants/Toasts.constants';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 
-const App: FunctionComponent = () => {
+interface AppProps {
+  routeElements?: ReactNode;
+  sideBarElements?: ReactNode;
+}
+
+const App: FC<AppProps> = ({ routeElements, sideBarElements }) => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <ApplicationConfigProvider>
+              <ApplicationConfigProvider
+                routeElements={routeElements}
+                sideBarElements={sideBarElements}>
                 <AuthProvider childComponentType={AppRouter}>
                   <TourProvider>
                     <HelmetProvider>

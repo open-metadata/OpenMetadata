@@ -116,6 +116,18 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchServicesDescriptionAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchServicesOwnerAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesByTierAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -297,8 +309,9 @@ public class ElasticSearchClient implements SearchClient {
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
+      case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
-            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+            buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -335,7 +348,8 @@ public class ElasticSearchClient implements SearchClient {
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
+        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -807,7 +821,7 @@ public class ElasticSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+  private static SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -1140,10 +1154,10 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static DataInsightChartResult processDataInsightChartResult(
-      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
+      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws ParseException {
-    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartName);
-    return processor.process();
+    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartType);
+    return processor.process(dataInsightChartType);
   }
 
   private static DataInsightAggregatorInterface createDataAggregator(
@@ -1151,29 +1165,29 @@ public class ElasticSearchClient implements SearchClient {
       throws IllegalArgumentException {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new EsEntitiesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchEntitiesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new EsServicesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchServicesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new EsEntitiesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchEntitiesOwnerAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new EsServicesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchServicesOwnerAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TYPE:
-        return new EsTotalEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchTotalEntitiesAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TIER:
-        return new EsTotalEntitiesByTierAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchTotalEntitiesByTierAggregator(aggregations.getAggregations());
       case DAILY_ACTIVE_USERS:
-        return new EsDailyActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchDailyActiveUsersAggregator(aggregations.getAggregations());
       case PAGE_VIEWS_BY_ENTITIES:
-        return new EsPageViewsByEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchPageViewsByEntitiesAggregator(aggregations.getAggregations());
       case MOST_ACTIVE_USERS:
-        return new EsMostActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchMostActiveUsersAggregator(aggregations.getAggregations());
       case MOST_VIEWED_ENTITIES:
-        return new EsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
       case UNUSED_ASSETS:
-        return new EsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
+        return new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
       case AGGREGATED_UNUSED_ASSETS:
-        return new EsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchAggregatedUnusedAssetsAggregator(aggregations.getAggregations());
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));

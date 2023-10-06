@@ -73,7 +73,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-# pylint: disable=invalid-name,not-callable
+# pylint: disable=not-callable
 @classmethod
 def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
     return cls(
