@@ -77,9 +77,7 @@ def get_table_names_reflection(self, schema=None, **kw):
     """
 
     with self._operation_context() as conn:  # pylint: disable=protected-access
-        return self.dialect.get_table_names(
-            conn, schema, info_cache=self.info_cache, **kw
-        )
+        return self.dialect.get_table_names(conn, schema, **kw)
 
 
 @reflection.cache
@@ -101,10 +99,10 @@ def get_view_definition(
         query=ORACLE_ALL_VIEW_DEFINITIONS,
     )
 
-
 def _get_col_type(
     self, coltype, precision, scale, length, colname
 ):  # pylint: disable=too-many-branches
+    """ """
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -229,20 +227,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
-def get_filter_pattern_query(filter_pattern_name, name):
+def get_filter_pattern_query(filter_pattern_name, name, exclude=False):
     query_conditions = []
+    # Define the operator based on whether it's an inclusion or exclusion query
+    operator = "NOT LIKE" if exclude else "LIKE"
     # Iterate over the list and build the query conditions
     for pattern in filter_pattern_name:
-        query_conditions.append(f"{name} LIKE '{pattern}'")
-
+        query_conditions.append(f"{name} {operator} '{pattern}'")
     # Join the query conditions with 'OR' and add them to the SQL query
     if query_conditions:
         query_condition = " OR ".join(query_conditions)
-    return query_condition
+        return query_condition
+    return ""
 
 
 @reflection.cache
-def get_table_names(self, connection, schema, **kw):
+def get_table_names(self, connection, schema=None, **kw):
     """
     Exclude the materialized views from regular table names
     """
@@ -260,16 +260,32 @@ def get_table_names(self, connection, schema, **kw):
             "nvl(tablespace_name, 'no tablespace') "
             f"NOT IN ({exclude_tablespace}) AND "
         )
-    filter_query = (
-        f'AND ( {get_filter_pattern_query(kw["filter_table_name"],"table_name")} )'
-    )
+    tb_patterns_include = [
+        tb_name.replace("%", "%%")
+        for tb_name in kw["filter_include_table_name"]
+        if kw["filter_include_table_name"]
+    ]
+    tb_patterns_exclude = [
+        tb_name.replace("%", "%%")
+        for tb_name in kw["filter_exclude_table_name"]
+        if kw["filter_exclude_table_name"]
+    ]
+    if kw["filter_include_table_name"] and kw["filter_exclude_table_name"]:
+        format_pattern = f'and ({get_filter_pattern_query(tb_patterns_include,"table_name")} or {get_filter_pattern_query(tb_patterns_exclude, "table_name",exclude=True)})'  # pylint: disable=line-too-long
+    else:
+        format_pattern = (
+            f'and( {get_filter_pattern_query(tb_patterns_include,"table_name")})'
+            if kw["filter_include_table_name"]
+            else f'and({get_filter_pattern_query(tb_patterns_exclude, "table_name",exclude=True)})'
+        )
     cursor = connection.execute(
         sql.text(
             ORACLE_GET_TABLE_NAMES.format(
-                tablespace=tablespace, table_filter=filter_query
+                tablespace=tablespace, table_filter=format_pattern
             )
         )
-        if kw["pushFilterDown"] and kw["filter_table_name"]
+        if kw.get("pushFilterDown") is not None
+        and (kw["filter_include_table_name"] or kw["filter_exclude_table_name"])
         else sql.text(
             ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, table_filter="")
         ),
@@ -322,13 +338,32 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
+    """Return all schema names."""
+
     query = ORACLE_GET_SCHEMA_NAME
-    filter_query = (
-        f'WHERE {get_filter_pattern_query(kw["filter_schema_name"],"username")}'
-    )
+    sc_patterns_include = [
+        sc_name.replace("%", "%%")
+        for sc_name in kw["filter_include_schema_name"]
+        if kw["filter_include_schema_name"]
+    ]
+    sc_patterns_exclude = [
+        sc_name.replace("%", "%%")
+        for sc_name in kw["filter_exclude_schema_name"]
+        if kw["filter_exclude_schema_name"]
+    ]
+    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
+        format_pattern = f'where {get_filter_pattern_query(sc_patterns_include,"username")} or {get_filter_pattern_query(sc_patterns_exclude, "username",exclude=True)}'  # pylint: disable=line-too-long
+    else:
+        format_pattern = (
+            f'where {get_filter_pattern_query(sc_patterns_include,"username")}'
+            if kw["filter_include_schema_name"]
+            else f'where {get_filter_pattern_query(sc_patterns_exclude, "username",exclude=True)}'
+        )
+
     cursor = connection.execute(
-        query.format(filter_query)
-        if kw.get("pushFilterDown") and kw["filter_schema_name"] is not None
+        query.format(format_pattern)
+        if kw.get("pushFilterDown") is not None
+        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

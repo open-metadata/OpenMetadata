@@ -15,7 +15,7 @@ import traceback
 from typing import Iterable, Optional, Tuple
 
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
-from sqlalchemy.engine import Inspector
+from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -103,9 +103,14 @@ class OracleSource(CommonDbSourceService):
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_schema_name=self.source_config.schemaFilterPattern.includes
+                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
                 if self.source_config.schemaFilterPattern
-                else None,
+                and self.source_config.schemaFilterPattern.includes
+                else [],
+                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
+                if self.source_config.schemaFilterPattern
+                and self.source_config.schemaFilterPattern.excludes
+                else [],
             ):
                 yield schema_name
 
@@ -149,9 +154,14 @@ class OracleSource(CommonDbSourceService):
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_table_name=self.source_config.tableFilterPattern.includes
+                filter_include_table_name=self.source_config.tableFilterPattern.includes
                 if self.source_config.tableFilterPattern
-                else None,
+                and self.source_config.tableFilterPattern.includes
+                else [],
+                filter_exclude_table_name=self.source_config.tableFilterPattern.excludes
+                if self.source_config.tableFilterPattern
+                and self.source_config.tableFilterPattern.excludes
+                else [],
             )
             or []
         ]
