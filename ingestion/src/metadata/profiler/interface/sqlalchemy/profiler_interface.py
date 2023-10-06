@@ -22,7 +22,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from sqlalchemy import Column
+from sqlalchemy import Column, inspect
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
@@ -454,7 +454,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns) -> TableData:
         """Fetch sample data from database
 
         Args:
@@ -467,7 +467,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             table=table,
         )
 
-        return sampler.fetch_sample_data()
+        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -518,6 +518,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         logger.error(
             f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
         )
+
+    def get_columns(self):
+        """get columns from entity"""
+        return list(inspect(self.table).c)
 
     def close(self):
         """Clean up session"""

@@ -261,7 +261,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.scanned(table.name.__root__)
         return row, column, metric_type.value
 
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns: SQALikeColumn) -> TableData:
         """Fetch sample data from database
 
         Args:
@@ -271,7 +271,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             TableData: sample table data
         """
         sampler = self._get_sampler()
-        return sampler.fetch_sample_data()
+        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

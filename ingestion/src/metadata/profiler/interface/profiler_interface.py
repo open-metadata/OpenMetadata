@@ -306,11 +306,16 @@ class ProfilerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns: List[Column]) -> TableData:
         """run profiler metrics"""
         raise NotImplementedError
 
     @abstractmethod
     def close(self):
         """Clean up profiler interface"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_columns(self):
+        """get columns"""
         raise NotImplementedError
