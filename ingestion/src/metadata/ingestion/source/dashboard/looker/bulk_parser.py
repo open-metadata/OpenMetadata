@@ -112,7 +112,6 @@ class BulkLkmlParser(metaclass=Singleton):
         if cached_view:
             return cached_view
 
-        logger.warning(f"BulkLkmlParser::find_view: can't find view {view_name}")
         return None
 
     def __repr__(self):

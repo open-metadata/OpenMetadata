@@ -416,6 +416,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
   SearchServiceType.ElasticSearch,
+  DatabaseServiceType.Greenplum,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

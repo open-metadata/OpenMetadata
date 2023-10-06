@@ -197,10 +197,19 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
     """
 
     def __init__(self, config, metadata):
+        # Check if the engine is established before setting project IDs
+        # This ensures that we don't try to set project IDs when there is no engine
+        # as per service connection config, which would result in an error.
+        self.test_connection = lambda: None
         super().__init__(config, metadata)
         self.temp_credentials = None
         self.client = None
+        # Upon invoking the set_project_id method, we retrieve a comprehensive
+        # list of all project IDs. Subsequently, after the invokation,
+        # we proceed to test the connections for each of these project IDs
         self.project_ids = self.set_project_id()
+        self.test_connection = self._test_connection
+        self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata):
@@ -217,11 +226,15 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         _, project_ids = auth.default()
         return project_ids if isinstance(project_ids, list) else [project_ids]
 
-    def test_connection(self) -> None:
-        for project_id in self.set_project_id():
-            self.set_inspector(project_id)
+    def _test_connection(self) -> None:
+        for project_id in self.project_ids:
+            inspector_details = get_inspector_details(
+                database_name=project_id, service_connection=self.service_connection
+            )
             test_connection_fn = get_test_connection_fn(self.service_connection)
-            test_connection_fn(self.metadata, self.engine, self.service_connection)
+            test_connection_fn(
+                self.metadata, inspector_details.engine, self.service_connection
+            )
 
     def query_table_names_and_types(
         self, schema_name: str

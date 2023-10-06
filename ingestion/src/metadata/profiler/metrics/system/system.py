@@ -85,7 +85,7 @@ def get_system_metrics_for_dialect(
                 rowsAffected: <int>,
             } else returns None
     """
-    logger.info(f"System metrics not support for {dialect}. Skipping processing.")
+    logger.debug(f"System metrics not support for {dialect}. Skipping processing.")
 
 
 @get_system_metrics_for_dialect.register(Dialects.BigQuery)
