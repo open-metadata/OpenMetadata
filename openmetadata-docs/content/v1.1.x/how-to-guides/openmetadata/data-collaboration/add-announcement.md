@@ -1,6 +1,6 @@
 ---
 title: How to Create an Announcement
-slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
+slug: /how-to-guides/openmetadata/data-collaboration/add-announcement
 ---
 
 # How to Create an Announcement
@@ -37,7 +37,7 @@ alt="Add the Announcement Details"
 caption="Add the Announcement Details"
 /%}
 
-This announcement will be displayed in OpenMetadata during the scheduled time. It will be displayed to all the users who own or follow that particular data asset.
+This announcement will be displayed in OpenMetadata during the scheduled time. It will be displayed to all the users who own or follow that particular data asset. 
 
 {% note noteType="Warning" %} 
 **Pro Tip:** Create Announcements for deletion, deprecation, and other important changes. Let your team know of a tentative date when these changes will be implemented.
