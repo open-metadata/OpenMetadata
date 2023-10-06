@@ -99,6 +99,7 @@ def get_view_definition(
         query=ORACLE_ALL_VIEW_DEFINITIONS,
     )
 
+
 def _get_col_type(
     self, coltype, precision, scale, length, colname
 ):  # pylint: disable=too-many-branches

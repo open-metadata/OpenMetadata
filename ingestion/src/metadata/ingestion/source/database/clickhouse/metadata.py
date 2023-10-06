@@ -40,6 +40,7 @@ from metadata.ingestion.source.database.clickhouse.utils import (
     get_schema_names_reflection,
     get_table_comment,
     get_table_names,
+    get_table_names_reflection,
     get_unique_constraints,
     get_view_definition,
     get_view_names,
@@ -104,7 +105,7 @@ ClickHouseDialect._get_column_info = (  # pylint: disable=protected-access
 ClickHouseDialect.get_table_names = get_table_names
 ClickHouseDialect.get_schema_names = get_schema_names
 Inspector.get_mview_names = get_mview_names
-Inspector.get_table_names = get_table_names
+Inspector.get_table_names = get_table_names_reflection
 ClickHouseDialect.get_mview_names = get_mview_names_dialect
 Inspector.get_schema_names = get_schema_names_reflection
 
@@ -140,7 +141,6 @@ class ClickhouseSource(CommonDbSourceService):
         regular_tables = [
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
-                connection=self.connection,
                 schema=schema_name,
                 pushFilterDown=self.source_config.pushFilterDown,
                 filter_include_table_name=self.source_config.tableFilterPattern.includes
