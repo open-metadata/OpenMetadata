@@ -20,7 +20,6 @@ import com.auth0.jwk.SigningKeyNotFoundException;
 import com.auth0.jwk.UrlJwkProvider;
 import java.net.URL;
 import java.util.List;
-import java.util.stream.Collectors;
 
 final class MultiUrlJwkProvider implements JwkProvider {
   private final List<UrlJwkProvider> urlJwkProviders;

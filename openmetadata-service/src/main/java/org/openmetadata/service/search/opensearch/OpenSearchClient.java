@@ -150,9 +150,9 @@ import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  private RestHighLevelClient client;
+  private final RestHighLevelClient client;
   private static final NamedXContentRegistry X_CONTENT_REGISTRY;
-  private boolean isClientAvailable;
+  private final boolean isClientAvailable;
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());

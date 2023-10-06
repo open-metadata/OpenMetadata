@@ -174,15 +174,6 @@ public class SearchIndexWorkflow implements Runnable {
           } else {
             failed = 0;
           }
-        } catch (SourceException rx) {
-          handleSourceError(
-              rx.getMessage(),
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  rx.getCause(),
-                  ExceptionUtils.getStackTrace(rx)),
-              currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),

@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -919,14 +918,15 @@ public class TableRepository extends EntityRepository<Table> {
   private List<JoinedWith> getDirectTableJoins(Table table) {
     // Pair<toTableFQN, List<DailyCount>>
     List<Pair<String, List<DailyCount>>> entityRelations =
-            daoCollection.fieldRelationshipDAO()
-                    .listBidirectional(
-                            table.getFullyQualifiedName(),
-                            FIELD_RELATION_TABLE_TYPE,
-                            FIELD_RELATION_TABLE_TYPE,
-                            Relationship.JOINED_WITH.ordinal())
-                    .stream()
-                    .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class)))).toList();
+        daoCollection.fieldRelationshipDAO()
+            .listBidirectional(
+                table.getFullyQualifiedName(),
+                FIELD_RELATION_TABLE_TYPE,
+                FIELD_RELATION_TABLE_TYPE,
+                Relationship.JOINED_WITH.ordinal())
+            .stream()
+            .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .toList();
 
     return entityRelations.stream()
         .map(
@@ -940,40 +940,43 @@ public class TableRepository extends EntityRepository<Table> {
   private List<ColumnJoin> getColumnJoins(Table table) {
     // Triple<fromRelativeColumnName, toFQN, List<DailyCount>>
     List<Triple<String, String, List<DailyCount>>> entityRelations =
-            daoCollection.fieldRelationshipDAO()
-                    .listBidirectionalByPrefix(
-                            table.getFullyQualifiedName(),
-                            FIELD_RELATION_COLUMN_TYPE,
-                            FIELD_RELATION_COLUMN_TYPE,
-                            Relationship.JOINED_WITH.ordinal())
-                    .stream()
-                    .map(
-                            rethrowFunction(
-                                    er ->
-                                            Triple.of(
-                                                    FullyQualifiedName.getColumnName(er.getLeft()),
-                                                    er.getMiddle(),
-                                                    JsonUtils.readObjects(er.getRight(), DailyCount.class)))).toList();
-
-    return entityRelations.stream()
-            .collect(groupingBy(Triple::getLeft))
-            .entrySet()
+        daoCollection.fieldRelationshipDAO()
+            .listBidirectionalByPrefix(
+                table.getFullyQualifiedName(),
+                FIELD_RELATION_COLUMN_TYPE,
+                FIELD_RELATION_COLUMN_TYPE,
+                Relationship.JOINED_WITH.ordinal())
             .stream()
             .map(
-                    e ->
-                            new ColumnJoin()
-                                    .withColumnName(e.getKey())
-                                    .withJoinedWith(
-                                            e.getValue().stream()
-                                                    .map(
-                                                            er ->
-                                                                    new JoinedWith()
-                                                                            .withFullyQualifiedName(er.getMiddle())
-                                                                            .withJoinCount(
-                                                                                    er.getRight().stream()
-                                                                                            .filter(inLast30Days())
-                                                                                            .mapToInt(DailyCount::getCount)
-                                                                                            .sum())).toList())).toList();
+                rethrowFunction(
+                    er ->
+                        Triple.of(
+                            FullyQualifiedName.getColumnName(er.getLeft()),
+                            er.getMiddle(),
+                            JsonUtils.readObjects(er.getRight(), DailyCount.class))))
+            .toList();
+
+    return entityRelations.stream()
+        .collect(groupingBy(Triple::getLeft))
+        .entrySet()
+        .stream()
+        .map(
+            e ->
+                new ColumnJoin()
+                    .withColumnName(e.getKey())
+                    .withJoinedWith(
+                        e.getValue().stream()
+                            .map(
+                                er ->
+                                    new JoinedWith()
+                                        .withFullyQualifiedName(er.getMiddle())
+                                        .withJoinCount(
+                                            er.getRight().stream()
+                                                .filter(inLast30Days())
+                                                .mapToInt(DailyCount::getCount)
+                                                .sum()))
+                            .toList()))
+        .toList();
   }
 
   private Predicate<DailyCount> inLast30Days() {
