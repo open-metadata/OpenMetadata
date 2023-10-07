@@ -36,7 +36,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
 
-class BaseTestSuiteSource:
+class BaseTestSuiteRunner:
     """Base class for the data quality runner"""
 
     def __init__(

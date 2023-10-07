@@ -1,7 +1,6 @@
 package org.openmetadata.service.dataInsight;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -20,13 +19,13 @@ public abstract class UnusedAssetsAggregator<H extends Iterable<S>, S, T> implem
   }
 
   @Override
-  public DataInsightChartResult process(DataInsightChartResult.DataInsightChartType chartType) throws ParseException {
+  public DataInsightChartResult process(DataInsightChartResult.DataInsightChartType chartType) {
     List<Object> data = this.aggregate();
     return new DataInsightChartResult().withData(data).withChartType(chartType).withTotal(computeTotalHits(hits));
   }
 
   @Override
-  public List<Object> aggregate() throws ParseException {
+  public List<Object> aggregate() {
     List<Object> data = new ArrayList<>();
     ObjectMapper mapper = new ObjectMapper();
     for (S hit : this.hits) {

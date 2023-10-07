@@ -249,12 +249,12 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
   }
 
   @Override
-  public Document validateGetWithDifferentFields(Document entity, boolean byName) throws HttpResponseException {
+  public Document validateGetWithDifferentFields(Document entity, boolean byName) {
     return null;
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

@@ -54,17 +54,17 @@ OpenMetadata is an all-in-one platform for data discovery, lineage, data quality
 /%}
 {% /tilesContainer %}
 
-## Quick Start Guide for Admins
+## Quick Start Guides
 
 {% tilesContainer %}
 {% tile
-    title="Admins"
+    title="Admin Guide"
     description="Admin users can get started with OpenMetadata with just three quick and easy steps & know-it-all with the advanced guides."
     link="/how-to-guides/quick-start-guide-for-admins"
     icon="administration"
 /%}
 {% tile
-    title="Data Stewards"
+    title="Guide for Data Stewards"
     description="Get to know the basics of OpenMetadata and about the data assets that you can explore in the all-in-one platform."
     link="/how-to-guides/user-guide-for-data-stewards"
     icon="steward"
@@ -79,20 +79,20 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Centralized, **Single Source of Truth** for all your metadata.
 
-- **Discover** the right assets in time and reduce dependencies.
+- **[Discover](/how-to-guides/openmetadata/data-discovery)** the right assets in time and reduce dependencies.
 
-- Foster **Team Collaboration** with conversations, tasks, announcements, and alerts in real time.
+- Foster **[Team Collaboration](/how-to-guides/openmetadata/data-collaboration)** with conversations, tasks, announcements, and alerts in real time.
 
-- Build trust in your data with **Data Quality Tests** to ensure completeness and accuracy.
+- Build trust in your data with **[Data Quality Tests](/how-to-guides/openmetadata/data-quality-profiler)** to ensure completeness and accuracy.
 
-- Track your data evolution with end-to-end **Data Lineage**.
+- Track your data evolution with end-to-end **[Data Lineage](/how-to-guides/openmetadata/data-lineage)**.
 
-- Secure access to sensitive data by defining **Roles and Policies**.
+- Secure access to sensitive data by defining **[Roles and Policies](/how-to-guides/admin-guide-roles-policies)**.
 
-- Enhance organizational **Data Culture** to gain crucial insights to drive innovation.
+- Enhance organizational **[Data Culture](/how-to-guides/openmetadata/data-insights)** to gain crucial insights to drive innovation.
 
-- Define your **Glossary** to build a common understanding of terms within your organization.
+- Define your **[Glossary](/how-to-guides/openmetadata/data-governance/glossary-classification)** to build a common understanding of terms within your organization.
 
-- Implement **Data Governance** to maintain data integrity, security, and compliance.
+- Implement **[Data Governance](/how-to-guides/openmetadata/data-governance)** to maintain data integrity, security, and compliance.
 
 {% /note %}

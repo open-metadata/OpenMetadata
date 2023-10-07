@@ -70,7 +70,7 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   }
 
   @Test
-  void post_withoutRequiredFields_400_badRequest(TestInfo test) throws HttpResponseException {
+  void post_withoutRequiredFields_400_badRequest(TestInfo test) {
     // Create dashboard with mandatory serviceType field empty
     assertResponse(
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
@@ -226,7 +226,7 @@ public class DashboardServiceResourceTest extends ServiceResourceTest<DashboardS
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
