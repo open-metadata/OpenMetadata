@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
@@ -41,12 +42,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
       return {
         isOver: monitor.isOver(),
-        dropClassName:
-          dragIndex !== index
-            ? isUndefined(record?.children)
-              ? 'drop-over-not-having-child'
-              : 'drop-over-having-child'
-            : '',
+        dropClassName: dragIndex !== index ? 'drop-over-child' : '',
       };
     },
     hover: () => {
@@ -75,7 +71,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
   return (
     <tr
-      className={`${className} ${isOver ? dropClassName : ''}`}
+      className={classNames(isOver ? dropClassName : '')}
       ref={ref}
       style={{
         cursor: 'move',

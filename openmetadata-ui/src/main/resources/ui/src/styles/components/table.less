@@ -89,13 +89,7 @@
 }
 
 .drop-over-background {
-  .drop-over-having-child {
-    td {
-      background: @active-color;
-      border-bottom: 2px solid @primary-color;
-    }
-  }
-  .drop-over-not-having-child {
+  .drop-over-child {
     td {
       background: @active-color;
       border: 2px dashed @primary-color;
@@ -112,11 +106,14 @@
 }
 
 .drop-over-table {
-  .ant-table-tbody {
-    tr {
-      &:nth-child(2) {
+  .ant-table {
+    table {
+      border-collapse: collapse;
+      .ant-table-tbody {
+        border: 2px dashed @primary-color;
+
         td {
-          border-top: 2px solid @primary-color;
+          background: @active-color;
         }
       }
     }
