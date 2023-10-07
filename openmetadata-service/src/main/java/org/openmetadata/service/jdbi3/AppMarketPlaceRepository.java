@@ -12,8 +12,7 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
         AppMarketPlaceResource.COLLECTION_PATH,
         Entity.APP_MARKET_PLACE_DEF,
         AppMarketPlaceDefinition.class,
-        dao.applicationMarketPlaceDAO(),
-        dao,
+        Entity.getCollectionDAO().applicationMarketPlaceDAO(),
         "",
         "");
     supportsSearch = false;

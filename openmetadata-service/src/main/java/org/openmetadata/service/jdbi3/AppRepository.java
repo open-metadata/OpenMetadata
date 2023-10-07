@@ -34,7 +34,13 @@ public class AppRepository extends EntityRepository<Application> {
   public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
 
   public AppRepository(CollectionDAO dao) {
-    super(AppResource.COLLECTION_PATH, Entity.APPLICATION, Application.class, dao.applicationDAO(), dao, "", "");
+    super(
+        AppResource.COLLECTION_PATH,
+        Entity.APPLICATION,
+        Application.class,
+        Entity.getCollectionDAO().applicationDAO(),
+        "",
+        "");
     supportsSearch = false;
   }
 

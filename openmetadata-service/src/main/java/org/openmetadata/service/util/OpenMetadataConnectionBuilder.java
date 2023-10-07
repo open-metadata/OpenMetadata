@@ -39,7 +39,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class OpenMetadataConnectionBuilder {
 
-  final AuthProvider authProvider;
+  AuthProvider authProvider;
   String bot;
   Object securityConfig;
   private VerifySSL verifySSL;
