@@ -50,7 +50,7 @@ const mockProps = {
   onChange: jest.fn(),
 };
 
-jest.mock('components/common/UserTag/UserTag.component', () => ({
+jest.mock('../../../components/common/UserTag/UserTag.component', () => ({
   UserTag: jest.fn().mockReturnValue(<div>UserTag</div>),
 }));
 

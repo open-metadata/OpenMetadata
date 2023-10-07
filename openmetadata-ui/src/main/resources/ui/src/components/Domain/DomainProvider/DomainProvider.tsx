@@ -12,13 +12,6 @@
  */
 import { ItemType, MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import {
-  ACTIVE_DOMAIN_STORAGE_KEY,
-  DEFAULT_DOMAIN_VALUE,
-  PAGE_SIZE_LARGE,
-} from 'constants/constants';
-import { Domain } from 'generated/entity/domains/domain';
 import React, {
   FC,
   ReactNode,
@@ -28,8 +21,15 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDomainList } from 'rest/domainAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+import {
+  ACTIVE_DOMAIN_STORAGE_KEY,
+  DEFAULT_DOMAIN_VALUE,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { getDomainList } from '../../../rest/domainAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import { DomainContextType } from './DomainProvider.interface';
 
 export const DomainContext = React.createContext({} as DomainContextType);

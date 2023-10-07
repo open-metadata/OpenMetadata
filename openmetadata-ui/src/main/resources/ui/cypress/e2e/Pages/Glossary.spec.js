@@ -160,6 +160,13 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     .should('be.visible')
     .type('https://test.com');
 
+  if (term.icon) {
+    cy.get('[data-testid="icon-url"]').scrollIntoView().type(term.icon);
+  }
+  if (term.color) {
+    cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
+  }
+
   // check for parent glossary reviewer
   if (glossary.name === NEW_GLOSSARY.name) {
     cy.get('[data-testid="user-tag"]')
@@ -535,10 +542,8 @@ describe('Glossary page should work properly', () => {
       expect(request.body.owner).to.have.all.keys('id', 'type');
       expect(request.body.reviewers).has.length(1);
       expect(request.body.tags).has.length(1);
-      expect(request.body.tags[0]).to.deep.equal({
-        tagFQN: 'PersonalData.Personal',
-        source: 'Classification',
-      });
+      expect(request.body.tags[0].tagFQN).equals('PersonalData.Personal');
+      expect(request.body.tags[0].source).equals('Classification');
 
       cy.url().should('include', '/glossary/');
 
@@ -850,6 +855,10 @@ describe('Glossary page should work properly', () => {
       .should('contain', term3)
       .should('contain', term4);
 
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="icon"]'
+    ).should('have.length', 2);
+
     // Add tag to schema table
     const firstColumn =
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]';
@@ -872,7 +881,9 @@ describe('Glossary page should work properly', () => {
     )
       .scrollIntoView()
       .should('contain', term3);
-
+    cy.get(
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="icon"]'
+    ).should('be.visible');
     cy.get('[data-testid="governance"]').click();
     cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 

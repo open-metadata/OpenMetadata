@@ -14,53 +14,53 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as IconTag } from 'assets/svg/classification.svg';
-import { ReactComponent as LockIcon } from 'assets/svg/closed-lock.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import classNames from 'classnames';
-import AppBadge from 'components/common/Badge/Badge.component';
-import Description from 'components/common/description/Description';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { DE_ACTIVE_COLOR, PAGE_SIZE } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ProviderType } from 'generated/api/classification/createClassification';
-import {
-  ChangeDescription,
-  Classification,
-} from 'generated/entity/classification/classification';
-import { Tag } from 'generated/entity/classification/tag';
-import { Operation } from 'generated/entity/policies/policy';
-import { Paging } from 'generated/type/paging';
 import { capitalize, isUndefined, toString } from 'lodash';
-import { DeleteTagsType } from 'pages/TagsPage/TagsPage.interface';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
+import { ReactComponent as LockIcon } from '../../assets/svg/closed-lock.svg';
+import { ReactComponent as VersionIcon } from '../../assets/svg/ic-version.svg';
+import AppBadge from '../../components/common/Badge/Badge.component';
+import Description from '../../components/common/description/Description';
+import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
+import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { DE_ACTIVE_COLOR, PAGE_SIZE } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { EntityType } from '../../enums/entity.enum';
+import { ProviderType } from '../../generated/api/classification/createClassification';
+import {
+  ChangeDescription,
+  Classification,
+} from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Operation } from '../../generated/entity/policies/policy';
+import { Paging } from '../../generated/type/paging';
+import { DeleteTagsType } from '../../pages/TagsPage/TagsPage.interface';
 import {
   getClassificationExtraDropdownContent,
   getTagsTableColumn,
-} from 'utils/ClassificationUtils';
+} from '../../utils/ClassificationUtils';
 import {
   getEntityVersionByField,
   getMutuallyExclusiveDiff,
-} from 'utils/EntityVersionUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
+} from '../../utils/EntityVersionUtils';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
-} from 'utils/RouterUtils';
+} from '../../utils/RouterUtils';
 
 export interface ClassificationDetailsProps {
   paging: Paging;

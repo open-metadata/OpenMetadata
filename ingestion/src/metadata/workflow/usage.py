@@ -55,9 +55,7 @@ class UsageWorkflow(BaseWorkflow):
             )
         )
 
-        source: Source = source_class.create(
-            self.config.source.dict(), self.metadata_config
-        )
+        source: Source = source_class.create(self.config.source.dict(), self.metadata)
         logger.debug(f"Source type:{source_type},{source_class} configured")
         source.prepare()
         logger.debug(f"Source type:{source_type},{source_class}  prepared")
@@ -85,7 +83,7 @@ class UsageWorkflow(BaseWorkflow):
         stage_type = self.config.stage.type
         stage_class = import_stage_class(stage_type=stage_type)
         stage_config = self.config.stage.dict().get("config", {})
-        stage: Stage = stage_class.create(stage_config, self.metadata_config)
+        stage: Stage = stage_class.create(stage_config, self.metadata)
         logger.debug(f"Stage Type: {stage_type}, {stage_class} configured")
 
         return stage
@@ -95,9 +93,7 @@ class UsageWorkflow(BaseWorkflow):
         bulk_sink_type = self.config.bulkSink.type
         bulk_sink_class = import_bulk_sink_type(bulk_sink_type=bulk_sink_type)
         bulk_sink_config = self.config.bulkSink.dict().get("config", {})
-        bulk_sink: BulkSink = bulk_sink_class.create(
-            bulk_sink_config, self.metadata_config
-        )
+        bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, self.metadata)
         logger.info(
             f"BulkSink type:{self.config.bulkSink.type},{bulk_sink_class} configured"
         )

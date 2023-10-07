@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Popover, Space, Tag, Typography } from 'antd';
-import { USER_DATA_SIZE } from 'constants/constants';
-import { EntityReference } from 'generated/entity/type';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
+import { USER_DATA_SIZE } from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { ChipProps } from './Chip.interface';
 
 const Chip = ({

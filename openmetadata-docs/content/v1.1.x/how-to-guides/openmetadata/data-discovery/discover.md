@@ -16,7 +16,8 @@ alt="Keyword Search"
 caption="Keyword Search"
 /%}
 
-Multiple filter options further help to narrow down the search by Owner, Tag, Tier, Service, Service Type, and other filters relevant to the type of data asset. You can also search by deleted data assets.
+## Quick Filters
+Multiple quick filter options further help to narrow down the search by **Owner, Tag, Tier, Service, Service Type**, and other filters relevant to the type of data asset like **Database, Schema, Columns**. You can also search by deleted data assets.
 
 {% image
 src="/images/v1.1/how-to-guides/discovery/kw2.png"
@@ -34,6 +35,15 @@ caption="Filter by the Type of Data Asset"
 /%}
 
 Users can navigate to the Explore page for specific type of data assets and use the filter options relevant to that data assset to narrow down the search.
+
+## Filter by Asset Owner
+A team or a user can own the data asset in OpenMetadata. Users can filter data assets by the asset owner. With information on the data asset owners, you can direct your questions to the right person or team.
+
+{% image
+src="/images/v1.1/how-to-guides/discovery/owner.png"
+alt="Filter by Asset Owner"
+caption="Filter by Asset Owner"
+/%}
 
 ## Filter by Database
 When searching while you are in a database page, you can narrow down your search to within the database or to include the overall search results within OpenMetadata.
@@ -54,21 +64,17 @@ caption="Filter based on Importance using Tiers"
 /%}
 
 ## Filter based on Importance: Usage
-OpenMetadata captures usage profiles for tables during metadata/profiler ingestion. This helps to learn how other data consumers are using the tables. You can search by weekly usage, last updated status, as well as relevance.
+OpenMetadata captures usage profiles for tables during metadata/profiler ingestion. This helps to learn how other data consumers are using the tables. You can use the quick filter to narrow down the search results by relevance by clicking on the down arrow on the top right of the Explore page. You can search for data by:
+- **Last Updated** - Filter data by the recent updates and changes.
+- **Weekly Usage** - Based on the data asset usage metrics.
+- **Relevance**
+
+These details are based on the usage summary computations. Further, you can **sort** the results by ascending and descending order.
 
 {% image
 src="/images/v1.1/how-to-guides/discovery/usage.png"
 alt="Filter based on Importance: Usage"
 caption="Filter based on Importance: Usage"
-/%}
-
-## Filter by Asset Owner
-A team or a user can own the data asset in OpenMetadata. Users can filter data assets by the asset owner. With information on the data asset owners, you can direct your questions to the right person or team.
-
-{% image
-src="/images/v1.1/how-to-guides/discovery/owner.png"
-alt="Filter by Asset Owner"
-caption="Filter by Asset Owner"
 /%}
 
 ## Discover Data through Association
@@ -106,10 +112,17 @@ caption="Discover Data Evolution: Version History"
 /%}
 
 ## Filter by Deleted Data Assets
-Users can also search for the deleted data assets in OpenMetadata.
+Users can also search for the soft-deleted data assets in OpenMetadata. Use the toggle bar to search for deleted assets. The deleted data assets are read-only.
 
 {% image
 src="/images/v1.1/how-to-guides/discovery/deleted.png"
 alt="Filter by Deleted Data Assets"
 caption="Filter by Deleted Data Assets"
+/%}
+
+Users can click on **Clear** to unselect all the filter options.
+{% image
+src="/images/v1.1/how-to-guides/discovery/clear.png"
+alt="Clear the Filters"
+caption="Clear the Filters"
 /%}

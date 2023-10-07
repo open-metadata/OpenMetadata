@@ -12,7 +12,7 @@
  */
 
 import { startCase } from 'lodash';
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../utils/i18next/LocalUtil';
 import { EntityField } from './Feeds.constants';
 
 export const ENTITY_DELETE_STATE = {

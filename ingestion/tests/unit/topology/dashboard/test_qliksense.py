@@ -30,6 +30,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
 from metadata.ingestion.source.dashboard.qliksense.metadata import QliksenseSource
 from metadata.ingestion.source.dashboard.qliksense.models import (
@@ -148,7 +149,7 @@ class QlikSenseUnitTest(TestCase):
             self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qliksense_config)
             self.qliksense = QliksenseSource.create(
                 mock_qliksense_config["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
             self.qliksense.context.__dict__[
                 "dashboard_service"

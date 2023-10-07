@@ -9,7 +9,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.util.FullyQualifiedName;
 
-public interface ColumnIndex extends ElasticSearchIndex {
+public interface ColumnIndex extends SearchIndex {
   default void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
     Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
     List<TagLabel> tags = new ArrayList<>();

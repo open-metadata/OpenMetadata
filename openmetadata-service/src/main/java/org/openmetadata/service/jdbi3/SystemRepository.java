@@ -28,8 +28,8 @@ public class SystemRepository {
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
 
-  public SystemRepository(CollectionDAO dao) {
-    this.dao = dao.systemDAO();
+  public SystemRepository() {
+    this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
   }
 

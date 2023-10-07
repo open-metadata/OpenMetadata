@@ -5,6 +5,8 @@ slug: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-annou
 
 # How to Create an Announcement
 
+{% note noteType="Tip" %} **Quick Tip:** Always watch out for announcements on the backward incompatible changes. Saves a ton of debugging time later on for data teams. {% /note %}
+
 To add an announcement:
 - Navigate to **Explore** and the relevant **Data Asset** section to select a specific asset.
 - Click on the vertical ellipsis icon **⋮** located on the top right and select **Announcements**.
@@ -35,4 +37,9 @@ alt="Add the Announcement Details"
 caption="Add the Announcement Details"
 /%}
 
-This announcement will be displayed in OpenMetadata during the scheduled time. It will be displayed to all the users who own or follow that particular data asset. 
+This announcement will be displayed in OpenMetadata during the scheduled time. It will be displayed to all the users who own or follow that particular data asset.
+
+{% note noteType="Warning" %} 
+**Pro Tip:** Create Announcements for deletion, deprecation, and other important changes. Let your team know of a tentative date when these changes will be implemented.
+{% /note noteType="Warning" %}
+{% /note %}

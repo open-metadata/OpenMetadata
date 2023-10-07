@@ -22,51 +22,8 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
-import AirflowMessageBanner from 'components/common/AirflowMessageBanner/AirflowMessageBanner';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import TestConnection from 'components/common/TestConnection/TestConnection';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataModelTable from 'components/DataModels/DataModelsTable';
-import Ingestion from 'components/Ingestion/Ingestion.component';
-import Loader from 'components/Loader/Loader';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import ServiceConnectionDetails from 'components/ServiceConnectionDetails/ServiceConnectionDetails.component';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import {
-  getServiceDetailsPath,
-  INITIAL_PAGING_VALUE,
-  pagingObject,
-} from 'constants/constants';
-import { OPEN_METADATA } from 'constants/Services.constant';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs } from 'enums/entity.enum';
-import { ServiceCategory } from 'enums/service.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { Container } from 'generated/entity/data/container';
-import { Dashboard } from 'generated/entity/data/dashboard';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { Pipeline } from 'generated/entity/data/pipeline';
-import { SearchIndex } from 'generated/entity/data/searchIndex';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
-import { Topic } from 'generated/entity/data/topic';
-import { DashboardConnection } from 'generated/entity/services/dashboardService';
-import { DatabaseService } from 'generated/entity/services/databaseService';
-import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Include } from 'generated/type/include';
-import { Paging } from 'generated/type/paging';
-import { LabelType, State } from 'generated/type/tagLabel';
-import { useAuth } from 'hooks/authHooks';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { ConfigData, ServicesType } from 'interface/service.interface';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import {
   PagingWithoutTotal,
@@ -82,42 +39,85 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import TestConnection from '../../components/common/TestConnection/TestConnection';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataModelTable from '../../components/DataModels/DataModelsTable';
+import Ingestion from '../../components/Ingestion/Ingestion.component';
+import Loader from '../../components/Loader/Loader';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import ServiceConnectionDetails from '../../components/ServiceConnectionDetails/ServiceConnectionDetails.component';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import {
+  getServiceDetailsPath,
+  INITIAL_PAGING_VALUE,
+  pagingObject,
+} from '../../constants/constants';
+import { OPEN_METADATA } from '../../constants/Services.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs } from '../../enums/entity.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Container } from '../../generated/entity/data/container';
+import { Dashboard } from '../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Database } from '../../generated/entity/data/database';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
+import { Topic } from '../../generated/entity/data/topic';
+import { DashboardConnection } from '../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
+import { ConfigData, ServicesType } from '../../interface/service.interface';
 import {
   getDashboards,
   getDataModels,
   ListDataModelParams,
-} from 'rest/dashboardAPI';
-import { getDatabases } from 'rest/databaseAPI';
+} from '../../rest/dashboardAPI';
+import { getDatabases } from '../../rest/databaseAPI';
 import {
   deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
-} from 'rest/ingestionPipelineAPI';
-import { fetchAirflowConfig } from 'rest/miscAPI';
-import { getMlModels } from 'rest/mlModelAPI';
-import { getPipelines } from 'rest/pipelineAPI';
-import { getSearchIndexes } from 'rest/SearchIndexAPI';
-import { getServiceByFQN, patchService } from 'rest/serviceAPI';
-import { getContainers } from 'rest/storageAPI';
-import { getTopics } from 'rest/topicsAPI';
-import { getEntityMissingError } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+} from '../../rest/ingestionPipelineAPI';
+import { fetchAirflowConfig } from '../../rest/miscAPI';
+import { getMlModels } from '../../rest/mlModelAPI';
+import { getPipelines } from '../../rest/pipelineAPI';
+import { getSearchIndexes } from '../../rest/SearchIndexAPI';
+import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
+import { getContainers } from '../../rest/storageAPI';
+import { getTopics } from '../../rest/topicsAPI';
+import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceVersionPath,
-} from 'utils/RouterUtils';
+} from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
-} from 'utils/ServiceUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
-import { getTagsWithoutTier } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../utils/ServiceUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
 
 export type ServicePageData =
@@ -750,17 +750,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const handleUpdateTier = useCallback(
-    async (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(serviceDetails?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(serviceDetails?.tags ?? []);
+    async (newTier?: Tag) => {
+      const tierTag = updateTierTag(serviceDetails?.tags ?? [], newTier);
       const updatedServiceDetails = {
         ...serviceDetails,
         tags: tierTag,

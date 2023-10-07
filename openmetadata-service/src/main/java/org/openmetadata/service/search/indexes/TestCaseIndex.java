@@ -20,7 +20,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TestCaseIndex implements ElasticSearchIndex {
+public class TestCaseIndex implements SearchIndex {
   final TestCase testCase;
 
   private static final List<String> excludeFields = List.of("changeDescription");

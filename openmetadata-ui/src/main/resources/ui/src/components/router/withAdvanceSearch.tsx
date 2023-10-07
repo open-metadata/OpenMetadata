@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AdvanceSearchProvider } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import React, { FC } from 'react';
+import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 
 export const withAdvanceSearch =
   (Component: FC) =>

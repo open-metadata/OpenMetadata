@@ -75,7 +75,7 @@ jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
-jest.mock('rest/miscAPI', () => ({
+jest.mock('../../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),

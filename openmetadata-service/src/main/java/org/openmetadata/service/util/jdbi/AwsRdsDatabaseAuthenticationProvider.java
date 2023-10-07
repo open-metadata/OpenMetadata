@@ -1,6 +1,5 @@
 package org.openmetadata.service.util.jdbi;
 
-import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -55,7 +54,7 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
       // Return token
       return RdsUtilities.builder().region(Region.of(awsRegion)).build().generateAuthenticationToken(request);
 
-    } catch (MalformedURLException | UnsupportedEncodingException e) {
+    } catch (MalformedURLException e) {
       // Throw
       throw new DatabaseAuthenticationProviderException(e);
     }
@@ -66,7 +65,7 @@ public class AwsRdsDatabaseAuthenticationProvider implements DatabaseAuthenticat
     return jdbcUrl.substring(jdbcUrl.indexOf("://") + 3);
   }
 
-  private Map<String, String> parseQueryParams(URL url) throws UnsupportedEncodingException {
+  private Map<String, String> parseQueryParams(URL url) {
     // Prepare
     Map<String, String> query_pairs = new LinkedHashMap<>();
     String query = url.getQuery();

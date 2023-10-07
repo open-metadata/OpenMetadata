@@ -14,29 +14,6 @@
 import { Button, Card, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { PAGE_SIZE } from 'constants/constants';
-import {
-  ELEMENT_DELETE_STATE,
-  MAX_ZOOM_VALUE,
-  MIN_ZOOM_VALUE,
-  ZOOM_TRANSITION_DURATION,
-  ZOOM_VALUE,
-} from 'constants/Lineage.constants';
-import { mockDatasetData } from 'constants/mockTourData.constants';
-import { EntityLineageNodeType, EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { AddLineage } from 'generated/api/lineage/addLineage';
-import { Column } from 'generated/entity/data/container';
-import { EntityReference } from 'generated/entity/type';
-import {
-  ColumnLineage,
-  EntityLineage,
-  LineageDetails,
-} from 'generated/type/entityLineage';
-import { withLoader } from 'hoc/withLoader';
 import { debounce, isEmpty, isNil, isUndefined, union, uniqueId } from 'lodash';
 import { LoadingState } from 'Models';
 import Qs from 'qs';
@@ -64,10 +41,30 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
 } from 'reactflow';
-import { getDataModelDetails } from 'rest/dataModelsAPI';
-import { getLineageByFQN, updateLineageEdge } from 'rest/lineageAPI';
-import { searchData } from 'rest/miscAPI';
-import { getTableDetails } from 'rest/tableAPI';
+import { PAGE_SIZE } from '../../../constants/constants';
+import {
+  ELEMENT_DELETE_STATE,
+  MAX_ZOOM_VALUE,
+  MIN_ZOOM_VALUE,
+  ZOOM_TRANSITION_DURATION,
+  ZOOM_VALUE,
+} from '../../../constants/Lineage.constants';
+import { mockDatasetData } from '../../../constants/mockTourData.constants';
+import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { AddLineage } from '../../../generated/api/lineage/addLineage';
+import { Column } from '../../../generated/entity/data/table';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  ColumnLineage,
+  EntityLineage,
+  LineageDetails,
+} from '../../../generated/type/entityLineage';
+import { withLoader } from '../../../hoc/withLoader';
+import { getDataModelDetails } from '../../../rest/dataModelsAPI';
+import { getLineageByFQN, updateLineageEdge } from '../../../rest/lineageAPI';
+import { searchData } from '../../../rest/miscAPI';
+import { getTableDetails } from '../../../rest/tableAPI';
 import {
   addLineageHandler,
   createNewEdge,
@@ -107,15 +104,18 @@ import {
   onNodeMouseMove,
   removeLineageHandler,
   updateEdgesWithLineageDetails,
-} from 'utils/EntityLineageUtils';
+} from '../../../utils/EntityLineageUtils';
 import {
   getEntityBreadcrumbs,
   getEntityLineage,
   getEntityName,
   getEntityReferenceFromEntity,
-} from 'utils/EntityUtils';
-import SVGIcons from 'utils/SvgUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/EntityUtils';
+import SVGIcons from '../../../utils/SvgUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '../../Loader/Loader';
+import { useTourProvider } from '../../TourProvider/TourProvider';
 import EdgeInfoDrawer from '../EntityInfoDrawer/EdgeInfoDrawer.component';
 import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import AddPipeLineModal from './AddPipeLineModal';

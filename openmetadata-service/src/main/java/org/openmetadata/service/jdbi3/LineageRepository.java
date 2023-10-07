@@ -36,8 +36,8 @@ import org.openmetadata.service.util.JsonUtils;
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO dao) {
-    this.dao = dao;
+  public LineageRepository() {
+    this.dao = Entity.getCollectionDAO();
     Entity.setLineageRepository(this);
   }
 

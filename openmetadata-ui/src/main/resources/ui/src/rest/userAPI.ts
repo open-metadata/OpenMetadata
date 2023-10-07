@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Include } from 'generated/type/include';
+
 import { PagingResponse } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -25,6 +25,7 @@ import { Bot } from '../generated/entity/bot';
 import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 

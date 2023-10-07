@@ -12,13 +12,16 @@
  */
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTime } from 'utils/date-time/DateTimeUtils';
-import { getFrontEndFormat, MarkdownToHTMLConverter } from 'utils/FeedUtils';
+import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import RichTextEditorPreviewer from '../../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  getFrontEndFormat,
+  MarkdownToHTMLConverter,
+} from '../../../../utils/FeedUtils';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const FeedCardBodyV1 = ({

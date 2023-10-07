@@ -12,14 +12,6 @@
  */
 
 import { Space, Typography } from 'antd';
-import { ReactComponent as IconTeamsGrey } from 'assets/svg/teams-grey.svg';
-import {
-  ExtentionEntities,
-  ExtentionEntitiesKeys,
-} from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { getTeamAndUserDetailsPath, getUserPath } from 'constants/constants';
 import {
   ArrayChange,
   Change,
@@ -27,16 +19,7 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { EntityType } from 'enums/entity.enum';
-import { Column as DataModelColumn } from 'generated/entity/data/dashboardDataModel';
-import { Field } from 'generated/entity/data/topic';
-import { MetadataService } from 'generated/entity/services/metadataService';
-import { EntityReference } from 'generated/entity/type';
 import { t } from 'i18next';
-import {
-  EntityDiffProps,
-  EntityDiffWithMultiChanges,
-} from 'interface/EntityVersion.interface';
 import {
   cloneDeep,
   isEmpty,
@@ -49,14 +32,31 @@ import {
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconTeamsGrey } from '../assets/svg/teams-grey.svg';
+import {
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { getTeamAndUserDetailsPath, getUserPath } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
+import { EntityType } from '../enums/entity.enum';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
+import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
 import { Column as TableColumn } from '../generated/entity/data/table';
+import { Field } from '../generated/entity/data/topic';
 import {
   ChangeDescription,
   FieldChange,
 } from '../generated/entity/services/databaseService';
+import { MetadataService } from '../generated/entity/services/metadataService';
+import { EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
+import {
+  EntityDiffProps,
+  EntityDiffWithMultiChanges,
+} from '../interface/EntityVersion.interface';
 import { getEntityBreadcrumbs, getEntityName } from './EntityUtils';
 import {
   TagLabelWithStatus,

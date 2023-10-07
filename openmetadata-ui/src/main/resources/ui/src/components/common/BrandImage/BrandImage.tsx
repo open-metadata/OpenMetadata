@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import MonoGram from 'assets/svg/logo-monogram.svg';
-import Logo from 'assets/svg/logo.svg';
-import { useApplicationConfigProvider } from 'components/ApplicationConfigProvider/ApplicationConfigProvider';
 import React, { FC } from 'react';
+import MonoGram from '../../../assets/svg/logo-monogram.svg';
+import Logo from '../../../assets/svg/logo.svg';
+import { useApplicationConfigProvider } from '../../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 
 interface BrandImageProps {
   dataTestId?: string;

@@ -12,14 +12,14 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import TableDataCardV2 from 'components/common/table-data-card-v2/TableDataCardV2';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { SearchIndex } from 'enums/search.enum';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
+import { SearchIndex } from '../../../../enums/search.enum';
+import { searchData } from '../../../../rest/miscAPI';
+import TableDataCardV2 from '../../../common/table-data-card-v2/TableDataCardV2';
+import { SourceType } from '../../../searched-data/SearchedData.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import { EntityUnion } from '../../explore.interface';
 import { TagsSummaryProps } from './TagsSummary.interface';
 
 function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {

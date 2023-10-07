@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { MessagingProvider } from 'generated/type/profile';
-import { Team } from '../../../generated/entity/teams/team';
+import { MessagingProvider, Team } from '../../../generated/entity/teams/team';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 
 export interface TeamHierarchyProps {
   currentTeam?: Team;
@@ -26,21 +25,9 @@ export interface TeamHierarchyProps {
   isFetchingAllTeamAdvancedDetails: boolean;
 }
 
-export interface DraggableBodyRowProps
-  extends React.HTMLAttributes<HTMLTableRowElement> {
-  index: number;
-  handleMoveRow: (dragRecord: Team, dropRecord: Team) => void;
-  record: Team;
-}
-
 export interface MovedTeamProps {
   from: Team;
   to: Team;
-}
-
-export interface DragCollectProps {
-  getItem: () => { index: number };
-  isOver: (options?: { shallow?: boolean }) => boolean;
 }
 
 export interface TableExpandableDataProps {
@@ -70,7 +57,7 @@ export interface TeamsInfoProps {
 export interface TeamsSubscriptionProps {
   hasEditPermission: boolean;
   subscription?: MessagingProvider;
-  updateTeamSubscription: (value: SubscriptionWebhook) => Promise<void>;
+  updateTeamSubscription: (value?: SubscriptionWebhook) => Promise<void>;
 }
 
 export interface SubscriptionWebhook {

@@ -12,25 +12,28 @@
  */
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { UserTag } from 'components/common/UserTag/UserTag.component';
-import { UserTagSize } from 'components/common/UserTag/UserTag.interface';
-import { PAGE_SIZE } from 'constants/constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/type';
-import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
-import { includes } from 'lodash';
+import { includes, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { searchData } from 'rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
-import { getCurrentUserId } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { generateFormFields, getField } from 'utils/formUtils';
-import { getEntityReferenceFromGlossaryTerm } from 'utils/GlossaryUtils';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { PAGE_SIZE } from '../../../constants/constants';
+import {
+  ENTITY_NAME_REGEX,
+  HEX_COLOR_CODE_REGEX,
+} from '../../../constants/regex.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { Paging } from '../../../generated/type/paging';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { searchData } from '../../../rest/miscAPI';
+import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
+import { getCurrentUserId } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { generateFormFields, getField } from '../../../utils/formUtils';
+import { getEntityReferenceFromGlossaryTerm } from '../../../utils/GlossaryUtils';
+import { UserTag } from '../../common/UserTag/UserTag.component';
+import { UserTagSize } from '../../common/UserTag/UserTag.interface';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
-import { ReactComponent as DeleteIcon } from '/assets/svg/ic-delete.svg';
 
 const AddGlossaryTermForm = ({
   editMode,
@@ -99,11 +102,18 @@ const AddGlossaryTermForm = ({
       mutuallyExclusive = false,
       references = [],
       relatedTerms,
+      color,
+      iconURL,
     } = formObj;
 
     const selectedOwner = owner || {
       id: getCurrentUserId(),
       type: 'user',
+    };
+
+    const style = {
+      color,
+      iconURL,
     };
 
     const data = {
@@ -121,7 +131,9 @@ const AddGlossaryTermForm = ({
       mutuallyExclusive,
       tags: tags,
       owner: selectedOwner,
+      style: isEmpty(style) ? undefined : style,
     };
+
     onSave(data);
   };
 
@@ -141,6 +153,7 @@ const AddGlossaryTermForm = ({
         reviewers,
         owner,
         relatedTerms,
+        style,
       } = glossaryTerm;
 
       form.setFieldsValue({
@@ -156,6 +169,12 @@ const AddGlossaryTermForm = ({
 
       if (reviewers) {
         form.setFieldValue('reviewers', reviewers);
+      }
+      if (style?.color) {
+        form.setFieldValue('color', style.color);
+      }
+      if (style?.iconURL) {
+        form.setFieldValue('iconURL', style.iconURL);
       }
 
       if (owner) {
@@ -256,6 +275,30 @@ const AddGlossaryTermForm = ({
         }),
         fetchOptions: fetchGlossaryTerms,
       },
+    },
+    {
+      name: 'iconURL',
+      id: 'root/iconURL',
+      label: t('label.icon-url'),
+      required: false,
+      placeholder: t('label.icon-url'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'icon-url',
+      },
+    },
+    {
+      name: 'color',
+      id: 'root/color',
+      label: t('label.color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
     },
     {
       name: 'mutuallyExclusive',

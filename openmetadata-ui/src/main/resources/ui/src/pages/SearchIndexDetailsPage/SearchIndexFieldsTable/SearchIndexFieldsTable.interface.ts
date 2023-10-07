@@ -12,9 +12,9 @@
  */
 
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import { ThreadType } from 'generated/api/feed/createThread';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { ReactNode } from 'react';
+import { ThreadType } from '../../../generated/api/feed/createThread';
+import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 
 export interface SearchIndexFieldsTableProps {
   searchIndexFields: Array<SearchIndexField>;

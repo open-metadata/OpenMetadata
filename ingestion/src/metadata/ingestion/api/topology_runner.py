@@ -224,7 +224,7 @@ class TopologyRunnerMixin(Generic[C]):
         if stage.must_return and entity is None:
             # Safe access to Entity Request name
             raise MissingExpectedEntityAckException(
-                f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
+                f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
                 "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
                 "for the service connection."
             )
@@ -300,28 +300,28 @@ class TopologyRunnerMixin(Generic[C]):
         """
 
         # Either use the received request or the acknowledged Entity
-        entity = entity_request.right
+        entity = entity_request.right if entity_request else None
 
         if not stage.nullable and entity is None:
             raise ValueError("Value unexpectedly None")
 
-        # Check that we properly received a Right response to process
-        if entity_request.right is not None:
+        if entity_request is not None:
+            # Check that we properly received a Right response to process
+            if entity_request.right is not None:
+                # We need to acknowledge that the Entity has been properly sent to the server
+                # to update the context
+                if stage.context:
+                    yield from self.yield_and_update_context(
+                        entity, stage=stage, entity_request=entity_request
+                    )
 
-            # We need to acknowledge that the Entity has been properly sent to the server
-            # to update the context
-            if stage.context:
-                yield from self.yield_and_update_context(
-                    entity, stage=stage, entity_request=entity_request
-                )
+                else:
+                    yield entity_request
 
             else:
+                # if entity_request.right is None, means that we have a Left. We yield the Either and
+                # let the step take care of the
                 yield entity_request
-
-        else:
-            # if entity_request.right is None, means that we have a Left. We yield the Either and
-            # let the step take care of the
-            yield entity_request
 
     def _is_force_overwrite_enabled(self) -> bool:
         return self.metadata.config and self.metadata.config.forceEntityOverwriting

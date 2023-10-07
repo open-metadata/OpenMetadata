@@ -11,24 +11,22 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import { EMAIL_REG_EX } from 'constants/regex.constants';
-import { useAuth } from 'hooks/authHooks';
-import { isEmpty, last } from 'lodash';
-import { useTranslation } from 'react-i18next';
-import { hasEditAccess } from 'utils/CommonUtils';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-
+import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import TeamTypeSelect from 'components/common/TeamTypeSelect/TeamTypeSelect.component';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { Team, TeamType } from 'generated/entity/teams/team';
-import { EntityReference } from 'generated/entity/type';
+import { isEmpty, last } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import { EMAIL_REG_EX } from '../../../../constants/regex.constants';
+import { Team, TeamType } from '../../../../generated/entity/teams/team';
+import { EntityReference } from '../../../../generated/entity/type';
+import { useAuth } from '../../../../hooks/authHooks';
+import { hasEditAccess } from '../../../../utils/CommonUtils';
+import { useAuthContext } from '../../../authentication/auth-provider/AuthProvider';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import TeamTypeSelect from '../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { TeamsInfoProps } from '../team.interface';
 
 const TeamsInfo = ({

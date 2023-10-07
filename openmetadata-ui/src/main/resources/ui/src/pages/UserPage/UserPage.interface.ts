@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchEntityHits } from 'utils/APIUtils';
+import { SearchEntityHits } from '../../utils/APIUtils';
 
 export interface UserAssetsDataType {
   data: SearchEntityHits;

@@ -12,7 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { getTestCaseExecutionSummary } from 'rest/testAPI';
+import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { SummaryPanel } from './SummaryPanel.component';
 
 const testCasePermission = {
@@ -31,21 +31,21 @@ const mockSummary = {
   failed: 1,
 };
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
     },
   })),
 }));
-jest.mock('components/common/SummaryCard/SummaryCard.component', () => {
+jest.mock('../../common/SummaryCard/SummaryCard.component', () => {
   return {
     SummaryCard: jest
       .fn()
       .mockImplementation(() => <div>SummaryCard.component</div>),
   };
 });
-jest.mock('rest/testAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
     getTestCaseExecutionSummary: jest
       .fn()

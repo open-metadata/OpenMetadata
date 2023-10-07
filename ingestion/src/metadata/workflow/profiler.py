@@ -37,12 +37,11 @@ class ProfilerWorkflow(BaseWorkflow):
     def __init__(self, config: OpenMetadataWorkflowConfig):
         super().__init__(config)
 
+        # Validate that we can properly reach the source database
         self.test_connection()
 
     def set_steps(self):
-        self.source = OpenMetadataSource.create(
-            self.config.dict(), self.metadata_config
-        )
+        self.source = OpenMetadataSource.create(self.config.dict(), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
         pii_processor = self._get_pii_processor()
@@ -60,13 +59,13 @@ class ProfilerWorkflow(BaseWorkflow):
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
         sink_config = self.config.sink.dict().get("config", {})
-        sink: Sink = sink_class.create(sink_config, self.metadata_config)
+        sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(self.config.dict(), self.metadata_config)
+        return ProfilerProcessor.create(self.config.dict(), self.metadata)
 
     def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.dict(), self.metadata_config)
+        return PIIProcessor.create(self.config.dict(), self.metadata)

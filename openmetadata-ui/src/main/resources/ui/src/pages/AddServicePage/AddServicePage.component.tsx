@@ -12,19 +12,13 @@
  */
 
 import { AxiosError } from 'axios';
-import AddService from 'components/AddService/AddService.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
 import { startCase } from 'lodash';
 import { ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  addIngestionPipeline,
-  deployIngestionPipelineById,
-  getIngestionPipelineByFqn,
-} from 'rest/ingestionPipelineAPI';
-import { postService } from 'rest/serviceAPI';
+import AddService from '../../components/AddService/AddService.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -35,6 +29,12 @@ import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DataObj } from '../../interface/service.interface';
+import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+  getIngestionPipelineByFqn,
+} from '../../rest/ingestionPipelineAPI';
+import { postService } from '../../rest/serviceAPI';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

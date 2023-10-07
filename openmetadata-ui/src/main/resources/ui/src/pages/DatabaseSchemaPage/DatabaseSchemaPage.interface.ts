@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Paging } from 'generated/type/paging';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
+import { Paging } from '../../generated/type/paging';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 
 export interface StoredProcedureData {
   isLoading: boolean;

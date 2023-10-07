@@ -12,11 +12,11 @@
  */
 
 import { Button, Space } from 'antd';
-import { ReactComponent as DownUpArrowIcon } from 'assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as UpDownArrowIcon } from 'assets/svg/ic-up-down-arrow.svg';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as DownUpArrowIcon } from '../../assets/svg/ic-down-up-arrow.svg';
+import { ReactComponent as UpDownArrowIcon } from '../../assets/svg/ic-up-down-arrow.svg';
+import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { ToggleExpandButtonProps } from './ToggleExpandButton.interface';
 
 function ToggleExpandButton({

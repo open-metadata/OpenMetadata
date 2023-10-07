@@ -131,6 +131,8 @@ migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
 
+  extensionPath: ${MIGRATION_EXTENSION_PATH:-""}
+
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -347,6 +349,3 @@ web:
 changeEventConfig:
   omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
 
-extensionConfiguration:
-  resourcePackage: ${OM_RESOURCE_PACKAGES:-[]}
-  extensions: ${OM_EXTENSIONS:-[]}

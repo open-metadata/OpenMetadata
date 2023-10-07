@@ -12,10 +12,10 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
 import React from 'react';
-import { getStoredProceduresDetailsByFQN } from 'rest/storedProceduresAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { getStoredProceduresDetailsByFQN } from '../../rest/storedProceduresAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import StoredProcedurePage from './StoredProcedurePage';
 
 const mockEntityPermissionByFqn = jest
@@ -25,13 +25,13 @@ const mockEntityPermissionByFqn = jest
 const API_FIELDS = `owner, followers, 
 tags, domain, votes`;
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
-jest.mock('rest/storedProceduresAPI', () => ({
+jest.mock('../../rest/storedProceduresAPI', () => ({
   getStoredProceduresDetailsByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({
       name: 'test',
@@ -44,14 +44,14 @@ jest.mock('rest/storedProceduresAPI', () => ({
   restoreStoredProcedures: jest.fn(),
 }));
 
-jest.mock('utils/CommonUtils', () => ({
+jest.mock('../../utils/CommonUtils', () => ({
   getCurrentUserId: jest.fn(),
   getFeedCounts: jest.fn(),
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => ({
     ActivityFeedTab: jest
       .fn()
@@ -60,30 +60,38 @@ jest.mock(
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
   () => {
     return jest.fn().mockImplementation(() => <p>testActivityThreadPanel</p>);
   }
 );
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
 
-jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockImplementation(() => <p>testEntityLineageComponent</p>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <p>testEntityLineageComponent</p>);
+  }
+);
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-});
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
+  }
+);
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
 jest.mock(
-  'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest
       .fn()
@@ -91,24 +99,27 @@ jest.mock(
   })
 );
 
-jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
+  }
+);
 
-jest.mock('components/schema-editor/SchemaEditor', () => {
+jest.mock('../../components/schema-editor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaEditor</p>);
 });
 
-jest.mock('components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <p>testTagsContainerV2</p>);
 });
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn(),
@@ -125,7 +136,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <>testLoader</>);
 });
 

@@ -13,6 +13,10 @@
 
 import { t } from 'i18next';
 import { cloneDeep, isNil, isUndefined, omit } from 'lodash';
+import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
+import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
+import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
+import { SUBSCRIPTION_WEBHOOK } from '../constants/Teams.constants';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import {
   EntityReference,
@@ -20,11 +24,6 @@ import {
   TeamType,
 } from '../generated/entity/teams/team';
 import { getEntityIdArray } from './CommonUtils';
-
-import { SUBSCRIPTION_WEBHOOK } from 'constants/Teams.constants';
-import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
-import { ReactComponent as MsTeamsIcon } from '../assets/svg/ms-teams.svg';
-import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 
 /**
  * To get filtered list of non-deleted(active) users
