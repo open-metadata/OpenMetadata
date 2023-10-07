@@ -143,8 +143,7 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
 
   @Override
   public void validateCreatedEntity(
-      StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      StorageService service, CreateStorageService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     StorageConnection expectedConnection = createRequest.getConnection();
     StorageConnection actualConnection = service.getConnection();
@@ -152,10 +151,8 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
   }
 
   @Override
-  public void compareEntities(StorageService expected, StorageService updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(StorageService expected, StorageService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
-
   }
 
   @Override
@@ -178,7 +175,7 @@ public class StorageServiceResourceTest extends ServiceResourceTest<StorageServi
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

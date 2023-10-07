@@ -21,7 +21,7 @@ public class OMErrorPageHandler extends ErrorPageErrorHandler {
 
   @Override
   public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ServletException {
+      throws IOException {
     this.doError(target, baseRequest, request, response);
   }
 
