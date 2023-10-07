@@ -12,7 +12,8 @@
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Alert, Col, Row, Space, Typography } from 'antd';
-import React from 'react';
+import { isUndefined } from 'lodash';
+import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -22,13 +23,20 @@ import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader
 interface AnnouncementsWidgetProps {
   announcements: Thread[];
   isEditView?: boolean;
+  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 function AnnouncementsWidget({
   announcements,
   isEditView,
+  handleRemoveWidget,
 }: AnnouncementsWidgetProps) {
   const { t } = useTranslation();
+
+  const handleCloseClick = useCallback(() => {
+    !isUndefined(handleRemoveWidget) &&
+      handleRemoveWidget('KnowledgePanel.Announcements');
+  }, []);
 
   return (
     <div className="p-md p-b-xss">
@@ -45,7 +53,7 @@ function AnnouncementsWidget({
                 className="drag-widget-icon cursor-pointer"
                 size={14}
               />
-              <CloseOutlined size={14} />
+              <CloseOutlined size={14} onClick={handleCloseClick} />
             </Space>
           </Col>
         )}

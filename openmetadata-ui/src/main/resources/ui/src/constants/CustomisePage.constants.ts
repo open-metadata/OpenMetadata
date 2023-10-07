@@ -12,71 +12,204 @@
  */
 export const LANDING_PAGE_LAYOUT = [
   {
-    w: 3, // similler to gridSize of docStore
-    h: 4, // for now we can have this hardcodede as we won't support variable height
-    x: 0, // x position in the page, works in grid manner. If we have 4 cols in total 0 represent first segment
-    y: 0, // y position in the page
-    i: 'KnowledgePanel.ActivityFeed', // fqn of the knowledge panel that needs to be placed
-    static: false, // used for right hand side panel
-  },
-  {
-    w: 1,
-    h: 2,
-    x: 0,
-    y: 4,
+    h: 3.1,
     i: 'KnowledgePanel.MyData',
-    static: false,
-  },
-  {
-    w: 2,
-    h: 2,
-    x: 1,
-    y: 4,
-    i: 'KnowledgePanel.KPI',
-    static: false,
-  },
-  {
-    w: 3,
-    h: 2.2,
+    w: 1,
     x: 0,
     y: 6,
-    i: 'KnowledgePanel.TotalDataAssets',
     static: false,
   },
   {
+    h: 3.42,
+    i: 'KnowledgePanel.TotalDataAssets',
+    w: 3,
+    x: 0,
+    y: 9.1,
+    static: false,
+  },
+  {
+    h: 6,
+    i: 'Container.RightSidebar',
     w: 1,
-    h: 9,
     x: 3,
     y: 0,
-    i: 'Container.RightSidebar',
+    data: {
+      page: {
+        layout: [
+          {
+            h: 1.5,
+            i: 'KnowledgePanel.Announcements',
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: 1.5,
+            i: 'KnowledgePanel.Following',
+            w: 1,
+            x: 0,
+            y: 1.5,
+            static: false,
+          },
+          {
+            h: 1.5,
+            i: 'KnowledgePanel.RecentlyViewed',
+            w: 1,
+            x: 0,
+            y: 3,
+            static: false,
+          },
+        ],
+        knowledgePanels: [
+          {
+            name: 'KnowledgePanel.Announcements',
+            type: 'KnowLedgePanels',
+          },
+          {
+            name: 'KnowledgePanel.Following',
+            type: 'KnowLedgePanels',
+          },
+          {
+            name: 'KnowledgePanel.RecentlyViewed',
+            type: 'KnowLedgePanels',
+          },
+        ],
+      },
+    },
     static: true,
-    childrenConfig: {
+  },
+  {
+    h: 6,
+    i: 'KnowledgePanel.ActivityFeed',
+    w: 3,
+    x: 0,
+    y: 0,
+    static: false,
+  },
+  {
+    h: 3.1,
+    i: 'KnowledgePanel.KPI',
+    w: 2,
+    x: 1,
+    y: 6,
+    static: false,
+  },
+];
+
+export const pageData = {
+  name: 'LandingPage',
+  fullyQualifiedName: 'persona.TestPersona.Page.LandingPage',
+  entityType: 'Page',
+  data: {
+    page: {
       layout: [
         {
+          h: 3.1,
+          i: 'KnowledgePanel.MyData',
           w: 1,
-          h: 1.5,
           x: 0,
+          y: 6.3,
+          moved: false,
+          static: false,
+        },
+        {
+          h: 3.42,
+          i: 'KnowledgePanel.TotalDataAssets',
+          w: 3,
+          x: 0,
+          y: 9.4,
+          moved: false,
+          static: false,
+        },
+        {
+          h: 6,
+          i: 'Container.RightSidebar',
+          w: 1,
+          x: 3,
           y: 0,
-          i: 'KnowledgePanel.Annoucements',
+          data: {
+            page: {
+              layout: [
+                {
+                  h: 1.5,
+                  i: 'KnowledgePanel.RecentlyViewed',
+                  w: 1,
+                  x: 0,
+                  y: 4.8,
+                  moved: false,
+                  static: false,
+                },
+                {
+                  h: 2.3,
+                  i: 'KnowledgePanel.Following',
+                  w: 1,
+                  x: 0,
+                  y: 2.5,
+                  moved: false,
+                  static: false,
+                },
+                {
+                  h: 2.3,
+                  i: 'KnowledgePanel.RecentlyVisited',
+                  w: 1,
+                  x: 0,
+                  y: 0.2,
+                  moved: false,
+                  static: false,
+                },
+              ],
+            },
+          },
+          moved: false,
+          static: true,
+        },
+        {
+          h: 6,
+          i: 'KnowledgePanel.ActivityFeed',
+          w: 3,
+          x: 0,
+          y: 0.3,
+          moved: false,
           static: false,
         },
         {
-          w: 1,
-          h: 1.5,
-          x: 0,
-          y: 1.5,
-          i: 'KnowledgePanel.Following',
+          h: 3.1,
+          i: 'KnowledgePanel.KPI',
+          w: 2,
+          x: 1,
+          y: 6.3,
+          moved: false,
           static: false,
         },
+      ],
+      pageType: 'LandingPage',
+      knowledgePanels: [
         {
-          w: 1,
-          h: 1.5,
-          x: 0,
-          y: 3,
-          i: 'KnowledgePanel.RecentlyViewed',
-          static: false,
+          name: 'KnowledgePanel.ActivityFeed',
+          type: 'KnowLedgePanels',
+        },
+        {
+          name: 'KnowledgePanel.MyData',
+          type: 'KnowLedgePanels',
+        },
+        {
+          name: 'KnowledgePanel.KPI',
+          type: 'KnowLedgePanels',
+        },
+        {
+          name: 'KnowledgePanel.TotalDataAssets',
+          type: 'KnowLedgePanels',
+        },
+        {
+          name: 'Container.RightSidebar',
+          type: 'KnowLedgePanels',
         },
       ],
     },
   },
-];
+  updatedAt: 1696667113677,
+  updatedBy: 'admin',
+  version: 3.9,
+  href: 'http://localhost:8585/api/v1/docStore/91bef041-20c5-4bea-8e17-576fba6436a4',
+};

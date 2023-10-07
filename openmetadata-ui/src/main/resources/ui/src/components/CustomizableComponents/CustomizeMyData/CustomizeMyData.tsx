@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { t } from 'i18next';
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
@@ -36,17 +40,17 @@ import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 function CustomizeMyData({
-  widgetsData,
+  layoutData,
   handleRemoveWidget,
   handleOpenAddWidgetModal,
   handleLayoutUpdate,
+  handleLayoutChange,
 }: CustomizeMyDataProps) {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
-  const { layout = LANDING_PAGE_LAYOUT } = widgetsData.data?.page ?? {};
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -123,8 +127,28 @@ function CustomizeMyData({
                 followedDataCount={followedDataCount}
                 isLoadingOwnedData={isLoadingOwnedData}
                 layoutConfigData={widgetConfig.data}
+                parentLayoutData={layoutData}
+                updateParentLayout={handleLayoutChange}
               />
             </div>
+          );
+
+        case 'ExtraWidget.AddWidgetButton':
+          return (
+            <Row justify="end">
+              <Col>
+                <Button
+                  ghost
+                  className="shadow-none"
+                  data-testid="add-widget-placeholder-button"
+                  icon={<PlusOutlined />}
+                  size="small"
+                  type="primary"
+                  onClick={handleOpenAddWidgetModal}>
+                  {t('label.add')}
+                </Button>
+              </Col>
+            </Row>
           );
 
         default:
@@ -142,14 +166,17 @@ function CustomizeMyData({
 
   const widgets = useMemo(
     () =>
-      (isEmpty(layout) ? LANDING_PAGE_LAYOUT : layout).map(
-        (widget: WidgetConfig) => (
-          <div data-grid={widget} key={widget.i}>
-            {getWidgetFromKey(widget)}
-          </div>
-        )
-      ),
-    [layout, getWidgetFromKey]
+      (isEmpty(layoutData) ? LANDING_PAGE_LAYOUT : layoutData).map((widget) => (
+        <div
+          className={classNames({
+            'mt--0.625': widget.i === 'Container.RightSidebar',
+          })}
+          data-grid={widget}
+          key={widget.i}>
+          {getWidgetFromKey(widget)}
+        </div>
+      )),
+    [layoutData, getWidgetFromKey]
   );
 
   useEffect(() => {

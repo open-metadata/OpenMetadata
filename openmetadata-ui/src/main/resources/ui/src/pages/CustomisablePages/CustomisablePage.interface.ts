@@ -12,9 +12,12 @@
  */
 
 import { Layout } from 'react-grid-layout';
-import { Document } from '../../generated/entity/docStore/document';
 
 export interface WidgetConfig
   extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static'> {
-  data?: Document['data'];
+  data?: {
+    page: {
+      layout: Array<WidgetConfig>;
+    };
+  };
 }

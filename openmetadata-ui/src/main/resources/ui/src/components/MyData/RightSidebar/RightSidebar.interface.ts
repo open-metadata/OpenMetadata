@@ -20,4 +20,6 @@ export interface RightSidebarProps {
   followedData: Array<EntityReference>;
   isLoadingOwnedData: boolean;
   layoutConfigData?: WidgetConfig['data'];
+  parentLayoutData?: Array<WidgetConfig>;
+  updateParentLayout?: (newLayout: Array<WidgetConfig>) => void;
 }

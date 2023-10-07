@@ -13,7 +13,8 @@
 
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
@@ -25,9 +26,13 @@ import './recently-viewed.less';
 
 interface RecentlyViewedProps {
   isEditView?: boolean;
+  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
-const RecentlyViewed = ({ isEditView }: RecentlyViewedProps) => {
+const RecentlyViewed = ({
+  isEditView,
+  handleRemoveWidget,
+}: RecentlyViewedProps) => {
   const { t } = useTranslation();
 
   const [data, setData] = useState<Array<EntityReference>>([]);
@@ -52,6 +57,11 @@ const RecentlyViewed = ({ isEditView }: RecentlyViewedProps) => {
     }
   };
 
+  const handleCloseClick = useCallback(() => {
+    !isUndefined(handleRemoveWidget) &&
+      handleRemoveWidget('KnowledgePanel.RecentlyVisited');
+  }, []);
+
   useEffect(() => {
     prepareData();
   }, []);
@@ -75,7 +85,7 @@ const RecentlyViewed = ({ isEditView }: RecentlyViewedProps) => {
                     className="drag-widget-icon cursor-pointer"
                     size={14}
                   />
-                  <CloseOutlined size={14} />
+                  <CloseOutlined size={14} onClick={handleCloseClick} />
                 </Space>
               </Col>
             )}

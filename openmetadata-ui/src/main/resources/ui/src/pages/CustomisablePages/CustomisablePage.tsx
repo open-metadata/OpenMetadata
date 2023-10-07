@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { compare } from 'fast-json-patch';
 import { isEmpty, startCase } from 'lodash';
@@ -21,6 +20,7 @@ import { useParams } from 'react-router-dom';
 import AddWidgetModal from '../../components/CustomizableComponents/AddWidgetModal/AddWidgetModal';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
+import { LANDING_PAGE_LAYOUT } from '../../constants/CustomisePage.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { PageType } from '../../generated/system/ui/page';
@@ -30,7 +30,17 @@ import { WidgetConfig } from './CustomisablePage.interface';
 export const CustomisablePage = () => {
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
   const [page, setPage] = useState<Document>({} as Document);
-  const [layout, setLayout] = useState<Document>({} as Document);
+  const [layout, setLayout] = useState<Array<WidgetConfig>>([
+    {
+      h: 0.3,
+      i: 'ExtraWidget.AddWidgetButton',
+      w: 3,
+      x: 0,
+      y: 0,
+      static: true,
+    },
+    ...LANDING_PAGE_LAYOUT,
+  ]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const { t } = useTranslation();
@@ -42,7 +52,17 @@ export const CustomisablePage = () => {
         `${EntityType.PERSONA}.${fqn}.${EntityType.PAGE}.${pageFqn}`
       );
       setPage(pageData);
-      setLayout(pageData);
+      setLayout([
+        {
+          h: 0.3,
+          i: 'ExtraWidget.AddWidgetButton',
+          w: 3,
+          x: 0,
+          y: 0,
+          static: true,
+        },
+        ...(pageData.data.page?.layout ?? []),
+      ]);
     } catch (error) {
       // Error
     } finally {
@@ -50,90 +70,62 @@ export const CustomisablePage = () => {
     }
   };
 
+  const handleLayoutChange = useCallback((newLayout: Array<WidgetConfig>) => {
+    setLayout(newLayout);
+  }, []);
+
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout((pageData) => {
+    setLayout((currentLayout) => {
       if (widgetKey.endsWith('.EmptyWidgetPlaceholder')) {
-        return {
-          ...pageData,
-          data: {
-            page: {
-              ...pageData.data.page,
-              layout: pageData.data.page.layout.filter(
-                (widget: WidgetConfig) => widget.i !== widgetKey
-              ),
-            },
-          },
-        };
+        return currentLayout.filter(
+          (widget: WidgetConfig) => widget.i !== widgetKey
+        );
       } else {
-        return {
-          ...pageData,
-          data: {
-            page: {
-              ...pageData.data.page,
-              layout: pageData.data.page.layout.map((widget: WidgetConfig) =>
-                widget.i === widgetKey
-                  ? {
-                      ...widget,
-                      i: widgetKey + '.EmptyWidgetPlaceholder',
-                      h: widget.h > 3 ? 3 : widget.h,
-                    }
-                  : widget
-              ),
-            },
-          },
-        };
+        return currentLayout.map((widget: WidgetConfig) =>
+          widget.i === widgetKey
+            ? {
+                ...widget,
+                i: widgetKey + '.EmptyWidgetPlaceholder',
+                h: widget.h > 3 ? 3 : widget.h,
+              }
+            : widget
+        );
       }
     });
   }, []);
 
   const handleAddWidget = useCallback(
     (newWidgetData: Document) => {
-      setLayout((pageData) => {
-        const isEmptyPlaceholderPresent = pageData.data.page.layout.find(
+      setLayout((currentLayout) => {
+        const isEmptyPlaceholderPresent = currentLayout.find(
           (widget: WidgetConfig) =>
             widget.i ===
             `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
         );
 
         if (isEmptyPlaceholderPresent) {
-          return {
-            ...pageData,
-            data: {
-              page: {
-                ...pageData.data.page,
-                layout: pageData.data.page.layout.map((widget: WidgetConfig) =>
-                  widget.i ===
-                  `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
-                    ? {
-                        ...widget,
-                        i: newWidgetData.fullyQualifiedName,
-                        h: newWidgetData.data.height,
-                      }
-                    : widget
-                ),
-              },
-            },
-          };
+          return currentLayout.map((widget: WidgetConfig) =>
+            widget.i ===
+            `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
+              ? {
+                  ...widget,
+                  i: newWidgetData.fullyQualifiedName,
+                  h: newWidgetData.data.height,
+                }
+              : widget
+          );
         } else {
-          return {
-            ...pageData,
-            data: {
-              page: {
-                ...pageData.data.page,
-                layout: [
-                  ...pageData.data.page.layout,
-                  {
-                    w: newWidgetData.data.gridSizes[0],
-                    h: newWidgetData.data.height,
-                    x: 0,
-                    y: 0,
-                    i: newWidgetData.fullyQualifiedName,
-                    static: false,
-                  },
-                ],
-              },
+          return [
+            ...currentLayout,
+            {
+              w: newWidgetData.data.gridSizes[0],
+              h: newWidgetData.data.height,
+              x: 0,
+              y: 0,
+              i: newWidgetData.fullyQualifiedName,
+              static: false,
             },
-          };
+          ];
         }
       });
       setIsWidgetModalOpen(false);
@@ -144,29 +136,18 @@ export const CustomisablePage = () => {
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
       if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout((pageData) => ({
-          ...pageData,
-          data: {
-            page: {
-              ...pageData.data.page,
-              layout: updatedLayout.map((widget) => {
-                const widgetData = pageData.data.page.layout.find(
-                  (a: WidgetConfig) => a.i === widget.i
-                );
+        setLayout((currentLayout) => {
+          return updatedLayout.map((widget) => {
+            const widgetData = currentLayout.find(
+              (a: WidgetConfig) => a.i === widget.i
+            );
 
-                return {
-                  w: widget.x,
-                  h: widget.h,
-                  i: widget.i,
-                  static: widget.static ?? false,
-                  ...widgetData,
-                  x: widget.x,
-                  y: widget.y,
-                };
-              }),
-            },
-          },
-        }));
+            return {
+              ...(!isEmpty(widgetData) ? widgetData : {}),
+              ...widget,
+            };
+          });
+        });
       }
     },
     [layout]
@@ -185,10 +166,11 @@ export const CustomisablePage = () => {
       case PageType.LandingPage:
         return (
           <CustomizeMyData
+            handleLayoutChange={handleLayoutChange}
             handleLayoutUpdate={handleLayoutUpdate}
             handleOpenAddWidgetModal={handleOpenAddWidgetModal}
             handleRemoveWidget={handleRemoveWidget}
-            widgetsData={layout}
+            layoutData={layout}
           />
         );
     }
@@ -201,7 +183,18 @@ export const CustomisablePage = () => {
   }, [fqn, pageFqn]);
 
   const handleSave = async () => {
-    const jsonPatch = compare(page, layout);
+    const newPageInfo: Document = {
+      ...page,
+      data: {
+        page: {
+          ...page.data.page,
+          layout: layout.filter(
+            (widget) => widget.i !== 'ExtraWidget.AddWidgetButton'
+          ),
+        },
+      },
+    };
+    const jsonPatch = compare(page, newPageInfo);
 
     await updateDocument(page?.id ?? '', jsonPatch);
   };
@@ -222,15 +215,6 @@ export const CustomisablePage = () => {
           <span className="text-body">({startCase(fqn)})</span>
         </div>
         <Space>
-          <Button
-            ghost
-            data-testid="add-widget-placeholder-button"
-            icon={<PlusOutlined />}
-            size="small"
-            type="primary"
-            onClick={handleOpenAddWidgetModal}>
-            {t('label.add')}
-          </Button>
           <Button size="small">{t('label.cancel')}</Button>
           <Button size="small" type="primary" onClick={handleSave}>
             {t('label.save')}

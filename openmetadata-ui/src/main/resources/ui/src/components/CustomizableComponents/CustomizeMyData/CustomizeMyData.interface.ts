@@ -12,11 +12,12 @@
  */
 
 import { Layout } from 'react-grid-layout';
-import { Document } from '../../../generated/entity/docStore/document';
+import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 
 export interface CustomizeMyDataProps {
-  widgetsData: Document;
+  layoutData: Array<WidgetConfig>;
   handleRemoveWidget: (widgetKey: string) => void;
   handleOpenAddWidgetModal: () => void;
   handleLayoutUpdate: (currentLayout: Layout[]) => void;
+  handleLayoutChange: (newLayout: Array<WidgetConfig>) => void;
 }

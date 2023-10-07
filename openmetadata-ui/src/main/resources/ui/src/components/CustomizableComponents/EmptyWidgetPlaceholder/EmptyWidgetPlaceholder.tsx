@@ -22,6 +22,8 @@ import { EmptyWidgetPlaceholderProps } from './EmptyWidgetPlaceholder.interface'
 import './EmptyWidgetPlaceholder.less';
 
 function EmptyWidgetPlaceholder({
+  iconHeight = SIZE.MEDIUM,
+  iconWidth = SIZE.MEDIUM,
   widgetKey,
   handleOpenAddWidgetModal,
   handleRemoveWidget,
@@ -56,8 +58,8 @@ function EmptyWidgetPlaceholder({
             size={0}>
             <AddPlaceHolderIcon
               data-testid="no-data-image"
-              height={SIZE.MEDIUM}
-              width={SIZE.MEDIUM}
+              height={iconHeight}
+              width={iconWidth}
             />
             <Typography.Text>
               {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {

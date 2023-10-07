@@ -12,7 +12,8 @@
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Space } from 'antd';
-import React from 'react';
+import { isUndefined } from 'lodash';
+import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
@@ -25,6 +26,7 @@ interface FollowingWidgetProps {
   followedData: EntityReference[];
   followedDataCount: number;
   isLoadingOwnedData: boolean;
+  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 function FollowingWidget({
@@ -32,9 +34,15 @@ function FollowingWidget({
   followedData,
   followedDataCount,
   isLoadingOwnedData,
+  handleRemoveWidget,
 }: FollowingWidgetProps) {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
+
+  const handleCloseClick = useCallback(() => {
+    !isUndefined(handleRemoveWidget) &&
+      handleRemoveWidget('KnowledgePanel.Following');
+  }, []);
 
   return (
     <div className="p-md" data-testid="following-data-container">
@@ -61,7 +69,7 @@ function FollowingWidget({
                   className="drag-widget-icon cursor-pointer"
                   size={14}
                 />
-                <CloseOutlined size={14} />
+                <CloseOutlined size={14} onClick={handleCloseClick} />
               </>
             )}
           </Space>
