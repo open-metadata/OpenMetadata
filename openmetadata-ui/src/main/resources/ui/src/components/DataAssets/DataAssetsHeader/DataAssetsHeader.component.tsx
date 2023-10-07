@@ -254,9 +254,11 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage && !excludeEntityService) {
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
-      fetchTaskCount();
+      if (!excludeEntityService) {
+        fetchTaskCount();
+      }
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;

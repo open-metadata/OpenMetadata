@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -59,8 +58,6 @@ public class SearchRepository {
 
   private final String language;
 
-  private final CollectionDAO dao;
-
   private final List<String> inheritableFields = List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN);
 
   public final List<String> dataInsightReports =
@@ -74,8 +71,7 @@ public class SearchRepository {
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
   public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
-  public SearchRepository(ElasticSearchConfiguration config, CollectionDAO dao) {
-    this.dao = dao;
+  public SearchRepository(ElasticSearchConfiguration config) {
     if (config != null && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
       searchClient = new OpenSearchClient(config);
     } else {

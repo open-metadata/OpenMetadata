@@ -23,10 +23,12 @@ import {
   SIDEBAR_GOVERN_LIST,
   SIDEBAR_LIST,
 } from '../../../constants/LeftSidebar.constants';
+import { useApplicationConfigProvider } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import './left-sidebar.less';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
+  const { sideBarElements } = useApplicationConfigProvider();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthContext();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
@@ -113,6 +115,7 @@ const LeftSidebar = () => {
           selectedKeys={subMenuItemSelected}
           triggerSubMenuAction="click"
         />
+        {sideBarElements}
       </Row>
       <Row className="p-y-sm">
         <Col span={24}>

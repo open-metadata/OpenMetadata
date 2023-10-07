@@ -44,13 +44,12 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
-  public DashboardDataModelRepository(CollectionDAO dao) {
+  public DashboardDataModelRepository() {
     super(
         DashboardDataModelResource.COLLECTION_PATH,
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
-        dao.dashboardDataModelDAO(),
-        dao,
+        Entity.getCollectionDAO().dashboardDataModelDAO(),
         "",
         "");
     supportsSearch = true;

@@ -13,7 +13,6 @@ Test Column Name Scanner
 """
 from unittest import TestCase
 
-from metadata.pii.models import TagType
 from metadata.pii.scanners.ner_scanner import NERScanner
 
 

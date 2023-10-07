@@ -222,14 +222,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String entityType,
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
-      CollectionDAO collectionDAO,
       String patchFields,
       String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
-    this.daoCollection = collectionDAO;
+    this.daoCollection = Entity.getCollectionDAO();
     this.searchRepository = Entity.getSearchRepository();
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
@@ -572,7 +571,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public ResultList<T> listAfterWithSkipFailure(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     List<String> errors = new ArrayList<>();
     List<T> entities = new ArrayList<>();
     int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
@@ -2388,7 +2387,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
     @Override
-    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) throws IOException {
+    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
@@ -2398,7 +2397,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
     @Override
-    public EntityInterface load(@NotNull Pair<String, UUID> idPair) throws IOException {
+    public EntityInterface load(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);

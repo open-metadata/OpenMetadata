@@ -15,7 +15,6 @@ package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
@@ -24,7 +23,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.RestUtil;
@@ -50,7 +48,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   }
 
   @Override
-  public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData) throws SourceException {
+  public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData) {
     if (!isDone) {
       ResultList<? extends EntityInterface> data = read(cursor);
       cursor = data.getPaging().getAfter();
@@ -63,54 +61,31 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     }
   }
 
-  private ResultList<? extends EntityInterface> read(String cursor) throws SourceException {
+  private ResultList<? extends EntityInterface> read(String cursor) {
     LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
-    try {
-      result =
-          entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), new ListFilter(Include.ALL), batchSize, cursor);
-      if (!result.getErrors().isEmpty()) {
-        lastFailedCursor = this.cursor;
-        result
-            .getErrors()
-            .forEach(
-                error ->
-                    LOG.error(
-                        "[PaginatedEntitiesSource] Failed in getting Record, After Cursor : {} , RECORD: {}",
-                        result.getPaging().getAfter(),
-                        error));
-      }
-
-      LOG.debug(
-          "[PaginatedEntitiesSource] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          batchSize,
-          result.getData().size(),
-          result.getErrors().size());
-      updateStats(result.getData().size(), result.getErrors().size());
-
-    } catch (IOException e) {
+    result =
+        entityRepository.listAfterWithSkipFailure(
+            null, Entity.getFields(entityType, fields), new ListFilter(Include.ALL), batchSize, cursor);
+    if (!result.getErrors().isEmpty()) {
       lastFailedCursor = this.cursor;
-      LOG.debug(
-          "[PaginatedEntitiesSource] After Cursor : {}, Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          this.lastFailedCursor,
-          batchSize,
-          0,
-          batchSize);
-      if (stats.getTotalRecords() - stats.getProcessedRecords() <= batchSize) {
-        isDone = true;
-        updateStats(0, stats.getTotalRecords() - stats.getProcessedRecords());
-      } else {
-        updateStats(0, batchSize);
-      }
-      throw new SourceException(
-          String.format(
-              "[PaginatedEntitiesSource] After Cursor : %s, Batch encountered Exception. Failing Completely.",
-              this.lastFailedCursor),
-          e);
+      result
+          .getErrors()
+          .forEach(
+              error ->
+                  LOG.error(
+                      "[PaginatedEntitiesSource] Failed in getting Record, After Cursor : {} , RECORD: {}",
+                      result.getPaging().getAfter(),
+                      error));
     }
 
+    LOG.debug(
+        "[PaginatedEntitiesSource] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+        batchSize,
+        result.getData().size(),
+        result.getErrors().size());
+    updateStats(result.getData().size(), result.getErrors().size());
     return result;
   }
 

@@ -19,4 +19,5 @@ export type TagsV1Props = {
   startWith: TAG_START_WITH;
   showOnlyName?: boolean;
   className?: string;
+  isVersionPage?: boolean;
 };

@@ -52,7 +52,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -74,7 +74,7 @@ import {
   getSearchIndexTabPath,
 } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
@@ -308,14 +308,7 @@ function SearchIndexDetailsPage() {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 

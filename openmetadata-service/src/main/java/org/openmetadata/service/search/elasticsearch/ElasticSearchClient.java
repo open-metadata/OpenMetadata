@@ -116,6 +116,21 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchServicesDescriptionAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchServicesOwnerAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesByTierAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -297,8 +312,9 @@ public class ElasticSearchClient implements SearchClient {
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
+      case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
-            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+            buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -335,7 +351,8 @@ public class ElasticSearchClient implements SearchClient {
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
+        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -807,7 +824,7 @@ public class ElasticSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+  private static SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -1140,10 +1157,10 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   private static DataInsightChartResult processDataInsightChartResult(
-      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
+      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws ParseException {
-    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartName);
-    return processor.process();
+    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartType);
+    return processor.process(dataInsightChartType);
   }
 
   private static DataInsightAggregatorInterface createDataAggregator(
@@ -1151,29 +1168,35 @@ public class ElasticSearchClient implements SearchClient {
       throws IllegalArgumentException {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new EsEntitiesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchEntitiesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new EsServicesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchServicesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new EsEntitiesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchEntitiesOwnerAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new EsServicesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchServicesOwnerAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TYPE:
-        return new EsTotalEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchTotalEntitiesAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TIER:
-        return new EsTotalEntitiesByTierAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchTotalEntitiesByTierAggregator(aggregations.getAggregations());
       case DAILY_ACTIVE_USERS:
-        return new EsDailyActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchDailyActiveUsersAggregator(aggregations.getAggregations());
       case PAGE_VIEWS_BY_ENTITIES:
-        return new EsPageViewsByEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchPageViewsByEntitiesAggregator(aggregations.getAggregations());
       case MOST_ACTIVE_USERS:
-        return new EsMostActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchMostActiveUsersAggregator(aggregations.getAggregations());
       case MOST_VIEWED_ENTITIES:
-        return new EsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
       case UNUSED_ASSETS:
-        return new EsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
-      case AGGREGATED_UNUSED_ASSETS:
-        return new EsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+        return new ElasticSearchAggregatedUnusedAssetsSizeAggregator(aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        return new ElasticSearchAggregatedUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        return new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+        return new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(aggregations.getAggregations());
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
@@ -1292,23 +1315,48 @@ public class ElasticSearchClient implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
-      case AGGREGATED_UNUSED_ASSETS:
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        boolean isSize =
+            dataInsightChartName.equals(DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
+        String fieldType = isSize ? "size" : "count";
+        String totalField = isSize ? "totalSize" : "totalCount";
         SumAggregationBuilder threeDaysAgg =
-            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+            AggregationBuilders.sum("threeDays").field(String.format("data.unusedDataAssets.%s.threeDays", fieldType));
         SumAggregationBuilder sevenDaysAgg =
-            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+            AggregationBuilders.sum("sevenDays").field(String.format("data.unusedDataAssets.%s.sevenDays", fieldType));
         SumAggregationBuilder fourteenDaysAgg =
-            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+            AggregationBuilders.sum("fourteenDays")
+                .field(String.format("data.unusedDataAssets.%s.fourteenDays", fieldType));
         SumAggregationBuilder thirtyDaysAgg =
-            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+            AggregationBuilders.sum("thirtyDays")
+                .field(String.format("data.unusedDataAssets.%s.thirtyDays", fieldType));
         SumAggregationBuilder sixtyDaysAgg =
-            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+            AggregationBuilders.sum("sixtyDays").field(String.format("data.unusedDataAssets.%s.sixtyDays", fieldType));
+        SumAggregationBuilder totalUnused =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalField));
+        SumAggregationBuilder totalUsed =
+            AggregationBuilders.sum("totalUsed").field(String.format("data.frequentlyUsedDataAssets.%s", totalField));
         return dateHistogramAggregationBuilder
             .subAggregation(threeDaysAgg)
             .subAggregation(sevenDaysAgg)
             .subAggregation(fourteenDaysAgg)
             .subAggregation(thirtyDaysAgg)
-            .subAggregation(sixtyDaysAgg);
+            .subAggregation(sixtyDaysAgg)
+            .subAggregation(totalUnused)
+            .subAggregation(totalUsed);
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        boolean isSizeReport =
+            dataInsightChartName.equals(
+                DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);
+        String totalFieldString = isSizeReport ? "totalSize" : "totalCount";
+        SumAggregationBuilder totalUnusedAssets =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalFieldString));
+        SumAggregationBuilder totalUsedAssets =
+            AggregationBuilders.sum("totalUsed")
+                .field(String.format("data.frequentlyUsedDataAssets.%s", totalFieldString));
+        return dateHistogramAggregationBuilder.subAggregation(totalUnusedAssets).subAggregation(totalUsedAssets);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)

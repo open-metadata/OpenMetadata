@@ -54,8 +54,8 @@ import org.openmetadata.service.util.JsonUtils;
 class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
   private Table TABLE;
 
-  public static MessageDecorator<?> feedMessageFormatter = new FeedMessageDecorator();
-  public static MessageDecorator<?> slackMessageFormatter = new SlackMessageDecorator();
+  public static final MessageDecorator<?> feedMessageFormatter = new FeedMessageDecorator();
+  public static final MessageDecorator<?> slackMessageFormatter = new SlackMessageDecorator();
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {

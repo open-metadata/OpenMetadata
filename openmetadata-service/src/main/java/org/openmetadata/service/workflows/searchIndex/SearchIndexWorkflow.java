@@ -20,7 +20,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getT
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -175,15 +174,6 @@ public class SearchIndexWorkflow implements Runnable {
           } else {
             failed = 0;
           }
-        } catch (SourceException rx) {
-          handleSourceError(
-              rx.getMessage(),
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  rx.getCause(),
-                  ExceptionUtils.getStackTrace(rx)),
-              currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
@@ -327,7 +317,7 @@ public class SearchIndexWorkflow implements Runnable {
     jobData.setStats(jobDataStats);
   }
 
-  public void updateRecordToDb() throws IOException {
+  public void updateRecordToDb() {
     String recordString =
         dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
