@@ -45,7 +45,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  void report_data_admin_200() throws HttpResponseException, ParseException, IOException {
+  void report_data_admin_200() throws ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -120,7 +120,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws HttpResponseException, ParseException, IOException {
+  void delete_endpoint_200() throws ParseException, IOException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data

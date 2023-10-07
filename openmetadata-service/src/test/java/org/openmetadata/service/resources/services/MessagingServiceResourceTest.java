@@ -52,9 +52,8 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
-
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
-  public static URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
+  public static final URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
   public MessagingServiceResourceTest() {
     super(
@@ -239,7 +238,7 @@ public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingS
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

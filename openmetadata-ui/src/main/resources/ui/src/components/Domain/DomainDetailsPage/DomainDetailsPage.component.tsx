@@ -63,6 +63,7 @@ import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -77,7 +78,6 @@ import {
   getEntityDeleteMessage,
   getIsErrorMatch,
 } from '../../../utils/CommonUtils';
-import { DomainAssetsSearchIndex } from '../../../utils/DomainUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -264,7 +264,7 @@ const DomainDetailsPage = ({
           `(domain.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          DomainAssetsSearchIndex
+          myDataSearchIndex
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
@@ -379,7 +379,7 @@ const DomainDetailsPage = ({
                   entity: t('label.domain'),
                 })}
                 icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
-                id="rename-button"
+                id="edit-style-button"
                 name={t('label.style')}
               />
             ),

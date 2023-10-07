@@ -59,6 +59,7 @@ import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { myDataSearchIndex } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   ChangeDescription,
@@ -69,7 +70,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { DomainAssetsSearchIndex } from '../../../utils/DomainUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn.js';
 import {
@@ -221,7 +221,7 @@ const DataProductsDetailsPage = ({
           `(dataProducts.fullyQualifiedName:"${fqn}")`,
           '',
           '',
-          DomainAssetsSearchIndex
+          myDataSearchIndex
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);

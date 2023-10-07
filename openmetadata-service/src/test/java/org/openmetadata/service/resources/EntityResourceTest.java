@@ -2451,7 +2451,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
@@ -2782,8 +2782,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<CsvHeader> csvHeaders,
       List<String> createRecords,
       List<String> updateRecords,
-      List<String> newRecords)
-      throws IOException {
+      List<String> newRecords) {
     // Create new records
     importCsvAndValidate(entityName, csvHeaders, createRecords, null); // Dry run
 
