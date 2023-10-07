@@ -56,7 +56,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
@@ -85,7 +84,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
 
     // Create an On Demand DAO
     CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
-    searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
     AppScheduler.initialize(dao, searchRepository);
   }
 

@@ -24,14 +24,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
-import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -64,7 +59,6 @@ public class SearchResource {
   public SearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
     this.searchRepository = Entity.getSearchRepository();
-    ReIndexingHandler.initialize(searchRepository);
   }
 
   @GET
@@ -346,31 +340,5 @@ public class SearchResource {
           .build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
-  }
-
-  @GET
-  @Path("/mappings")
-  @Operation(
-      operationId = "getSearchMappingSchema",
-      summary = "Get Search Mapping Schema",
-      description = "Get Search Mapping Schema",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Not found")
-      })
-  public Response getElasticSearchMappingSchema(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "List of Entities to get schema for") @QueryParam("entityType") String entityType) {
-    // Only admins or bot can issue a reindex request
-    authorizer.authorizeAdminOrBot(securityContext);
-    Set<String> entities;
-    if (entityType == null) {
-      entities = new HashSet<>();
-      entities.add("*");
-    } else {
-      entities = new HashSet<>(Arrays.asList(entityType.replace(" ", "").split(",")));
-    }
-    return Response.status(Response.Status.OK).entity(getIndexMappingSchema(entities)).build();
   }
 }

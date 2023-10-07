@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -32,12 +31,11 @@ import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchDataInsightProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchDataInsightProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
@@ -75,10 +73,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         .forEach(
             entityType -> {
               if (!isDataInsightIndex(entityType)) {
-                List<String> fields =
-                    new ArrayList<>(
-                        Objects.requireNonNull(
-                            IndexUtil.getIndexFields(entityType, jobData.getSearchIndexMappingLanguage())));
+                List<String> fields = List.of("*");
                 PaginatedEntitiesSource source =
                     new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
                 if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
@@ -154,7 +149,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               // update Status
               handleErrorsOs(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
               // Update stats
-              success = searchRepository.getSuccessFromBulkResponse(response);
+              success = searchRepository.getSearchClient().getSuccessFromBulkResponse(response);
             } else {
               // process data to build Reindex Request
               BulkRequest requests = (BulkRequest) entityProcessor.process(resultList, contextData);
@@ -163,21 +158,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
               // update Status
               handleErrorsEs(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
               // Update stats
-              success = searchRepository.getSuccessFromBulkResponse(response);
+              success = searchRepository.getSearchClient().getSuccessFromBulkResponse(response);
             }
             failed = requestToProcess - success;
           } else {
             failed = 0;
           }
-        } catch (SourceException rx) {
-          handleSourceError(
-              rx.getMessage(),
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  rx.getCause(),
-                  ExceptionUtils.getStackTrace(rx)),
-              currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
@@ -233,7 +219,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                   (org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
               handleErrorsOs(resultList, "", response, currentTime);
               // Update stats
-              success = searchRepository.getSuccessFromBulkResponse(response);
+              success = searchRepository.getSearchClient().getSuccessFromBulkResponse(response);
             } else {
               // process data to build Reindex Request
               BulkRequest requests = (BulkRequest) dataInsightProcessor.process(resultList, contextData);
@@ -241,7 +227,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               BulkResponse response = (BulkResponse) searchIndexSink.write(requests, contextData);
               handleErrorsEs(resultList, "", response, currentTime);
               // Update stats
-              success = searchRepository.getSuccessFromBulkResponse(response);
+              success = searchRepository.getSearchClient().getSuccessFromBulkResponse(response);
             }
             failed = requestToProcess - success;
           } else {
@@ -336,11 +322,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return;
     }
 
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
+    IndexMapping indexType = searchRepository.getIndexMapping(entityType);
     // Delete index
     searchRepository.deleteIndex(indexType);
     // Create index
-    searchRepository.createIndex(indexType, jobData.getSearchIndexMappingLanguage().value());
+    searchRepository.createIndex(indexType);
   }
 
   private void handleErrorsOs(
