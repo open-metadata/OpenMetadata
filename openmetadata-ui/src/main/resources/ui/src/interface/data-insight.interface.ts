@@ -22,8 +22,11 @@ import { KeysOfUnion } from './search.interface';
 export interface ChartAggregateParam {
   dataInsightChartName: DataInsightChartType;
   dataReportIndex: DataReportIndex;
-  startTs: number;
-  endTs: number;
+  startTs?: number;
+  endTs?: number;
+  from?: number;
+  size?: number;
+  queryFilter?: string;
   tier?: string;
   team?: string;
 }
