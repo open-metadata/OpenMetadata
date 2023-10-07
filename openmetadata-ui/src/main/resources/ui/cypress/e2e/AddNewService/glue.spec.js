@@ -12,8 +12,8 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -35,42 +35,38 @@ describe('Glue Ingestion', () => {
   it('add and ingest data', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('#root_awsConfig_awsAccessKeyId')
+      cy.get('#root\\/awsConfig\\/awsAccessKeyId')
         .scrollIntoView()
         .type(Cypress.env('glueAwsAccessKeyId'));
-      cy.get('#root_awsConfig_awsSecretAccessKey')
+      checkServiceFieldSectionHighlighting('awsAccessKeyId');
+      cy.get('#root\\/awsConfig\\/awsSecretAccessKey')
         .scrollIntoView()
         .type(Cypress.env('glueAwsSecretAccessKey'));
-      cy.get('#root_awsConfig_awsRegion')
+      checkServiceFieldSectionHighlighting('awsSecretAccessKey');
+      cy.get('#root\\/awsConfig\\/awsRegion')
         .scrollIntoView()
         .type(Cypress.env('glueAwsRegion'));
-      cy.get('#root_awsConfig_endPointURL')
+      checkServiceFieldSectionHighlighting('awsRegion');
+      cy.get('#root\\/awsConfig\\/endPointURL')
         .scrollIntoView()
         .type(Cypress.env('glueEndPointURL'));
-      cy.get('#root_storageServiceName')
-        .scrollIntoView()
-        .type(Cypress.env('glueStorageServiceName'));
+      checkServiceFieldSectionHighlighting('endPointURL');
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
       serviceName,
-      'database',
-      false
-    );
+      testIngestionButton: false,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -80,14 +76,6 @@ describe('Glue Ingestion', () => {
       description,
       SERVICE_TYPE.Database,
       'tables'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
     );
   });
 

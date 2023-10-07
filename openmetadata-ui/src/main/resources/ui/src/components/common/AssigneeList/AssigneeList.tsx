@@ -12,19 +12,35 @@
  */
 
 import { uniqueId } from 'lodash';
+import { ImageShape } from 'Models';
 import React, { FC, HTMLAttributes } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getOwnerValue } from '../../../utils/CommonUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   assignees: EntityReference[];
+  profilePicType?: ImageShape;
+  showUserName?: boolean;
+  profileWidth?: string;
 }
 
-const AssigneeList: FC<Props> = ({ assignees, className }) => {
+const AssigneeList: FC<Props> = ({
+  assignees,
+  className,
+  profilePicType = 'square',
+  showUserName = true,
+  profileWidth = '20',
+}) => {
   const history = useHistory();
+
+  const handleClick = (e: React.MouseEvent, assignee: EntityReference) => {
+    e.stopPropagation();
+    const linkPath = getOwnerValue(assignee);
+    history.push(linkPath);
+  };
 
   return (
     <span className={className}>
@@ -34,14 +50,18 @@ const AssigneeList: FC<Props> = ({ assignees, className }) => {
           type={assignee.type}
           userName={assignee.name || ''}>
           <span
-            className="tw-flex tw-m-1.5 tw-mt-0 tw-cursor-pointer"
-            data-testid="assignee"
-            onClick={(e) => {
-              e.stopPropagation();
-              history.push(getUserPath(assignee.name ?? ''));
-            }}>
-            <ProfilePicture id="" name={assignee.name || ''} width="20" />
-            <span className="tw-ml-1">{assignee.name || ''}</span>
+            className="assignee-item d-flex m-xss m-t-0 cursor-pointer"
+            data-testid={`assignee-${assignee.name}`}
+            onClick={(e) => handleClick(e, assignee)}>
+            <ProfilePicture
+              id=""
+              name={assignee.name ?? ''}
+              type={profilePicType}
+              width={profileWidth}
+            />
+            {showUserName && (
+              <span className="m-l-xs">{assignee.name ?? ''}</span>
+            )}
           </span>
         </UserPopOverCard>
       ))}

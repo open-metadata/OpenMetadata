@@ -12,8 +12,8 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
+import { t } from 'i18next';
 import React, { VFC } from 'react';
-import jsonData from '../../../../jsons/en';
 import localState from '../../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../../auth-provider/AuthProvider';
 import { OidcUser } from '../../auth-provider/AuthProvider.interface';
@@ -40,20 +40,24 @@ const Auth0Callback: VFC = () => {
         handleSuccessfulLogin(oidcUser);
       })
       .catch((err) => {
-        return <div>Error while fetching access token. {err}</div>;
+        return (
+          <div>
+            {t('message.error-while-fetching-access-token')} {err}
+          </div>
+        );
       });
   } else {
     // user is not authenticated
     if (error) {
       return (
         <div data-testid="auth0-error">
-          {jsonData['api-error-messages']['unexpected-error']} {error.message}
+          {t('server.unexpected-error')} {error.message}
         </div>
       );
     }
   }
 
-  return <div>Redirecting to the home page... </div>;
+  return <div>{`${t('message.redirecting-to-home-page')}...`} </div>;
 };
 
 export default Auth0Callback;

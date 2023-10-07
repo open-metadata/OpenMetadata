@@ -2,49 +2,28 @@ package org.openmetadata.service.dataInsight;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.metrics.Sum;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
-public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface {
+public abstract class MostViewedEntitiesAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+  protected final A aggregations;
 
-  public MostViewedEntitiesAggregator(
-      Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    super(aggregations, dataInsightChartType);
+  public MostViewedEntitiesAggregator(A aggregations) {
+    this.aggregations = aggregations;
   }
 
   @Override
-  public DataInsightChartResult process() {
-    List<Object> data = this.aggregate();
-    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
-  }
-
-  @Override
-  List<Object> aggregate() {
-    MultiBucketsAggregation entityFqnBuckets = this.aggregations.get("entityFqn");
+  public List<Object> aggregate() {
+    M entityFqnBuckets = getEntityFqnBuckets(this.aggregations);
     List<Object> data = new ArrayList<>();
-    for (MultiBucketsAggregation.Bucket entityFqnBucket : entityFqnBuckets.getBuckets()) {
-      String tableFqn = entityFqnBucket.getKeyAsString();
-      Sum sumPageViews = entityFqnBucket.getAggregations().get("pageViews");
-      MultiBucketsAggregation ownerBucket = entityFqnBucket.getAggregations().get("owner");
-      MultiBucketsAggregation entityTypeBucket = entityFqnBucket.getAggregations().get("entityType");
-      MultiBucketsAggregation entityHrefBucket = entityFqnBucket.getAggregations().get("entityHref");
-      String owner = null;
-      String entityType = null;
-      String entityHref = null;
-      if (!ownerBucket.getBuckets().isEmpty()) {
-        owner = ownerBucket.getBuckets().get(0).getKeyAsString();
-      }
-
-      if (!entityTypeBucket.getBuckets().isEmpty()) {
-        entityType = entityTypeBucket.getBuckets().get(0).getKeyAsString();
-      }
-
-      if (!entityHrefBucket.getBuckets().isEmpty()) {
-        entityHref = entityHrefBucket.getBuckets().get(0).getKeyAsString();
-      }
+    for (B entityFqnBucket : getBuckets(entityFqnBuckets)) {
+      String tableFqn = getKeyAsString(entityFqnBucket);
+      S sumPageViews = getAggregations(entityFqnBucket, "pageViews");
+      M ownerBucket = getBucketAggregation(entityFqnBucket, "owner");
+      M entityTypeBucket = getBucketAggregation(entityFqnBucket, "entityType");
+      M entityHrefBucket = getBucketAggregation(entityFqnBucket, "entityHref");
+      String owner = getFirstValueFromBucketOrNull(ownerBucket);
+      String entityType = getFirstValueFromBucketOrNull(entityTypeBucket);
+      String entityHref = getFirstValueFromBucketOrNull(entityHrefBucket);
 
       data.add(
           new MostViewedEntities()
@@ -52,8 +31,29 @@ public class MostViewedEntitiesAggregator extends DataInsightAggregatorInterface
               .withOwner(owner)
               .withEntityType(entityType)
               .withEntityHref(entityHref)
-              .withPageViews(sumPageViews.getValue()));
+              .withPageViews(getValue(sumPageViews)));
     }
+
     return data;
+  }
+
+  protected abstract Double getValue(S sumPageViews);
+
+  protected abstract M getBucketAggregation(B bucket, String key);
+
+  protected abstract S getAggregations(B bucket, String key);
+
+  protected abstract String getKeyAsString(B bucket);
+
+  protected abstract List<? extends B> getBuckets(M bucket);
+
+  protected abstract M getEntityFqnBuckets(A aggregations);
+
+  protected String getFirstValueFromBucketOrNull(M bucket) {
+    // for list values we'll pick the first value
+    if (!getBuckets(bucket).isEmpty()) {
+      return getKeyAsString(getBuckets(bucket).get(0));
+    }
+    return null;
   }
 }

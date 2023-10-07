@@ -85,12 +85,6 @@
 }
 
 .data-insight-progress-bar {
-  .ant-progress-bg,
-  .ant-progress-success-bg {
-    // library has given height directly via style attribute , so to override need to provide !important
-    height: 26px !important;
-  }
-
   .ant-progress-outer {
     margin-right: 0;
     padding-right: 0;
@@ -116,14 +110,13 @@
     color: @text-color;
   }
   .data-insight-kpi-target {
-    height: 100%;
     position: absolute;
     left: 0;
     border-right: 2px solid @target-blue-color;
 
     .target-text {
       position: relative;
-      right: -8px;
+      right: -12px;
       top: -14px;
       display: flex;
       justify-content: flex-end;
@@ -134,7 +127,7 @@
       content: '●';
       position: absolute;
       top: -5px;
-      right: -6px;
+      right: -4px;
       color: @target-blue-color;
       font-size: 10px;
     }
@@ -143,6 +136,7 @@
 
 .custom-data-insight-legend {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
 
   .custom-data-insight-legend-item {

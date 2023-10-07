@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/ingestionPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "IngestionPipeline",
-  "description": "Ingestion Pipeline Config is used to setup a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
+  "description": "Ingestion Pipeline Config is used to set up a DAG and deploy. This entity is used to setup metadata/quality pipelines on Apache Airflow.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -74,7 +74,7 @@
         "retries": {
           "description": "Retry pipeline in case of failure.",
           "type": "integer",
-          "default": 3
+          "default": 0
         },
         "retryDelay": {
           "description": "Delay between retries in seconds.",
@@ -157,7 +157,7 @@
       "$ref": "#/definitions/airflowConfig"
     },
     "service": {
-      "description": "Link to the database service where this database is hosted in.",
+      "description": "Link to the service (such as database, messaging, storage services, etc. for which this ingestion pipeline ingests the metadata from.",
       "$ref": "../../../type/entityReference.json"
     },
     "pipelineStatuses": {
@@ -202,13 +202,15 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "provider" : {
+      "$ref": "../../../type/basic.json#/definitions/providerType"
     }
   },
   "required": [
     "name",
     "pipelineType",
     "sourceConfig",
-    "openMetadataServerConnection",
     "airflowConfig"
   ],
   "additionalProperties": false

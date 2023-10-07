@@ -18,6 +18,7 @@ import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../AppState';
+import { ReactComponent as AddReactionIcon } from '../../assets/svg/ic-reaction.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -27,9 +28,9 @@ import {
   Reaction as ReactionProp,
   ReactionType,
 } from '../../generated/type/reaction';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
+import './reactions.less';
 
 interface ReactionsProps {
   reactions: ReactionProp[];
@@ -103,34 +104,29 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   });
 
   return (
-    <div className="tw-mt-2">
-      <div className="tw-flex">
-        {emojis}
-        <Popover
-          align={{ targetOffset: [0, -10] }}
-          content={reactionList}
-          open={visible}
-          overlayClassName="ant-popover-feed-reactions"
-          placement="topLeft"
-          trigger="click"
-          zIndex={9999}
-          onOpenChange={handleVisibleChange}>
-          <Button
-            className="ant-btn-reaction ant-btn-add-reactions"
-            data-testid="add-reactions"
-            shape="round"
-            onClick={(e) => e.stopPropagation()}>
-            <SVGIcons
-              alt="add-reaction"
-              icon={Icons.ADD_REACTION}
-              title={t('label.add-entity', {
-                entity: t('label.reaction-lowercase-plural'),
-              })}
-              width="18px"
-            />
-          </Button>
-        </Popover>
-      </div>
+    <div className="d-flex items-center" data-testid="feed-reaction-container">
+      {emojis}
+      <Popover
+        align={{ targetOffset: [0, -10] }}
+        content={reactionList}
+        open={visible}
+        overlayClassName="ant-popover-feed-reactions"
+        placement="topLeft"
+        trigger="click"
+        zIndex={9999}
+        onOpenChange={handleVisibleChange}>
+        <Button
+          className="flex-center"
+          data-testid="add-reactions"
+          icon={<AddReactionIcon width={18} />}
+          shape="circle"
+          size="small"
+          title={t('label.add-entity', {
+            entity: t('label.reaction-lowercase-plural'),
+          })}
+          onClick={(e) => e.stopPropagation()}
+        />
+      </Popover>
     </div>
   );
 };

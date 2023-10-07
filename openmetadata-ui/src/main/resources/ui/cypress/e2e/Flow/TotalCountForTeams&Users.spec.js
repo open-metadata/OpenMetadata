@@ -16,7 +16,7 @@ import { SEARCH_ENTITY_TABLE } from '../../constants/constants';
 
 const TEAM_DETAILS = SEARCH_ENTITY_TABLE.table_1;
 const userURL =
-  '/api/v1/search/query?q=***&from=0&size=10&index=user_search_index';
+  '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
 const teamURL =
   '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index';
 
@@ -45,18 +45,22 @@ describe('Test if the total count of users and teams is correctly displayed in t
       headers: { Authorization: `Bearer ${token}` },
     }).as('TeamCount');
 
-    cy.get('[data-testid="edit-Owner-icon"]').should('be.visible').click();
+    cy.get('[data-testid="edit-owner"]').should('be.visible').click();
 
     // check for teams count
     cy.get('@TeamCount').then((response) => {
       const teamCount = response.body.hits.total.value;
-      cy.get('[data-testid="filter-count"]').eq(0).contains(`${teamCount}`);
+      cy.get('.user-team-select-popover [data-testid="filter-count"]')
+        .eq(0)
+        .contains(`${teamCount}`);
     });
 
     // check for user count
     cy.get('@UserCount').then((response) => {
       const userCount = response.body.hits.total.value;
-      cy.get('[data-testid="filter-count"]').eq(1).contains(`${userCount}`);
+      cy.get('.user-team-select-popover [data-testid="filter-count"]')
+        .eq(1)
+        .contains(`${userCount}`);
     });
   });
 });

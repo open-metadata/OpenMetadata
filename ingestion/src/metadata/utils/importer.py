@@ -23,11 +23,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.workflow import Sink as WorkflowSink
-from metadata.ingestion.api.bulk_sink import BulkSink
 from metadata.ingestion.api.processor import Processor
-from metadata.ingestion.api.sink import Sink
-from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.steps import BulkSink, Sink, Source
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import utils_logger
 
@@ -89,7 +88,7 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_from_module(key: str) -> Type[T]:
+def import_from_module(key: str) -> Type[Step]:
     """
     Dynamically import an object from a module path
     """
@@ -209,3 +208,32 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
     )
 
     return _connection_fn
+
+
+def import_test_case_class(
+    test_type: str,
+    runner_type: str,
+    test_definition: str,
+) -> Callable:
+    """_summary_
+
+    Args:
+        test_type (str): column or table
+        runner_type (str): sqlalchemy or pandas
+        test_definition (str): test definition name
+        test_definition_class (str): test definition class name (same as test_definition)
+
+    Returns:
+        Callable: test validator object
+    """
+    test_definition_class = (
+        test_definition[0].upper() + test_definition[1:]
+    )  # change test names to camel case
+    return import_from_module(
+        "metadata.data_quality.validations.{}.{}.{}.{}Validator".format(
+            test_type.lower(),
+            runner_type,
+            test_definition,
+            test_definition_class,
+        )
+    )

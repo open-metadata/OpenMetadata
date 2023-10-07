@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
+import { Typography } from 'antd';
 import { isEqual } from 'lodash';
-import React, { FC, Fragment, useRef } from 'react';
+import React, { FC, Fragment } from 'react';
+import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import {
   TaskType,
   Thread,
@@ -25,56 +26,43 @@ import { DescriptionTabs } from './DescriptionTabs';
 import { DiffView } from './DiffView';
 
 interface DescriptionTaskProps {
-  taskDetail: Thread;
+  taskThread: Thread;
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
-  suggestion: string;
-  currentDescription: string;
-  onSuggestionChange: (value: string) => void;
+  onChange: (value: string) => void;
 }
 
 const DescriptionTask: FC<DescriptionTaskProps> = ({
-  taskDetail,
+  taskThread,
   isTaskActionEdit,
   hasEditAccess,
-  suggestion,
-  currentDescription,
-  onSuggestionChange,
+  onChange,
 }) => {
-  const markdownRef = useRef<EditorContentRef>();
+  const { task } = taskThread;
+  const { t } = useTranslation();
 
-  const isRequestDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.RequestDescription
-  );
+  const isRequestDescription = isEqual(task?.type, TaskType.RequestDescription);
 
-  const isUpdateDescription = isEqual(
-    taskDetail.task?.type,
-    TaskType.UpdateDescription
-  );
+  const isUpdateDescription = isEqual(task?.type, TaskType.UpdateDescription);
 
-  const isTaskClosed = isEqual(
-    taskDetail.task?.status,
-    ThreadTaskStatus.Closed
-  );
+  const isTaskClosed = isEqual(task?.status, ThreadTaskStatus.Closed);
 
   const getDiffView = () => {
-    const oldValue = taskDetail.task?.oldValue;
-    const newValue = taskDetail.task?.newValue;
+    const oldValue = task?.oldValue;
+    const newValue = task?.newValue;
     if (!oldValue && !newValue) {
       return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">No Description</span>
+        <div className="border border-main p-xs rounded-4 m-y-xss m-b-sm">
+          <Typography.Text className="text-grey-muted">
+            {t('label.no-entity', { entity: t('label.description') })}
+          </Typography.Text>
         </div>
       );
     } else {
       return (
         <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3"
-          diffArr={getDescriptionDiff(
-            taskDetail?.task?.oldValue || '',
-            taskDetail?.task?.newValue || ''
-          )}
+          className="border border-main p-xs rounded-4 m-y-xss m-b-sm"
+          diffArr={getDescriptionDiff(oldValue ?? '', newValue ?? '')}
         />
       );
     }
@@ -85,8 +73,8 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
    * @returns Suggested description diff
    */
   const getSuggestedDescriptionDiff = () => {
-    const newDescription = taskDetail?.task?.suggestion;
-    const oldDescription = taskDetail?.task?.oldValue;
+    const newDescription = task?.suggestion;
+    const oldDescription = task?.oldValue;
 
     const diffs = getDescriptionDiff(
       oldDescription || '',
@@ -94,15 +82,16 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
     );
 
     return !newDescription && !oldDescription ? (
-      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
+      <Typography.Text className="text-grey-muted p-xs">
+        {t('label.no-entity', { entity: t('label.suggestion') })}
+      </Typography.Text>
     ) : (
-      <DiffView className="tw-p-2" diffArr={diffs} />
+      <DiffView className="p-xs" diffArr={diffs} />
     );
   };
 
   return (
     <div data-testid="task-description-tabs">
-      <p className="tw-text-grey-muted">Description:</p>{' '}
       <Fragment>
         {isTaskClosed ? (
           getDiffView()
@@ -113,13 +102,15 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
                 {isTaskActionEdit && hasEditAccess ? (
                   <RichTextEditor
                     height="208px"
-                    initialValue={suggestion}
-                    placeHolder="Add description"
+                    initialValue={task?.suggestion ?? ''}
+                    placeHolder={t('label.add-entity', {
+                      entity: t('label.description'),
+                    })}
                     style={{ marginTop: '0px' }}
-                    onTextChange={onSuggestionChange}
+                    onTextChange={onChange}
                   />
                 ) : (
-                  <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex border border-main rounded-4 m-b-md">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}
@@ -130,13 +121,12 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
               <div data-testid="update-description">
                 {isTaskActionEdit && hasEditAccess ? (
                   <DescriptionTabs
-                    description={currentDescription}
-                    markdownRef={markdownRef}
-                    suggestion={suggestion}
-                    onChange={onSuggestionChange}
+                    suggestion={task?.suggestion ?? ''}
+                    value={task?.oldValue ?? ''}
+                    onChange={onChange}
                   />
                 ) : (
-                  <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4">
+                  <div className="d-flex border border-main rounded-4 m-b-md">
                     {getSuggestedDescriptionDiff()}
                   </div>
                 )}

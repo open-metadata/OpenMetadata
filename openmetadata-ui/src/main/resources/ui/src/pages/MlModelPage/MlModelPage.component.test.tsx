@@ -14,7 +14,7 @@
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
+import { getMlModelByFQN } from '../../rest/mlModelAPI';
 import MlModelPageComponent from './MlModelPage.component';
 
 const mockData = {
@@ -132,7 +132,7 @@ const mockData = {
   deleted: false,
 };
 
-jest.mock('rest/mlModelAPI', () => ({
+jest.mock('../../rest/mlModelAPI', () => ({
   getMlModelByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockData })),
@@ -147,13 +147,13 @@ jest.mock('rest/mlModelAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
-jest.mock('components/MlModelDetail/MlModelDetail.component', () => {
+jest.mock('../../components/MlModelDetail/MlModelDetail.component', () => {
   return jest
     .fn()
     .mockReturnValue(<div data-testid="mlmodel-details">MlModelDetails</div>);
 });
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({
@@ -228,7 +228,7 @@ describe('Test MlModel Entity Page', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorComponent = await findByTestId(container, 'error');
+    const errorComponent = await findByTestId(container, 'no-data-placeholder');
 
     expect(errorComponent).toBeInTheDocument();
   });

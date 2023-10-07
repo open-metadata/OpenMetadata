@@ -19,14 +19,14 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ThreadType } from '../../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../../generated/entity/feed/thread';
 import FeedCardHeader from './FeedCardHeader';
 
 const FQN = 'service.database.schema.table';
 const type = 'table';
 const expectedDisplayName = 'database.schema.table';
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../../../rest/userAPI', () => ({
   getUserByName: jest.fn().mockReturnValue({}),
 }));
 
@@ -37,19 +37,13 @@ jest.mock('../../../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => {
     return expectedDisplayName;
   }),
+  getEntityDetailLink: jest.fn().mockImplementation(() => expectedDisplayName),
 }));
 
 jest.mock('../../../../utils/TableUtils', () => ({
   getEntityLink: jest.fn(),
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
-}));
-
-jest.mock('../../../../utils/TimeUtils', () => ({
-  getDayTimeByTimeStamp: jest
-    .fn()
-    .mockImplementation(() => 'Jan 1, 1970 00:00 AM'),
-  getDateTimeFromMilliSeconds: jest.fn(),
 }));
 
 jest.mock('../../../common/ProfilePicture/ProfilePicture', () => {
@@ -64,6 +58,7 @@ const mockFeedHeaderProps = {
   isEntityFeed: true,
   timeStamp: 1647322547179,
   feedType: ThreadType.Conversation,
+  task: {} as Thread,
 };
 
 describe('Test FeedHeader Component', () => {
@@ -89,7 +84,7 @@ describe('Test FeedHeader Component', () => {
     expect(entityTypeElement).not.toBeInTheDocument();
     expect(entityLinkElement).not.toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('Jan 1, 1970 00:00 AM');
+    expect(timeStampElement).toHaveTextContent('1 year ago');
   });
 
   it('Checks if the FeedHeader component has isEntityFeed as false', async () => {
@@ -117,7 +112,7 @@ describe('Test FeedHeader Component', () => {
     expect(entityTypeElement).toBeInTheDocument();
     expect(entityLinkElement).toBeInTheDocument();
     expect(timeStampElement).toBeInTheDocument();
-    expect(timeStampElement).toHaveTextContent('Jan 1, 1970 00:00 AM');
+    expect(timeStampElement).toHaveTextContent('1 year ago');
   });
 
   it('Should show link text as `database.schema.table` if entity type is table', async () => {

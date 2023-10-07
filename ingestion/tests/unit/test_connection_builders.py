@@ -13,6 +13,9 @@ Validate connection builder utilities
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -29,19 +32,21 @@ class ConnectionBuilderTest(TestCase):
     """
 
     connection = MysqlConnection(
-        username="username", password="password", hostPort="http://localhost:1234"
+        username="username",
+        authType=BasicAuth(password="password"),
+        hostPort="http://localhost:1234",
     )
 
     connection_with_args = MysqlConnection(
         username="username",
-        password="password",
+        authType=BasicAuth(password="password"),
         hostPort="http://localhost:1234",
         connectionArguments={"hello": "world"},
     )
 
     connection_with_options = MysqlConnection(
         username="username",
-        password="password",
+        authType=BasicAuth(password="password"),
         hostPort="http://localhost:1234",
         connectionOptions={"hello": "world"},
     )

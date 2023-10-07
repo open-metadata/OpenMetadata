@@ -1,6 +1,7 @@
 package org.openmetadata.service.exception;
 
 import javax.ws.rs.core.Response;
+import org.openmetadata.sdk.exception.WebServiceException;
 
 public class InvalidServiceConnectionException extends WebServiceException {
   private static final String BY_NAME_MESSAGE = "InvalidServiceConnectionException for service [%s] due to [%s].";

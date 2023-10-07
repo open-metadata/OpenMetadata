@@ -19,6 +19,6 @@ export interface CustomPropertyTableProp {
   updateEntityType: (
     customProperties: Type['customProperties']
   ) => Promise<void>;
+  isLoading: boolean;
+  isButtonLoading: boolean;
 }
-
-export type Operation = 'delete' | 'update' | 'no-operation';

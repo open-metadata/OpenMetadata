@@ -13,13 +13,14 @@
 
 package org.openmetadata.service.resources.reports;
 
-import io.swagger.annotations.Api;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -37,9 +38,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Report;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
 import org.openmetadata.service.resources.Collection;
@@ -49,35 +53,36 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/reports")
-@Api(value = "Reports collection", tags = "Reports collection")
+@Tag(
+    name = "Reports (beta)",
+    description =
+        "`Reports` are static information computed from data periodically that includes "
+            + "data in text, table, and visual form.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "reports")
 public class ReportResource extends EntityResource<Report, ReportRepository> {
-  public static final String COLLECTION_PATH = "/v1/bots/";
+  public static final String COLLECTION_PATH = "/v1/reports/";
+  static final String FIELDS = "owner,usageSummary";
 
-  public ReportResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Report.class, new ReportRepository(dao), authorizer);
+  public ReportResource(Authorizer authorizer) {
+    super(Entity.REPORT, authorizer);
   }
 
   @Override
-  public Report addHref(UriInfo uriInfo, Report entity) {
-    return entity;
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
   public static class ReportList extends ResultList<Report> {
-    public ReportList(List<Report> data) {
-      super(data);
-    }
+    /* Required for serde */
   }
-
-  static final String FIELDS = "owner,usageSummary";
 
   @GET
   @Operation(
       operationId = "listReports",
       summary = "List reports",
-      tags = "reports",
       description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
       responses = {
         @ApiResponse(
@@ -91,20 +96,18 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter();
-    return dao.listAfter(uriInfo, fields, filter, 10000, null);
+    return repository.listAfter(uriInfo, fields, filter, 10000, null);
   }
 
   @GET
   @Path("/{id}")
   @Operation(
       operationId = "getReportByID",
-      summary = "Get a report",
-      tags = "reports",
-      description = "Get a report by `id`.",
+      summary = "Get a report by Id",
+      description = "Get a report by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -115,7 +118,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
   public Report get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the report", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -126,16 +129,15 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Override
   @POST
   @Operation(
       operationId = "getReportByFQN",
       summary = "Create a report",
-      tags = "reports",
       description = "Create a new report.",
       responses = {
         @ApiResponse(
@@ -144,17 +146,16 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.create(uriInfo, securityContext, report);
   }
 
+  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateReport",
       summary = "Create or update a report",
-      tags = "reports",
       description = "Create a new report, it it does not exist or update an existing report.",
       responses = {
         @ApiResponse(
@@ -164,9 +165,30 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
     return super.createOrUpdate(uriInfo, securityContext, report);
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

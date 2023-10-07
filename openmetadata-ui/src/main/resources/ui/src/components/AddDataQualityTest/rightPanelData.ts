@@ -15,10 +15,6 @@
 
 export const TEST_FORM_DATA = [
   {
-    title: 'Select/Create Test Suite',
-    body: 'A Test Suite is a container consisting of multiple but related test cases. With a Test Suite, you can easily deploy a pipeline to execute the Test Cases. Start by selecting an existing test suite or create a new test suite to create a table or column level test for an entity.',
-  },
-  {
     title: 'Create Test Case',
     body: 'To create a test case, add a unique name. Select a test type from the options provided. Fill in the details for the parameters that show up for a selected test type. Enter a description (optional).',
   },
@@ -36,6 +32,10 @@ export const TEST_PAGE_FORM_DATA = [
   {
     title: 'Create Test Suite',
     body: 'A Test Suite is a container consisting of multiple but related test cases. With a Test Suite, you can easily deploy a pipeline to execute the Test Cases. Start by selecting an existing test suite or create a new test suite to create a table or column level test for an entity.',
+  },
+  {
+    title: 'Select Test Cases',
+    body: 'Link existing test cases with newly created test suite. you can add multiple test cases.',
   },
   {
     title: 'Test Suite Created Successfully',
@@ -78,9 +78,8 @@ export const getRightPanelForAddTestSuitePage = (
   step: number,
   testSuite: string
 ) => {
-  let message = TEST_PAGE_FORM_DATA[step - 1];
-  if (step === 2) {
-    message = TEST_PAGE_FORM_DATA[step - 1];
+  const message = TEST_PAGE_FORM_DATA[step - 1];
+  if (step === 3) {
     message.body = message.body.replace('{testSuite}', testSuite);
   }
 

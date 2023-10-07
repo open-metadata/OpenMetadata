@@ -11,37 +11,38 @@
  *  limitations under the License.
  */
 
-import { TreeSelect } from 'antd';
-import React, { useEffect, useState } from 'react';
-import { getTeamsHierarchy } from 'rest/teamsAPI';
+import { Alert, TreeSelect } from 'antd';
+import { BaseOptionType } from 'antd/lib/select';
+import { t } from 'i18next';
+import React, { useEffect, useMemo, useState } from 'react';
 import { TeamHierarchy } from '../../generated/entity/teams/teamHierarchy';
-import { getEntityName } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import { getTeamsHierarchy } from '../../rest/teamsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-interface Props {
-  showTeamsAlert?: boolean;
-  onSelectionChange: (teams: string[]) => void;
-  filterJoinable?: boolean;
-  placeholder?: string;
-}
-
-const { TreeNode } = TreeSelect;
+import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
 const TeamsSelectable = ({
   showTeamsAlert,
   onSelectionChange,
   filterJoinable,
-  placeholder = 'Search for teams',
-}: Props) => {
+  placeholder = t('label.search-for-type', {
+    type: t('label.team-plural-lowercase'),
+  }),
+  selectedTeams,
+  maxValueCount,
+}: TeamsSelectableProps) => {
   const [value, setValue] = useState<Array<string>>();
   const [noTeam, setNoTeam] = useState<boolean>(false);
   const [teams, setTeams] = useState<Array<TeamHierarchy>>([]);
 
   const onChange = (newValue: string[]) => {
-    onSelectionChange(newValue);
+    onSelectionChange && onSelectionChange(newValue);
     setValue(newValue);
   };
+
+  useEffect(() => {
+    setValue(selectedTeams ?? []);
+  }, [selectedTeams]);
 
   const loadOptions = () => {
     getTeamsHierarchy(filterJoinable)
@@ -59,19 +60,29 @@ const TeamsSelectable = ({
     loadOptions();
   }, []);
 
-  const getTreeNodes = (team: TeamHierarchy) => {
+  const showLeafIcon = false;
+
+  const getTreeNodeData = (team: TeamHierarchy): BaseOptionType => {
     const teamName = getEntityName(team);
     const value = team.id;
     const disabled = filterJoinable ? !team.isJoinable : false;
 
-    return (
-      <TreeNode disabled={disabled} key={value} title={teamName} value={value}>
-        {team.children &&
-          team.children.map((n: TeamHierarchy) => getTreeNodes(n))}
-      </TreeNode>
-    );
+    return {
+      title: teamName,
+      value,
+      selectable: !team.children?.length,
+      disabled,
+      children:
+        team.children &&
+        team.children.map((n: TeamHierarchy) => getTreeNodeData(n)),
+    };
   };
-  const showLeafIcon = false;
+
+  const teamsTree = useMemo(() => {
+    return teams.map((team) => {
+      return getTreeNodeData(team);
+    });
+  }, [teams]);
 
   return (
     <>
@@ -80,29 +91,27 @@ const TeamsSelectable = ({
         multiple
         showSearch
         treeDefaultExpandAll
+        data-testid="team-select"
         dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+        maxTagCount={maxValueCount}
         placeholder={placeholder}
-        showCheckedStrategy={TreeSelect.SHOW_ALL}
+        showCheckedStrategy={TreeSelect.SHOW_CHILD}
         style={{ width: '100%' }}
+        treeData={teamsTree}
         treeLine={{ showLeafIcon }}
         treeNodeFilterProp="title"
         value={value}
-        onChange={onChange}>
-        {teams.map((team) => {
-          return getTreeNodes(team);
-        })}
-      </TreeSelect>
+        onChange={onChange}
+      />
       {noTeam && (
-        <div
-          className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
-          data-testid="toast">
-          <div className="tw-font-semibold tw-flex-shrink-0">
-            <SVGIcons alt="info" icon="info" title="Info" width="16px" />
-          </div>
-          <div className="tw-font-semibold tw-px-1">
-            There is no team available.
-          </div>
-        </div>
+        <Alert
+          showIcon
+          className="m-t-md"
+          message={t('message.no-entity-data-available', {
+            entity: t('label.team-plural'),
+          })}
+          type="info"
+        />
       )}
     </>
   );

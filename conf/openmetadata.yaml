@@ -25,7 +25,7 @@ server:
       port: ${SERVER_ADMIN_PORT:-8586}
 
 # Above configuration for running http is fine for dev and testing.
-# For production setup, where UI app will hit apis through DPS it 
+# For production setup, where UI app will hit apis through DPS it
 # is strongly recommended to run https instead. Note that only
 # keyStorePath and keyStorePassword are mandatory properties. Values
 # for other properties are defaults
@@ -33,7 +33,7 @@ server:
   #applicationConnectors:
   #  - type: https
   #    port: 8585
-  #    keyStorePath: ./conf/keystore.jks 
+  #    keyStorePath: ./conf/keystore.jks
   #    keyStorePassword: changeit
   #    keyStoreType: JKS
   #    keyStoreProvider:
@@ -57,12 +57,12 @@ server:
   #    supportedCipherSuites: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
   #    allowRenegotiation: true
   #    endpointIdentificationAlgorithm: (none)
- 
+
   #adminConnectors:
   #  - type: https
   #    port: 8586
-  #    keyStorePath: ./conf/keystore.jks 
-  #    keyStorePassword: changeit 
+  #    keyStorePath: ./conf/keystore.jks
+  #    keyStorePassword: changeit
   #    keyStoreType: JKS
   #    keyStoreProvider:
   #    trustStorePath: /path/to/file
@@ -91,7 +91,7 @@ server:
 logging:
   level: ${LOG_LEVEL:-INFO}
   loggers:
-    io.swagger: ERROR
+    io.swagger: DEBUG
   appenders:
     - type: console
       threshold: TRACE
@@ -125,11 +125,13 @@ database:
   user: ${DB_USER:-openmetadata_user}
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?allowPublicKeyRetrieval=true&useSSL=${DB_USE_SSL:-false}&serverTimezone=UTC
-
+  url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
 
 migrationConfiguration:
-  path: "./bootstrap/sql"
+  flywayPath: "./bootstrap/sql/migrations/flyway"
+  nativePath: "./bootstrap/sql/migrations/native"
+
+  extensionPath: ${MIGRATION_EXTENSION_PATH:-""}
 
 # Authorizer Configuration
 authorizerConfiguration:
@@ -145,12 +147,63 @@ authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-basic}
   # This will only be valid when provider type specified is customOidc
   providerName: ${CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME:-""}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/config/jwks]}
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  samlConfiguration:
+    debugMode: ${SAML_DEBUG_MODE:-false}
+    idp:
+      entityId: ${SAML_IDP_ENTITY_ID:-""}
+      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
+      nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
+    sp:
+      entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
+      acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
+      spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
+      callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
+    security:
+      strictMode: ${SAML_STRICT_MODE:-false}
+      tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"3600"}
+      sendEncryptedNameId: ${SAML_SEND_ENCRYPTED_NAME_ID:-false}
+      sendSignedAuthRequest: ${SAML_SEND_SIGNED_AUTH_REQUEST:-false}
+      signSpMetadata: ${SAML_SIGNED_SP_METADATA:-false}
+      wantMessagesSigned: ${SAML_WANT_MESSAGE_SIGNED:-false}
+      wantAssertionsSigned: ${SAML_WANT_ASSERTION_SIGNED:-false}
+      wantAssertionEncrypted: ${SAML_WANT_ASSERTION_ENCRYPTED:-false}
+      wantNameIdEncrypted: ${SAML_WANT_NAME_ID_ENCRYPTED:-false}
+      keyStoreFilePath: ${SAML_KEYSTORE_FILE_PATH:-""}
+      keyStoreAlias: ${SAML_KEYSTORE_ALIAS:-""}
+      keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
+  ldapConfiguration:
+    host: ${AUTHENTICATION_LDAP_HOST:-}
+    port: ${AUTHENTICATION_LDAP_PORT:-}
+    dnAdminPrincipal: ${AUTHENTICATION_LOOKUP_ADMIN_DN:-""}
+    dnAdminPassword: ${AUTHENTICATION_LOOKUP_ADMIN_PWD:-""}
+    userBaseDN: ${AUTHENTICATION_USER_LOOKUP_BASEDN:-""}
+    mailAttributeName: ${AUTHENTICATION_USER_MAIL_ATTR:-}
+    #optional
+    maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
+    sslEnabled: ${AUTHENTICATION_LDAP_SSL_ENABLED:-}
+    truststoreConfigType: ${AUTHENTICATION_LDAP_TRUSTSTORE_TYPE:-TrustAll}
+    trustStoreConfig:
+      customTrustManagerConfig:
+        trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-}
+        trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}
+        trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-}
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-}
+      hostNameConfig:
+        allowWildCards: ${AUTHENTICATION_LDAP_ALLOW_WILDCARDS:-}
+        acceptableHostNames: ${AUTHENTICATION_LDAP_ALLOWED_HOSTNAMES:-[]}
+      jvmDefaultConfig:
+        verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+      trustAllConfig:
+        examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-true}
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: ${RSA_PUBLIC_KEY_FILE_PATH:-"./conf/public_key.der"}
@@ -159,6 +212,7 @@ jwtTokenConfiguration:
   keyId: ${JWT_KEY_ID:-"Gb389a-9f76-gdjs-a92j-0242bk94356"}
 
 elasticsearch:
+  searchType: ${SEARCH_TYPE:- "elasticsearch"}
   host: ${ELASTICSEARCH_HOST:-localhost}
   port: ${ELASTICSEARCH_PORT:-9200}
   scheme: ${ELASTICSEARCH_SCHEME:-http}
@@ -168,12 +222,15 @@ elasticsearch:
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
+  keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
   searchIndexMappingLanguage: ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
 
-# eventMonitoringConfiguration:
-  # eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
-  # batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+eventMonitoringConfiguration:
+  eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"
+  batchSize: ${EVENT_MONITOR_BATCH_SIZE:-10}
+  pathPattern: ${EVENT_MONITOR_PATH_PATTERN:-["/api/v1/tables/*", "/api/v1/health-check"]}
+  latency: ${EVENT_MONITOR_LATENCY:-[]} # For value p99=0.99, p90=0.90, p50=0.50 etc.
   # it will use the default auth provider for AWS services if parameters are not set
   # parameters:
   #   region: ${OM_MONITOR_REGION:-""}
@@ -184,17 +241,34 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
+    - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
-airflowConfiguration:
-  apiEndpoint: ${AIRFLOW_HOST:-http://localhost:8080}
-  hostIp: ${AIRFLOW_HOST_IP:-""}
-  username: ${AIRFLOW_USERNAME:-admin}
-  password: ${AIRFLOW_PASSWORD:-admin}
+pipelineServiceClientConfiguration:
+  # If we don't need this, set "org.openmetadata.service.clients.pipeline.noop.NoopClient"
+  className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
+  apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}
   metadataApiEndpoint: ${SERVER_HOST_API_URL:-http://localhost:8585/api}
-  verifySSL: ${AIRFLOW_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
+  ingestionIpInfoEnabled: ${PIPELINE_SERVICE_IP_INFO_ENABLED:-false}
+  hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
+  healthCheckInterval: ${PIPELINE_SERVICE_CLIENT_HEALTH_CHECK_INTERVAL:-300}
+  # This SSL information is about the OpenMetadata server.
+  # It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.
+  verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
-    validate:
-      certificatePath: ${AIRFLOW_SSL_CERT_PATH:-""} # Local path for Airflow
+    certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+
+  # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
+  # Supported: noop, airflow, env
+  secretsManagerLoader: ${PIPELINE_SERVICE_CLIENT_SECRETS_MANAGER_LOADER:-"noop"}
+
+  # Default required parameters for Airflow as Pipeline Service Client
+  parameters:
+    username: ${AIRFLOW_USERNAME:-admin}
+    password: ${AIRFLOW_PASSWORD:-admin}
+    timeout: ${AIRFLOW_TIMEOUT:-10}
+    # If we need to use SSL to reach Airflow
+    truststorePath: ${AIRFLOW_TRUST_STORE_PATH:-""}
+    truststorePassword: ${AIRFLOW_TRUST_STORE_PASSWORD:-""}
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.
@@ -233,10 +307,45 @@ email:
   password: ${SMTP_SERVER_PWD:-""}
   transportationStrategy: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
 
-sandboxModeEnabled: ${SANDBOX_MODE_ENABLED:-false}
-slackChat:
-  slackUrl: ${SLACK_CHAT_SLACK_URL:-"https://slack.open-metadata.org/"}
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ${OM_CUSTOM_LOGO_URL_PATH:-""} #login page logo
+    customMonogramUrlPath: ${OM_CUSTOM_MONOGRAM_URL_PATH:-""} #nav bar logo
+  loginConfig:
+    maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
+    accessBlockTime: ${OM_LOGIN_ACCESS_BLOCK_TIME:-600}
+    jwtTokenExpiryTime: ${OM_JWT_EXPIRY_TIME:-3600}
 
-login:
-  maxLoginFailAttempts: ${OM_MAX_FAILED_LOGIN_ATTEMPTS:-3}
-  accessBlockTime: ${OM_LOGIN_ACCESS_BLOCKTIME:-600}
+
+web:
+  uriPath: ${WEB_CONF_URI_PATH:-"/api"}
+  hsts:
+    enabled: ${WEB_CONF_HSTS_ENABLED:-false}
+    maxAge: ${WEB_CONF_HSTS_MAX_AGE:-"365 days"}
+    includeSubDomains: ${WEB_CONF_HSTS_INCLUDE_SUBDOMAINS:-"true"}
+    preload: ${WEB_CONF_HSTS_PRELOAD:-"true"}
+  frame-options:
+    enabled: ${WEB_CONF_FRAME_OPTION_ENABLED:-false}
+    option: ${WEB_CONF_FRAME_OPTION:-"SAMEORIGIN"}
+    origin: ${WEB_CONF_FRAME_ORIGIN:-""}
+  content-type-options:
+    enabled: ${WEB_CONF_CONTENT_TYPE_OPTIONS_ENABLED:-false}
+  xss-protection:
+    enabled: ${WEB_CONF_XSS_PROTECTION_ENABLED:-false}
+    on: ${WEB_CONF_XSS_PROTECTION_ON:-true}
+    block: ${WEB_CONF_XSS_PROTECTION_BLOCK:-true}
+  csp:
+    enabled: ${WEB_CONF_XSS_CSP_ENABLED:-false}
+    policy: ${WEB_CONF_XSS_CSP_POLICY:-"default-src 'self'"}
+    reportOnlyPolicy: ${WEB_CONF_XSS_CSP_REPORT_ONLY_POLICY:-""}
+  referrer-policy:
+    enabled: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
+  permission-policy:
+    enabled: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
+    option: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
+
+
+changeEventConfig:
+  omUri: ${OM_URI:- "http://localhost:8585"} #openmetadata in om uri for eg http://localhost:8585
+

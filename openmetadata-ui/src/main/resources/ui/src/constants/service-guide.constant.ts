@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n from 'utils/i18next/LocalUtil';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const addServiceGuide = [
   {
@@ -21,11 +21,16 @@ export const addServiceGuide = [
   },
   {
     step: 2,
+    title: i18n.t('label.requirement-plural'),
+    description: i18n.t('message.service-requirements-description'),
+  },
+  {
+    step: 3,
     title: i18n.t('label.configure-a-service'),
     description: i18n.t('message.configure-a-service-description'),
   },
   {
-    step: 3,
+    step: 4,
     title: i18n.t('label.connection-details'),
     description: i18n.t('message.connection-details-description'),
   },
@@ -71,7 +76,7 @@ export const addMetadataIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.metadata'),
     }),
     description: i18n.t(
@@ -96,7 +101,7 @@ export const addUsageIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.usage'),
     }),
     description: i18n.t(
@@ -121,7 +126,7 @@ export const addLineageIngestionGuide = [
   },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.lineage'),
     }),
     description: i18n.t(
@@ -144,7 +149,7 @@ export const addProfilerIngestionGuide = [
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
+    title: i18n.t('message.entity-ingestion-added-successfully', {
       entity: i18n.t('label.profiler'),
     }),
     description: i18n.t(
@@ -167,8 +172,8 @@ export const addDBTIngestionGuide = [
   { ...schedulingIngestionGuide },
   {
     step: 5,
-    title: i18n.t('label.entity-ingestion-added-successfully', {
-      entity: i18n.t('label.dbt-uppercase'),
+    title: i18n.t('message.entity-ingestion-added-successfully', {
+      entity: i18n.t('label.dbt-lowercase'),
     }),
     description: i18n.t(
       'message.ingestion-pipeline-name-successfully-deployed-entity',
@@ -178,3 +183,8 @@ export const addDBTIngestionGuide = [
     ),
   },
 ];
+
+export const EMAIL_CONFIG_SERVICE_CATEGORY = 'EmailConfiguration';
+export const CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY = 'CustomLogoConfiguration';
+export const CUSTOM_PROPERTY_CATEGORY = 'CustomProperty';
+export const OPEN_METADATA = 'OpenMetadata';

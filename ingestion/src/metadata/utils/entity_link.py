@@ -13,7 +13,7 @@ Handle Entity Link building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
-from typing import List
+from typing import List, Optional
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -32,7 +32,7 @@ class EntityLinkBuildingException(Exception):
     """
 
 
-def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+def split(s: str) -> List[str]:
     """
     Method to handle the splitting logic
     """
@@ -56,3 +56,46 @@ def get_decoded_column(entity_link: str) -> str:
     """
 
     return unquote_plus(entity_link.split("::")[-1].replace(">", ""))
+
+
+def get_table_fqn(entity_link: str) -> str:
+    """From an entity link get the table fqn
+
+    Args:
+        entity_link: entity link
+    """
+
+    return split(entity_link)[1]
+
+
+def get_table_or_column_fqn(entity_link: str) -> str:
+    """From an entity link get the column fqn
+
+    Args:
+        entity_link: entity link
+    """
+    split_entity_link = split(entity_link)
+    if len(split_entity_link) == 2:
+        return split_entity_link[1]
+    if len(split_entity_link) == 4 and split_entity_link[2] == "columns":
+        return f"{split_entity_link[1]}.{split_entity_link[3]}"
+
+    raise ValueError(
+        "Invalid entity link."
+        " {split_entity_link} does not look like a table or a column entity link"
+    )
+
+
+def get_entity_link(table_fqn: str, column_name: Optional[str]) -> str:
+    """From table fqn and column name get the entity_link
+
+    Args:
+        table_fqn: table fqn
+        column_name: Optional param to generate entity link with column name
+    """
+
+    if column_name:
+        entity_link = f"<#E::table::" f"{table_fqn}" f"::columns::" f"{column_name}>"
+    else:
+        entity_link = f"<#E::table::" f"{table_fqn}>"
+    return entity_link

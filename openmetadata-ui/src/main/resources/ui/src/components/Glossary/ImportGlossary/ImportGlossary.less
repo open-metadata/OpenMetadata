@@ -10,16 +10,50 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@info-color: #1890ff;
 @bg-white: #ffffff;
+@border-color: #6b728066;
+@check-mark-color: #28a744;
+@fail-color: #cb2531;
 
 .ant-upload.file-dragger-wrapper {
-  border-color: @info-color;
+  border-color: @border-color;
   border-width: 2px;
   &:not(.ant-upload-disabled) {
     &:hover {
-      border-color: @info-color;
+      border-color: @border-color;
     }
   }
   background: @bg-white;
+  height: 360px;
+  margin: 24px 48px 0;
+  width: unset;
+}
+
+.glossary-preview-footer {
+  box-shadow: 1px -2px 4px rgba(0, 0, 0, 0.12);
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  z-index: 4;
+}
+
+.import-glossary {
+  .stepper-container {
+    max-width: 450px;
+    margin: auto;
+    margin-top: 24px;
+    padding: 0;
+  }
+  .browse-text {
+    border-bottom: 1px solid;
+  }
+}
+
+.passed-row {
+  color: @check-mark-color;
+}
+
+.failed-row {
+  color: @fail-color;
 }

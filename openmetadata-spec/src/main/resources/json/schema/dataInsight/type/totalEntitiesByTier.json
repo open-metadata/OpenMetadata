@@ -5,6 +5,9 @@
   "description": "totalEntitiesByTier data blob",
   "type": "object",
   "javaType": "org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier",
+  "javaInterfaces": [
+    "org.openmetadata.schema.DataInsightInterface"
+  ],
   "properties": {
     "timestamp": {
       "description": "timestamp",

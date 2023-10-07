@@ -12,35 +12,42 @@
  */
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
+import { Button } from 'antd';
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { useTour } from '../../hooks/useTour';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { PRIMERY_COLOR } from '../../constants/constants';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
+import './tour.style.less';
 
 const Tour = ({ steps }: { steps: TourSteps[] }) => {
-  const { isTourOpen, handleIsTourOpen } = useTour();
+  const { isTourOpen, updateIsTourOpen, updateTourPage } = useTourProvider();
   const [showTourEndModal, setShowTourEndModal] = useState(false);
   const history = useHistory();
 
   const handleModalSubmit = () => {
+    updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     history.push('/');
   };
 
+  const handleRequestClose = () => {
+    updateIsTourOpen(false);
+  };
+
   return (
-    <div>
+    <div className="tour-container">
       {isTourOpen ? (
         <ReactTutorial
           disableDotsNavigation
           disableKeyboardNavigation
           showCloseButton
           showNumber
-          accentColor="#7147E8"
+          accentColor={PRIMERY_COLOR}
           inViewThreshold={200}
           lastStepNextButton={
-            <button
-              className="tw-w-4"
-              onClick={() => setShowTourEndModal(true)}>
+            <Button onClick={() => setShowTourEndModal(true)}>
               <svg viewBox="0 0 18.4 14.4">
                 <path
                   d="M17 7.2H1M10.8 1 17 7.2l-6.2 6.2"
@@ -51,13 +58,13 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
                   strokeWidth={2}
                 />
               </svg>
-            </button>
+            </Button>
           }
           maskColor="#302E36"
           playTour={isTourOpen}
           stepWaitTimer={300}
           steps={steps}
-          onRequestClose={() => handleIsTourOpen(false)}
+          onRequestClose={handleRequestClose}
           onRequestSkip={handleModalSubmit}
         />
       ) : null}

@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
+import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
-import { getPolicies, getRoles } from 'rest/rolesAPIV1';
+import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../../../components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './AddAttributeModal.less';
 
@@ -46,6 +50,7 @@ const AddAttributeModal: FC<Props> = ({
   selectedKeys,
   isModalLoading,
 }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState<EntityReference[]>([]);
   const [searchedData, setSearchedData] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -93,7 +98,7 @@ const AddAttributeModal: FC<Props> = ({
     }
   };
 
-  const handleValuSelect = (id: string) => {
+  const handleValueSelect = (id: string) => {
     const isAdded = selectedValues.includes(id);
     if (isAdded) {
       setSelectedValues((prev) => prev.filter((v) => v !== id));
@@ -128,13 +133,14 @@ const AddAttributeModal: FC<Props> = ({
       closable={false}
       confirmLoading={isModalLoading}
       data-testid="modal-container"
+      maskClosable={false}
       okText="Submit"
       open={isOpen}
       title={
         <span data-testid="modal-title">
           {title}{' '}
           <span className="text-grey-muted text-sm">
-            ({selectedValues.length}/{data.length} selected)
+            {`(${selectedValues.length}/${data.length} selected)`}
           </span>
         </span>
       }
@@ -149,37 +155,43 @@ const AddAttributeModal: FC<Props> = ({
             <Col span={24}>
               <Input
                 data-testid="search-input"
-                placeholder={`Search ${type}`}
-                prefix={
-                  <FontAwesomeIcon
-                    icon="search"
-                    style={{ color: '#37352F4D' }}
-                  />
-                }
+                placeholder={t('label.search-entity', {
+                  entity: type,
+                })}
+                prefix={<SearchOutlined style={{ color: '#37352F4D' }} />}
                 onChange={(e) => handleSearch(e.target.value)}
               />
             </Col>
           </Row>
-          {searchedData.map((option) => (
-            <Row
-              className={classNames({
-                selected: selectedValues.includes(option.id),
-              })}
-              data-testid="policy-row"
-              gutter={[16, 16]}
-              key={option.id}
-              onClick={() => handleValuSelect(option.id)}>
-              <Col span={6}>{getEntityName(option)}</Col>
-              <Col span={16}>
-                <RichTextEditorPreviewer markdown={option.description || ''} />
-              </Col>
-              <Col span={2}>
-                {selectedValues.includes(option.id) && (
-                  <FontAwesomeIcon className="text-primary" icon="check" />
-                )}
-              </Col>
-            </Row>
-          ))}
+          {isEmpty(searchedData) ? (
+            <ErrorPlaceHolder
+              className="mt-0-important p-y-lg"
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          ) : (
+            searchedData.map((option) => (
+              <Row
+                className={classNames({
+                  selected: selectedValues.includes(option.id),
+                })}
+                data-testid="policy-row"
+                gutter={[16, 16]}
+                key={option.id}
+                onClick={() => handleValueSelect(option.id)}>
+                <Col span={6}>{getEntityName(option)}</Col>
+                <Col span={16}>
+                  <RichTextEditorPreviewer
+                    markdown={option.description || ''}
+                  />
+                </Col>
+                <Col span={2}>
+                  {selectedValues.includes(option.id) && (
+                    <CheckOutlined className="text-primary" />
+                  )}
+                </Col>
+              </Row>
+            ))
+          )}
         </>
       )}
     </Modal>

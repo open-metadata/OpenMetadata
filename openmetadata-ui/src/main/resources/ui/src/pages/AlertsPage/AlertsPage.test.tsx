@@ -15,6 +15,47 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AlertsPage from './AlertsPage';
 
+const MOCK_DATA = [
+  {
+    id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',
+    name: 'alert-test',
+    fullyQualifiedName: 'alert-test',
+    href: 'http://localhost:8585/api/v1/events/subscriptions/971a21b3-eeaf-4765-bda7-4e2cdb9788de',
+    version: 0.1,
+    updatedAt: 1682366749021,
+    updatedBy: 'admin',
+    filteringRules: {
+      resources: ['all'],
+      rules: [
+        {
+          name: 'matchIngestionPipelineState',
+          effect: 'include',
+          condition: "matchIngestionPipelineState('partialSuccess')",
+        },
+      ],
+    },
+    subscriptionType: 'Email',
+    subscriptionConfig: {
+      receivers: ['test@gmail.com'],
+    },
+    enabled: true,
+    batchSize: 10,
+    timeout: 10,
+    readTimeout: 12,
+    deleted: false,
+    provider: 'user',
+  },
+];
+
+jest.mock('../../rest/alertsAPI', () => ({
+  getAllAlerts: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: MOCK_DATA,
+      paging: { total: 1 },
+    })
+  ),
+}));
+
 describe('Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
     const { findByText } = render(<AlertsPage />, { wrapper: MemoryRouter });

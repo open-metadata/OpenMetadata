@@ -21,6 +21,9 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -69,7 +72,9 @@ class OMetaDatabaseTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -91,7 +96,7 @@ class OMetaDatabaseTest(TestCase):
 
         cls.create = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod
@@ -137,7 +142,9 @@ class OMetaDatabaseTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(res.service.id, updated_entity.service.id)
+        self.assertEqual(
+            res.service.fullyQualifiedName, updated_entity.service.__root__
+        )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 

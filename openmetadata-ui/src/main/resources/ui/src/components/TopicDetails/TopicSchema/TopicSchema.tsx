@@ -11,26 +11,53 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Space, Typography } from 'antd';
-import Table, { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
-import React, { FC, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Field } from '../../../generated/entity/data/topic';
-import { getEntityName } from '../../../utils/CommonUtils';
-import SVGIcons from '../../../utils/SvgUtils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import { fetchTagsAndGlossaryTerms } from '../../../utils/TagsUtils';
+import { FilterOutlined } from '@ant-design/icons';
 import {
+  Col,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import Table, { ColumnsType } from 'antd/lib/table';
+import { Key } from 'antd/lib/table/interface';
+import classNames from 'classnames';
+import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
+import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import ToggleExpandButton from '../../../components/ToggleExpandButton/ToggleExpandButton';
+import { PRIMERY_COLOR } from '../../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
+import {
+  getAllRowKeysByKeyName,
+  getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
-} from '../../../utils/TopicSchema.utils';
-import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../Tag/TagsContainer/tags-container';
-import TagsViewer from '../../Tag/TagsViewer/tags-viewer';
-import { CellRendered, TopicSchemaFieldsProps } from './TopicSchema.interface';
+} from '../../../utils/TableUtils';
+import {
+  SchemaViewType,
+  TopicSchemaFieldsProps,
+} from './TopicSchema.interface';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   messageSchema,
@@ -39,68 +66,47 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isReadOnly,
   onUpdate,
   hasTagEditAccess,
+  entityFqn,
+  onThreadLinkSelect,
+  isVersionView = false,
+  schemaTypePlaceholder,
 }) => {
   const { t } = useTranslation();
-
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
-  const [editFieldTags, setEditFieldTags] = useState<Field>();
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [viewType, setViewType] = useState<SchemaViewType>(
+    SchemaViewType.FIELDS
+  );
 
-  const [tagList, setTagList] = useState<TagOption[]>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+  const schemaAllRowKeys = useMemo(() => {
+    return getAllRowKeysByKeyName<Field>(
+      messageSchema?.schemaFields ?? [],
+      'name'
+    );
+  }, [messageSchema?.schemaFields]);
 
-  const fetchTags = async () => {
-    setIsTagLoading(true);
-    try {
-      const tagsAndTerms = await fetchTagsAndGlossaryTerms();
-      setTagList(tagsAndTerms);
-    } catch (error) {
-      setTagList([]);
-      setTagFetchFailed(true);
-    } finally {
-      setIsTagLoading(false);
-    }
-  };
-
-  const handleFieldTagsChange = async (selectedTags: EntityTags[] = []) => {
-    if (!isUndefined(editFieldTags)) {
-      const newSelectedTags: TagOption[] = selectedTags.map((tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
-
+  const handleFieldTagsChange = async (
+    selectedTags: EntityTags[],
+    editColumnTag: Field
+  ) => {
+    if (selectedTags && editColumnTag && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
-
-      updateFieldTags(
-        schema?.schemaFields,
-        editFieldTags?.name,
-        newSelectedTags
+      updateFieldTags<Field>(
+        editColumnTag.fullyQualifiedName ?? '',
+        selectedTags,
+        schema?.schemaFields
       );
-
       await onUpdate(schema);
-      setEditFieldTags(undefined);
-    } else {
-      setEditFieldTags(undefined);
-    }
-  };
-
-  const handleAddTagClick = (record: Field) => {
-    if (isUndefined(editFieldTags)) {
-      setEditFieldTags(record);
-      // Fetch tags and terms only once
-      if (tagList.length === 0 || tagFetchFailed) {
-        fetchTags();
-      }
     }
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
-    if (!isUndefined(editFieldDescription)) {
+    if (!isUndefined(editFieldDescription) && !isUndefined(onUpdate)) {
       const schema = cloneDeep(messageSchema);
-      updateFieldDescription(
-        schema?.schemaFields,
-        editFieldDescription.name,
-        updatedDescription
+      updateFieldDescription<Field>(
+        editFieldDescription.fullyQualifiedName ?? '',
+        updatedDescription,
+        schema?.schemaFields
       );
       await onUpdate(schema);
       setEditFieldDescription(undefined);
@@ -109,84 +115,58 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
-  const renderFieldDescription: CellRendered<Field, 'description'> = (
-    description,
-    record,
-    index
-  ) => {
-    return (
-      <Space
-        className="custom-group w-full"
-        data-testid="description"
-        id={`field-description-${index}`}
-        size={4}>
-        <>
-          {description ? (
-            <RichTextEditorPreviewer markdown={description} />
-          ) : (
-            <Typography.Text className="tw-no-description">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </Typography.Text>
-          )}
-        </>
-        {isReadOnly && !hasDescriptionEditAccess ? null : (
-          <Button
-            className="p-0 opacity-0 group-hover-opacity-100"
-            data-testid="edit-button"
-            icon={
-              <SVGIcons
-                alt={t('label.edit')}
-                icon="icon-edit"
-                title={t('label.edit')}
-                width="16px"
-              />
-            }
-            type="text"
-            onClick={() => setEditFieldDescription(record)}
-          />
-        )}
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length < schemaAllRowKeys.length) {
+      setExpandedRowKeys(schemaAllRowKeys);
+    } else {
+      setExpandedRowKeys([]);
+    }
+  };
+
+  const handleExpandedRowsChange = (keys: readonly Key[]) => {
+    setExpandedRowKeys(keys as string[]);
+  };
+
+  const renderSchemaName = useCallback(
+    (_, record: Field) => (
+      <Space align="start" className="w-max-90 vertical-align-inherit" size={2}>
+        <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+          <Typography.Text className="break-word">
+            {isVersionView ? (
+              <RichTextEditorPreviewer markdown={getEntityName(record)} />
+            ) : (
+              getEntityName(record)
+            )}
+          </Typography.Text>
+        </Tooltip>
       </Space>
-    );
-  };
+    ),
+    [isVersionView]
+  );
 
-  const renderFieldTags: CellRendered<Field, 'tags'> = (
-    tags,
-    record: Field
-  ) => {
-    const isSelectedField = editFieldTags?.name === record.name;
-    const styleFlag = isSelectedField || !isEmpty(tags);
-
-    return (
-      <>
-        {isReadOnly ? (
-          <Space wrap>
-            <TagsViewer sizeCap={-1} tags={tags || []} />
-          </Space>
+  const renderDataType = useCallback(
+    (dataType: DataTypeTopic, record: Field) => (
+      <Typography.Text>
+        {isVersionView ? (
+          <RichTextEditorPreviewer
+            markdown={record.dataTypeDisplay || dataType}
+          />
         ) : (
-          <Space
-            align={styleFlag ? 'start' : 'center'}
-            className="justify-between"
-            data-testid="tags-wrapper"
-            direction={styleFlag ? 'vertical' : 'horizontal'}
-            onClick={() => handleAddTagClick(record)}>
-            <TagsContainer
-              editable={isSelectedField}
-              isLoading={isTagLoading && isSelectedField}
-              selectedTags={tags || []}
-              showAddTagButton={hasTagEditAccess}
-              size="small"
-              tagList={tagList}
-              type="label"
-              onCancel={() => setEditFieldTags(undefined)}
-              onSelectionChange={handleFieldTagsChange}
-            />
-          </Space>
+          record.dataTypeDisplay || dataType
         )}
-      </>
-    );
-  };
+      </Typography.Text>
+    ),
+    [isVersionView]
+  );
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(messageSchema?.schemaFields ?? []);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [messageSchema?.schemaFields]);
 
   const columns: ColumnsType<Field> = useMemo(
     () => [
@@ -194,16 +174,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        ellipsis: true,
+        accessor: 'name',
+        fixed: 'left',
         width: 220,
-        render: (_, record: Field) => (
-          <Popover
-            destroyTooltipOnHide
-            content={getEntityName(record)}
-            trigger="hover">
-            <Typography.Text>{getEntityName(record)}</Typography.Text>
-          </Popover>
-        ),
+        render: renderSchemaName,
       },
       {
         title: t('label.type'),
@@ -211,51 +185,190 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'dataType',
         ellipsis: true,
         width: 220,
-        render: (dataType: Field['dataType']) => (
-          <Typography.Text>{dataType}</Typography.Text>
-        ),
+        render: renderDataType,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        render: renderFieldDescription,
+        width: 350,
+        render: (_, record, index) => (
+          <TableDescription
+            columnData={{
+              fqn: record.fullyQualifiedName ?? '',
+              field: record.description,
+            }}
+            entityFqn={entityFqn}
+            entityType={EntityType.TOPIC}
+            hasEditPermission={hasDescriptionEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            onClick={() => setEditFieldDescription(record)}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
       },
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        width: 350,
-        render: renderFieldTags,
+        accessor: 'tags',
+        width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        render: (tags: TagLabel[], record: Field, index: number) => (
+          <TableTags<Field>
+            entityFqn={entityFqn}
+            entityType={EntityType.TOPIC}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            record={record}
+            tags={tags}
+            type={TagSource.Classification}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'glossary',
+        accessor: 'tags',
+        width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        render: (tags: TagLabel[], record: Field, index: number) => (
+          <TableTags<Field>
+            entityFqn={entityFqn}
+            entityType={EntityType.TOPIC}
+            handleTagSelection={handleFieldTagsChange}
+            hasTagEditAccess={hasTagEditAccess}
+            index={index}
+            isReadOnly={isReadOnly}
+            record={record}
+            tags={tags}
+            type={TagSource.Glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
       },
     ],
     [
+      isReadOnly,
       messageSchema,
-      hasDescriptionEditAccess,
       hasTagEditAccess,
       editFieldDescription,
-      editFieldTags,
-      isReadOnly,
-      isTagLoading,
+      hasDescriptionEditAccess,
+      handleFieldTagsChange,
+      renderSchemaName,
+      renderDataType,
     ]
   );
 
+  const handleViewChange = (e: RadioChangeEvent) => {
+    setViewType(e.target.value);
+  };
+
+  useEffect(() => {
+    setExpandedRowKeys(schemaAllRowKeys);
+  }, []);
+
   return (
-    <>
-      <Table
-        bordered
-        className={className}
-        columns={columns}
-        data-testid="topic-schema-fields-table"
-        dataSource={messageSchema?.schemaFields}
-        expandable={{
-          ...getTableExpandableConfig<Field>(),
-          rowExpandable: (record) => !isEmpty(record.children),
-        }}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
+    <Row className="mt-4" gutter={[16, 16]}>
+      {messageSchema?.schemaType && (
+        <Col>
+          <Typography.Text type="secondary">
+            {t('label.schema')}
+          </Typography.Text>
+          {schemaTypePlaceholder ?? <Tag>{messageSchema.schemaType}</Tag>}
+        </Col>
+      )}
+      {isEmpty(messageSchema?.schemaFields) &&
+      isEmpty(messageSchema?.schemaText) ? (
+        <ErrorPlaceHolder />
+      ) : (
+        <>
+          {!isEmpty(messageSchema?.schemaFields) && (
+            <Col span={24}>
+              <Row justify="space-between">
+                {!isVersionView && (
+                  <Col>
+                    <Radio.Group value={viewType} onChange={handleViewChange}>
+                      <Radio.Button value={SchemaViewType.FIELDS}>
+                        {t('label.field-plural')}
+                      </Radio.Button>
+                      <Radio.Button value={SchemaViewType.TEXT}>
+                        {t('label.text')}
+                      </Radio.Button>
+                    </Radio.Group>
+                  </Col>
+                )}
+                <Col flex="auto">
+                  <Row justify="end">
+                    <Col>
+                      <ToggleExpandButton
+                        allRowKeys={schemaAllRowKeys}
+                        expandedRowKeys={expandedRowKeys}
+                        toggleExpandAll={toggleExpandAll}
+                      />
+                    </Col>
+                  </Row>
+                </Col>
+              </Row>
+            </Col>
+          )}
+          <Col span={24}>
+            {viewType === SchemaViewType.TEXT ||
+            isEmpty(messageSchema?.schemaFields) ? (
+              messageSchema?.schemaText && (
+                <SchemaEditor
+                  className="custom-code-mirror-theme custom-query-editor"
+                  editorClass={classNames('table-query-editor')}
+                  mode={{ name: CSMode.JAVASCRIPT }}
+                  options={{
+                    styleActiveLine: false,
+                  }}
+                  value={messageSchema?.schemaText ?? ''}
+                />
+              )
+            ) : (
+              <Table
+                bordered
+                className={className}
+                columns={columns}
+                data-testid="topic-schema-fields-table"
+                dataSource={messageSchema?.schemaFields}
+                expandable={{
+                  ...getTableExpandableConfig<Field>(),
+                  rowExpandable: (record) => !isEmpty(record.children),
+                  onExpandedRowsChange: handleExpandedRowsChange,
+                  expandedRowKeys,
+                }}
+                pagination={false}
+                rowKey="name"
+                scroll={TABLE_SCROLL_VALUE}
+                size="small"
+              />
+            )}
+          </Col>
+        </>
+      )}
       {editFieldDescription && (
         <ModalWithMarkdownEditor
           header={`${t('label.edit-entity', {
@@ -270,7 +383,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           onSave={handleFieldDescriptionChange}
         />
       )}
-    </>
+    </Row>
   );
 };
 

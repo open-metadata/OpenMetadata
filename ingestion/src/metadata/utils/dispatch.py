@@ -95,8 +95,8 @@ def valuedispatch(func) -> Callable:
     def wrapper(*args, **kwargs) -> Any:
         if not args:
             raise TypeError(f"{func_name} requires at least 1 argument")
-        if isinstance(args[0], str):
-            return dispatch(args[0])(*args, **kwargs)
+        if isinstance(args[0], (str, bytes)):
+            return dispatch(str(args[0]))(*args, **kwargs)
         return dispatch(args[1])(*args, **kwargs)
 
     func_name = getattr(func, "__name__", "method value dispatch")

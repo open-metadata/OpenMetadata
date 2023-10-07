@@ -26,19 +26,18 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlHyperParameter,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.mlmodel.mlflowConnection import (
     MlflowConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceSource
 from metadata.utils.filters import filter_by_mlmodel
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -53,14 +52,14 @@ class MlflowSource(MlModelServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MlflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MlflowConnection):
             raise InvalidSourceException(
                 f"Expected MlFlowConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
@@ -68,7 +67,7 @@ class MlflowSource(MlModelServiceSource):
         """
         List and filters models from the registry
         """
-        for model in cast(RegisteredModel, self.client.list_registered_models()):
+        for model in cast(RegisteredModel, self.client.search_registered_models()):
             if filter_by_mlmodel(
                 self.source_config.mlModelFilterPattern, mlmodel_name=model.name
             ):
@@ -88,7 +87,13 @@ class MlflowSource(MlModelServiceSource):
                 None,
             )
             if not latest_version:
-                self.status.failed(model.name, reason="Invalid version")
+                self.status.failed(
+                    StackTraceError(
+                        name=model.name,
+                        error="Version not found",
+                        stack_trace=f"Unable to ingest model {model.name} due to missing version from version list {model.latest_versions}",  # pylint: disable=line-too-long
+                    )
+                )
                 continue
 
             yield model, latest_version
@@ -99,16 +104,17 @@ class MlflowSource(MlModelServiceSource):
 
     def yield_mlmodel(  # pylint: disable=arguments-differ
         self, model_and_version: Tuple[RegisteredModel, ModelVersion]
-    ) -> Iterable[CreateMlModelRequest]:
-        """
-        Prepare the Request model
-        """
+    ) -> Iterable[Either[CreateMlModelRequest]]:
+        """Prepare the Request model"""
         model, latest_version = model_and_version
-        self.status.scanned(model.name)
-
         run = self.client.get_run(latest_version.run_id)
 
-        yield CreateMlModelRequest(
+        source_url = (
+            f"{clean_uri(self.service_connection.trackingUri)}/"
+            f"#/models/{model.name}"
+        )
+
+        mlmodel_request = CreateMlModelRequest(
             name=model.name,
             description=model.description,
             algorithm=self._get_algorithm(),  # Setting this to a constant
@@ -117,10 +123,11 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
-            service=EntityReference(
-                id=self.context.mlmodel_service.id, type="mlmodelService"
-            ),
+            service=self.context.mlmodel_service.fullyQualifiedName,
+            sourceUrl=source_url,
         )
+        yield Either(right=mlmodel_request)
+        self.register_record(mlmodel_request=mlmodel_request)
 
     def _get_hyper_params(  # pylint: disable=arguments-differ
         self,
@@ -188,13 +195,12 @@ class MlflowSource(MlModelServiceSource):
                 if not latest_props:
                     reason = f"Cannot find the run ID properties for {run_id}"
                     logger.warning(reason)
-                    self.status.warned(model_name, reason)
+                    self.status.warning(model_name, reason)
                     return None
 
                 if latest_props.get("signature") and latest_props["signature"].get(
                     "inputs"
                 ):
-
                     features = ast.literal_eval(latest_props["signature"]["inputs"])
 
                     return [
@@ -211,6 +217,6 @@ class MlflowSource(MlModelServiceSource):
                 logger.debug(traceback.format_exc())
                 reason = f"Cannot extract properties from RunData: {exc}"
                 logger.warning(reason)
-                self.status.warned(model_name, reason)
+                self.status.warning(model_name, reason)
 
         return None

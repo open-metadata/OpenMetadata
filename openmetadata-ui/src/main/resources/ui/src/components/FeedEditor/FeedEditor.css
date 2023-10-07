@@ -13,7 +13,6 @@
 
 .ql-container {
   box-sizing: border-box;
-  font-family: Helvetica, Arial, sans-serif;
   font-size: 13px;
   height: 100%;
   margin: 0px;
@@ -365,12 +364,7 @@
 .ql-editor .ql-color-purple {
   color: #93f;
 }
-.ql-editor .ql-font-serif {
-  font-family: Georgia, Times New Roman, serif;
-}
-.ql-editor .ql-font-monospace {
-  font-family: Monaco, Courier New, monospace;
-}
+
 .ql-editor .ql-size-small {
   font-size: 0.75em;
 }
@@ -445,7 +439,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
-  color: #7147e8;
+  color: #0968da;
 }
 .ql-snow.ql-toolbar button:hover .ql-fill,
 .ql-snow .ql-toolbar button:hover .ql-fill,
@@ -475,7 +469,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke.ql-fill,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke.ql-fill,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke.ql-fill {
-  fill: #7147e8;
+  fill: #0968da;
 }
 .ql-snow.ql-toolbar button:hover .ql-stroke,
 .ql-snow .ql-toolbar button:hover .ql-stroke,
@@ -505,7 +499,7 @@
 .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke-miter,
 .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter,
 .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter {
-  stroke: #7147e8;
+  stroke: #0968da;
 }
 @media (pointer: coarse) {
   .ql-snow.ql-toolbar button:hover:not(.ql-active),
@@ -821,12 +815,7 @@
 .ql-snow .ql-picker.ql-font .ql-picker-item[data-value='monospace']::before {
   content: 'Monospace';
 }
-.ql-snow .ql-picker.ql-font .ql-picker-item[data-value='serif']::before {
-  font-family: Georgia, Times New Roman, serif;
-}
-.ql-snow .ql-picker.ql-font .ql-picker-item[data-value='monospace']::before {
-  font-family: Monaco, Courier New, monospace;
-}
+
 .ql-snow .ql-picker.ql-size {
   width: 98px;
 }
@@ -864,7 +853,6 @@
 .ql-toolbar.ql-snow {
   border: 1px solid #ccc;
   box-sizing: border-box;
-  font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
   padding: 8px;
 }
 .ql-toolbar.ql-snow .ql-formats {
@@ -928,7 +916,7 @@
   content: 'Edit';
   padding-right: 8px;
   color: #ffffff;
-  background: #7147e8;
+  background: #0968da;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -939,7 +927,7 @@
   content: 'Remove';
   margin-left: 8px;
   color: #ffffff;
-  background: #7147e8;
+  background: #0968da;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -948,11 +936,11 @@
 }
 .ql-snow .ql-tooltip a {
   line-height: 26px;
-  color: #7147e8;
+  color: #0968da;
 }
 
 .ql-snow .ql-tooltip a:hover {
-  color: #7147e8;
+  color: #0968da;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-preview,
 .ql-snow .ql-tooltip.ql-editing a.ql-remove {
@@ -963,7 +951,7 @@
 }
 .ql-snow .ql-tooltip.ql-editing input[type='text']:hover,
 .ql-snow .ql-tooltip.ql-editing input[type='text']:focus {
-  border: 1px solid #7147e8;
+  border: 1px solid #0968da;
   outline: none;
 }
 .ql-snow .ql-tooltip.ql-editing a.ql-action {
@@ -976,7 +964,7 @@
   padding-right: 0px;
   margin: 0px;
   color: #ffffff;
-  background: #7147e8;
+  background: #0968da;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 8px;
@@ -1001,7 +989,6 @@
 
 /* custom css */
 .editor-container {
-  margin: 8px 16px;
   border-radius: 6px;
   background: white;
 }
@@ -1041,13 +1028,11 @@
 
 .ql-mention-list-item {
   cursor: pointer;
-  line-height: 44px;
-  font-size: 16px;
-  padding: 0 20px;
+  padding: 8px 12px;
   vertical-align: middle;
 }
 .ql-mention-list-item.selected {
-  background-color: #dbd1f9;
+  background-color: #e6f4ff;
   text-decoration: none;
 }
 
@@ -1086,4 +1071,27 @@ button.ql-emoji {
 
 .ap {
   text-indent: 0px;
+}
+
+.mention-avatar {
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.mention-profile-image {
+  display: inline-block;
+  height: 24px;
+  width: 24px;
+}
+
+.mention-profile-image img {
+  width: 100%;
+  border-radius: 50%;
+}
+
+.mention-icon-image > svg {
+  height: 24px;
+  width: 24px;
 }

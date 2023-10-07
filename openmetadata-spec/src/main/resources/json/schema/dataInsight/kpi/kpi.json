@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/dataInsight/kpi/kpi.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Kpi",
-  "description": "Defines a kpi with a metric and target.",
+  "description": "A `KIP` entity defines a metric and a target.",
   "type": "object",
   "javaType": "org.openmetadata.schema.dataInsight.kpi.Kpi",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],

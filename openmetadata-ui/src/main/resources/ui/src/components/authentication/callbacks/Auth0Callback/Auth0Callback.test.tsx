@@ -13,10 +13,10 @@
 
 import { useAuth0 } from '@auth0/auth0-react';
 import { render, screen } from '@testing-library/react';
+import { t } from 'i18next';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { oidcTokenKey } from '../../../../constants/constants';
-import jsonData from '../../../../jsons/en';
 import Auth0Callback from './Auth0Callback';
 
 const localStorageMock = (() => {
@@ -81,9 +81,7 @@ describe('Test Auth0Callback component', () => {
     });
     const error = screen.getByTestId('auth0-error');
 
-    expect(error).toHaveTextContent(
-      jsonData['api-error-messages']['unexpected-error']
-    );
+    expect(error).toHaveTextContent(t('server.unexpected-error'));
     expect(error).toHaveTextContent('unknown error');
   });
 

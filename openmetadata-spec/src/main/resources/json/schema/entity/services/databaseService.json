@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database Service",
-  "description": "This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
+  "description": "This schema defines the `Database Service` is a service such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.DatabaseService",
   "javaInterfaces": [
@@ -24,6 +24,7 @@
         "Oracle",
         "Athena",
         "Hive",
+        "Impala",
         "Presto",
         "Trino",
         "Vertica",
@@ -44,7 +45,11 @@
         "DomoDatabase",
         "QueryLog",
         "CustomDatabase",
-        "Dbt"
+        "Dbt",
+        "SapHana",
+        "MongoDB",
+        "Couchbase",
+        "Greenplum"
       ],
       "javaEnums": [
         {
@@ -73,6 +78,9 @@
         },
         {
           "name": "Hive"
+        },
+        {
+          "name": "Impala"
         },
         {
           "name": "Presto"
@@ -136,6 +144,18 @@
         },
         {
           "name": "Dbt"
+        },
+        {
+          "name": "SapHana"
+        },
+        {
+          "name": "MongoDB"
+        },
+        {
+          "name": "Couchbase"
+        },
+        {
+          "name": "Greenplum"
         }
       ]
     },
@@ -181,6 +201,9 @@
             },
             {
               "$ref": "./connections/database/hiveConnection.json"
+            },
+            {
+              "$ref": "./connections/database/impalaConnection.json"
             },
             {
               "$ref": "./connections/database/mariaDBConnection.json"
@@ -232,6 +255,18 @@
             },
             {
               "$ref": "./connections/database/customDatabaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapHanaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/mongoDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/couchbaseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/greenplumConnection.json"
             }
           ]
         }
@@ -269,7 +304,11 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
     },
     "tags": {
       "description": "Tags for this Database Service.",
@@ -307,6 +346,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Database service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

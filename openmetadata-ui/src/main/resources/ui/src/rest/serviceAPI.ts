@@ -12,15 +12,19 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { isNil } from 'lodash';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { configOptions, PAGE_SIZE } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
+import { EntityHistory } from '../generated/type/entityHistory';
 import {
-  ConfigData,
+  DomainSupportedServiceTypes,
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+import { searchData } from './miscAPI';
 
 export const getServiceDetails = async (): Promise<
   AxiosResponse<ServiceData[]>
@@ -30,20 +34,29 @@ export const getServiceDetails = async (): Promise<
   return response.data;
 };
 
-export const getServices = async (serviceName: string, limit?: number) => {
-  let url = `/services/${serviceName}`;
-  const searchParams = new URLSearchParams();
+interface ServiceRequestParams {
+  limit?: number;
+  serviceName: string;
+  after?: string;
+  before?: string;
+}
 
-  if (!isNil(limit)) {
-    searchParams.append('limit', `${limit}`);
-  }
+export const getServices = async ({
+  serviceName,
+  limit,
+  after,
+  before,
+}: ServiceRequestParams) => {
+  const url = `/services/${serviceName}`;
 
-  const isPaging =
-    serviceName.includes('after') || serviceName.includes('before');
+  const params = {
+    fields: 'owner',
+    limit,
+    after,
+    before,
+  };
 
-  url += isPaging ? `&${searchParams}` : `?${searchParams}`;
-
-  const response = await APIClient.get<ServiceResponse>(url);
+  const response = await APIClient.get<ServiceResponse>(url, { params });
 
   return response.data;
 };
@@ -67,6 +80,21 @@ export const getServiceByFQN = async (
   );
 
   const response = await APIClient.get<ServicesType>(url);
+
+  return response.data;
+};
+
+export const getDomainSupportedServiceByFQN = async (
+  serviceCat: string,
+  fqn: string,
+  arrQueryFields: string | string[] = ''
+) => {
+  const url = getURLWithQueryFields(
+    `/services/${serviceCat}/name/${fqn}`,
+    arrQueryFields
+  );
+
+  const response = await APIClient.get<DomainSupportedServiceTypes>(url);
 
   return response.data;
 };
@@ -96,6 +124,32 @@ export const updateService = async (
   return response.data;
 };
 
+export const patchService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<ServicesType>
+  >(`/services/${serviceCat}/${id}`, options, configOptions);
+
+  return response.data;
+};
+
+export const patchDomainSupportedService = async (
+  serviceCat: string,
+  id: string,
+  options: ServicesUpdateRequest
+) => {
+  const response = await APIClient.patch<
+    ServicesUpdateRequest,
+    AxiosResponse<DomainSupportedServiceTypes>
+  >(`/services/${serviceCat}/${id}`, options, configOptions);
+
+  return response.data;
+};
+
 export const deleteService = (
   serviceCat: string,
   id: string
@@ -103,14 +157,51 @@ export const deleteService = (
   return APIClient.delete(`/services/${serviceCat}/${id}`);
 };
 
-export const TestConnection = (
-  data: ConfigData,
-  type: string
-): Promise<AxiosResponse> => {
-  const payload = {
-    connection: { config: data },
-    connectionType: type,
-  };
+export const getServiceVersions = async (
+  serviceCategory: string,
+  id: string
+) => {
+  const url = `/services/${serviceCategory}/${id}/versions`;
 
-  return APIClient.post(`/services/ingestionPipelines/testConnection`, payload);
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getServiceVersionData = async (
+  serviceCategory: string,
+  id: string,
+  version: string
+) => {
+  const url = `/services/${serviceCategory}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<ServicesType>(url);
+
+  return response.data;
+};
+
+export const searchService = async ({
+  search,
+  searchIndex,
+  currentPage = 1,
+  limit = PAGE_SIZE,
+  filters,
+}: {
+  search?: string;
+  searchIndex: SearchIndex | SearchIndex[];
+  limit?: number;
+  currentPage?: number;
+  filters?: string;
+}) => {
+  const response = await searchData(
+    search ?? WILD_CARD_CHAR,
+    currentPage,
+    limit,
+    filters ?? '',
+    '',
+    '',
+    searchIndex
+  );
+
+  return response.data;
 };

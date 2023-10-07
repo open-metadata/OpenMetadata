@@ -280,10 +280,11 @@ EXPTECTED_TABLE = Table(
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
+            name="atlas_table",
             description="test tag",
-            source="Tag",
+            source="Classification",
             labelType="Automated",
-            state="Confirmed",
+            state="Suggested",
             href=None,
         )
     ],
@@ -293,7 +294,6 @@ EXPTECTED_TABLE = Table(
     sampleData=None,
     tableProfilerConfig=None,
     profile=None,
-    tableQueries=None,
     dataModel=None,
     changeDescription=None,
     deleted=False,
@@ -308,7 +308,7 @@ class AtlasUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        "metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
@@ -316,7 +316,7 @@ class AtlasUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_atlas_config)
         self.atlas_source = AtlasSource.create(
             mock_atlas_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(
@@ -337,6 +337,7 @@ class AtlasUnitTest(TestCase):
                         username=None,
                         password=None,
                         hostPort="http://nohost:6000",
+                        databaseName="Reporting",
                     )
                 ),
             )
@@ -349,16 +350,13 @@ class AtlasUnitTest(TestCase):
                 description=None,
                 tags=None,
                 owner=None,
-                service=EntityReference(
-                    id=mock_database_service_object.id,
-                    type="databaseService",
-                ),
+                service=mock_database_service_object.fullyQualifiedName,
             )
         )
         mock_database_schema_object = self.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="Reporting",
-                database=EntityReference(id=mock_database_object.id, type="database"),
+                database=mock_database_object.fullyQualifiedName,
             )
         )
         _ = self.metadata.create_or_update(
@@ -444,9 +442,7 @@ class AtlasUnitTest(TestCase):
                         profile=None,
                     ),
                 ],
-                databaseSchema=EntityReference(
-                    id=mock_database_schema_object.id, type="databaseSchema"
-                ),
+                databaseSchema=mock_database_schema_object.fullyQualifiedName,
             ),
         )
 
@@ -470,12 +466,12 @@ class AtlasUnitTest(TestCase):
     @patch.object(AtlasClient, "list_entities", mock_list_entities)
     @patch.object(AtlasClient, "get_entity", mock_get_entity)
     @patch.object(AtlasSource, "ingest_lineage", mock_ingest_lineage)
-    @patch.object(AtlasSource, "create_tag", mock_create_tag)
     def test_description(self):
         """
         Testing description updated for database, databaseSchema, table
         """
-        _ = list(self.atlas_source.next_record())
+        self.mock_create_tag()
+        _ = list(self.atlas_source._iter())
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
         )

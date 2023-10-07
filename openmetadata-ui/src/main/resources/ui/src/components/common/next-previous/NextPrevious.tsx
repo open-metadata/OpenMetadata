@@ -11,57 +11,65 @@
  *  limitations under the License.
  */
 
-import { faArrowLeft, faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import React, { FC, useEffect, useState } from 'react';
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  DownOutlined,
+} from '@ant-design/icons';
+import { Button, Dropdown } from 'antd';
+import React, { FC } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
-import { Paging } from '../../../generated/type/paging';
-import { Button } from '../../buttons/Button/Button';
-
-interface Prop {
-  paging: Paging;
-  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
-  totalCount: number;
-  pageSize: number;
-  currentPage: number;
-  isNumberBased?: boolean;
-}
+import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
 const computeTotalPages = (pSize: number, total: number) => {
   return Math.ceil(total / pSize);
 };
 
-const NextPrevious: FC<Prop> = ({
+const NextPrevious: FC<NextPreviousProps> = ({
   paging,
   pagingHandler,
-  totalCount,
   pageSize,
   isNumberBased = false,
-  currentPage,
-}: Prop) => {
-  const [activePage, setActivePage] = useState(1);
+  currentPage = 1,
+  ...pagingProps
+}: NextPreviousProps) => {
+  const { t } = useTranslation();
+  const {
+    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+    onShowSizeChange,
+  } = (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = () => {
-    setActivePage(activePage + 1);
     if (isNumberBased) {
-      pagingHandler(activePage + 1);
+      pagingHandler({ currentPage: currentPage + 1 });
     } else {
-      pagingHandler(CursorType.AFTER, activePage + 1);
+      pagingHandler({
+        cursorType: CursorType.AFTER,
+        currentPage: currentPage + 1,
+      });
     }
   };
 
   const onPreviousHandler = () => {
-    setActivePage(activePage - 1);
     if (isNumberBased) {
-      pagingHandler(activePage - 1);
+      pagingHandler({ currentPage: currentPage - 1 });
     } else {
-      pagingHandler(CursorType.BEFORE, activePage - 1);
+      pagingHandler({
+        cursorType: CursorType.BEFORE,
+        currentPage: currentPage - 1,
+      });
     }
   };
 
   const computePrevDisableState = () => {
     if (isNumberBased) {
-      return activePage === 1;
+      return currentPage === 1;
     } else {
       return paging.before ? false : true;
     }
@@ -69,56 +77,56 @@ const NextPrevious: FC<Prop> = ({
 
   const computeNextDisableState = () => {
     if (isNumberBased) {
-      const totalPages = computeTotalPages(pageSize, totalCount);
+      const totalPages = computeTotalPages(pageSize, paging.total);
 
-      return activePage === totalPages;
+      return currentPage === totalPages;
     } else {
       return paging.after ? false : true;
     }
   };
 
-  useEffect(() => {
-    setActivePage(currentPage);
-  }, [currentPage]);
-
   return (
-    <div
-      className="tw-my-4 tw-flex tw-justify-center tw-items-center tw-gap-2"
-      data-testid="pagination">
+    <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        className="tw-rounded tw-w-24  tw-px-3 tw-py-1.5 tw-text-sm"
+        ghost
+        className="hover-button text-sm flex-center"
         data-testid="previous"
         disabled={computePrevDisableState()}
-        size="custom"
-        theme="primary"
-        variant="outlined"
+        icon={<ArrowLeftOutlined />}
+        type="primary"
         onClick={onPreviousHandler}>
-        <FontAwesomeIcon
-          className="tw-text-sm tw-align-middle tw-pr-1.5"
-          icon={faArrowLeft}
-        />{' '}
-        <span>Previous</span>
+        <span>{t('label.previous')}</span>
       </Button>
-      <span
-        className="tw-px-2"
-        data-testid="page-indicator">{`${activePage}/${computeTotalPages(
+      <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
         pageSize,
-        totalCount
+        paging.total
       )} Page`}</span>
       <Button
-        className="tw-rounded tw-w-24 tw-px-3 tw-py-1.5 tw-text-sm"
+        ghost
+        className="hover-button text-sm flex-center"
         data-testid="next"
         disabled={computeNextDisableState()}
-        size="custom"
-        theme="primary"
-        variant="outlined"
+        type="primary"
         onClick={onNextHandler}>
-        <span> Next</span>{' '}
-        <FontAwesomeIcon
-          className="tw-text-sm tw-align-middle tw-pl-1.5"
-          icon={faArrowRight}
-        />
+        <span> {t('label.next')}</span>
+        <ArrowRightOutlined />
       </Button>
+      {onShowSizeChange && (
+        <Dropdown
+          menu={{
+            items: pageSizeOptions.map((size) => ({
+              label: `${size} / Page`,
+              value: size,
+              key: size,
+              onClick: () => onShowSizeChange(size),
+            })),
+          }}>
+          <Button onClick={(e) => e.preventDefault()}>
+            {`${pageSize} / Page`}
+            <DownOutlined />
+          </Button>
+        </Dropdown>
+      )}
     </div>
   );
 };

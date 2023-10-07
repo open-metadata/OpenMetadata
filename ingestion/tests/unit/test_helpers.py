@@ -23,7 +23,9 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
+    deep_size_of_dict,
     get_entity_tier_from_tags,
+    is_safe_sql_query,
     list_to_dict,
 )
 
@@ -55,13 +57,13 @@ class TestHelpers(TestCase):
             tags=[
                 TagLabel(
                     tagFQN="Tier.Tier1",
-                    source=TagSource.Tag,
+                    source=TagSource.Classification,
                     labelType=LabelType.Automated,
                     state=State.Confirmed,
                 ),
                 TagLabel(
                     tagFQN="Foo.Bar",
-                    source=TagSource.Tag,
+                    source=TagSource.Classification,
                     labelType=LabelType.Automated,
                     state=State.Confirmed,
                 ),
@@ -77,7 +79,7 @@ class TestHelpers(TestCase):
             tags=[
                 TagLabel(
                     tagFQN="Foo.Bar",
-                    source=TagSource.Tag,
+                    source=TagSource.Classification,
                     labelType=LabelType.Automated,
                     state=State.Confirmed,
                 )
@@ -85,3 +87,61 @@ class TestHelpers(TestCase):
         )
 
         assert get_entity_tier_from_tags(table_entity_wo_tier.tags) is None
+
+    def test_deep_size_of_dict(self):
+        """test deep size of dict"""
+        test_dict = {
+            "a": 1,
+            "b": {"c": 2, "d": {"e": "Hello World", "f": [4, 5, 6]}},
+        }
+
+        assert deep_size_of_dict(test_dict) >= 1000
+        assert deep_size_of_dict(test_dict) <= 1500
+
+    def test_is_safe_sql_query(self):
+        """Test is_safe_sql_query function"""
+
+        delete_query = """
+         DELETE FROM airflow_task_instance
+         WHERE dag_id = 'test_dag_id'
+         """
+
+        drop_query = """
+         DROP TABLE IF EXISTS test_table
+         """
+
+        create_query = """
+         CREATE TABLE test_table (
+             id INT,
+             name VARCHAR(255)
+         )
+         """
+
+        select_query = """
+         SELECT * FROM test_table
+         """
+
+        cte_query = """
+         WITH foo AS (
+             SELECT * FROM test_table
+         )
+         SELECT * FROM foo
+         """
+
+        transaction_query = """
+         BEGIN TRAN T1;  
+             UPDATE table1 ...;  
+             BEGIN TRAN M2 WITH MARK;  
+                 UPDATE table2 ...;  
+                 SELECT * from table1;  
+             COMMIT TRAN M2;  
+             UPDATE table3 ...;  
+         COMMIT TRAN T1;  
+         """
+
+        self.assertFalse(is_safe_sql_query(delete_query))
+        self.assertFalse(is_safe_sql_query(drop_query))
+        self.assertFalse(is_safe_sql_query(create_query))
+        self.assertTrue(is_safe_sql_query(select_query))
+        self.assertTrue(is_safe_sql_query(cte_query))
+        self.assertFalse(is_safe_sql_query(transaction_query))

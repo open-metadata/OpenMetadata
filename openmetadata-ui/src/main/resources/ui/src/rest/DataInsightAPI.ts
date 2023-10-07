@@ -19,7 +19,7 @@ import APIClient from './index';
 
 export const getAggregateChartData = async (params: ChartAggregateParam) => {
   const response = await APIClient.get<DataInsightChartResult>(
-    '/dataInsight/aggregate',
+    '/analytics/dataInsights/charts/aggregate',
     {
       params,
     }
@@ -30,14 +30,16 @@ export const getAggregateChartData = async (params: ChartAggregateParam) => {
 
 export const getListDataInsightCharts = async () => {
   const response = await APIClient.get<PagingResponse<DataInsightChart[]>>(
-    '/dataInsight'
+    '/analytics/dataInsights/charts'
   );
 
   return response.data;
 };
 
 export const getChartById = async (id: string) => {
-  const response = await APIClient.get<DataInsightChart>(`/dataInsight/${id}`);
+  const response = await APIClient.get<DataInsightChart>(
+    `/analytics/dataInsights/charts/${id}`
+  );
 
   return response.data;
 };

@@ -1,0 +1,28 @@
+{
+  "name": "ActivityFeedAlert",
+  "fullyQualifiedName": "ActivityFeedAlert",
+  "displayName": "Activity Feed Alerts",
+  "description": "Alerts received on the Activity Feed are controlled with this.",
+  "alertType": "ChangeEvent",
+  "filteringRules":{
+    "resources": ["all"],
+    "rules": [
+      {
+        "name": "matchUpdatedBy",
+        "effect": "exclude",
+        "condition": "matchUpdatedBy('ingestion-bot')"
+      },
+      {
+        "name": "matchAnyFieldChange",
+        "effect": "exclude",
+        "condition": "matchAnyFieldChange('usageSummary')"
+      }
+    ]
+  },
+  "subscriptionType": "ActivityFeed",
+  "subscriptionConfig": {
+    "description": "Feed Subscription Endpoint"
+  },
+  "provider" : "system",
+  "enabled" : true
+}

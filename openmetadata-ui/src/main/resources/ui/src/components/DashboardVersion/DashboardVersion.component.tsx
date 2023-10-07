@@ -11,38 +11,35 @@
  *  limitations under the License.
  */
 
-import { Space, Table } from 'antd';
+import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import PageContainer from 'components/containers/PageContainer';
-import { isUndefined } from 'lodash';
-import { ExtraInfo } from 'Models';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconExternalLink } from '../../assets/svg/external-links.svg';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { getVersionPathWithTab } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
-import { OwnerType } from '../../enums/user.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
   ChangeDescription,
-  Dashboard,
   EntityReference,
 } from '../../generated/entity/data/dashboard';
-import { TagLabel } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
-  getDescriptionDiff,
-  getDiffByFieldName,
-  getDiffValue,
-  getTagsDiff,
+  getCommonExtraInfoForVersionDetails,
+  getEntityVersionByField,
+  getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { TagLabelWithStatus } from '../../utils/EntityVersionUtils.interface';
-import SVGIcons from '../../utils/SvgUtils';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../common/TabsPane/TabsPane';
-import EntityVersionTimeLine from '../EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../Loader/Loader';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const DashboardVersion: FC<DashboardVersionProp> = ({
@@ -56,152 +53,37 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
+  domain,
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
+  const history = useHistory();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );
-  const tabs = [
-    {
-      name: t('label.detail-plural'),
-      isProtected: false,
-      position: 1,
-    },
-  ];
 
-  const getDashboardDescription = () => {
-    const descriptionDiff = getDiffByFieldName(
-      EntityField.DESCRIPTION,
-      changeDescription
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
     );
-    const oldDescription =
-      descriptionDiff?.added?.oldValue ??
-      descriptionDiff?.deleted?.oldValue ??
-      descriptionDiff?.updated?.oldValue;
-    const newDescription =
-      descriptionDiff?.added?.newValue ??
-      descriptionDiff?.deleted?.newValue ??
-      descriptionDiff?.updated?.newValue;
 
-    return getDescriptionDiff(
-      oldDescription,
-      newDescription,
-      currentVersionData.description
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPathWithTab(
+        EntityType.DASHBOARD,
+        currentVersionData.fullyQualifiedName ?? '',
+        String(version),
+        activeKey
+      )
     );
-  };
-
-  const getExtraInfo = () => {
-    const ownerDiff = getDiffByFieldName('owner', changeDescription);
-
-    const oldOwner = JSON.parse(
-      ownerDiff?.added?.oldValue ??
-        ownerDiff?.deleted?.oldValue ??
-        ownerDiff?.updated?.oldValue ??
-        '{}'
-    );
-    const newOwner = JSON.parse(
-      ownerDiff?.added?.newValue ??
-        ownerDiff?.deleted?.newValue ??
-        ownerDiff?.updated?.newValue ??
-        '{}'
-    );
-    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
-
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const newTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.newValue ??
-          tagsDiff?.deleted?.newValue ??
-          tagsDiff?.updated?.newValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const oldTier = [
-      ...JSON.parse(
-        tagsDiff?.added?.oldValue ??
-          tagsDiff?.deleted?.oldValue ??
-          tagsDiff?.updated?.oldValue ??
-          '[]'
-      ),
-    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
-
-    const extraInfo: Array<ExtraInfo> = [
-      {
-        key: 'Owner',
-        value:
-          !isUndefined(ownerDiff?.added) ||
-          !isUndefined(ownerDiff?.deleted) ||
-          !isUndefined(ownerDiff?.updated)
-            ? getDiffValue(
-                oldOwner?.displayName || oldOwner?.name || '',
-                newOwner?.displayName || newOwner?.name || ''
-              )
-            : ownerPlaceHolder
-            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-            : '',
-        profileName:
-          newOwner?.type === OwnerType.USER ? newOwner?.name : undefined,
-      },
-      {
-        key: 'Tier',
-        value:
-          !isUndefined(newTier) || !isUndefined(oldTier)
-            ? getDiffValue(
-                oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || '',
-                newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] || ''
-              )
-            : tier?.tagFQN
-            ? tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
-            : '',
-      },
-      {
-        key: `${currentVersionData.serviceType} Url`,
-        value: (currentVersionData as Dashboard).dashboardUrl,
-        placeholderText:
-          currentVersionData.displayName ?? currentVersionData.name,
-        isLink: true,
-        openInNewTab: true,
-      },
-    ];
-
-    return extraInfo;
-  };
-
-  const getTags = () => {
-    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
-    const oldTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.oldValue ??
-        tagsDiff?.deleted?.oldValue ??
-        tagsDiff?.updated?.oldValue ??
-        '[]'
-    );
-    const newTags: Array<TagLabel> = JSON.parse(
-      tagsDiff?.added?.newValue ??
-        tagsDiff?.deleted?.newValue ??
-        tagsDiff?.updated?.newValue ??
-        '[]'
-    );
-    const flag: { [x: string]: boolean } = {};
-    const uniqueTags: Array<TagLabelWithStatus> = [];
-
-    [
-      ...(getTagsDiff(oldTags, newTags) ?? []),
-      ...(currentVersionData.tags ?? []),
-    ].forEach((elem) => {
-      if (!flag[elem.tagFQN as string]) {
-        flag[elem.tagFQN as string] = true;
-        uniqueTags.push(elem as TagLabelWithStatus);
-      }
-    });
-
-    return [
-      ...uniqueTags.map((t) =>
-        t.tagFQN.startsWith('Tier')
-          ? { ...t, tagFQN: t.tagFQN.split(FQN_SEPARATOR_CHAR)[1] }
-          : t
-      ),
-    ];
   };
 
   useEffect(() => {
@@ -213,25 +95,25 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   const tableColumn: ColumnsType<EntityReference> = useMemo(
     () => [
       {
-        title: t('label.chart-name'),
+        title: t('label.chart-entity', {
+          entity: t('label.name'),
+        }),
         dataIndex: 'name',
         key: 'name',
         render: (text, record) => (
           <Link target="_blank" to={{ pathname: text }}>
             <Space>
-              <span>{record.displayName}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
+              <span>{getEntityName(record)}</span>
+
+              <IconExternalLink width={16} />
             </Space>
           </Link>
         ),
       },
       {
-        title: t('label.chart-type'),
+        title: t('label.chart-entity', {
+          entity: t('label.type'),
+        }),
         dataIndex: 'type',
         key: 'type',
       },
@@ -243,9 +125,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
           text ? (
             <RichTextEditorPreviewer markdown={text} />
           ) : (
-            <span className="tw-no-description">
-              {t('label.no-description')}
-            </span>
+            <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
       {
@@ -253,73 +133,150 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
         dataIndex: 'tags',
         key: 'tags',
       },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'tags',
+      },
     ],
     []
   );
 
-  return (
-    <PageContainer>
-      <div
-        className={classNames(
-          'tw-px-6 tw-w-full tw-h-full tw-flex tw-flex-col tw-relative'
-        )}
-        data-testid="dashboard-version-container">
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div
-            className={classNames('version-data')}
-            data-testid="version-data">
-            <EntityPageInfo
-              isVersionSelected
-              deleted={deleted}
-              entityName={
-                currentVersionData.displayName ?? currentVersionData.name ?? ''
-              }
-              extraInfo={getExtraInfo()}
-              followersList={[]}
-              tags={getTags()}
-              tier={{} as TagLabel}
-              titleLinks={slashedDashboardName}
-              version={version}
-              versionHandler={backHandler}
-            />
-            <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
-              <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
-              <div className="tw-bg-white tw-flex-grow tw--mx-6 tw-px-7 tw-py-4">
-                <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                  <div className="tw-col-span-full">
-                    <Description
-                      isReadOnly
-                      description={getDashboardDescription()}
-                    />
-                  </div>
-                  <div className="m-y-md tw-col-span-full">
-                    <Table
-                      bordered
-                      columns={tableColumn}
-                      data-testid="schema-table"
-                      dataSource={(currentVersionData as Dashboard)?.charts}
-                      pagination={false}
-                      rowKey="id"
-                      size="small"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+  const tags = useMemo(() => {
+    return getEntityVersionTags(currentVersionData, changeDescription);
+  }, [currentVersionData, changeDescription]);
 
-        <EntityVersionTimeLine
-          show
-          currentVersion={version}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </div>
-    </PageContainer>
+  const description = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DESCRIPTION,
+      currentVersionData.description
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const displayName = useMemo(() => {
+    return getEntityVersionByField(
+      changeDescription,
+      EntityField.DISPLAYNAME,
+      currentVersionData.displayName
+    );
+  }, [currentVersionData, changeDescription]);
+
+  const tabItems: TabsProps['items'] = useMemo(
+    () => [
+      {
+        key: EntityTabs.DETAILS,
+        label: (
+          <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
+        ),
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <Row gutter={[0, 16]}>
+                <Col span={24}>
+                  <DescriptionV1
+                    isVersionView
+                    description={description}
+                    entityType={EntityType.DASHBOARD}
+                  />
+                </Col>
+                <Col span={24}>
+                  <Table
+                    bordered
+                    columns={tableColumn}
+                    data-testid="schema-table"
+                    dataSource={currentVersionData?.charts}
+                    pagination={false}
+                    rowKey="id"
+                    size="small"
+                  />
+                </Col>
+              </Row>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="220px">
+              <Space className="w-full" direction="vertical" size="large">
+                {Object.keys(TagSource).map((tagType) => (
+                  <TagsContainerV2
+                    entityFqn={currentVersionData.fullyQualifiedName}
+                    entityType={EntityType.DASHBOARD}
+                    key={tagType}
+                    permission={false}
+                    selectedTags={tags}
+                    tagType={TagSource[tagType as TagSource]}
+                  />
+                ))}
+              </Space>
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <CustomPropertyTable
+            isVersionView
+            entityDetails={currentVersionData}
+            entityType={EntityType.DASHBOARD}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
+        ),
+      },
+    ],
+    [description, tableColumn, currentVersionData, entityPermissions]
+  );
+
+  return (
+    <>
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')} data-testid="version-data">
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedDashboardName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.DASHBOARD}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <Col span={24}>
+              <Tabs
+                data-testid="tabs"
+                defaultActiveKey={tab ?? EntityTabs.DETAILS}
+                items={tabItems}
+                onChange={handleTabChange}
+              />
+            </Col>
+          </Row>
+        </div>
+      )}
+
+      <EntityVersionTimeLine
+        currentVersion={version}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </>
   );
 };
 

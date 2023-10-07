@@ -3,10 +3,30 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dashboard",
   "$comment": "@om-entity-type",
-  "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.",
+  "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are typically updated in real-time and allow interactive data exploration.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Dashboard",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "dashboardType": {
+      "javaType": "org.openmetadata.schema.type.DashboardType",
+      "description": "This schema defines the type used for describing different types of dashboards.",
+      "type": "string",
+      "default": "Dashboard",
+      "enum": [
+        "Dashboard",
+        "Report"
+      ],
+      "javaEnums": [
+        {
+          "name": "Dashboard"
+        },
+        {
+          "name": "Report"
+        }
+      ]
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies a dashboard instance.",
@@ -28,6 +48,10 @@
       "description": "Description of the dashboard, what it is, and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dashboard is contained",
+      "type": "string"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -40,16 +64,21 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "dashboardUrl": {
+    "dashboardType": {
+      "$ref": "#/definitions/dashboardType"
+    },
+    "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "charts": {
       "description": "All the charts included in this Dashboard.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      },
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataModels": {
+      "description": "List of data models used by this dashboard or the charts contained on it.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "href": {
@@ -62,7 +91,7 @@
     },
     "followers": {
       "description": "Followers of this dashboard.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this dashboard.",
@@ -81,7 +110,7 @@
       "$ref": "../services/dashboardService.json#/definitions/dashboardServiceType"
     },
     "usageSummary": {
-      "description": "Latest usage information for this database.",
+      "description": "Latest usage information for this dashboard.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
@@ -97,6 +126,21 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Domain the Dashboard belongs to. When not set, the Dashboard inherits the domain from the dashboard service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["id", "name", "service"],

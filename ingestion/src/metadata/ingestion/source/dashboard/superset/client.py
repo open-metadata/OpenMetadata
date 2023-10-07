@@ -12,13 +12,21 @@
 REST Auth & Client for Apache Superset
 """
 import json
+import traceback
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.dashboard.superset.models import (
+    ListDatabaseResult,
+    SupersetChart,
+    SupersetDashboardCount,
+    SupersetDatasource,
+)
 from metadata.utils.logger import ometa_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
 
@@ -31,12 +39,14 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     def __init__(self, config: SupersetConnection):
         self.config = config
         self.service_connection = self.config
+        get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
         self.generated_auth_token = None
@@ -78,12 +88,14 @@ class SupersetAPIClient:
     def __init__(self, config: SupersetConnection):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
+        get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
             auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
 
@@ -94,10 +106,19 @@ class SupersetAPIClient:
         Returns:
             int
         """
-        response = self.client.get("/dashboard/?q=(page:0,page_size:1)")
-        return response.get("count") or 0
+        try:
+            resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")
+            if resp_dashboards:
+                dashboard_count = SupersetDashboardCount(**resp_dashboards)
+                return dashboard_count.count
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the dashboard count")
+        return 0
 
-    def fetch_dashboards(self, current_page: int, page_size: int):
+    def fetch_dashboards(
+        self, current_page: int, page_size: int
+    ) -> SupersetDashboardCount:
         """
         Fetch dashboards
 
@@ -108,10 +129,18 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-        response = self.client.get(
-            f"/dashboard/?q=(page:{current_page},page_size:{page_size})"
-        )
-        return response
+
+        try:
+            dashboard_response = self.client.get(
+                f"/dashboard/?q=(page:{current_page},page_size:{page_size})"
+            )
+            if dashboard_response:
+                dashboard_list = SupersetDashboardCount(**dashboard_response)
+                return dashboard_list
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the dashboard list")
+        return SupersetDashboardCount()
 
     def fetch_total_charts(self) -> int:
         """
@@ -120,10 +149,18 @@ class SupersetAPIClient:
         Returns:
              int
         """
-        response = self.client.get("/chart/?q=(page:0,page_size:1)")
-        return response.get("count") or 0
 
-    def fetch_charts(self, current_page: int, page_size: int):
+        try:
+            resp_chart = self.client.get("/chart/?q=(page:0,page_size:1)")
+            if resp_chart:
+                chart_count = SupersetChart(**resp_chart)
+                return chart_count.count
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the chart count")
+        return 0
+
+    def fetch_charts(self, current_page: int, page_size: int) -> SupersetChart:
         """
         Fetch charts
 
@@ -134,16 +171,24 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-        response = self.client.get(
-            f"/chart/?q=(page:{current_page},page_size:{page_size})"
-        )
-        return response
 
-    def fetch_charts_with_id(self, chart_id):
+        try:
+            chart_response = self.client.get(
+                f"/chart/?q=(page:{current_page},page_size:{page_size})"
+            )
+            if chart_response:
+                chart_list = SupersetChart(**chart_response)
+                return chart_list
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the charts list")
+        return SupersetChart()
+
+    def fetch_charts_with_id(self, chart_id: str):
         response = self.client.get(f"/chart/{chart_id}")
         return response
 
-    def fetch_datasource(self, datasource_id: str):
+    def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
         Fetch data source
 
@@ -152,10 +197,19 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-        response = self.client.get(f"/dataset/{datasource_id}")
-        return response
 
-    def fetch_database(self, database_id: str):
+        try:
+            datasource_response = self.client.get(f"/dataset/{datasource_id}")
+            if datasource_response:
+                datasource_list = SupersetDatasource(**datasource_response)
+                return datasource_list
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the datasource list")
+
+        return SupersetDatasource()
+
+    def fetch_database(self, database_id: str) -> ListDatabaseResult:
         """
         Fetch database
 
@@ -164,5 +218,13 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-        response = self.client.get(f"/database/{database_id}")
-        return response
+
+        try:
+            database_response = self.client.get(f"/database/{database_id}")
+            if database_response:
+                database_list = ListDatabaseResult(**database_response)
+                return database_list
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the database list")
+        return ListDatabaseResult()

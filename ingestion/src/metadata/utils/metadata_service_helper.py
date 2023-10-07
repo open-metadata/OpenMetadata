@@ -78,12 +78,7 @@ SERVICE_TYPE_MAPPER = {
     },
     "glue": {
         "service_name": "Glue",
-        "connection": {
-            "config": {
-                "awsConfig": "aws_config",
-                "storageServiceName": "glue_stroage_name",
-            }
-        },
+        "connection": {"config": {"awsConfig": "aws_config"}},
     },
     "snowflake": {
         "service_nmae": "Snowflake",

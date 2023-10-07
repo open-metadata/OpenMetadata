@@ -26,7 +26,7 @@ const mockDiff = [
         tagFQN: 'PersonalData.Personal',
         description:
           'Data that can be used to directly or indirectly identify a person.',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Suggested',
       },
@@ -34,7 +34,7 @@ const mockDiff = [
         tagFQN: 'PII.NonSensitive',
         description:
           'PII which is easily accessible from public sources and can include zip code, race, gender, and date of birth.',
-        source: 'Tag',
+        source: 'Classification',
         labelType: 'Manual',
         state: 'Suggested',
       },
@@ -47,19 +47,19 @@ const mockDiff = [
       {
         labelType: 'Manual',
         state: 'Suggested',
-        source: 'Tag',
+        source: 'Classification',
         tagFQN: 'PersonalData.Personal',
       },
       {
         labelType: 'Manual',
         state: 'Suggested',
-        source: 'Tag',
+        source: 'Classification',
         tagFQN: 'PII.NonSensitive',
       },
       {
         labelType: 'Manual',
         state: 'Suggested',
-        source: 'Tag',
+        source: 'Classification',
         tagFQN: 'PersonalData.SpecialCategory',
       },
     ],

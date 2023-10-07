@@ -11,66 +11,44 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
-import Tags from 'components/Tag/Tags/tags';
+import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
-import React, { FC, Fragment, useState } from 'react';
+import { EntityTags } from 'Models';
+import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SettledStatus } from '../../enums/axios.enum';
-import { MlFeature, Mlmodel } from '../../generated/entity/data/mlmodel';
-import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
+import TableDescription from '../../components/TableDescription/TableDescription.component';
+import TableTags from '../../components/TableTags/TableTags.component';
+import { EntityType } from '../../enums/entity.enum';
+import { MlFeature } from '../../generated/entity/data/mlmodel';
+import { TagSource } from '../../generated/type/schema';
+import { createTagObject } from '../../utils/TagsUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
+import { MlModelFeaturesListProp } from './MlModel.interface';
 import SourceList from './SourceList.component';
 
-interface MlModelFeaturesListProp {
-  mlFeatures: Mlmodel['mlFeatures'];
-  permissions: OperationPermission;
-  handleFeaturesUpdate: (features: Mlmodel['mlFeatures']) => Promise<void>;
-}
-
-const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
+const MlModelFeaturesList = ({
   mlFeatures,
   handleFeaturesUpdate,
   permissions,
+  isDeleted,
+  entityFqn,
+  onThreadLinkSelect,
 }: MlModelFeaturesListProp) => {
   const { t } = useTranslation();
   const [selectedFeature, setSelectedFeature] = useState<MlFeature>(
     {} as MlFeature
   );
-  const [editTag, setEditTag] = useState<boolean>(false);
   const [editDescription, setEditDescription] = useState<boolean>(false);
-  const [allTags, setAllTags] = useState<Array<TagOption>>([]);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
+
+  const hasEditPermission = useMemo(
+    () => permissions.EditTags || permissions.EditAll,
+    [permissions]
+  );
 
   const handleCancelEditDescription = () => {
     setSelectedFeature({});
     setEditDescription(false);
-  };
-
-  const handleCancelEditTags = () => {
-    setEditTag(false);
-    setSelectedFeature({});
   };
 
   const handleDescriptionChange = async (value: string) => {
@@ -90,22 +68,13 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
     }
   };
 
-  const handleTagsChange = (
-    selectedTags?: Array<EntityTags>,
-    feature?: MlFeature
+  const handleTagsChange = async (
+    selectedTags: EntityTags[],
+    targetFeature: MlFeature
   ) => {
-    const newSelectedTags = selectedTags?.map((tag) => {
-      return {
-        tagFQN: tag.tagFQN,
-        source: tag.source,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const newSelectedTags = createTagObject(selectedTags);
 
-    const isFeatureSelected = !isEmpty(selectedFeature) || !isEmpty(feature);
-    const targetFeature = !isEmpty(feature) ? feature : selectedFeature;
-    if (newSelectedTags && isFeatureSelected) {
+    if (newSelectedTags && targetFeature) {
       const updatedFeatures = mlFeatures?.map((feature) => {
         if (feature.name === targetFeature?.name) {
           return {
@@ -116,66 +85,11 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           return feature;
         }
       });
-      handleFeaturesUpdate(updatedFeatures);
-    }
-    handleCancelEditTags();
-  };
-
-  const fetchTagsAndGlossaryTerms = () => {
-    setIsTagLoading(true);
-    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then(async (values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          const tagList = await getTaglist(values[0].value.data);
-          tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setAllTags(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setAllTags([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
-
-  const handleTagContainerClick = (feature: MlFeature) => {
-    setSelectedFeature(feature);
-    setEditTag(true);
-    // Fetch tags and terms only once
-    if (allTags.length === 0 || tagFetchFailed) {
-      fetchTagsAndGlossaryTerms();
+      await handleFeaturesUpdate(updatedFeatures);
     }
   };
 
-  if (mlFeatures && mlFeatures.length) {
+  if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
         <Row data-testid="feature-list">
@@ -184,178 +98,131 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
           </Col>
           <Col span={24}>
             <Typography.Title level={5}>
-              {t('label.features-used')}
+              {t('label.feature-plural-used')}
             </Typography.Title>
           </Col>
 
-          {mlFeatures.map((feature: MlFeature) => (
-            <Col key={feature.fullyQualifiedName} span={24}>
-              <Card
-                bordered
-                className="m-b-xlg"
-                data-testid="feature-card"
-                key={feature.fullyQualifiedName}>
-                <Row>
-                  <Col className="m-b-xs" span={24}>
-                    <Typography.Text className="font-semibold">
-                      {feature.name}
-                    </Typography.Text>
-                  </Col>
-                  <Col span={24}>
-                    <Space align="start">
-                      <Space>
-                        <Typography.Text className="text-grey-muted">
-                          {t('label.type')}:
-                        </Typography.Text>{' '}
-                        <Typography.Text>
-                          {feature.dataType || '--'}
-                        </Typography.Text>
-                      </Space>
-                      <Divider className="border-gray" type="vertical" />
-                      <Space>
-                        <Typography.Text className="text-grey-muted">
-                          {t('label.algorithm')}:
-                        </Typography.Text>{' '}
-                        <Typography.Text>
-                          {feature.featureAlgorithm || '--'}
-                        </Typography.Text>
-                      </Space>
-                      <Divider className="border-gray" type="vertical" />
-                      <Space align="start">
-                        <Typography.Text className="text-grey-muted">
-                          {t('label.tag-plural')}:
-                        </Typography.Text>{' '}
-                        <div
-                          data-testid="feature-tags-wrapper"
-                          onClick={() => handleTagContainerClick(feature)}>
-                          <TagsContainer
-                            editable={
-                              selectedFeature?.name === feature.name && editTag
-                            }
-                            isLoading={
-                              isTagLoading &&
-                              selectedFeature?.name === feature.name &&
-                              editTag
-                            }
-                            selectedTags={feature.tags || []}
-                            size="small"
-                            tagList={allTags}
-                            type="label"
-                            onCancel={handleCancelEditTags}
-                            onSelectionChange={(selectedTags) =>
-                              handleTagsChange(selectedTags, feature)
-                            }>
-                            {feature.tags?.length ? (
-                              <Tooltip
-                                title={
-                                  permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-entity', {
-                                        entity: t('label.tag-plural'),
-                                      })
-                                    : t('message.no-permission-for-action')
-                                }>
-                                <Button
-                                  className="p-0 h-auto"
-                                  disabled={
-                                    !(
-                                      permissions.EditAll ||
-                                      permissions.EditTags
-                                    )
-                                  }
-                                  type="text">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="16px"
-                                  />
-                                </Button>
-                              </Tooltip>
-                            ) : (
-                              <Tooltip
-                                title={
-                                  permissions.EditAll || permissions.EditTags
-                                    ? t('label.edit-entity', {
-                                        entity: t('label.tag-plural'),
-                                      })
-                                    : t('message.no-permission-for-action')
-                                }>
-                                <Button
-                                  className="p-0 h-auto"
-                                  disabled={
-                                    !(
-                                      permissions.EditAll ||
-                                      permissions.EditTags
-                                    )
-                                  }
-                                  type="text">
-                                  <Tags
-                                    startWith="+ "
-                                    tag={t('label.add-entity', {
-                                      entity: t('label.tag-lowercase'),
-                                    })}
-                                    type="outlined"
-                                  />
-                                </Button>
-                              </Tooltip>
-                            )}
-                          </TagsContainer>
-                        </div>
-                      </Space>
-                    </Space>
-                  </Col>
-                  <Col className="m-t-sm" span={24}>
-                    <Space direction="vertical">
-                      <Typography.Text className="text-grey-muted">
-                        {t('label.description')}:
+          {mlFeatures?.map((feature: MlFeature, index) => {
+            return (
+              <Col key={feature.fullyQualifiedName} span={24}>
+                <Card
+                  className="m-b-lg shadow-none"
+                  data-testid={`feature-card-${feature.name ?? ''}`}
+                  key={feature.fullyQualifiedName}>
+                  <Row gutter={[0, 8]}>
+                    <Col span={24}>
+                      <Typography.Text className="font-semibold">
+                        {feature.name}
                       </Typography.Text>
-                      <Space>
-                        {feature.description ? (
-                          <RichTextEditorPreviewer
-                            markdown={feature.description}
-                          />
-                        ) : (
+                    </Col>
+                    <Col span={24}>
+                      <Space align="start">
+                        <Space>
                           <Typography.Text className="text-grey-muted">
-                            {t('label.no-entity', {
-                              entity: t('label.description'),
-                            })}
+                            {`${t('label.type')} :`}
+                          </Typography.Text>{' '}
+                          <Typography.Text>
+                            {feature.dataType || '--'}
                           </Typography.Text>
-                        )}
-                        <Tooltip
-                          title={
-                            permissions.EditAll || permissions.EditDescription
-                              ? t('label.edit')
-                              : t('message.no-permission-for-action')
-                          }>
-                          <Button
-                            className="no-border p-0"
-                            disabled={
-                              !(
-                                permissions.EditAll ||
-                                permissions.EditDescription
-                              )
+                        </Space>
+                        <Divider className="border-gray" type="vertical" />
+                        <Space>
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.algorithm')} :`}
+                          </Typography.Text>{' '}
+                          <Typography.Text>
+                            {feature.featureAlgorithm || '--'}
+                          </Typography.Text>
+                        </Space>
+                      </Space>
+                    </Col>
+
+                    <Col span={24}>
+                      <Row gutter={8} wrap={false}>
+                        <Col flex="130px">
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.glossary-term-plural')} :`}
+                          </Typography.Text>
+                        </Col>
+
+                        <Col flex="auto">
+                          <TableTags<MlFeature>
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
+                            handleTagSelection={handleTagsChange}
+                            hasTagEditAccess={hasEditPermission}
+                            index={index}
+                            isReadOnly={isDeleted}
+                            record={feature}
+                            tags={feature.tags ?? []}
+                            type={TagSource.Glossary}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+                      </Row>
+                    </Col>
+
+                    <Col span={24}>
+                      <Row gutter={8} wrap={false}>
+                        <Col flex="130px">
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.tag-plural')} :`}
+                          </Typography.Text>
+                        </Col>
+                        <Col flex="auto">
+                          <TableTags<MlFeature>
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
+                            handleTagSelection={handleTagsChange}
+                            hasTagEditAccess={hasEditPermission}
+                            index={index}
+                            isReadOnly={isDeleted}
+                            record={feature}
+                            tags={feature.tags ?? []}
+                            type={TagSource.Classification}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+                      </Row>
+                    </Col>
+
+                    <Col className="m-t-xs" span={24}>
+                      <Row gutter={8} wrap={false}>
+                        <Col flex="130px">
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.description')} :`}
+                          </Typography.Text>
+                        </Col>
+                        <Col flex="auto">
+                          <TableDescription
+                            columnData={{
+                              fqn: feature.fullyQualifiedName ?? '',
+                              field: feature.description,
+                            }}
+                            entityFqn={entityFqn}
+                            entityType={EntityType.MLMODEL}
+                            hasEditPermission={
+                              permissions.EditAll || permissions.EditDescription
                             }
+                            index={index}
+                            isReadOnly={isDeleted}
                             onClick={() => {
                               setSelectedFeature(feature);
                               setEditDescription(true);
-                            }}>
-                            <SVGIcons
-                              alt="edit"
-                              icon="icon-edit"
-                              width="16px"
-                            />
-                          </Button>
-                        </Tooltip>
-                      </Space>
-                    </Space>
-                  </Col>
-                  <Col span={24}>
-                    <SourceList feature={feature} />
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-          ))}
+                            }}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+                      </Row>
+                    </Col>
+                    <Col span={24}>
+                      <SourceList feature={feature} />
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            );
+          })}
         </Row>
         {!isEmpty(selectedFeature) && (
           <ModalWithMarkdownEditor
@@ -375,11 +242,7 @@ const MlModelFeaturesList: FC<MlModelFeaturesListProp> = ({
       </Fragment>
     );
   } else {
-    return (
-      <ErrorPlaceHolder>
-        {t('message.no-features-data-available')}
-      </ErrorPlaceHolder>
-    );
+    return <ErrorPlaceHolder />;
   }
 };
 

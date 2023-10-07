@@ -12,8 +12,8 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -35,29 +35,32 @@ describe('Snowflake Ingestion', () => {
   it('add and ingest data', { defaultCommandTimeout: 8000 }, () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
-      cy.get('#root_username').type(Cypress.env('snowflakeUsername'));
-      cy.get('#root_password').type(Cypress.env('snowflakePassword'));
-      cy.get('#root_account').type(Cypress.env('snowflakeAccount'));
-      cy.get('#root_database').type(Cypress.env('snowflakeDatabase'));
-      cy.get('#root_warehouse').type(Cypress.env('snowflakeWarehouse'));
+      cy.get('#root\\/username').type(Cypress.env('snowflakeUsername'));
+      checkServiceFieldSectionHighlighting('username');
+      cy.get('#root\\/password').type(Cypress.env('snowflakePassword'));
+      checkServiceFieldSectionHighlighting('password');
+      cy.get('#root\\/account').type(Cypress.env('snowflakeAccount'));
+      checkServiceFieldSectionHighlighting('account');
+      cy.get('#root\\/database').type(Cypress.env('snowflakeDatabase'));
+      checkServiceFieldSectionHighlighting('database');
+      cy.get('#root\\/warehouse').type(Cypress.env('snowflakeWarehouse'));
+      checkServiceFieldSectionHighlighting('warehouse');
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
-        .should('be.visible')
-        .type(schema);
+      cy.get('#root\\/schemaFilterPattern\\/includes')
+        .scrollIntoView()
+
+        .type(`${schema}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -67,14 +70,6 @@ describe('Snowflake Ingestion', () => {
       description,
       SERVICE_TYPE.Database,
       'tables'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
     );
   });
 

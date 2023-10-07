@@ -13,52 +13,41 @@
 
 import { act, queryByAttribute, render, screen } from '@testing-library/react';
 import React from 'react';
-import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
-
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import {
+  DUMMY_GRAPH_DATA,
+  DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY,
+} from '../../mocks/DataInsight.mock';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
 import DescriptionInsight from './DescriptionInsight';
 
+const mockProps = {
+  chartFilter: { endTs: 1692965371951, startTs: 1692706171951 },
+  kpi: undefined,
+  selectedDays: 30,
+  dataInsightChartName:
+    DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+};
+jest.mock('../../rest/DataInsightAPI', () => ({
+  getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
 jest.mock('../../utils/DataInsightUtils', () => ({
   renderLegend: jest
     .fn()
     .mockReturnValue(<ul data-testid="graph-legend">Graph Legend</ul>),
-  getGraphDataByEntityType: jest.fn().mockImplementation(() => ({
-    data: [
-      {
-        timestamp: '27/Oct',
-        Table: 0.5674,
-        Topic: 0.0453,
-        Database: 0.9874,
-        Pipeline: 0.5432,
-        Messaging: 0.3215,
-      },
-      {
-        timestamp: '25/Oct',
-        Table: 0.3674,
-        Topic: 0.0353,
-        Database: 0.9874,
-        Pipeline: 0.4432,
-        Messaging: 0.3115,
-      },
-      {
-        timestamp: '24/Oct',
-        Table: 0.3374,
-        Topic: 0.0353,
-        Database: 0.9774,
-        Pipeline: 0.4482,
-        Messaging: 0.3105,
-      },
-    ],
-    entities: ['Table', 'Topic', 'Database', 'Pipeline', 'Messaging'],
-    latestData: {
-      timestamp: '24/Oct',
-      Table: 0.3374,
-      Topic: 0.0353,
-      Database: 0.9774,
-      Pipeline: 0.4482,
-      Messaging: 0.3105,
-    },
-  })),
+  getGraphDataByEntityType: jest
+    .fn()
+    .mockImplementation(() => DUMMY_GRAPH_DATA),
 }));
+jest.mock('./EntitySummaryProgressBar.component', () => {
+  return jest.fn().mockImplementation(({ label, entity }) => (
+    <div>
+      EntitySummaryProgressBar.component
+      <p data-testid={entity}>{label}</p>
+    </div>
+  ));
+});
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -69,23 +58,53 @@ jest.mock('react-i18next', () => ({
 describe('Test DescriptionInsight Component', () => {
   it('Should render the graph', async () => {
     await act(async () => {
-      const { container } = render(
-        <DescriptionInsight
-          chartFilter={INITIAL_CHART_FILTER}
-          kpi={undefined}
-          selectedDays={30}
-        />
-      );
+      const { container } = render(<DescriptionInsight {...mockProps} />);
       const card = screen.getByTestId('entity-description-percentage-card');
 
       const graph = queryByAttribute(
         'id',
         container,
-        'description-summary-graph'
+        `${mockProps.dataInsightChartName}-graph`
       );
 
       expect(card).toBeInTheDocument();
       expect(graph).toBeInTheDocument();
+    });
+  });
+
+  it('Should render the graph and progress bar even if one entity dont have values', async () => {
+    (getGraphDataByEntityType as jest.Mock).mockImplementationOnce(
+      () => DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY
+    );
+    await act(async () => {
+      const { container } = render(<DescriptionInsight {...mockProps} />);
+      const card = screen.getByTestId('entity-description-percentage-card');
+
+      const graph = queryByAttribute(
+        'id',
+        container,
+        `${mockProps.dataInsightChartName}-graph`
+      );
+      const missingEntityValue = await screen.findByTestId('Table');
+
+      expect(card).toBeInTheDocument();
+      expect(graph).toBeInTheDocument();
+      expect(missingEntityValue).toBeInTheDocument();
+      expect(missingEntityValue.textContent).toBe('0');
+    });
+  });
+
+  it('Should fetch data based on dataInsightChartName props', async () => {
+    const mockGetAggregateChartData = getAggregateChartData as jest.Mock;
+    await act(async () => {
+      render(<DescriptionInsight {...mockProps} />);
+    });
+
+    expect(mockGetAggregateChartData).toHaveBeenCalledWith({
+      dataInsightChartName: mockProps.dataInsightChartName,
+      dataReportIndex: 'entity_report_data_index',
+      endTs: mockProps.chartFilter.endTs,
+      startTs: mockProps.chartFilter.startTs,
     });
   });
 });

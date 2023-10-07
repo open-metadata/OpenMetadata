@@ -1,8 +1,9 @@
 {
     "tests": [
         {
-            "testSuiteName": "critical_metrics_suite",
-            "testSuiteDescription": "This is a critical test suite running tests important for the business",
+            "testSuiteName": "sample_data.ecommerce_db.shopify.dim_address.testSuite",
+            "executableEntityReference": "sample_data.ecommerce_db.shopify.dim_address",
+            "testSuiteDescription": "This is an executable test suite linked to an entity",
             "scheduleInterval": "0 0 * * MON",
             "testCases": [
                 {

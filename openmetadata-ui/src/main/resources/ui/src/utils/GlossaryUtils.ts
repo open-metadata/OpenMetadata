@@ -12,17 +12,17 @@
  */
 
 import { AxiosError } from 'axios';
-import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { GlossaryCSVRecord } from 'components/Glossary/ImportGlossary/ImportGlossary.interface';
-import { isEmpty, isUndefined, omit } from 'lodash';
-import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
-import { searchData } from 'rest/miscAPI';
+import { isUndefined, omit } from 'lodash';
+import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
+import { ListGlossaryTermsParams } from '../rest/glossaryAPI';
+import { searchData } from '../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 
 export interface GlossaryTermTreeNode {
@@ -74,27 +74,19 @@ export const getEntityReferenceFromGlossary = (
   };
 };
 
-export const parseCSV = (csvData: string) => {
-  const recordList: GlossaryCSVRecord[] = [];
-
-  const lines = csvData.trim().split('\n').filter(Boolean);
-
-  if (!isEmpty(lines)) {
-    const headers = lines[0].split(',').map((header) => header.trim());
-
-    lines.slice(1).forEach((line) => {
-      const record: GlossaryCSVRecord = {} as GlossaryCSVRecord;
-      const lineData = line.split(',');
-
-      headers.forEach((header, index) => {
-        record[header as keyof GlossaryCSVRecord] = lineData[index];
-      });
-
-      recordList.push(record);
-    });
-  }
-
-  return recordList;
+export const getEntityReferenceFromGlossaryTerm = (
+  glossaryTerm: GlossaryTerm
+): EntityReference => {
+  return {
+    deleted: glossaryTerm.deleted,
+    href: glossaryTerm.href,
+    fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
+    id: glossaryTerm.id,
+    type: 'glossaryTerm',
+    description: glossaryTerm.description,
+    displayName: glossaryTerm.displayName,
+    name: glossaryTerm.name,
+  };
 };
 
 // calculate root level glossary term
@@ -115,6 +107,34 @@ export const getRootLevelGlossaryTerm = (
       ? [...glossaryTerms, currentTerm]
       : glossaryTerms;
   }, [] as GlossaryTerm[]);
+};
+
+export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+  const nodes: Record<string, GlossaryTerm> = {};
+
+  // Create nodes first
+  data.forEach((obj) => {
+    nodes[obj.fullyQualifiedName ?? ''] = {
+      ...obj,
+      children: obj.children?.length ? [] : undefined,
+    };
+  });
+
+  // Build the tree structure
+  const tree: GlossaryTerm[] = [];
+  data.forEach((obj) => {
+    const current = nodes[obj.fullyQualifiedName ?? ''];
+    const parent = nodes[obj.parent?.fullyQualifiedName || ''];
+
+    if (parent && parent.children) {
+      // converting glossaryTerm to EntityReference
+      parent.children.push({ ...current, type: 'glossaryTerm' });
+    } else {
+      tree.push(current);
+    }
+  });
+
+  return tree;
 };
 
 // update glossaryTerm tree with newly fetch child term
@@ -163,3 +183,52 @@ export const getSearchedDataFromGlossaryTree = (
     return acc;
   }, [] as ModifiedGlossaryTerm[]);
 };
+
+export const getQueryFilterToExcludeTerm = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              {
+                bool: {
+                  must_not: {
+                    term: {
+                      'tags.tagFQN': fqn,
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+export const formatRelatedTermOptions = (
+  data: EntityReference[] | undefined
+) => {
+  return data
+    ? data.map((value) => ({
+        ...value,
+        value: value.id,
+        label: value.displayName || value.name,
+        key: value.id,
+      }))
+    : [];
+};
+
+export const StatusClass = {
+  [Status.Approved]: StatusType.Success,
+  [Status.Draft]: StatusType.Warning,
+  [Status.Rejected]: StatusType.Failure,
+  [Status.Deprecated]: StatusType.Warning,
+};
+
+export const StatusFilters = Object.values(Status).map((status) => ({
+  text: status,
+  value: status,
+}));

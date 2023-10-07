@@ -13,22 +13,23 @@
 
 import React from 'react';
 import { Redirect, Route, RouteProps } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 interface AdminProtectedRouteProps extends RouteProps {
-  hasPermission: boolean;
+  hasPermission?: boolean;
 }
 
 const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
-  const { isAuthDisabled, isAuthenticated } = useAuthContext();
+  const hasPermission = Boolean(routeProps.hasPermission);
 
-  if (isAuthDisabled || isAdminUser || routeProps.hasPermission) {
+  if (isAdminUser || hasPermission) {
     return <Route {...routeProps} />;
-  } else if (isAuthenticated) {
-    return <Redirect to={ROUTES.NOT_FOUND} />;
+  } else if (!hasPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   } else {
     return <Redirect to={ROUTES.SIGNIN} />;
   }

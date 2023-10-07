@@ -43,11 +43,6 @@
         }
       ]
     },
-    "connectionOptions": {
-      "title": "Connection Options",
-      "description": "Additional connection options that can be sent to service during the connection.",
-      "type": "object"
-    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

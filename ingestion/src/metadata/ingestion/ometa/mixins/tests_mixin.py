@@ -15,16 +15,21 @@ To be used by OpenMetadata class
 """
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Type, Union
 from urllib.parse import quote
+from uuid import UUID
 
+from metadata.generated.schema.api.tests.createLogicalTestCases import (
+    CreateLogicalTestCases,
+)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     EntityType,
     TestCaseParameterDefinition,
@@ -32,7 +37,10 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -156,7 +164,7 @@ class OMetaTestsMixin:
         entity_link: Optional[str] = None,
         test_suite_fqn: Optional[str] = None,
         test_definition_fqn: Optional[str] = None,
-        test_case_parameter_values: Optional[str] = None,
+        test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
     ):
         """Get or create a test case
 
@@ -183,18 +191,42 @@ class OMetaTestsMixin:
             CreateTestCaseRequest(
                 name=test_case_fqn.split(".")[-1],
                 entityLink=entity_link,
-                testSuite=self.get_entity_reference(
-                    entity=TestSuite,
-                    fqn=test_suite_fqn,
-                ),
-                testDefinition=self.get_entity_reference(
-                    entity=TestDefinition,
-                    fqn=test_definition_fqn,
-                ),
+                testSuite=test_suite_fqn,
+                testDefinition=test_definition_fqn,
                 parameterValues=test_case_parameter_values,
-            )
+            )  # type: ignore
         )
         return test_case
+
+    def get_or_create_executable_test_suite(
+        self, entity_fqn: str
+    ) -> Union[EntityReference, TestSuite]:
+        """Given an entity fqn, retrieve the link test suite if it exists or create a new one
+
+        Args:
+            table_fqn (str): entity fully qualified name
+
+        Returns:
+            TestSuite:
+        """
+        table_entity = self.get_by_name(
+            entity=Table, fqn=entity_fqn, fields=["testSuite"]
+        )
+        if not table_entity:
+            raise RuntimeError(
+                f"Unable to find table {entity_fqn} in OpenMetadata. "
+                "This could be because the table has not been ingested yet or your JWT Token is expired or missing."
+            )
+
+        if table_entity.testSuite:
+            return table_entity.testSuite
+
+        create_test_suite = CreateTestSuiteRequest(
+            name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
+            executableEntityReference=table_entity.fullyQualifiedName.__root__,
+        )  # type: ignore
+        test_suite = self.create_or_update_executable_test_suite(create_test_suite)
+        return test_suite
 
     def get_test_case_results(
         self,
@@ -217,10 +249,56 @@ class OMetaTestsMixin:
         }
 
         resp = self.client.get(
-            f"/testCase/{test_case_fqn}/testCaseResult",
+            f"/dataQuality/testCases/{test_case_fqn}/testCaseResult",
             params,
         )
 
         if resp:
             return [TestCaseResult.parse_obj(entity) for entity in resp["data"]]
         return None
+
+    def create_or_update_executable_test_suite(
+        self, data: CreateTestSuiteRequest
+    ) -> TestSuite:
+        """Create or update an executable test suite
+
+        Args:
+            data (CreateTestSuiteRequest): test suite request
+
+        Returns:
+            TestSuite: test suite object
+        """
+        entity = data.__class__
+        entity_class = self.get_entity_from_create(entity)
+        path = self.get_suffix(entity) + "/executable"
+        resp = self.client.put(path, data=data.json(encoder=show_secrets_encoder))
+
+        return entity_class.parse_obj(resp)
+
+    def delete_executable_test_suite(
+        self,
+        entity: Type[TestSuite],
+        entity_id: Union[str, UUID],
+        recursive: bool = False,
+        hard_delete: bool = False,
+    ) -> None:
+        """Delete executable test suite
+
+        Args:
+            entity_id (str): test suite ID
+            recursive (bool, optional): delete children if true
+            hard_delete (bool, optional): hard delete if true
+        """
+        url = f"{self.get_suffix(entity)}/executable/{model_str(entity_id)}"
+        url += f"?recursive={str(recursive).lower()}"
+        url += f"&hardDelete={str(hard_delete).lower()}"
+        self.client.delete(url)
+
+    def add_logical_test_cases(self, data: CreateLogicalTestCases) -> None:
+        """Add logical test cases to a test suite
+
+        Args:
+            data (CreateLogicalTestCases): logical test cases
+        """
+        path = self.get_suffix(TestCase) + "/logicalTestCases"
+        self.client.put(path, data=data.json(encoder=show_secrets_encoder))

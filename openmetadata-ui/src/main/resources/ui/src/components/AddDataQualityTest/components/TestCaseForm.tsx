@@ -13,14 +13,16 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { t } from 'i18next';
+import { isEmpty, snakeCase } from 'lodash';
+import Qs from 'qs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
-import { API_RES_MAX_SIZE } from '../../../constants/constants';
-import { CSMode } from '../../../enums/codemirror.enum';
+import { useHistory, useParams } from 'react-router-dom';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
-import { EntityReference } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import {
   TestCase,
   TestCaseParameterValue,
@@ -31,16 +33,14 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
-import {
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
+import { getListTestCase, getListTestDefinitions } from '../../../rest/testAPI';
+import { replaceAllSpacialCharWith_ } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
 import { EditorContentRef } from '../../common/rich-text-editor/RichTextEditor.interface';
-import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestCaseFormProps } from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
@@ -50,30 +50,30 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const history = useHistory();
+  const { entityTypeFQN, dashboardType } =
+    useParams<{ entityTypeFQN: string; dashboardType: string }>();
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [selectedTestType, setSelectedTestType] = useState<string | undefined>(
-    initialValue?.testDefinition?.id
+    initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [sqlQuery, setSqlQuery] = useState({
-    name: 'sqlExpression',
-    value: initialValue?.parameterValues?.[0]?.value || '',
-  });
+
+  const columnName = Form.useWatch('column', form);
 
   const fetchAllTestDefinitions = async () => {
     try {
       const { data } = await getListTestDefinitions({
-        limit: API_RES_MAX_SIZE,
+        limit: PAGE_SIZE_LARGE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: isColumnFqn
           ? table.columns.find(
-              (column) => column.fullyQualifiedName === decodedEntityFQN
+              (column) => column.fullyQualifiedName === columnName
             )?.dataType
           : undefined,
       });
@@ -87,8 +87,11 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     try {
       const { data } = await getListTestCase({
         fields: 'testDefinition',
-        limit: API_RES_MAX_SIZE,
-        entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
+        limit: PAGE_SIZE_LARGE,
+        entityLink: generateEntityLink(
+          isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
+          isColumnFqn
+        ),
       });
 
       setTestCases(data);
@@ -98,74 +101,64 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   const getSelectedTestDefinition = () => {
-    const testType = initialValue?.testDefinition?.id ?? selectedTestType;
+    const testType = isEmpty(initialValue?.testSuite)
+      ? selectedTestType
+      : initialValue?.testSuite;
 
-    return testDefinitions.find((definition) => definition.id === testType);
+    return testDefinitions.find(
+      (definition) => definition.fullyQualifiedName === testType
+    );
   };
 
   const GenerateParamsField = useCallback(() => {
     const selectedDefinition = getSelectedTestDefinition();
-    if (selectedDefinition && selectedDefinition.parameterDefinition) {
-      const name = selectedDefinition.parameterDefinition[0]?.name;
-      if (name === 'sqlExpression') {
-        return (
-          <Form.Item
-            data-testid="sql-editor-container"
-            key={name}
-            label="SQL Query"
-            name={name}
-            tooltip="Queries returning 1 or more rows will result in the test failing.">
-            <SchemaEditor
-              className="profiler-setting-sql-editor"
-              mode={{ name: CSMode.SQL }}
-              options={{
-                readOnly: false,
-              }}
-              value={sqlQuery.value || ''}
-              onChange={(value) => setSqlQuery((pre) => ({ ...pre, value }))}
-            />
-          </Form.Item>
-        );
-      }
-
-      return <ParameterForm definition={selectedDefinition} />;
+    if (selectedDefinition?.parameterDefinition) {
+      return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return;
-  }, [selectedTestType, initialValue, testDefinitions, sqlQuery]);
+  }, [selectedTestType, initialValue, testDefinitions]);
 
   const createTestCaseObj = (value: {
     testName: string;
     params: Record<string, string | { [key: string]: string }[]>;
     testTypeId: string;
-  }) => {
+  }): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
     const paramsValue = selectedDefinition?.parameterDefinition?.[0];
 
-    const parameterValues =
-      paramsValue?.name === 'sqlExpression'
-        ? [sqlQuery]
-        : Object.entries(value.params || {}).map(([key, value]) => ({
-            name: key,
-            value:
-              paramsValue?.dataType === TestDataType.Array
-                ? // need to send array as string formate
-                  JSON.stringify(
-                    (value as { value: string }[]).map((data) => data.value)
-                  )
-                : value,
-          }));
+    const parameterValues = Object.entries(value.params || {}).map(
+      ([key, value]) => ({
+        name: key,
+        value:
+          paramsValue?.dataType === TestDataType.Array
+            ? // need to send array as string formate
+              JSON.stringify(
+                (value as { value: string }[]).map((data) => data.value)
+              )
+            : value,
+      })
+    );
+    const name =
+      value.testName?.trim() ||
+      `${replaceAllSpacialCharWith_(
+        columnName ? columnName : table.name
+      )}_${snakeCase(selectedTestType)}_${cryptoRandomString({
+        length: 4,
+        type: 'alphanumeric',
+      })}`;
 
     return {
-      name: value.testName,
-      entityLink: generateEntityLink(decodedEntityFQN, isColumnFqn),
+      name,
+      displayName: name,
+      entityLink: generateEntityLink(
+        isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
+        isColumnFqn
+      ),
       parameterValues: parameterValues as TestCaseParameterValue[],
-      testDefinition: {
-        id: value.testTypeId,
-        type: 'testDefinition',
-      },
+      testDefinition: value.testTypeId,
       description: markdownRef.current?.getEditorContent(),
-      testSuite: {} as EntityReference,
+      testSuite: '',
     };
   };
 
@@ -196,37 +189,31 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
-      const testType = testDefinitions.find(
-        (test) => test.id === value.testTypeId
-      );
       setSelectedTestType(value.testTypeId);
-      const testCount = testCases.filter((test) =>
-        test.name.includes(
-          `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}`
-        )
-      );
-      // generating dynamic unique name based on entity_testCase_number
-      const name = `${getNameFromFQN(decodedEntityFQN)}_${testType?.name}${
-        testCount.length ? `_${testCount.length}` : ''
-      }`;
-      form.setFieldsValue({
-        testName: replaceAllSpacialCharWith_(name),
-      });
     }
   };
 
   useEffect(() => {
-    if (testDefinitions.length === 0) {
-      fetchAllTestDefinitions();
+    fetchAllTestDefinitions();
+    const selectedColumn = table.columns.find(
+      (column) => column.name === columnName
+    );
+    if (selectedColumn) {
+      history.push({
+        search: Qs.stringify({
+          activeColumnFqn: selectedColumn?.fullyQualifiedName,
+        }),
+      });
     }
+  }, [columnName]);
+
+  useEffect(() => {
     if (isEmpty(testCases)) {
       fetchAllTestCases();
     }
     form.setFieldsValue({
-      testName: replaceAllSpacialCharWith_(
-        initialValue?.name ?? getNameFromFQN(decodedEntityFQN)
-      ),
-      testTypeId: initialValue?.testDefinition?.id,
+      testName: replaceAllSpacialCharWith_(initialValue?.name ?? ''),
+      testTypeId: initialValue?.testDefinition,
       params: initialValue?.parameterValues?.length
         ? getParamsValue()
         : undefined,
@@ -241,47 +228,78 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       preserve={false}
       onFinish={handleFormSubmit}
       onValuesChange={handleValueChange}>
+      {isColumnFqn && (
+        <Form.Item
+          label={t('label.column')}
+          name="column"
+          rules={[
+            {
+              required: true,
+              message: `${t('label.field-required', {
+                field: t('label.column'),
+              })}`,
+            },
+          ]}>
+          <Select
+            placeholder={t('label.please-select-entity', {
+              entity: t('label.column-lowercase'),
+            })}>
+            {table.columns.map((column) => (
+              <Select.Option key={column.name}>{column.name}</Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+      )}
       <Form.Item
-        label="Name:"
+        label={t('label.name')}
         name="testName"
         rules={[
           {
-            required: true,
-            message: 'Name is required!',
-          },
-          {
-            pattern: /^[A-Za-z0-9_]*$/g,
-            message: 'Spacial character is not allowed!',
+            pattern: ENTITY_NAME_REGEX,
+            message: t('message.entity-name-validation'),
           },
           {
             validator: (_, value) => {
               if (testCases.some((test) => test.name === value)) {
-                return Promise.reject('Name already exist!');
+                return Promise.reject(
+                  t('message.entity-already-exists', {
+                    entity: t('label.name'),
+                  })
+                );
               }
 
               return Promise.resolve();
             },
           },
         ]}>
-        <Input placeholder="Enter test case name" />
+        <Input placeholder={t('message.enter-test-case-name')} />
       </Form.Item>
       <Form.Item
-        label="Test Type:"
+        label={t('label.test-type')}
         name="testTypeId"
-        rules={[{ required: true, message: 'Test type is required' }]}>
+        rules={[
+          {
+            required: true,
+            message: `${t('label.field-required', {
+              field: t('label.test-type'),
+            })}`,
+          },
+        ]}>
         <Select
+          showSearch
           options={testDefinitions.map((suite) => ({
-            label: suite.name,
-            value: suite.id,
+            label: getEntityName(suite),
+            value: suite.fullyQualifiedName,
           }))}
-          placeholder="Select test type"
+          placeholder={t('label.select-field', { field: t('label.test-type') })}
         />
       </Form.Item>
 
       {GenerateParamsField()}
 
-      <Form.Item label="Description:" name="description">
+      <Form.Item label={t('label.description')} name="description">
         <RichTextEditor
+          height="200px"
           initialValue={initialValue?.description || ''}
           ref={markdownRef}
           style={{
@@ -291,10 +309,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       </Form.Item>
 
       <Form.Item noStyle>
-        <Space className="tw-w-full tw-justify-end" size={16}>
-          <Button onClick={onBack}>Back</Button>
+        <Space className="w-full justify-end" size={16}>
+          <Button onClick={onBack}>{t('label.back')}</Button>
           <Button data-testid="submit-test" htmlType="submit" type="primary">
-            Submit
+            {t('label.submit')}
           </Button>
         </Space>
       </Form.Item>

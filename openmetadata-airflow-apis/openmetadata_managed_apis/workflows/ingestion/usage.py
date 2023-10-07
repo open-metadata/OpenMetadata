@@ -11,15 +11,15 @@
 """
 Metadata DAG function builder
 """
+import json
 import tempfile
-from pathlib import Path
 
 from airflow import DAG
+from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     build_source,
     build_workflow_config_property,
-    metadata_ingestion_workflow,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -31,6 +31,30 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Processor,
     Stage,
 )
+from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.workflow.usage import UsageWorkflow
+from metadata.workflow.workflow_output_handler import print_status
+
+
+def usage_workflow(workflow_config: OpenMetadataWorkflowConfig):
+    """
+    Task that creates and runs the ingestion workflow.
+
+    The workflow_config gets cooked form the incoming
+    ingestionPipeline.
+
+    This is the callable used to create the PythonOperator
+    """
+
+    set_operator_logger(workflow_config)
+
+    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    workflow = UsageWorkflow.create(config)
+
+    workflow.execute()
+    workflow.raise_from_status()
+    print_status(workflow)
+    workflow.stop()
 
 
 def build_usage_config_from_file(
@@ -76,10 +100,6 @@ def build_usage_workflow_config(
             workflow_config = build_usage_config_from_file(ingestion_pipeline, tmp_file)
 
     else:
-        # If dir does not exist, create it
-        if not Path(location).parent.is_dir():
-            Path(location).parent.mkdir(parents=True, exist_ok=True)
-
         workflow_config = build_usage_config_from_file(ingestion_pipeline, location)
 
     return workflow_config
@@ -94,7 +114,7 @@ def build_usage_dag(airflow_pipeline: IngestionPipeline) -> DAG:
         task_name="usage_task",
         ingestion_pipeline=airflow_pipeline,
         workflow_config=workflow_config,
-        workflow_fn=metadata_ingestion_workflow,
+        workflow_fn=usage_workflow,
     )
 
     return dag

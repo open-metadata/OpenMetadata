@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -45,13 +53,27 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          },
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "index_options": "freqs"
       },
       "version": {
         "type": "float"
@@ -66,8 +88,45 @@
       "href": {
         "type": "text"
       },
-      "pipelineUrl": {
+      "sourceUrl": {
         "type": "text"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "tasks": {
         "properties": {
@@ -82,19 +141,27 @@
           },
           "displayName": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text",
             "analyzer": "om_analyzer"
           },
-          "taskUrl": {
+          "sourceUrl": {
             "type": "text"
           },
           "taskType": {
             "type": "text"
           }
         }
+      },
+      "extension": {
+        "type": "keyword"
       },
       "owner": {
         "properties": {
@@ -222,6 +289,9 @@
             "type": "keyword"
           }
         }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "serviceType": {
         "type": "keyword"

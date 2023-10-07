@@ -14,9 +14,9 @@
         "dataType": "INT"
       },
       {
-        "name": "maxColValue",
+        "name": "maxValueForMedianInCol",
         "displayName": "Max",
-        "description": "Expected median value for the column to be greater or equal than",
+        "description": "Expected median value for the column to be lower or equal than",
         "dataType": "INT"
       }
   ]

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import React, { useState } from 'react';
 import {
   CartesianGrid,
@@ -35,11 +35,13 @@ import { ProfilerDetailsCardProps } from '../profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
 const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
+  showYAxisCategory = false,
   chartCollection,
   tickFormatter,
   name,
   curveType,
-}) => {
+  title,
+}: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -50,8 +52,15 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   };
 
   return (
-    <Card className="tw-rounded-md tw-border">
+    <Card
+      className="shadow-none global-border-radius"
+      data-testid="profiler-details-card-container">
       <Row gutter={[16, 16]}>
+        {title && (
+          <Col span={24}>
+            <Typography.Title level={5}>{title}</Typography.Title>
+          </Col>
+        )}
         <Col span={4}>
           <ProfilerLatestValue
             information={information}
@@ -61,13 +70,11 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
         <Col span={20}>
           {data.length > 0 ? (
             <ResponsiveContainer
+              className="custom-legend"
               debounce={200}
               id={`${name}_graph`}
               minHeight={300}>
-              <LineChart
-                className="tw-w-full"
-                data={data}
-                margin={{ left: 16 }}>
+              <LineChart className="w-full" data={data} margin={{ left: 16 }}>
                 <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
                 <XAxis
                   dataKey="name"
@@ -82,9 +89,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   tickFormatter={(props) =>
                     axisTickFormatter(props, tickFormatter)
                   }
+                  type={showYAxisCategory ? 'category' : 'number'}
                 />
                 <Tooltip
-                  formatter={(value: number) =>
+                  formatter={(value: number | string) =>
                     tooltipFormatter(value, tickFormatter)
                   }
                 />
@@ -106,14 +114,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <Row
-              align="middle"
-              className="tw-h-full tw-w-full"
-              justify="center">
+            <Row align="middle" className="h-full w-full" justify="center">
               <Col>
-                <ErrorPlaceHolder>
-                  <p>No Data Available</p>
-                </ErrorPlaceHolder>
+                <ErrorPlaceHolder className="mt-0-important" />
               </Col>
             </Row>
           )}

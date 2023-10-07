@@ -20,7 +20,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getAuthMechanismForBotUser } from 'rest/userAPI';
+import { getAuthMechanismForBotUser } from '../../rest/userAPI';
 import { OperationPermission } from '../PermissionProvider/PermissionProvider.interface';
 import BotDetails from './BotDetails.component';
 
@@ -99,7 +99,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('rest/userAPI', () => {
+jest.mock('../../rest/userAPI', () => {
   return {
     createUserWithPut: jest
       .fn()
@@ -120,6 +120,19 @@ jest.mock('./AuthMechanismForm', () =>
     .mockReturnValue(
       <div data-testid="AuthMechanismForm">AuthMechanismForm</div>
     )
+);
+
+jest.mock('../containers/PageLayoutV1', () =>
+  jest
+    .fn()
+    .mockImplementation(({ children, leftPanel, rightPanel, header }) => (
+      <div>
+        <div>{leftPanel}</div>
+        {header}
+        {children}
+        <div>{rightPanel}</div>
+      </div>
+    ))
 );
 
 describe('Test BotsDetail Component', () => {

@@ -1,11 +1,21 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.util;
 
-import static org.openmetadata.schema.settings.SettingsType.TASK_NOTIFICATION_CONFIGURATION;
-import static org.openmetadata.schema.settings.SettingsType.TEST_RESULT_NOTIFICATION_CONFIGURATION;
-import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,46 +23,33 @@ import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.api.configuration.airflow.TaskNotificationConfiguration;
-import org.openmetadata.api.configuration.airflow.TestResultNotificationConfiguration;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.AnnouncementDetails;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.socket.WebSocketManager;
 
 @Slf4j
 public class NotificationHandler {
-  private final CollectionDAO dao;
   private final ObjectMapper mapper;
-
   private final ExecutorService threadScheduler;
 
-  public NotificationHandler(CollectionDAO dao) {
-    this.dao = dao;
+  public NotificationHandler() {
     this.mapper = new ObjectMapper();
     this.threadScheduler = Executors.newFixedThreadPool(1);
   }
@@ -61,14 +58,16 @@ public class NotificationHandler {
     threadScheduler.submit(
         () -> {
           try {
-            handleNotifications(responseContext);
-          } catch (JsonProcessingException e) {
-            LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", e);
+            CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+            handleNotifications(responseContext, collectionDAO);
+          } catch (Exception ex) {
+            LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
           }
         });
   }
 
-  private void handleNotifications(ContainerResponseContext responseContext) throws JsonProcessingException {
+  private void handleNotifications(ContainerResponseContext responseContext, CollectionDAO collectionDAO)
+      throws JsonProcessingException {
     int responseCode = responseContext.getStatus();
     if (responseCode == Response.Status.CREATED.getStatusCode()
         && responseContext.getEntity() != null
@@ -76,23 +75,19 @@ public class NotificationHandler {
       Thread thread = (Thread) responseContext.getEntity();
       switch (thread.getType()) {
         case Task:
-          handleTaskNotification(thread);
+          handleTaskNotification(thread, collectionDAO);
           break;
         case Conversation:
-          handleConversationNotification(thread);
+          handleConversationNotification(thread, collectionDAO);
           break;
         case Announcement:
-          handleAnnouncementNotification(thread);
+          handleAnnouncementNotification(thread, collectionDAO);
           break;
       }
-    } else if (responseContext.getEntity() != null
-        && responseContext.getEntity().getClass().equals(ChangeEvent.class)) {
-      ChangeEvent changeEvent = (ChangeEvent) responseContext.getEntity();
-      handleTestResultEmailNotification(changeEvent);
     }
   }
 
-  private void handleTaskNotification(Thread thread) throws JsonProcessingException {
+  private void handleTaskNotification(Thread thread, CollectionDAO collectionDAO) throws JsonProcessingException {
     String jsonThread = mapper.writeValueAsString(thread);
     if (thread.getPostsCount() == 0) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
@@ -104,8 +99,8 @@ public class NotificationHandler {
             } else if (Entity.TEAM.equals(e.getType())) {
               // fetch all that are there in the team
               List<CollectionDAO.EntityRelationshipRecord> records =
-                  dao.relationshipDAO().findTo(e.getId().toString(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
-              records.forEach((eRecord) -> receiversList.add(eRecord.getId()));
+                  collectionDAO.relationshipDAO().findTo(e.getId(), TEAM, Relationship.HAS.ordinal(), Entity.USER);
+              records.forEach(eRecord -> receiversList.add(eRecord.getId()));
             }
           });
 
@@ -114,15 +109,13 @@ public class NotificationHandler {
           .sendToManyWithUUID(receiversList, WebSocketManager.TASK_BROADCAST_CHANNEL, jsonThread);
 
       // Send Email Notification If Enabled
-      TaskNotificationConfiguration taskSetting =
-          SettingsCache.getInstance().getSetting(TASK_NOTIFICATION_CONFIGURATION, TaskNotificationConfiguration.class);
-      if (taskSetting.getEnabled()) {
-        handleEmailNotifications(receiversList, thread);
-      }
+      // TODO: This needs to be handled from the Alerts
+      handleEmailNotifications(receiversList, thread);
     }
   }
 
-  private void handleAnnouncementNotification(Thread thread) throws JsonProcessingException {
+  private void handleAnnouncementNotification(Thread thread, CollectionDAO collectionDAO)
+      throws JsonProcessingException {
     String jsonThread = mapper.writeValueAsString(thread);
     AnnouncementDetails announcementDetails = thread.getAnnouncement();
     Long currentTimestamp = Instant.now().getEpochSecond();
@@ -132,7 +125,8 @@ public class NotificationHandler {
     }
   }
 
-  private void handleConversationNotification(Thread thread) throws JsonProcessingException {
+  private void handleConversationNotification(Thread thread, CollectionDAO collectionDAO)
+      throws JsonProcessingException {
     String jsonThread = mapper.writeValueAsString(thread);
     WebSocketManager.getInstance().broadCastMessageToAll(WebSocketManager.FEED_BROADCAST_CHANNEL, jsonThread);
     List<MessageParser.EntityLink> mentions;
@@ -146,13 +140,13 @@ public class NotificationHandler {
         entityLink -> {
           String fqn = entityLink.getEntityFQN();
           if (USER.equals(entityLink.getEntityType())) {
-            User user = dao.userDAO().findEntityByName(fqn);
+            User user = collectionDAO.userDAO().findEntityByName(fqn);
             WebSocketManager.getInstance().sendToOne(user.getId(), WebSocketManager.MENTION_CHANNEL, jsonThread);
           } else if (TEAM.equals(entityLink.getEntityType())) {
-            Team team = dao.teamDAO().findEntityByName(fqn);
+            Team team = collectionDAO.teamDAO().findEntityByName(fqn);
             // fetch all that are there in the team
             List<CollectionDAO.EntityRelationshipRecord> records =
-                dao.relationshipDAO().findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
+                collectionDAO.relationshipDAO().findTo(team.getId(), TEAM, Relationship.HAS.ordinal(), USER);
             // Notify on WebSocket for Realtime
             WebSocketManager.getInstance().sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }
@@ -160,113 +154,23 @@ public class NotificationHandler {
   }
 
   private void handleEmailNotifications(HashSet<UUID> userList, Thread thread) {
-    EntityRepository<User> repository = Entity.getEntityRepository(USER);
+    UserRepository repository = (UserRepository) Entity.getEntityRepository(USER);
     URI urlInstance = thread.getHref();
     userList.forEach(
-        (id) -> {
+        id -> {
           try {
             User user = repository.get(null, id, repository.getFields("name,email,href"));
-            EmailUtil.getInstance()
-                .sendTaskAssignmentNotificationToUser(
-                    user.getName(),
-                    user.getEmail(),
-                    String.format(
-                        "%s/users/%s/tasks", EmailUtil.getInstance().buildBaseUrl(urlInstance), user.getName()),
-                    thread,
-                    EmailUtil.getInstance().getTaskAssignmentSubject(),
-                    EmailUtil.TASK_NOTIFICATION_TEMPLATE);
+            EmailUtil.sendTaskAssignmentNotificationToUser(
+                user.getName(),
+                user.getEmail(),
+                String.format("%s/users/%s/tasks", EmailUtil.buildBaseUrl(urlInstance), user.getName()),
+                thread,
+                EmailUtil.getTaskAssignmentSubject(),
+                EmailUtil.TASK_NOTIFICATION_TEMPLATE);
           } catch (IOException ex) {
             LOG.error("Task Email Notification Failed :", ex);
           } catch (TemplateException ex) {
             LOG.error("Task Email Notification Template Parsing Exception :", ex);
-          }
-        });
-  }
-
-  private void handleTestResultEmailNotification(ChangeEvent changeEvent) {
-    if (Objects.nonNull(changeEvent.getChangeDescription())) {
-      FieldChange fieldChange = changeEvent.getChangeDescription().getFieldsUpdated().get(0);
-      String updatedField = fieldChange.getName();
-      if (updatedField.equals("testCaseResult")) {
-        TestCaseResult result = (TestCaseResult) fieldChange.getNewValue();
-        // Send Email Notification If Enabled
-        TestResultNotificationConfiguration testNotificationSetting =
-            SettingsCache.getInstance()
-                .getSetting(TEST_RESULT_NOTIFICATION_CONFIGURATION, TestResultNotificationConfiguration.class);
-        if (testNotificationSetting.getEnabled()
-            && testNotificationSetting.getOnResult().contains(result.getTestCaseStatus())) {
-          List<String> receivers =
-              testNotificationSetting.getReceivers() != null
-                  ? testNotificationSetting.getReceivers()
-                  : new ArrayList<>();
-          if (testNotificationSetting.getSendToOwners()) {
-            EntityInterface entity = (TestCase) changeEvent.getEntity();
-            // Find the Table that have the test case
-            List<CollectionDAO.EntityRelationshipRecord> tableToTestRecord =
-                dao.relationshipDAO()
-                    .findFrom(entity.getId().toString(), TEST_CASE, Relationship.CONTAINS.ordinal(), TABLE);
-            tableToTestRecord.forEach(
-                (tableRecord) -> {
-                  // Find the owners owning the Table , can be a team or Users
-                  List<CollectionDAO.EntityRelationshipRecord> tableOwners =
-                      dao.relationshipDAO()
-                          .findFrom(tableRecord.getId().toString(), TABLE, Relationship.OWNS.ordinal());
-                  tableOwners.forEach(
-                      (owner) -> {
-                        try {
-                          if (USER.equals(owner.getType())) {
-                            User user = dao.userDAO().findEntityById(owner.getId());
-                            receivers.add(user.getEmail());
-                          } else if (TEAM.equals(owner.getType())) {
-                            Team team = dao.teamDAO().findEntityById(owner.getId());
-                            // Fetch the users in the team
-                            List<CollectionDAO.EntityRelationshipRecord> records =
-                                dao.relationshipDAO()
-                                    .findTo(team.getId().toString(), TEAM, Relationship.HAS.ordinal(), USER);
-
-                            records.forEach(
-                                (userRecord) -> {
-                                  try {
-                                    User user = dao.userDAO().findEntityById(userRecord.getId());
-                                    receivers.add(user.getEmail());
-                                  } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                  }
-                                });
-                          }
-                        } catch (IOException e) {
-                          throw new RuntimeException(e);
-                        }
-                      });
-                });
-          }
-          sendTestResultEmailNotifications(receivers, (TestCase) changeEvent.getEntity(), result);
-        }
-      }
-    }
-  }
-
-  private void sendTestResultEmailNotifications(List<String> emails, TestCase testCase, TestCaseResult result) {
-    emails.forEach(
-        (email) -> {
-          URI urlInstance = testCase.getHref();
-          String testLinkUrl =
-              String.format(
-                  "%s/table/%s/activity_feed",
-                  EmailUtil.getInstance().buildBaseUrl(urlInstance), testCase.getEntityFQN());
-          try {
-            EmailUtil.getInstance()
-                .sendTestResultEmailNotificationToUser(
-                    email,
-                    testLinkUrl,
-                    testCase.getName(),
-                    result,
-                    EmailUtil.getInstance().getTestResultSubject(),
-                    EmailUtil.TEST_NOTIFICATION_TEMPLATE);
-          } catch (IOException e) {
-            LOG.error("TestResult Email Notification Failed :", e);
-          } catch (TemplateException e) {
-            LOG.error("Task Email Notification Template Parsing Exception :", e);
           }
         });
   }

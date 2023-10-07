@@ -20,10 +20,27 @@ import { service } from '../../constants/constants';
 
 describe('Services page should work properly', () => {
   beforeEach(() => {
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'pipelineServiceClient'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/*?service=${service.name}&fields=*`,
+      'serviceDetails'
+    );
+    interceptURL(
+      'GET',
+      `/api/v1/services/ingestionPipelines?fields=*&service=${service.name}*`,
+      'ingestionPipelines'
+    );
     cy.login();
     // redirecting to services page
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Database')
@@ -32,11 +49,12 @@ describe('Services page should work properly', () => {
   });
 
   it('Update service description', () => {
-    interceptURL('GET', '/api/v1/config/airflow', 'getService');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-    verifyResponseStatusCode('@getService', 200);
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineServiceClient', 200);
     // need wait here
     cy.get('[data-testid="edit-description"]')
       .should('exist')
@@ -45,47 +63,101 @@ describe('Services page should work properly', () => {
     cy.get(descriptionBox).clear().type(service.newDescription);
     cy.get('[data-testid="save"]').click();
     cy.get(
-      '[data-testid="description"] > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
+      '[data-testid="description-container"] [data-testid="viewer-container"] [data-testid="markdown-parser"] :nth-child(1) .toastui-editor-contents p'
     ).contains(service.newDescription);
     cy.get(':nth-child(1) > .link-title').click();
     cy.get('.toastui-editor-contents > p').contains(service.newDescription);
   });
 
   it('Update owner and check description', () => {
-    interceptURL('GET', '/api/v1/config/airflow', 'getService');
     cy.get(`[data-testid="service-name-${service.name}"]`)
       .should('be.visible')
       .click();
-
-    verifyResponseStatusCode('@getService', 200);
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineServiceClient', 200);
     interceptURL(
       'GET',
-      '/api/v1//search/query?q=*&from=0&size=10&index=*',
+      '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=*&index=team_search_index',
       'editOwner'
     );
-    cy.get('[data-testid="edit-Owner-icon"]')
+    cy.get('[data-testid="edit-owner"]')
       .should('exist')
       .should('be.visible')
       .click();
     verifyResponseStatusCode('@editOwner', 200);
 
-    cy.get('[data-testid="dropdown-list"]')
+    cy.get(
+      '.ant-popover-inner-content > .ant-tabs > .ant-tabs-nav > .ant-tabs-nav-wrap'
+    )
       .contains('Users')
-      .should('exist')
-      .should('be.visible')
       .click();
 
-    cy.get('[data-testid="list-item"]')
+    interceptURL(
+      'PATCH',
+      '/api/v1/services/databaseServices/*',
+      'updateService'
+    );
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*%20AND%20isBot:false*&index=user_search_index',
+      'searchApi'
+    );
+
+    cy.get('[data-testid="owner-select-users-search-bar"]').type(service.Owner);
+    verifyResponseStatusCode('@searchApi', 200);
+    cy.get('[data-testid="selectable-list"]')
       .contains(service.Owner)
       .scrollIntoView()
-      .should('be.visible')
       .click();
 
-    cy.get('[data-testid="owner-dropdown"]').should('have.text', service.Owner);
+    verifyResponseStatusCode('@updateService', 200);
+
     // Checking if description exists after assigning the owner
     cy.get(':nth-child(1) > .link-title').click();
     // need wait here
 
     cy.get('[data-testid="viewer-container"]').contains(service.newDescription);
+  });
+
+  it('Remove owner from service', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/system/config/pipeline-service-client',
+      'getService'
+    );
+
+    interceptURL('GET', '/api/v1/users?*', 'waitForUsers');
+
+    cy.get(`[data-testid="service-name-${service.name}"]`)
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@serviceDetails', 200);
+    verifyResponseStatusCode('@ingestionPipelines', 200);
+    verifyResponseStatusCode('@pipelineServiceClient', 200);
+
+    cy.get('[data-testid="edit-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+    verifyResponseStatusCode('@waitForUsers', 200);
+
+    interceptURL('PATCH', '/api/v1/services/databaseServices/*', 'removeOwner');
+    cy.get('[data-testid="selectable-list"]')
+      .contains(service.Owner)
+      .should('be.visible');
+
+    cy.get('[data-testid="remove-owner"]')
+      .should('exist')
+      .should('be.visible')
+      .click();
+
+    verifyResponseStatusCode('@removeOwner', 200);
+
+    // Check if Owner exist
+    cy.get('[data-testid="owner-link"]')
+      .scrollIntoView()
+      .should('exist')
+      .contains('No Owner');
   });
 });

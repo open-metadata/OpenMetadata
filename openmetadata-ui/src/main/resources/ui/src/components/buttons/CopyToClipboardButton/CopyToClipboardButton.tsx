@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Popover, PopoverProps } from 'antd';
-import React, { FunctionComponent, useState } from 'react';
-import CopyToClipboard from 'react-copy-to-clipboard';
+import { Button, PopoverProps, Tooltip } from 'antd';
+import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-
-import { Button } from '../Button/Button';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import { useClipboard } from '../../../hooks/useClipBoard';
 
 interface Props {
   copyText: string;
@@ -33,44 +31,31 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
   onCopy,
 }: Props) => {
   const { t } = useTranslation();
-  const [copied, setCopied] = useState<boolean>(false);
-
-  const handleCopying = () => {
-    setCopied(true);
-    onCopy?.();
-    setTimeout(() => {
-      setCopied(false);
-    }, copyTimer);
-  };
+  const { hasCopied, onCopyToClipBoard } = useClipboard(
+    copyText,
+    copyTimer,
+    onCopy
+  );
 
   return (
-    <CopyToClipboard text={copyText} onCopy={handleCopying}>
+    <Tooltip
+      destroyTooltipOnHide
+      open={hasCopied}
+      placement={position}
+      title={
+        <span className="text-xs font-medium" data-testid="copy-success">
+          {t('message.copied-to-clipboard')}
+        </span>
+      }
+      trigger="click">
       <Button
-        className="tw-h-8 tw-ml-4 tw-relative"
+        className="h-8 m-l-md relative"
         data-testid="copy-secret"
-        size="custom"
-        theme="default"
-        variant="text">
-        <Popover
-          content={
-            <span
-              className="tw-text-grey-body tw-text-xs tw-font-medium tw-italic"
-              data-testid="copy-success">
-              {t('message.copied-to-clipboard')}
-            </span>
-          }
-          open={copied}
-          placement={position}
-          trigger="click">
-          <SVGIcons
-            alt="Copy"
-            data-testid="copy-icon"
-            icon={Icons.COPY}
-            width="16px"
-          />
-        </Popover>
-      </Button>
-    </CopyToClipboard>
+        icon={<CopyIcon data-testid="copy-icon" width="16" />}
+        type="text"
+        onClick={onCopyToClipBoard}
+      />
+    </Tooltip>
   );
 };
 

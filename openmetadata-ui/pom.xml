@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>0.13.2-SNAPSHOT</version>
+    <version>1.2.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -149,6 +149,15 @@
       </plugin>
       <plugin>
         <artifactId>maven-resources-plugin</artifactId>
+        <configuration>
+            <nonFilteredFileExtensions>
+              <nonFilteredFileExtension>ttf</nonFilteredFileExtension>
+              <nonFilteredFileExtension>woff</nonFilteredFileExtension>
+              <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
+              <nonFilteredFileExtension>eot</nonFilteredFileExtension>
+              <nonFilteredFileExtension>svg</nonFilteredFileExtension>
+            </nonFilteredFileExtensions>
+        </configuration>
         <executions>
           <execution>
             <id>copy-resources</id>
@@ -163,6 +172,19 @@
                 <resource>
                   <directory>src/main/resources/ui/dist</directory>
                   <filtering>true</filtering>
+                </resource>
+                <resource>
+                  <directory>src/main/resources/ui</directory>
+                  <targetPath>${project.build.outputDirectory}/openmetadata-ui/</targetPath>
+                  <excludes>
+                    <exclude>dist/**</exclude>
+                    <exclude>node_modules/**</exclude>
+                    <exclude>webpack/**</exclude>
+                    <exclude>*tsconfig.tsbuildinfo</exclude>
+                  </excludes>
+                  <includes>
+                    <include>**</include>
+                  </includes>
                 </resource>
               </resources>
             </configuration>

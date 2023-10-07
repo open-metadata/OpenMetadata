@@ -12,9 +12,9 @@
  */
 
 import { Modal } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
 import { Thread } from '../../../generated/entity/feed/thread';
 
 interface CommentModalProps {
@@ -49,6 +49,7 @@ const CommentModal: FC<CommentModalProps> = ({
       closable={false}
       confirmLoading={isLoading}
       data-testid="comment-modal"
+      maskClosable={false}
       okButtonProps={{
         disabled: !comment,
         className: 'ant-btn-primary-custom',

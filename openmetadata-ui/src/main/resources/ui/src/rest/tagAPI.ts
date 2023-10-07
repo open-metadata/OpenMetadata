@@ -18,6 +18,7 @@ import { CreateClassification } from '../generated/api/classification/createClas
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
+import { EntityHistory } from '../generated/type/entityHistory';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -73,7 +74,7 @@ export const getClassificationByName = async (
 
 export const deleteClassification = async (classificationId: string) => {
   const response = await APIClient.delete<Classification>(
-    `/classifications/${classificationId}`
+    `/classifications/${classificationId}?recursive=true&hardDelete=true`
   );
 
   return response.data;
@@ -126,7 +127,11 @@ export const patchTag = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
-  const response = await APIClient.patch(`/tags/${id}`, data, configOptions);
+  const response = await APIClient.patch<Operation[], AxiosResponse<Tag>>(
+    `/tags/${id}`,
+    data,
+    configOptions
+  );
 
   return response.data;
 };
@@ -140,6 +145,25 @@ export const deleteTag = async (tagId: string) => {
       hardDelete: true,
     },
   });
+
+  return response.data;
+};
+
+export const getClassificationVersionsList = async (id: string) => {
+  const url = `${BASE_URL}/${id}/versions`;
+
+  const response = await APIClient.get<EntityHistory>(url);
+
+  return response.data;
+};
+
+export const getClassificationVersionData = async (
+  id: string,
+  version: string
+) => {
+  const url = `${BASE_URL}/${id}/versions/${version}`;
+
+  const response = await APIClient.get<Classification>(url);
 
   return response.data;
 };

@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Select, Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { TeamType } from '../../../generated/entity/teams/team';
+import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
-import './TeamTypeSelect.style.less';
-import { getTeamTypeOptions } from './TeamTypeSelect.utils';
 
 function TeamTypeSelect({
   handleShowTypeSelector,
   showGroupOption,
   teamType,
   updateTeamType,
+  parentTeamType,
 }: TeamTypeSelectProps) {
   const [value, setValue] = useState<TeamType>(teamType);
 
@@ -39,25 +39,46 @@ function TeamTypeSelect({
     updateTeamType && updateTeamType(value);
   };
 
-  const options = useMemo(() => getTeamTypeOptions(showGroupOption), []);
+  const options = useMemo(() => {
+    const options = getTeamOptionsFromType(parentTeamType).map((type) => ({
+      label: type,
+      value: type,
+    }));
+
+    return showGroupOption
+      ? options
+      : options.filter((opt) => opt.value !== TeamType.Group);
+  }, [parentTeamType, showGroupOption]);
 
   return (
-    <Space align="center" className="team-type-select" size={4}>
+    <Space
+      align="center"
+      className="team-type-select"
+      data-testid="team-type-select"
+      size={4}>
       <Select
         defaultActiveFirstOption
         options={options}
         value={value}
         onSelect={handleSelect}
       />
-      <Space className="edit-team-type-buttons" size={4}>
+      <Space className="m-l-xs" size={4}>
         <Button
-          icon={<FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="xmark" />}
-          onClick={handleCancel}
-        />
+          className="h-8 p-x-xss"
+          data-testid="cancel-btn"
+          size="small"
+          type="primary"
+          onClick={handleCancel}>
+          <CloseOutlined />
+        </Button>
         <Button
-          icon={<FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />}
-          onClick={handleSubmit}
-        />
+          className="h-8 p-x-xss"
+          data-testid="save-btn"
+          size="small"
+          type="primary"
+          onClick={handleSubmit}>
+          <CheckOutlined />
+        </Button>
       </Space>
     </Space>
   );

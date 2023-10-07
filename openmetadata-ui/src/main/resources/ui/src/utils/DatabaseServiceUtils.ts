@@ -18,6 +18,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
+import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
 import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
 import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
@@ -27,15 +28,20 @@ import domoDatabaseConnection from '../jsons/connectionSchemas/connections/datab
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
+import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
+import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
+import mongoDBConnection from '../jsons/connectionSchemas/connections/database/mongoDBConnection.json';
 import mssqlConnection from '../jsons/connectionSchemas/connections/database/mssqlConnection.json';
 import mysqlConnection from '../jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import oracleConnection from '../jsons/connectionSchemas/connections/database/oracleConnection.json';
+import pinotConnection from '../jsons/connectionSchemas/connections/database/pinotDBConnection.json';
 import postgresConnection from '../jsons/connectionSchemas/connections/database/postgresConnection.json';
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
+import sapHanaConnection from '../jsons/connectionSchemas/connections/database/sapHanaConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
@@ -103,6 +109,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Hive: {
       schema = hiveConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Impala: {
+      schema = impalaConnection;
 
       break;
     }
@@ -181,8 +192,33 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.SapHana: {
+      schema = sapHanaConnection;
+
+      break;
+    }
+    case DatabaseServiceType.MongoDB: {
+      schema = mongoDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Couchbase: {
+      schema = couchbaseConnection;
+
+      break;
+    }
+    case DatabaseServiceType.PinotDB: {
+      schema = pinotConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Greenplum: {
+      schema = greenplumConnection;
+
+      break;
+    }
     default: {
-      schema = mysqlConnection;
+      schema = {};
 
       break;
     }

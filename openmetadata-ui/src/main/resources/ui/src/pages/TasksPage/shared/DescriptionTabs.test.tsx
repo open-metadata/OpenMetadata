@@ -19,7 +19,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getDescriptionDiff: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
+jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () => {
   return forwardRef(
     jest.fn().mockImplementation(({ initialValue }) => {
       return (
@@ -35,12 +35,14 @@ jest.mock('components/common/rich-text-editor/RichTextEditor', () => {
   );
 });
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="richTextEditorPreviewer">RichTextEditorPreviewer</div>
-    )
+jest.mock(
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () =>
+    jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="richTextEditorPreviewer">RichTextEditorPreviewer</div>
+      )
 );
 
 jest.mock('./DiffView', () => ({
@@ -50,7 +52,7 @@ jest.mock('./DiffView', () => ({
 }));
 
 const mockProps = {
-  description: 'description',
+  value: 'description',
   suggestion: 'suggestion',
   markdownRef: { current: undefined },
   placeHolder: '',

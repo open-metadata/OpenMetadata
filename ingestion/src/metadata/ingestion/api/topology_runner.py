@@ -10,14 +10,18 @@
 #  limitations under the License.
 """
 Mixin to be used by service sources to dynamically
-generate the next_record based on their topology.
+generate the _run based on their topology.
 """
 import traceback
+from functools import singledispatchmethod
 from typing import Any, Generic, Iterable, List, TypeVar
 
 from pydantic import BaseModel
 
-from metadata.ingestion.api.common import Entity
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.ingestion.api.models import Either, Entity
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -45,7 +49,7 @@ class MissingExpectedEntityAckException(Exception):
 
 class TopologyRunnerMixin(Generic[C]):
     """
-    Prepares the next_record function
+    Prepares the _run function
     dynamically based on the source topology
     """
 
@@ -73,13 +77,11 @@ class TopologyRunnerMixin(Generic[C]):
             )
 
             for element in node_producer() or []:
-
                 for stage in node.stages:
                     logger.debug(f"Processing stage: {stage}")
 
                     stage_fn = getattr(self, stage.processor)
                     for entity_request in stage_fn(element) or []:
-
                         try:
                             # yield and make sure the data is updated
                             yield from self.sink_request(
@@ -124,8 +126,11 @@ class TopologyRunnerMixin(Generic[C]):
         for entity_request in node_post_process():
             yield entity_request
 
-    def next_record(self) -> Iterable[Entity]:
+    def _iter(self) -> Iterable[Either]:
         """
+        This is the implementation for the entrypoint of our Source classes, which
+        are an IterStep
+
         Based on a ServiceTopology, find the root node
         and fetch all source methods in the required order
         to yield data to the sink
@@ -133,7 +138,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         yield from self.process_nodes(get_topology_root(self.topology))
 
-    def update_context(self, key: str, value: Any) -> None:
+    def _replace_context(self, key: str, value: Any) -> None:
         """
         Update the key of the context with the given value
         :param key: element to update from the source context
@@ -141,7 +146,7 @@ class TopologyRunnerMixin(Generic[C]):
         """
         self.context.__dict__[key] = value
 
-    def append_context(self, key: str, value: Any) -> None:
+    def _append_context(self, key: str, value: Any) -> None:
         """
         Update the key of the context with the given value
         :param key: element to update from the source context
@@ -171,7 +176,118 @@ class TopologyRunnerMixin(Generic[C]):
             *context_names, entity_request.name.__root__
         )
 
-    def sink_request(self, stage: NodeStage, entity_request: C) -> Iterable[Entity]:
+    def update_context(self, stage: NodeStage, entity: Entity):
+        """Append or update context"""
+        if stage.context and not stage.cache_all:
+            self._replace_context(key=stage.context, value=entity)
+        if stage.context and stage.cache_all:
+            self._append_context(key=stage.context, value=entity)
+
+    @singledispatchmethod
+    def yield_and_update_context(
+        self,
+        right: C,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """
+        Handle the process of yielding the request and validating
+        that everything was properly updated.
+
+        The default implementation is based on a get_by_name validation
+        """
+
+        entity = None
+
+        entity_fqn = self.fqn_from_context(stage=stage, entity_request=right)
+
+        # we get entity from OM if we do not want to overwrite existing data in OM
+        if not stage.overwrite and not self._is_force_overwrite_enabled():
+            entity = self.metadata.get_by_name(
+                entity=stage.type_,
+                fqn=entity_fqn,
+                fields=["*"],  # Get all the available data from the Entity
+            )
+        # if entity does not exist in OM, or we want to overwrite, we will yield the entity_request
+        if entity is None:
+            tries = 3
+            while not entity and tries > 0:
+                yield entity_request
+                entity = self.metadata.get_by_name(
+                    entity=stage.type_,
+                    fqn=entity_fqn,
+                    fields=["*"],  # Get all the available data from the Entity
+                )
+                tries -= 1
+
+        # We have ack the sink waiting for a response, but got nothing back
+        if stage.must_return and entity is None:
+            # Safe access to Entity Request name
+            raise MissingExpectedEntityAckException(
+                f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
+                "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
+                "for the service connection."
+            )
+
+        self.update_context(stage=stage, entity=entity)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: AddLineageRequest,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """
+        Lineage Implementation for the context information.
+
+        There is no simple (efficient) validation to make sure that this specific
+        lineage has been properly drawn. We'll skip the process for now.
+        """
+        yield entity_request
+        self.update_context(stage=stage, entity=right)
+
+    @yield_and_update_context.register
+    def _(
+        self,
+        right: OMetaTagAndClassification,
+        stage: NodeStage,
+        entity_request: Either[C],
+    ) -> Iterable[Either[Entity]]:
+        """Tag implementation for the context information"""
+        yield entity_request
+
+        tag = None
+
+        tries = 3
+        while not tag and tries > 0:
+            yield entity_request
+            tag = self.metadata.get_by_name(
+                entity=Tag,
+                fqn=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Tag,
+                    classification_name=right.tag_request.classification.__root__,
+                    tag_name=right.tag_request.name.__root__,
+                ),
+            )
+            tries -= 1
+
+        # We have ack the sink waiting for a response, but got nothing back
+        if stage.must_return and tag is None:
+            # Safe access to Entity Request name
+            raise MissingExpectedEntityAckException(
+                f"Missing ack back from [Tag: {right.tag_request.name}] - "
+                "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
+                "for the service connection."
+            )
+
+        # We want to keep the full payload in the context
+        self.update_context(stage=stage, entity=right)
+
+    def sink_request(
+        self, stage: NodeStage, entity_request: Either[C]
+    ) -> Iterable[Either[Entity]]:
         """
         Validate that the entity was properly updated or retry if
         ack_sink is flagged.
@@ -184,56 +300,28 @@ class TopologyRunnerMixin(Generic[C]):
         """
 
         # Either use the received request or the acknowledged Entity
-        entity = entity_request
+        entity = entity_request.right if entity_request else None
 
-        if stage.nullable and entity is None:
+        if not stage.nullable and entity is None:
             raise ValueError("Value unexpectedly None")
 
-        if entity is not None:
-            if stage.ack_sink:
-                entity = None
-
-                entity_fqn = self.fqn_from_context(
-                    stage=stage, entity_request=entity_request
-                )
-
-                # we get entity from OM if we do not want to overwrite existing data in OM
-                if not stage.overwrite and not self._is_force_overwrite_enabled():
-                    entity = self.metadata.get_by_name(
-                        entity=stage.type_,
-                        fqn=entity_fqn,
-                        fields=["*"],  # Get all the available data from the Entity
+        if entity_request is not None:
+            # Check that we properly received a Right response to process
+            if entity_request.right is not None:
+                # We need to acknowledge that the Entity has been properly sent to the server
+                # to update the context
+                if stage.context:
+                    yield from self.yield_and_update_context(
+                        entity, stage=stage, entity_request=entity_request
                     )
-                # if entity does not exist in OM, or we want to overwrite, we will yield the entity_request
-                if entity is None:
-                    tries = 3
-                    while not entity and tries > 0:
-                        yield entity_request
-                        # Improve validation logic
-                        entity = self.metadata.get_by_name(
-                            entity=stage.type_,
-                            fqn=entity_fqn,
-                            fields=["*"],  # Get all the available data from the Entity
-                        )
-                        tries -= 1
 
-                # We have ack the sink waiting for a response, but got nothing back
-                if stage.must_return and entity is None:
-                    # Safe access to Entity Request name
-                    raise MissingExpectedEntityAckException(
-                        f"Missing ack back from [{stage.type_.__name__}: {getattr(entity_request, 'name')}] - "
-                        "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
-                        "for the service connection."
-                    )
+                else:
+                    yield entity_request
 
             else:
-                yield entity
-
-            if stage.context and not stage.cache_all:
-                self.update_context(key=stage.context, value=entity)
-            if stage.context and stage.cache_all:
-                self.append_context(key=stage.context, value=entity)
-            logger.debug(self.context)
+                # if entity_request.right is None, means that we have a Left. We yield the Either and
+                # let the step take care of the
+                yield entity_request
 
     def _is_force_overwrite_enabled(self) -> bool:
         return self.metadata.config and self.metadata.config.forceEntityOverwriting

@@ -24,7 +24,7 @@ import {
 import { SearchResponse } from '../../interface/search.interface';
 import { ExploreSearchIndex } from './explore.interface';
 
-export const mockResponse: SearchResponse<ExploreSearchIndex> = {
+export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
   hits: {
     total: {
       value: 15,
@@ -231,7 +231,7 @@ export const mockResponse: SearchResponse<ExploreSearchIndex> = {
               labelType: LabelType.Manual,
               description:
                 'PII which if lost, compromised, or disclosed without authorization, could result in substantial harm, embarrassment, inconvenience, or unfairness to an individual.',
-              source: TagSource.Tag,
+              source: TagSource.Classification,
               state: State.Confirmed,
             },
           ],

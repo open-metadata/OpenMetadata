@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/pipelineServiceClientResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PipelineServiceClientResponse",
+  "description": "Object to send Status responses about your Ingestion Pipelines ops.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse",
+  "properties": {
+    "code": {
+      "description": "Status code",
+      "type": "integer"
+    },
+    "reason": {
+      "description": "Extra information to be sent back to the client, such as error traces.",
+      "type": "string"
+    },
+    "platform": {
+      "description": "Orchestration platform used by the Pipeline Service Client.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Ingestion version being used.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["code", "platform"]
+}

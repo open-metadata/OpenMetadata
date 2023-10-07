@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { Form, Input, Modal, Space } from 'antd';
+import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import { observer } from 'mobx-react';
-import React, { FC, useState } from 'react';
+import moment from 'moment';
+import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
-import { validateMessages } from '../../../utils/AnnouncementsUtils';
-import {
-  getLocaleDateFromTimeStamp,
-  getTimeZone,
-  getUTCDateTime,
-} from '../../../utils/TimeUtils';
+import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';
+import { CreateAnnouncement } from './AddAnnouncementModal';
 import './AnnouncementModal.less';
 
 interface Props {
@@ -41,29 +39,25 @@ const EditAnnouncementModal: FC<Props> = ({
   announcementTitle,
   announcement,
 }) => {
-  const [title, setTitle] = useState<string>(announcementTitle);
-  const [startDate, setStartDate] = useState<string>(
-    getLocaleDateFromTimeStamp(announcement.startTime * 1000)
-  );
-  const [endDate, setEndDate] = useState<string>(
-    getLocaleDateFromTimeStamp(announcement.endTime * 1000)
-  );
-  const [description, setDescription] = useState<string>(
-    announcement.description || ''
-  );
   const { t } = useTranslation();
 
-  const handleConfirm = () => {
-    const startTime = Math.floor(getUTCDateTime(startDate) / 1000);
-    const endTime = Math.floor(getUTCDateTime(endDate) / 1000);
-    if (startTime >= endTime) {
+  const handleConfirm = ({
+    title,
+    description,
+    startTime,
+    endTime,
+  }: CreateAnnouncement) => {
+    const startTimeMs = startTime.unix();
+    const endTimeMs = endTime.unix();
+
+    if (startTimeMs >= endTimeMs) {
       showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       const updatedAnnouncement = {
         ...announcement,
         description,
-        startTime,
-        endTime,
+        startTime: startTimeMs,
+        endTime: endTimeMs,
       };
 
       onConfirm(title, updatedAnnouncement);
@@ -76,6 +70,7 @@ const EditAnnouncementModal: FC<Props> = ({
       className="announcement-modal"
       closable={false}
       data-testid="edit-announcement"
+      maskClosable={false}
       okButtonProps={{
         form: 'announcement-form',
         type: 'primary',
@@ -89,9 +84,14 @@ const EditAnnouncementModal: FC<Props> = ({
       <Form
         data-testid="announcement-form"
         id="announcement-form"
-        initialValues={{ title, startDate, endDate }}
+        initialValues={{
+          title: announcementTitle,
+          description: announcement.description,
+          startTime: moment.unix(announcement.startTime),
+          endTime: moment.unix(announcement.endTime),
+        }}
         layout="vertical"
-        validateMessages={validateMessages}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleConfirm}>
         <Form.Item
           label={`${t('label.title')}:`}
@@ -104,54 +104,43 @@ const EditAnnouncementModal: FC<Props> = ({
               min: 5,
             },
           ]}>
-          <Input
-            placeholder={t('label.announcement-title')}
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <Input placeholder={t('label.announcement-title')} type="text" />
         </Form.Item>
         <Space className="announcement-date-space" size={16}>
           <Form.Item
             label={t('label.start-date-time-zone', {
               timeZone: getTimeZone(),
             })}
-            messageVariables={{ fieldName: 'startDate' }}
-            name="startDate"
+            messageVariables={{ fieldName: 'startTime' }}
+            name="startTime"
             rules={[
               {
                 required: true,
               },
             ]}>
-            <Input
-              type="datetime-local"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
+            <DatePicker className="w-full" />
           </Form.Item>
           <Form.Item
             label={t('label.end-date-time-zone', {
               timeZone: getTimeZone(),
             })}
-            messageVariables={{ fieldName: 'endDate' }}
-            name="endDate"
+            messageVariables={{ fieldName: 'endTime' }}
+            name="endTime"
             rules={[
               {
                 required: true,
               },
             ]}>
-            <Input
-              type="datetime-local"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
+            <DatePicker className="w-full" />
           </Form.Item>
         </Space>
-        <Form.Item label={`${t('label.description')}:`} name="description">
+        <Form.Item
+          label={`${t('label.description')}:`}
+          name="description"
+          trigger="onTextChange"
+          valuePropName="initialValue">
           <RichTextEditor
-            initialValue={description}
             placeHolder={t('message.write-your-announcement-lowercase')}
-            onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>
       </Form>

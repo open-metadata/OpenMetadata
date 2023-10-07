@@ -13,20 +13,19 @@
 
 import React, { Fragment, useState } from 'react';
 import SchemaModal from '../Modals/SchemaModal/SchemaModal';
+import { SampleDataType } from './sample.interface';
 
-// eslint-disable-next-line
-export const RowData = ({ data }: { data: any }) => {
+export const RowData = ({ data }: { data: SampleDataType }) => {
   const [isFullView, setIsFullView] = useState<boolean>(false);
 
   const onClose = () => setIsFullView(false);
   const onOpen = () => setIsFullView(true);
 
-  // eslint-disable-next-line
-  const getDataElement = (rowValue: any) => {
+  const getDataElement = (rowValue: SampleDataType) => {
     if (typeof rowValue === 'object') {
       return (
         <p
-          className="tw-w-52 tw-truncate tw-cursor-pointer"
+          className="w-52 truncate cursor-pointer"
           data-testid="json-object"
           onClick={onOpen}>
           {JSON.stringify(rowValue)}
@@ -40,7 +39,9 @@ export const RowData = ({ data }: { data: any }) => {
   return (
     <Fragment>
       {data ? getDataElement(data) : <p data-testid="empty-data">--</p>}
-      <SchemaModal data={data} visible={isFullView} onClose={onClose} />
+      {isFullView && (
+        <SchemaModal data={data} visible={isFullView} onClose={onClose} />
+      )}
     </Fragment>
   );
 };

@@ -39,10 +39,12 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getFunctionDisplayName should return correct text for matchAnySource', () => {
-    expect(getFunctionDisplayName('matchAnySource')).toBe('');
+    expect(getFunctionDisplayName('matchAnySource')).toBe('label.source-match');
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyEntityId', () => {
-    expect(getFunctionDisplayName('matchAnyEntityId')).toBe('');
+    expect(getFunctionDisplayName('matchAnyEntityId')).toBe(
+      'label.entity-id-match'
+    );
   });
 });

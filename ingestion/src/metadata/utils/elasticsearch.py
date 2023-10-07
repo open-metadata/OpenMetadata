@@ -16,10 +16,15 @@ from typing import List, Optional, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
@@ -37,7 +42,14 @@ ES_INDEX_MAP = {
     Topic.__name__: "topic_search_index",
     Pipeline.__name__: "pipeline_search_index",
     Glossary.__name__: "glossary_search_index",
+    GlossaryTerm.__name__: "glossary_search_index",
     MlModel.__name__: "mlmodel_search_index",
+    Tag.__name__: "tag_search_index",
+    Container.__name__: "container_search_index",
+    Query.__name__: "query_search_index",
+    ReportData.__name__: "entity_report_data_index",
+    "web_analytic_user_activity_report": "web_analytic_user_activity_report_data_index",
+    "web_analytic_entity_view_report": "web_analytic_entity_view_report_data_index",
 }
 
 

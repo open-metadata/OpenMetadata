@@ -13,7 +13,15 @@
 
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import React, { FC, HTMLAttributes, ReactNode } from 'react';
+import React, {
+  CSSProperties,
+  FC,
+  Fragment,
+  HTMLAttributes,
+  ReactNode,
+  useMemo,
+} from 'react';
+import DocumentTitle from '../../components/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
@@ -21,12 +29,17 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   header?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
+  pageTitle: string;
+  rightPanelWidth?: number;
+  leftPanelWidth?: number;
 }
 
-export const pageContainerStyles = {
-  height: '100%',
-  padding: '1rem 0.5rem',
-  margin: 0,
+export const pageContainerStyles: CSSProperties = {
+  padding: 0,
+  marginTop: 0,
+  marginBottom: 0,
+  marginLeft: 0,
+  marginRight: 0,
   overflow: 'hidden',
 };
 
@@ -35,45 +48,70 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   children,
   rightPanel,
   className,
+  pageTitle,
+  header,
   center = false,
+  leftPanelWidth = 230,
+  rightPanelWidth = 284,
 }: PageLayoutProp) => {
+  const contentWidth = useMemo(() => {
+    if (leftPanel && rightPanel) {
+      return `calc(100% - ${leftPanelWidth + rightPanelWidth}px)`;
+    } else if (leftPanel) {
+      return `calc(100% - ${leftPanelWidth}px)`;
+    } else if (rightPanel) {
+      return `calc(100% - ${rightPanelWidth}px)`;
+    } else {
+      return '100%';
+    }
+  }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
+
   return (
-    <Row className={className} gutter={[16, 16]} style={pageContainerStyles}>
-      {leftPanel && (
-        <Col
-          className="page-layout-v1-vertical-scroll"
-          flex="284px"
-          id="left-panelV1">
-          {leftPanel}
-        </Col>
+    <Fragment>
+      <DocumentTitle title={pageTitle} />
+      {header && (
+        <div
+          className={classNames({
+            'header-center': center,
+            'm-t-md p-x-md': !center,
+          })}>
+          {header}
+        </div>
       )}
-      <Col
-        className={classNames(
-          'page-layout-v1-center page-layout-v1-vertical-scroll',
-          {
-            'flex justify-center': center,
-          }
+      <Row
+        className={classNames(className, 'bg-white')}
+        data-testid="page-layout-v1"
+        style={pageContainerStyles}>
+        {leftPanel && (
+          <Col
+            className="page-layout-leftpanel"
+            flex={leftPanelWidth + 'px'}
+            id="left-panelV1">
+            {leftPanel}
+          </Col>
         )}
-        flex={
-          leftPanel && rightPanel
-            ? 'calc(100% - 568px)'
-            : leftPanel || rightPanel
-            ? 'calc(100% - 284px)'
-            : '100%'
-        }
-        offset={center ? 3 : 0}
-        span={center ? 18 : 24}>
-        {children}
-      </Col>
-      {rightPanel && (
         <Col
-          className="page-layout-v1-vertical-scroll"
-          flex="284px"
-          id="right-panelV1">
-          {rightPanel}
+          className={classNames(
+            'page-layout-v1-center p-t-sm page-layout-v1-vertical-scroll',
+            {
+              'flex justify-center': center,
+            }
+          )}
+          flex={contentWidth}
+          offset={center ? 3 : 0}
+          span={center ? 18 : 24}>
+          {children}
         </Col>
-      )}
-    </Row>
+        {rightPanel && (
+          <Col
+            className="page-layout-rightpanel page-layout-v1-vertical-scroll"
+            flex={rightPanelWidth + 'px'}
+            id="right-panelV1">
+            {rightPanel}
+          </Col>
+        )}
+      </Row>
+    </Fragment>
   );
 };
 

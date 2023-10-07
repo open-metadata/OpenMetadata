@@ -11,23 +11,34 @@
  *  limitations under the License.
  */
 
-@succesColor: #28a745;
-@failedColor: #cb2431;
-@abortedColor: #efae2f;
+@import url('../../../styles/variables.less');
+
+@successColor: #f7fbf9;
+@failedColor: #fbf8f8;
+@abortedColor: #fbfaf9;
+@success-border: #b0e7d4;
+@failure-border: #fec0ac;
+@abort-border: #fee39c;
 
 .test-indicator {
-  display: inline-block;
-  height: 8px;
-  width: 8px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
+  .test-value {
+    color: @grey-4;
+    font-size: 12px;
+  }
 
   &.success {
-    background: @succesColor;
+    background: @successColor;
+    border: 1px solid @success-border;
   }
   &.failed {
     background: @failedColor;
+    border: 1px solid @failure-border;
   }
   &.aborted {
     background: @abortedColor;
+    border: 1px solid @abort-border;
   }
 }

@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { EntityData } from 'components/common/PopOverCard/EntityPopOverCard';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { EntityUnion } from './components/Explore/explore.interface';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
-import { CurrentTourPageType } from './enums/tour.enum';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
   EntityReference as UserTeams,
@@ -38,13 +37,14 @@ class AppState {
   nonSecureUserDetails: User = {} as User;
   userDetails: User = {} as User;
   userDataProfiles: Record<string, User> = {};
-  entityData: Record<string, EntityData> = {};
+  entityData: Record<string, EntityUnion> = {};
   userTeams: Array<UserTeams> = [];
   userPermissions: ResourcePermission[] = [];
   userProfilePics: Array<{
     id: string;
     name: string;
     profile: ImageList['image512'];
+    displayName?: string;
   }> = [];
   userProfilePicsLoading: Array<{
     id: string;
@@ -53,10 +53,6 @@ class AppState {
 
   inPageSearchText = '';
   explorePageTab = 'tables';
-
-  isTourOpen = false;
-  currentTourPage: CurrentTourPageType = CurrentTourPageType.MY_DATA_PAGE;
-  activeTabforTourDatasetPage = 1;
 
   constructor() {
     makeAutoObservable(this, {
@@ -73,6 +69,7 @@ class AppState {
       getAllTeams: action,
       getAllPermissions: action,
       getUserProfilePic: action,
+      getUserDisplayName: action,
       updateUserProfilePic: action,
       loadUserProfilePics: action,
       getProfilePicsLoading: action,
@@ -125,7 +122,8 @@ class AppState {
   updateUserProfilePic(
     id?: string,
     username?: string,
-    profile?: ImageList['image512']
+    profile?: ImageList['image512'],
+    displayName?: string
   ) {
     if (!id && !username) {
       return;
@@ -145,6 +143,7 @@ class AppState {
         id: id || '',
         name: username || '',
         profile,
+        displayName,
       },
     ];
 
@@ -238,6 +237,19 @@ class AppState {
     });
 
     return data?.profile;
+  }
+
+  getUserDisplayName(id?: string, username?: string) {
+    const data = this.userProfilePics.find((item) => {
+      // compare id only if present
+      if (item.id && id) {
+        return item.id === id;
+      } else {
+        return item.name === username;
+      }
+    });
+
+    return data?.displayName;
   }
 
   getAllUserProfilePics() {

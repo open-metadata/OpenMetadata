@@ -96,13 +96,13 @@ class OMetaPipelineTest(TestCase):
         cls.entity = Pipeline(
             id=uuid.uuid4(),
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=EntityReference(id=cls.service_entity.id, type="pipelineService"),
             fullyQualifiedName="test-service-pipeline.test",
         )
 
         cls.create = CreatePipelineRequest(
             name="test",
-            service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
     @classmethod
@@ -149,7 +149,9 @@ class OMetaPipelineTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
-        self.assertEqual(res.service.id, updated_entity.service.id)
+        self.assertEqual(
+            res.service.fullyQualifiedName, updated_entity.service.__root__
+        )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
@@ -233,7 +235,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -286,7 +288,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),
@@ -352,7 +354,7 @@ class OMetaPipelineTest(TestCase):
 
         create_pipeline = CreatePipelineRequest(
             name="pipeline-test",
-            service=EntityReference(id=self.service_entity.id, type=self.service_type),
+            service=self.service_entity.fullyQualifiedName,
             tasks=[
                 Task(name="task1"),
                 Task(name="task2"),

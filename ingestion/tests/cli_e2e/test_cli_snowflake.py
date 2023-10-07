@@ -14,16 +14,34 @@ Test Snowflake connector with CLI
 """
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.api.status import Status
 
-from .test_cli_db_base_common import CliCommonDB
+from .base.e2e_types import E2EType
+from .common.test_cli_db import CliCommonDB
+from .common_e2e_sqa_mixins import SQACommonMethods
 
 
-class SnowflakeCliTest(CliCommonDB.TestSuite):
+class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
     Snowflake CLI Tests
     """
+
+    prepare_snowflake_e2e: List[str] = [
+        "DROP DATABASE IF EXISTS E2E_DB;",
+        "CREATE OR REPLACE DATABASE E2E_DB;",
+        "USE E2E_DB;",
+        "CREATE OR REPLACE SCHEMA e2e_test;",
+        "CREATE OR REPLACE TABLE e2e_test.regions(region_id INT PRIMARY KEY,region_name VARCHAR(25));",
+        "CREATE OR REPLACE TABLE e2e_test.countries(country_id CHAR(2) PRIMARY KEY,country_name VARCHAR (40),region_id INT NOT NULL);",
+        "CREATE OR REPLACE TABLE e2e_test.locations(e2e_testlocation_id INT PRIMARY KEY,e2e_teststreet_address VARCHAR (40),e2e_testpostal_code VARCHAR (12),e2e_testcity VARCHAR (30) NOT NULL,e2e_teststate_province VARCHAR (25),e2e_testcountry_id CHAR (2) NOT NULL);",
+        "CREATE OR REPLACE TABLE e2e_test.jobs(e2e_testjob_id INT PRIMARY KEY,e2e_testjob_title VARCHAR (35) NOT NULL,e2e_testmin_salary DECIMAL (8, 2),e2e_testmax_salary DECIMAL (8, 2));",
+        "CREATE OR REPLACE TABLE e2e_test.test_departments(e2e_testdepartment_id INT PRIMARY KEY,e2e_testdepartment_name VARCHAR (30) NOT NULL,e2e_testlocation_id INT);",
+        "CREATE OR REPLACE TABLE e2e_test.test_employees(e2e_testemployee_id INT PRIMARY KEY,e2e_testfirst_name VARCHAR (20),e2e_testlast_name VARCHAR (25) NOT NULL,e2e_testemail VARCHAR (100) NOT NULL,e2e_testphone_number VARCHAR (20),e2e_testhire_date DATE NOT NULL,e2e_testjob_id INT NOT NULL,e2e_testsalary DECIMAL (8, 2) NOT NULL,e2e_testmanager_id INT,e2e_testdepartment_id INT);",
+        "CREATE OR REPLACE TABLE e2e_test.test_dependents(e2e_testdependent_id INT PRIMARY KEY,e2e_testfirst_name VARCHAR (50) NOT NULL,e2e_testlast_name VARCHAR (50) NOT NULL,e2e_testrelationship VARCHAR (25) NOT NULL,e2e_testemployee_id INT NOT NULL);",
+    ]
 
     create_table_query: str = """
         CREATE TABLE E2E_DB.e2e_test.persons (
@@ -51,17 +69,22 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
         DROP VIEW IF EXISTS E2E_DB.e2e_test.view_persons;
     """
 
+    def setUp(self) -> None:
+        with self.engine.connect() as connection:
+            for sql_statements in self.prepare_snowflake_e2e:
+                connection.execute(sql_statements)
+
     @staticmethod
     def get_connector_name() -> str:
         return "snowflake"
 
     def assert_for_vanilla_ingestion(
-        self, source_status: SourceStatus, sink_status: SinkStatus
+        self, source_status: Status, sink_status: SinkStatus
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 1)
-        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
@@ -80,6 +103,33 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
             connection.execute(self.drop_table_query)
             connection.close()
 
+    def delete_table_rows(self) -> None:
+        SQACommonMethods.run_delete_queries(self)
+
+    def update_table_row(self) -> None:
+        SQACommonMethods.run_update_queries(self)
+
+    @pytest.mark.order(2)
+    def test_create_table_with_profiler(self) -> None:
+        # delete table in case it exists
+        self.delete_table_and_view()
+        # create a table and a view
+        self.create_table_and_view()
+        # build config file for ingest
+        self.build_config_file()
+        # run ingest with new tables
+        self.run_command()
+        # build config file for profiler
+        self.build_config_file(
+            E2EType.PROFILER,
+            # Otherwise the sampling here does not pick up rows
+            extra_args={"profileSample": 100},
+        )
+        # run profiler with new tables
+        result = self.run_command("profile")
+        sink_status, source_status = self.retrieve_statuses(result)
+        self.assert_for_table_with_profiler(source_status, sink_status)
+
     @staticmethod
     def expected_tables() -> int:
         return 7
@@ -87,9 +137,12 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 
+    def view_column_lineage_count(self) -> int:
+        return 2
+
     @staticmethod
     def fqn_created_table() -> str:
-        return "local_snowflake.E2E_DB.E2E_TEST.PERSONS"
+        return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -122,3 +175,19 @@ class SnowflakeCliTest(CliCommonDB.TestSuite):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 6
+
+    @staticmethod
+    def delete_queries() -> List[str]:
+        return [
+            """
+            DELETE FROM E2E_DB.E2E_TEST.PERSONS WHERE full_name = 'Peter Parker'
+            """,
+        ]
+
+    @staticmethod
+    def update_queries() -> List[str]:
+        return [
+            """
+            UPDATE E2E_DB.E2E_TEST.PERSONS SET full_name = 'Bruce Wayne' WHERE full_name = 'Clark Kent'
+            """,
+        ]

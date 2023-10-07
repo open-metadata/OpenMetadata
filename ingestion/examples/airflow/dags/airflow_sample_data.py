@@ -14,6 +14,8 @@ from datetime import timedelta
 import yaml
 from airflow import DAG
 
+from metadata.workflow.workflow_output_handler import print_status
+
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
@@ -21,7 +23,7 @@ except ModuleNotFoundError:
 
 from airflow.utils.dates import days_ago
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
 
 default_args = {
     "owner": "user_name",
@@ -57,10 +59,10 @@ workflowConfig:
 
 def metadata_ingestion_workflow():
     workflow_config = yaml.safe_load(config)
-    workflow = Workflow.create(workflow_config)
+    workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

@@ -105,20 +105,6 @@ class OMetaEndpointTest(TestCase):
         """
         self.assertEqual(self.metadata.get_suffix(User), "/users")
 
-    def test_get_create_entity_type(self):
-        """
-        Validate the mapping from Entity to CreateEntity
-        """
-
-        create = self.metadata.get_create_entity_type(Topic)
-        assert issubclass(create, CreateTopicRequest)
-
-        create = self.metadata.get_create_entity_type(DatabaseService)
-        assert issubclass(create, CreateDatabaseServiceRequest)
-
-        create = self.metadata.get_create_entity_type(User)
-        assert issubclass(create, CreateUserRequest)
-
     def test_get_entity_from_create(self):
         """
         Validate the mapping from CreateEntity to Entity

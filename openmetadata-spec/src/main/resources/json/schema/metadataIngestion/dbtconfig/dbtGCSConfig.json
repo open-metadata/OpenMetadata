@@ -2,16 +2,31 @@
   "$id": "https://open-metadata.org/schema/metadataIngestion/dbtconfig/dbtGCSConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DBT GCS Config",
+  "type": "object",
   "description": "DBT Catalog, Manifest and Run Results files in GCS storage. We will search for catalog.json, manifest.json and run_results.json.",
   "javaType": "org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig",
   "properties": {
     "dbtSecurityConfig": {
       "title": "DBT GCS Security Config",
-      "$ref": "../../security/credentials/gcsCredentials.json"
+      "$ref": "../../security/credentials/gcpCredentials.json"
     },
     "dbtPrefixConfig": {
       "title": "DBT Prefix Config",
-      "$ref": "./dbtBucketDetails.json"
+      "description": "Details of the bucket where the dbt files are stored",
+      "type": "object",
+      "properties": {
+        "dbtBucketName": {
+          "title": "DBT Bucket Name",
+          "description": "Name of the bucket where the dbt files are stored",
+          "type": "string"
+        },
+        "dbtObjectPrefix": {
+          "title": "DBT Object Prefix",
+          "description": "Path of the folder where the dbt files are stored",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

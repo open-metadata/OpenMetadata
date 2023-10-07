@@ -20,6 +20,7 @@
     },
     "OracleDatabaseSchema": {
       "title": "Database Schema",
+      "type":"object",
       "properties": {
         "databaseSchema": {
           "title": "DatabaseSchema",
@@ -31,6 +32,7 @@
     },
     "OracleServiceName": {
       "title": "Oracle Service Name",
+      "type":"object",
       "properties": {
         "oracleServiceName": {
           "title": "Oracle Service Name",
@@ -39,6 +41,18 @@
         }
       },
       "required": ["oracleServiceName"]
+    },
+    "OracleTNSConnection": {
+      "title": "Oracle TNS Connection",
+      "type":"object",
+      "properties": {
+        "oracleTNSConnection": {
+          "title": "Oracle TNS Connection String",
+          "description": "Pass the full constructed TNS string, e.g., (DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=myhost)(PORT=1530)))(CONNECT_DATA=(SID=MYSERVICENAME))).",
+          "type": "string"
+        }
+      },
+      "required": ["oracleTNSConnection"]
     }
   },
   "properties": {
@@ -80,6 +94,9 @@
         },
         {
           "$ref": "#/definitions/OracleServiceName"
+        },
+        {
+          "$ref": "#/definitions/OracleTNSConnection"
         }
       ]
     },
@@ -88,6 +105,11 @@
       "type": "string",
       "description": "This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if you need to enable thick connection mode. By default, we bring instant client 19 and point to /instantclient.",
       "default": "/instantclient"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
     },
     "connectionOptions": {
       "title": "Connection Options",
@@ -100,6 +122,12 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
     },
     "supportsDBTExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
@@ -114,5 +142,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username", "oracleConnectionType"]
+  "required": ["username", "oracleConnectionType"]
 }

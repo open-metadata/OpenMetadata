@@ -11,58 +11,27 @@
  *  limitations under the License.
  */
 
-import { AssetsDataType } from 'Models';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { User } from '../../generated/entity/teams/user';
-import { Paging } from '../../generated/type/paging';
-import { ThreadUpdatedFunc } from '../../interface/feed.interface';
-
-export interface Option {
-  label: string;
-  value: string;
-}
-export interface PatchObject {
-  id: string;
-  name: string;
-  type: string;
-}
-
-export type UserDetails = Record<
-  string,
-  string | Array<string> | boolean | Array<PatchObject>
->;
 
 export interface Props {
   userData: User;
-  followingEntities: AssetsDataType;
-  ownedEntities: AssetsDataType;
+  followingEntities: {
+    data: SearchedDataProps['data'];
+    total: number;
+  };
+  ownedEntities: {
+    data: SearchedDataProps['data'];
+    total: number;
+  };
   username: string;
-  tab: string;
-  feedData: Thread[];
-  paging: Paging;
-  isFeedLoading: boolean;
   isUserEntitiesLoading: boolean;
-  isAdminUser: boolean;
-  isLoggedinUser: boolean;
-  isAuthDisabled: boolean;
-  updateUserDetails: (data: UserDetails) => Promise<void>;
-  fetchFeedHandler: (
-    threadType: ThreadType,
-    after?: string,
-    feedFilter?: FeedFilter
-  ) => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler?: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
-  feedFilter: FeedFilter;
-  setFeedFilter: (value: FeedFilter) => void;
-  threadType: ThreadType.Task | ThreadType.Conversation;
-  onFollowingEntityPaginate: (page: string | number) => void;
-  onOwnedEntityPaginate: (page: string | number) => void;
-  onSwitchChange: (checked: boolean) => void;
+  handlePaginate: (page: string | number) => void;
+  updateUserDetails: (data: Partial<User>) => Promise<void>;
+}
+
+export enum UserPageTabs {
+  ACTIVITY = 'activity_feed',
+  MY_DATA = 'mydata',
+  FOLLOWING = 'following',
 }

@@ -100,7 +100,9 @@ describe('Policy page should work properly', () => {
     cy.login();
     cy.intercept('GET', '*api/v1/policies*').as('getPolicies');
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
 
     cy.get('[data-testid="settings-left-panel"]')
       .contains('Policies')
@@ -280,10 +282,11 @@ describe('Policy page should work properly', () => {
       .should('be.visible')
       .click();
 
-    interceptURL('GET', '/api/v1/policies/*', 'editRulepage');
+    interceptURL('GET', '/api/v1/policies/*', 'editRulePage');
     cy.get('[data-testid="edit-rule"]').should('be.visible').click();
 
-    verifyResponseStatusCode('@editRulepage', 200);
+    verifyResponseStatusCode('@editRulePage', 200);
+    verifyResponseStatusCode('@getSelectedPolicy', 200);
 
     // Enter new name
     cy.get('[data-testid="rule-name"]').clear().type(updatedRuleName);
@@ -296,7 +299,7 @@ describe('Policy page should work properly', () => {
       .click();
 
     verifyResponseStatusCode('@updateRule', 200);
-    cy.reload();
+    verifyResponseStatusCode('@getSelectedPolicy', 200);
 
     cy.url().should('include', policyName);
 

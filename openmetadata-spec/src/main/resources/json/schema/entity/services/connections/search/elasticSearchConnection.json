@@ -1,0 +1,96 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearchConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearch Connection",
+  "description": "ElasticSearch Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.ElasticSearchConnection",
+  "definitions": {
+    "elasticSearchType": {
+      "description": "ElasticSearch service type",
+      "type": "string",
+      "enum": ["ElasticSearch"],
+      "default": "ElasticSearch"
+    },
+    "basicAuthentication": {
+      "title": "Basic Authentication",
+      "properties": {
+        "username": {
+          "title": "Username",
+          "description": "Elastic Search Username for Login",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Elastic Search Password for Login",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "type": "object"
+    },
+    "apiAuthentication": {
+      "title": "API Key Authentication",
+      "type": "object",
+      "properties": {
+        "apiKey": {
+          "title": "API Key",
+          "description": "Elastic Search API Key for API Authentication",
+          "type": "string",
+          "format": "password"
+        },
+        "apiKeyId": {
+          "title": "API Key ID",
+          "description": "Elastic Search API Key ID for API Authentication",
+          "type": "string"
+        } 
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "ElasticSearch Type",
+      "description": "ElasticSearch Type",
+      "$ref": "#/definitions/elasticSearchType",
+      "default": "ElasticSearch"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the ElasticSearch service.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/basicAuthentication"
+        },
+        {
+          "$ref": "#/definitions/apiAuthentication"
+        }
+      ]
+    },
+    "caCert": {
+      "title": "Client Certificate Path",
+      "description": "Path to CA Cert File",
+      "type": "string"
+    },
+    "connectionTimeoutSecs": {
+      "title": "Connection Timeout in Seconds",
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 30
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

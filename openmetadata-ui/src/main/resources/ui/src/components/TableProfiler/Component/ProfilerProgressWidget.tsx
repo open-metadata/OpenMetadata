@@ -25,7 +25,7 @@ const ProfilerProgressWidget: React.FC<ProfilerProgressWidgetProps> = ({
     <Row data-testid="profiler-progress-bar-container">
       <Col span={6}>
         <p className="percent-info" data-testid="percent-info">
-          {modifedValue}%
+          {`${modifedValue}%`}
         </p>
       </Col>
       <Col span={16}>

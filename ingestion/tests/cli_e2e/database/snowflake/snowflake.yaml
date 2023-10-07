@@ -1,6 +1,6 @@
 source:
   type: snowflake
-  serviceName: local_snowflake
+  serviceName: e2e_snowflake
   serviceConnection:
     config:
       username: $E2E_SNOWFLAKE_USERNAME
@@ -16,15 +16,16 @@ source:
       markDeletedTables: true
       includeTables: true
       includeViews: true
+      includeStoredProcedures: false
       type: DatabaseMetadata
       schemaFilterPattern:
         excludes:
         - information_schema.*
-      
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

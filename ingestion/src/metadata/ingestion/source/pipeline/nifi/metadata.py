@@ -19,19 +19,18 @@ from pydantic import BaseModel, ValidationError
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Task
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -82,14 +81,14 @@ class NifiSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: NifiConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, NifiConnection):
             raise InvalidSourceException(
                 f"Expected NifiConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @staticmethod
     def _get_downstream_tasks_from(
@@ -114,7 +113,7 @@ class NifiSource(PipelineServiceSource):
                 Task(
                     name=processor.id_,
                     displayName=processor.name,
-                    taskUrl=processor.uri.replace(self.service_connection.hostPort, ""),
+                    sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{processor.uri}",
                     taskType=processor.type_,
                     downstreamTasks=self._get_downstream_tasks_from(
                         source_id=processor.id_,
@@ -132,44 +131,40 @@ class NifiSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: NifiPipelineDetails
-    ) -> Iterable[CreatePipelineRequest]:
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from Nifi
         :return: Create Pipeline request with tasks
         """
-        yield CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details.id_,
             displayName=pipeline_details.name,
-            pipelineUrl=pipeline_details.uri.replace(
-                self.service_connection.hostPort, ""
-            ),
+            sourceUrl=f"{clean_uri(self.service_connection.hostPort)}{pipeline_details.uri}",
             tasks=self._get_tasks_from_details(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
+        yield Either(right=pipeline_request)
+        self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: NifiPipelineDetails
-    ) -> Optional[OMetaPipelineStatus]:
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Method to get task & pipeline status.
         Based on the latest refresh data.
         https://github.com/open-metadata/OpenMetadata/issues/6955
         """
-        logger.info("Pipeline Status is not yet supported on Nifi")
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: NifiPipelineDetails
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the stream available in the connection and create a lineage between them
         :param pipeline_details: pipeline_details object from Nifi
         :return: Lineage request
         https://github.com/open-metadata/OpenMetadata/issues/6950
         """
-        logger.info("Lineage is not yet supported on Nifi")
 
     @staticmethod
     def _get_connections_from_process_group(
@@ -211,9 +206,7 @@ class NifiSource(PipelineServiceSource):
         ]
 
     def get_pipelines_list(self) -> Iterable[NifiPipelineDetails]:
-        """
-        Get List of all pipelines
-        """
+        """Get List of all pipelines"""
         for process_group in self.connection.list_process_groups():
             try:
                 yield NifiPipelineDetails(
@@ -241,7 +234,4 @@ class NifiSource(PipelineServiceSource):
                 )
 
     def get_pipeline_name(self, pipeline_details: NifiPipelineDetails) -> str:
-        """
-        Get Pipeline Name
-        """
         return pipeline_details.name

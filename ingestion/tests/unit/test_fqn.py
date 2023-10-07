@@ -131,7 +131,7 @@ class TestFqn(TestCase):
 
         assert split_fqn.service == "local_redshift"
         assert split_fqn.database == "dev"
-        assert split_fqn.schema == "dbt_jaffle"
+        assert split_fqn.schema_ == "dbt_jaffle"
         assert split_fqn.table == "customers"
         assert split_fqn.column == "customer_id"
         assert split_fqn.test_case == "expect_column_max_to_be_between"

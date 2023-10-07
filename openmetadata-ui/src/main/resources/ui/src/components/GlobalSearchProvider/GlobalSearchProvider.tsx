@@ -11,134 +11,38 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
-import { debounce } from 'lodash';
-import { BaseSelectRef } from 'rc-select';
-import React, {
-  FC,
-  ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { useHistory } from 'react-router-dom';
-import AppState from '../../AppState';
-import { getExplorePathWithSearch, ROUTES } from '../../constants/constants';
-import { addToRecentSearched } from '../../utils/CommonUtils';
-import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
-import GlobalSearchSuggestions from './GlobalSearchSuggestions/GlobalSearchSuggestions';
+import React, { FC, ReactNode, useContext, useState } from 'react';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { GlobalSearchContextType } from './GlobalSearchProvider.interface';
 
-export const GlobalSearchContext = React.createContext(null);
+export const GlobalSearchContext = React.createContext(
+  {} as GlobalSearchContextType
+);
 
 interface Props {
   children: ReactNode;
 }
 
 const GlobalSearchProvider: FC<Props> = ({ children }: Props) => {
-  const history = useHistory();
-  const selectRef = useRef<BaseSelectRef>(null);
-  const [visible, setVisible] = useState<boolean>(false);
-  const [searchValue, setSearchValue] = useState<string>();
-  const [suggestionSearch, setSuggestionSearch] = useState<string>('');
-  const [isSuggestionsLoading, setIsSuggestionsLoading] =
-    useState<boolean>(false);
-
-  const handleCancel = () => {
-    setSearchValue('');
-    setSuggestionSearch('');
-    setVisible(false);
-  };
-
-  const handleKeyPress = useCallback((event) => {
-    if (isCommandKeyPress(event) && event.key === Keys.K) {
-      setVisible(true);
-      selectRef.current?.focus();
-      event.preventDefault();
-    } else if (event.key === Keys.ESC) {
-      handleCancel();
-    }
-  }, []);
-
-  const debouncedOnChange = useCallback(
-    (text: string): void => {
-      setSuggestionSearch(text);
-    },
-    [setSuggestionSearch]
+  const [searchCriteria, setSearchCriteria] = useState<ExploreSearchIndex | ''>(
+    ''
   );
 
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
-
-  const handleIsSuggestionsLoading = (value: boolean) => {
-    setIsSuggestionsLoading(value);
+  const updateSearchCriteria = (criteria: ExploreSearchIndex | '') => {
+    setSearchCriteria(criteria);
   };
-
-  const searchHandler = (value: string) => {
-    addToRecentSearched(value);
-    history.push({
-      pathname: getExplorePathWithSearch(
-        value,
-        location.pathname.startsWith(ROUTES.EXPLORE)
-          ? AppState.explorePageTab
-          : 'tables'
-      ),
-      search: location.search,
-    });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    const target = e.target as HTMLInputElement;
-    if (e.key === 'Enter') {
-      handleCancel();
-      searchHandler(target.value);
-    } else if (e.key === Keys.ESC) {
-      handleCancel();
-    }
-  };
-
-  useEffect(() => {
-    const targetNode = document.body;
-    targetNode.addEventListener('keydown', handleKeyPress);
-
-    return () => targetNode.removeEventListener('keydown', handleKeyPress);
-  }, [handleKeyPress]);
 
   return (
-    <GlobalSearchContext.Provider value={null}>
+    <GlobalSearchContext.Provider
+      value={{
+        searchCriteria,
+        updateSearchCriteria,
+      }}>
       {children}
-      <Modal
-        closable
-        destroyOnClose
-        maskClosable
-        bodyStyle={{
-          padding: '20px',
-          height: searchValue ? '314px' : '85px',
-        }}
-        closeIcon={<></>}
-        footer={null}
-        open={visible}
-        transitionName=""
-        width={650}
-        onCancel={handleCancel}>
-        <GlobalSearchSuggestions
-          handleIsSuggestionsLoading={handleIsSuggestionsLoading}
-          isSuggestionsLoading={isSuggestionsLoading}
-          searchText={suggestionSearch}
-          selectRef={selectRef}
-          value={searchValue || ''}
-          onInputKeyDown={handleKeyDown}
-          onOptionSelection={handleCancel}
-          onSearch={(newValue) => {
-            debounceOnSearch(newValue);
-            setSearchValue(newValue);
-            setIsSuggestionsLoading(true);
-          }}
-        />
-      </Modal>
     </GlobalSearchContext.Provider>
   );
 };
+
+export const useGlobalSearchProvider = () => useContext(GlobalSearchContext);
 
 export default GlobalSearchProvider;

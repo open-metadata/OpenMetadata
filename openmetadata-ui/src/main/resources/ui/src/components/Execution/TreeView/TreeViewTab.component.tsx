@@ -18,8 +18,8 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/vector.svg';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
+import { formatDateTimeFromSeconds } from '../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../utils/executionUtils';
-import { formatDateTimeFromSeconds } from '../../../utils/TimeUtils';
 import './tree-view-tab.less';
 
 interface TreeViewProps {
@@ -61,8 +61,9 @@ const TreeViewTab = ({
         </Col>
         <Col>
           <Typography.Text className="p-b-0 m-b-0 font-medium">
-            {formatDateTimeFromSeconds(startTime)} to{' '}
-            {formatDateTimeFromSeconds(endTime)}
+            {`${formatDateTimeFromSeconds(startTime)} ${t(
+              'label.to-lowercase'
+            )} ${formatDateTimeFromSeconds(endTime)}`}
           </Typography.Text>
         </Col>
         <Col>
@@ -73,7 +74,7 @@ const TreeViewTab = ({
       {isEmpty(viewData) ? (
         <Empty
           className="my-4"
-          description={t('label.no-execution-runs-found')}
+          description={t('message.no-execution-runs-found')}
         />
       ) : (
         <Row className="w-full">

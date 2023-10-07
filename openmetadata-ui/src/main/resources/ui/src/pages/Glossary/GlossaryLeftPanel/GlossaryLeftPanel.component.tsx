@@ -11,33 +11,31 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconFolder } from 'assets/svg/folder.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primery.svg';
-import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { ROUTES } from 'constants/constants';
-import { Operation } from 'generated/entity/policies/policy';
-import { isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
+import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import GlossaryV1Skeleton from '../../../components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
+import { ROUTES } from '../../../constants/constants';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { getEntityName } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const { fqn: glossaryName } = useParams<{ fqn: string }>();
+  const glossaryFqn = glossaryName ? decodeURIComponent(glossaryName) : null;
   const history = useHistory();
-
-  const [searchTerm, setSearchTerm] = useState('');
 
   const createGlossaryPermission = useMemo(
     () =>
@@ -45,43 +43,31 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
     [permissions]
   );
   const selectedKey = useMemo(() => {
-    if (glossaryName) {
-      return glossaryName.split(FQN_SEPARATOR_CHAR)[0];
+    if (glossaryFqn) {
+      return Fqn.split(glossaryFqn)[0];
     }
 
-    return glossaries[0].name;
-  }, [glossaryName]);
+    return glossaries[0].fullyQualifiedName;
+  }, [glossaryFqn]);
 
   const menuItems: ItemType[] = useMemo(() => {
     return glossaries.reduce((acc, glossary) => {
-      if (
-        !isEmpty(searchTerm) &&
-        !glossary.name
-          .toLocaleLowerCase()
-          .includes(searchTerm.toLocaleLowerCase())
-      ) {
-        return acc;
-      }
-
       return [
         ...acc,
         {
-          key: glossary.name,
-          label: glossary.name,
-          icon: <IconFolder />,
+          key: glossary.fullyQualifiedName ?? '',
+          label: getEntityName(glossary),
+          icon: <GlossaryIcon height={16} width={16} />,
         },
       ];
     }, [] as ItemType[]);
-  }, [glossaries, searchTerm]);
+  }, [glossaries]);
 
   const handleAddGlossaryClick = () => {
     history.push(ROUTES.ADD_GLOSSARY);
   };
   const handleMenuClick: MenuProps['onClick'] = (event) => {
     history.push(getGlossaryPath(event.key));
-  };
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
   };
 
   return (
@@ -93,35 +79,22 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               {t('label.glossary')}
             </Typography.Text>
           </Col>
-          <Col className="p-x-sm" span={24}>
-            <Searchbar
-              removeMargin
-              showLoadingStatus
-              placeholder={`${t('label.search-for-type', {
-                type: t('label.glossary'),
-              })}...`}
-              searchValue={searchTerm}
-              typingInterval={500}
-              onSearch={handleSearch}
-            />
-          </Col>
-          <Col className="p-x-sm" span={24}>
-            <Tooltip
-              title={
-                createGlossaryPermission
-                  ? t('label.add-glossary')
-                  : t('message.no-permission-for-action')
-              }>
+
+          {createGlossaryPermission && (
+            <Col className="p-x-sm" span={24}>
               <Button
-                className="w-full flex-center gap-2 text-primary"
+                block
+                className="text-primary"
                 data-testid="add-glossary"
-                disabled={!createGlossaryPermission}
-                icon={<PlusIcon />}
                 onClick={handleAddGlossaryClick}>
-                {t('label.add-glossary')}
+                <div className="flex-center">
+                  <PlusIcon className="anticon m-r-xss" />
+                  {t('label.add')}
+                </div>
               </Button>
-            </Tooltip>
-          </Col>
+            </Col>
+          )}
+
           <Col span={24}>
             {menuItems.length ? (
               <Menu
@@ -134,16 +107,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               />
             ) : (
               <p className="text-grey-muted text-center">
-                {searchTerm ? (
-                  <span>
-                    {t('message.no-entity-found-for-name', {
-                      entity: t('label.glossary'),
-                      name: searchTerm,
-                    })}
-                  </span>
-                ) : (
-                  <span>{t('label.no-glossary-found')}</span>
-                )}
+                <span>{t('label.no-glossary-found')}</span>
               </p>
             )}
           </Col>

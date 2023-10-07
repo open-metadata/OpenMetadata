@@ -11,37 +11,41 @@
  *  limitations under the License.
  */
 
-import AccountActivationConfirmation from 'pages/signup/account-activation-confirmation.component';
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
-import { AuthTypes } from '../../enums/signin.enum';
+import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
+import { AuthProvider } from '../../generated/settings/settings';
+import SamlCallback from '../../pages/SamlCallback';
+import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 import Loader from '../Loader/Loader';
 import withSuspenseFallback from './withSuspenseFallback';
 
-const AuthenticatedAppRouter = withSuspenseFallback(
-  React.lazy(() => import('./AuthenticatedAppRouter'))
-);
 const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('pages/login'))
+  React.lazy(() => import('../../pages/login'))
 );
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found'))
+  React.lazy(() => import('../../pages/page-not-found/PageNotFound'))
 );
 
 const ForgotPassword = withSuspenseFallback(
-  React.lazy(() => import('pages/forgot-password/forgot-password.component'))
+  React.lazy(
+    () => import('../../pages/forgot-password/forgot-password.component')
+  )
 );
 
 const ResetPassword = withSuspenseFallback(
-  React.lazy(() => import('pages/reset-password/reset-password.component'))
+  React.lazy(
+    () => import('../../pages/reset-password/reset-password.component')
+  )
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('pages/signup/basic-signup.component'))
+  React.lazy(() => import('../../pages/SignUp/BasicSignup.component'))
 );
 
 const AppRouter = () => {
@@ -60,17 +64,17 @@ const AppRouter = () => {
 
   const callbackComponent = getCallBackComponent();
   const oidcProviders = [
-    AuthTypes.GOOGLE,
-    AuthTypes.AWS_COGNITO,
-    AuthTypes.CUSTOM_OIDC,
+    AuthProvider.Google,
+    AuthProvider.AwsCognito,
+    AuthProvider.CustomOidc,
   ];
   const isOidcProvider =
     authConfig?.provider && oidcProviders.includes(authConfig.provider);
 
   const isBasicAuthProvider =
     authConfig &&
-    (authConfig.provider === AuthTypes.BASIC ||
-      authConfig.provider === AuthTypes.LDAP);
+    (authConfig.provider === AuthProvider.Basic ||
+      authConfig.provider === AuthProvider.LDAP);
 
   useEffect(() => {
     const { pathname } = location;
@@ -85,6 +89,24 @@ const AppRouter = () => {
     }
   }, [location.pathname]);
 
+  const handleClickEvent = useCallback(
+    (event: MouseEvent) => {
+      const eventValue =
+        (event.target as HTMLElement)?.textContent || CustomEventTypes.Click;
+      if (eventValue) {
+        analytics.track(eventValue);
+      }
+    },
+    [analytics]
+  );
+
+  useEffect(() => {
+    const targetNode = document.body;
+    targetNode.addEventListener('click', handleClickEvent);
+
+    return () => targetNode.removeEventListener('click', handleClickEvent);
+  }, [handleClickEvent]);
+
   if (loading) {
     return <Loader />;
   }
@@ -94,7 +116,7 @@ const AppRouter = () => {
   }
 
   if (isOidcProvider || isAuthenticated) {
-    return <AuthenticatedAppRouter />;
+    return <AppContainer />;
   }
 
   return (
@@ -104,7 +126,7 @@ const AppRouter = () => {
         {callbackComponent ? (
           <Route component={callbackComponent} path={ROUTES.CALLBACK} />
         ) : null}
-
+        <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
         <Route exact path={ROUTES.HOME}>
           {!isAuthenticated && !isSigningIn ? (
             <>
@@ -135,7 +157,7 @@ const AppRouter = () => {
             />
           </>
         )}
-        {isAuthenticated && <AuthenticatedAppRouter />}
+        {isAuthenticated && <AppContainer />}
         <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       </Switch>
     </>

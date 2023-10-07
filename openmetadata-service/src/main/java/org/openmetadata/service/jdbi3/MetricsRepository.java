@@ -13,14 +13,12 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 
-import java.io.IOException;
-import java.util.List;
 import org.openmetadata.schema.entity.data.Metrics;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.metrics.MetricsResource;
@@ -29,17 +27,9 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
-  private static final String METRICS_UPDATE_FIELDS = "owner";
-
-  public MetricsRepository(CollectionDAO dao) {
+  public MetricsRepository() {
     super(
-        MetricsResource.COLLECTION_PATH,
-        Entity.METRICS,
-        Metrics.class,
-        dao.metricsDAO(),
-        dao,
-        "",
-        METRICS_UPDATE_FIELDS);
+        MetricsResource.COLLECTION_PATH, Entity.METRICS, Metrics.class, Entity.getCollectionDAO().metricsDAO(), "", "");
   }
 
   @Override
@@ -48,44 +38,45 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
+  public Metrics setFields(Metrics metrics, Fields fields) {
     metrics.setService(getContainer(metrics.getId())); // service is a default field
-    return metrics.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId()) : null);
+    if (metrics.getUsageSummary() == null) {
+      metrics.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), metrics.getId())
+              : metrics.getUsageSummary());
+    }
+    return metrics;
   }
 
   @Override
-  public void prepare(Metrics metrics) throws IOException {
+  public Metrics clearFields(Metrics metrics, Fields fields) {
+    return metrics.withUsageSummary(fields.contains("usageSummary") ? metrics.getUsageSummary() : null);
+  }
+
+  @Override
+  public void prepare(Metrics metrics, boolean update) {
     metrics.setService(getService(metrics.getService()));
   }
 
   @Override
-  public void storeEntity(Metrics metrics, boolean update) throws IOException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = metrics.getOwner();
-    List<TagLabel> tags = metrics.getTags();
+  public void storeEntity(Metrics metrics, boolean update) {
+    // Relationships and fields such as service are derived and not stored as part of json
     EntityReference service = metrics.getService();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    metrics.withOwner(null).withService(null).withHref(null).withTags(null);
-
+    metrics.withService(null);
     store(metrics, update);
-
-    // Restore the relationships
-    metrics.withOwner(owner).withService(service).withTags(tags);
+    metrics.withService(service);
   }
 
   @Override
   public void storeRelationships(Metrics metrics) {
     EntityReference service = metrics.getService();
     addRelationship(service.getId(), metrics.getId(), service.getType(), Entity.METRICS, Relationship.CONTAINS);
-    storeOwner(metrics, metrics.getOwner());
-    applyTags(metrics);
   }
 
-  private EntityReference getService(EntityReference service) throws IOException { // Get service by service ID
+  private EntityReference getService(EntityReference service) { // Get service by service ID
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return daoCollection.dbServiceDAO().findEntityReferenceById(service.getId());
+      return Entity.getEntityReferenceById(Entity.DATABASE_SERVICE, service.getId(), NON_DELETED);
     }
     throw new IllegalArgumentException(
         CatalogExceptionMessage.invalidServiceEntity(service.getType(), Entity.METRICS, DASHBOARD_SERVICE));

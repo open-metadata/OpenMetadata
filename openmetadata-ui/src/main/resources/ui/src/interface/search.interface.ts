@@ -13,14 +13,31 @@
 
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { Query } from '../generated/entity/data/query';
+import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
+import { DashboardService } from '../generated/entity/services/dashboardService';
+import { DatabaseService } from '../generated/entity/services/databaseService';
+import { MessagingService } from '../generated/entity/services/messagingService';
+import { MlmodelService } from '../generated/entity/services/mlmodelService';
+import { PipelineService } from '../generated/entity/services/pipelineService';
+import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
+import { TestCase } from '../generated/tests/testCase';
+import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
 
 /**
@@ -67,18 +84,90 @@ export interface UserSearchSource extends SearchSourceBase, User {} // extends E
 
 export interface TeamSearchSource extends SearchSourceBase, Team {} // extends EntityInterface
 
+export interface ContainerSearchSource extends SearchSourceBase, Container {} // extends EntityInterface
+export interface DataBaseSchemaSearchSource
+  extends SearchSourceBase,
+    DatabaseSchema {} // extends EntityInterface
+export interface DatabaseSearchSource extends SearchSourceBase, Database {} // extends EntityInterface
+
+export interface DomainSearchSource extends SearchSourceBase, Domain {} // extends EntityInterface
+export interface StoredProcedureSearchSource
+  extends SearchSourceBase,
+    StoredProcedure {} // extends EntityInterface
+
+export interface SearchIndexSearchSource
+  extends SearchSourceBase,
+    SearchIndexEntity {} // extends EntityInterface
+export interface DataProductSearchSource
+  extends SearchSourceBase,
+    DataProduct {} // extends EntityInterface
+
+export interface DashboardDataModelSearchSource
+  extends SearchSourceBase,
+    DashboardDataModel {} // extends EntityInterface
+
 export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
 
 export interface GlossarySearchSource extends SearchSourceBase, GlossaryTerm {} // extends EntityInterface
+export interface QuerySearchSource extends SearchSourceBase, Query {} // extends EntityInterface
+export interface TestCaseSearchSource
+  extends SearchSourceBase,
+    Exclude<TestCase, 'testSuite'> {
+  testSuites: TestSuite[];
+} // extends EntityInterface
+
+export interface DatabaseServiceSearchSource
+  extends SearchSourceBase,
+    DatabaseService {}
+export interface MessagingServiceSearchSource
+  extends SearchSourceBase,
+    MessagingService {}
+export interface DashboardServiceSearchSource
+  extends SearchSourceBase,
+    DashboardService {}
+export interface PipelineServiceSearchSource
+  extends SearchSourceBase,
+    PipelineService {}
+export interface MlModelServiceSearchSource
+  extends SearchSourceBase,
+    MlmodelService {}
+
+export interface SearchServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
+
+export interface StorageServiceSearchSource
+  extends SearchSourceBase,
+    SearchService {}
 
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
   | MlmodelSearchSource
   | TopicSearchSource
-  | PipelineSearchSource;
+  | PipelineSearchSource
+  | ContainerSearchSource
+  | GlossarySearchSource
+  | QuerySearchSource
+  | UserSearchSource
+  | TeamSearchSource
+  | TagClassSearchSource
+  | StoredProcedureSearchSource
+  | DashboardDataModelSearchSource
+  | TestCaseSearchSource
+  | DatabaseSearchSource
+  | DataBaseSchemaSearchSource
+  | DatabaseServiceSearchSource
+  | DashboardServiceSearchSource
+  | PipelineServiceSearchSource
+  | MlModelServiceSearchSource
+  | MessagingServiceSearchSource
+  | SearchServiceSearchSource
+  | StorageServiceSearchSource
+  | DomainSearchSource
+  | SearchIndexSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.TABLE]: TableSearchSource;
@@ -90,6 +179,23 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.USER]: UserSearchSource;
   [SearchIndex.TOPIC]: TopicSearchSource;
   [SearchIndex.TAG]: TagClassSearchSource;
+  [SearchIndex.CONTAINER]: ContainerSearchSource;
+  [SearchIndex.QUERY]: QuerySearchSource;
+  [SearchIndex.TEST_CASE]: TestCaseSearchSource;
+  [SearchIndex.DATABASE_SCHEMA]: DataBaseSchemaSearchSource;
+  [SearchIndex.DATABASE]: DatabaseSearchSource;
+  [SearchIndex.DATABASE_SERVICE]: DatabaseServiceSearchSource;
+  [SearchIndex.DASHBOARD_SERVICE]: DashboardServiceSearchSource;
+  [SearchIndex.PIPELINE_SERVICE]: PipelineServiceSearchSource;
+  [SearchIndex.ML_MODEL_SERVICE]: MlModelServiceSearchSource;
+  [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
+  [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
+  [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
+  [SearchIndex.DOMAIN]: DomainSearchSource;
+  [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
+  [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
+  [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
+  [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
 };
 
 export type SearchRequest<
@@ -114,6 +220,7 @@ export type SearchRequest<
   sortOrder?: string;
   includeDeleted?: boolean;
   trackTotalHits?: boolean;
+  filters?: string;
 } & (
   | {
       fetchSource: true;

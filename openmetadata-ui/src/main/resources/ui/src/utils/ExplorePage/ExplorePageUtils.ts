@@ -11,49 +11,61 @@
  *  limitations under the License.
  */
 
-import { isEmpty, isUndefined } from 'lodash';
-import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
+import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { tabsInfo } from '../../constants/explore.constants';
 import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { Aggregations, Bucket } from '../../interface/search.interface';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../pages/explore/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
-  queryFilters: QueryFilterInterface[] | undefined
-) => (isUndefined(queryFilters) ? [] : queryFilters);
-
-export const getCombinedFields = (
   field: QueryFilterFieldsEnum,
-  elasticsearchQueryFilter?: QueryFilterInterface,
-  advancesSearchQueryFilter?: QueryFilterInterface
-): QueryFilterInterface[] => {
+  queryFiltersObj: QueryFilterInterface
+) => {
   switch (field) {
     case QueryFilterFieldsEnum.SHOULD: {
-      return [
-        ...getQueryFiltersArray(elasticsearchQueryFilter?.query?.bool?.should),
-        ...getQueryFiltersArray(advancesSearchQueryFilter?.query?.bool?.should),
-      ];
+      return queryFiltersObj?.query?.bool?.should ?? [];
     }
     case QueryFilterFieldsEnum.MUST: {
-      return [
-        ...getQueryFiltersArray(elasticsearchQueryFilter?.query?.bool?.must),
-        ...getQueryFiltersArray(advancesSearchQueryFilter?.query?.bool?.must),
-      ];
+      return queryFiltersObj?.query?.bool?.must ?? [];
     }
   }
 };
 
+export const getCombinedFields = (
+  field: QueryFilterFieldsEnum,
+  filtersArray: Array<QueryFilterInterface | undefined>
+): QueryFieldInterface[] => {
+  const combinedFiltersArray: QueryFieldInterface[] = [];
+
+  filtersArray.forEach((filtersObj) => {
+    if (!isUndefined(filtersObj)) {
+      combinedFiltersArray.push(...getQueryFiltersArray(field, filtersObj));
+    }
+  });
+
+  return uniqWith(combinedFiltersArray, isEqual);
+};
+
 export const getCombinedQueryFilterObject = (
   elasticsearchQueryFilter?: QueryFilterInterface,
-  advancesSearchQueryFilter?: QueryFilterInterface
+  advancesSearchQueryFilter?: QueryFilterInterface,
+  advancesSearchFilter?: QueryFilterInterface
 ) => {
-  const mustField = getCombinedFields(
-    QueryFilterFieldsEnum.MUST,
+  const mustField = getCombinedFields(QueryFilterFieldsEnum.MUST, [
     elasticsearchQueryFilter,
-    advancesSearchQueryFilter
-  );
-  const shouldField = getCombinedFields(
-    QueryFilterFieldsEnum.SHOULD,
+    advancesSearchQueryFilter,
+    advancesSearchFilter,
+  ]);
+  const shouldField = getCombinedFields(QueryFilterFieldsEnum.SHOULD, [
     elasticsearchQueryFilter,
-    advancesSearchQueryFilter
-  );
+    advancesSearchQueryFilter,
+    advancesSearchFilter,
+  ]);
 
   return {
     query: {
@@ -63,4 +75,57 @@ export const getCombinedQueryFilterObject = (
       },
     },
   };
+};
+
+export const getUpdatedAggregateFieldValue = (
+  withFilterAggregations: Aggregations,
+  withoutFilterAggregations: Aggregations,
+  filterKey: string
+): { buckets: Bucket[] } | undefined => {
+  const withoutFilterAggField = withoutFilterAggregations[filterKey];
+  const withFilterAggField = withFilterAggregations[filterKey];
+
+  if (!isEmpty(withoutFilterAggField) && !isEmpty(withFilterAggField)) {
+    return {
+      ...withoutFilterAggField,
+      // Fetching buckets with updated entities count for applied filters
+      buckets: getBucketsWithUpdatedCounts(
+        withoutFilterAggField.buckets,
+        withFilterAggField.buckets
+      ),
+    };
+  } else {
+    return undefined;
+  }
+};
+
+// Function to get buckets with updated counts for facet filters
+export const getBucketsWithUpdatedCounts = (
+  currentBucket: Bucket[],
+  withFilterBucket: Bucket[]
+): Bucket[] =>
+  currentBucket
+    .map((currentBucketItem) => {
+      const item = withFilterBucket.find(
+        (withFilterBucketItem) =>
+          withFilterBucketItem.key === currentBucketItem.key
+      );
+      // Take updated count for filter if present else show 0 count
+      const docCount = item ? item.doc_count : 0;
+
+      return {
+        ...currentBucketItem,
+        doc_count: docCount,
+      };
+    })
+    .sort((a, b) => b.doc_count - a.doc_count); // Sorting buckets according to the entity counts
+
+export const getSearchIndexFromPath = (path: string): SearchIndex | null => {
+  for (const key in tabsInfo) {
+    if (tabsInfo[key as ExploreSearchIndex].path === path) {
+      return key as SearchIndex;
+    }
+  }
+
+  return null;
 };

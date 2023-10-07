@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,15 +12,31 @@
  */
 
 import { DefaultOptionType } from 'antd/lib/select';
-import { JsonTree } from 'react-awesome-query-builder';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Database } from '../../generated/entity/data/database';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Glossary } from '../../generated/entity/data/glossary';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
-import { SearchResponse } from '../../interface/search.interface';
-import { FilterObject } from '../AdvancedSearch/AdvancedSearch.interface';
+import { DashboardService } from '../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { MessagingService } from '../../generated/entity/services/messagingService';
+import { MlmodelService } from '../../generated/entity/services/mlmodelService';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { SearchService } from '../../generated/entity/services/searchService';
+import { StorageService } from '../../generated/entity/services/storageService';
+import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 
 export type UrlParams = {
@@ -33,30 +49,34 @@ export type ExploreSearchIndex =
   | SearchIndex.PIPELINE
   | SearchIndex.DASHBOARD
   | SearchIndex.MLMODEL
-  | SearchIndex.TOPIC;
+  | SearchIndex.TOPIC
+  | SearchIndex.CONTAINER
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL;
 
 export type ExploreSearchIndexKey =
   | 'TABLE'
   | 'PIPELINE'
   | 'DASHBOARD'
   | 'MLMODEL'
-  | 'TOPIC';
+  | 'TOPIC'
+  | 'CONTAINER';
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
+  aggregations?: Aggregations;
+
   tabCounts?: SearchHitCounts;
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
-  advancedSearchJsonTree?: JsonTree;
-  onChangeAdvancedSearchJsonTree: (jsonTree: JsonTree | undefined) => void;
-  onChangeAdvancedSearchQueryFilter: (
-    queryFilter: Record<string, unknown> | undefined
+  onChangeAdvancedSearchQuickFilters: (
+    queryFilter: QueryFilterInterface | undefined
   ) => void;
-
-  postFilter?: FilterObject;
-  onChangePostFilter: (filter: FilterObject) => void;
 
   searchIndex: ExploreSearchIndex;
   onChangeSearchIndex: (searchIndex: ExploreSearchIndex) => void;
@@ -65,15 +85,17 @@ export interface ExploreProps {
   onChangeSortValue: (sortValue: string) => void;
 
   sortOrder: string;
-  onChangeSortOder: (sortOder: string) => void;
+  onChangeSortOder: (sortOder: SORT_ORDER) => void;
 
   showDeleted: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
 
-  page?: number;
-  onChangePage?: (page: number) => void;
+  onChangePage?: (page: number, size?: number) => void;
 
   loading?: boolean;
+
+  quickFilters?: QueryFilterInterface;
+  isElasticSearchIssue?: boolean;
 }
 
 export interface ExploreQuickFilterField {
@@ -98,9 +120,49 @@ export interface SearchInputProps {
   handleClear: () => void;
 }
 
-export type EntityDetailsType = Table | Topic | Dashboard | Pipeline | Mlmodel;
+// Type for all the explore tab entities
+export type EntityUnion =
+  | Table
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | DatabaseSchema
+  | Database
+  | Glossary
+  | Tag
+  | DashboardDataModel
+  | StoredProcedure
+  | SearchIndexEntity
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService
+  | SearchService;
+
+export type EntityWithServices =
+  | Topic
+  | Dashboard
+  | Pipeline
+  | Mlmodel
+  | Container
+  | DashboardDataModel
+  | Database
+  | DatabaseSchema
+  | SearchIndexEntity;
+
+export type EntityServiceUnion =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService
+  | SearchService;
 
 export interface EntityDetailsObjectInterface {
-  details: EntityDetailsType;
-  entityType: string;
+  details: SearchedDataProps['data'][number]['_source'];
 }

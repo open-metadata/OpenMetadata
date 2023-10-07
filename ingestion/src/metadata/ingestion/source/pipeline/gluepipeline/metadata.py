@@ -14,7 +14,7 @@ Glue pipeline source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -24,18 +24,16 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.gluePipelineConnection import (
     GluePipelineConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils.logger import ingestion_logger
 
@@ -61,51 +59,49 @@ class GluepipelineSource(PipelineServiceSource):
     Pipeline metadata from Glue Pipeline's metadata db
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.task_id_mapping = {}
         self.job_name_list = set()
-        self.glue = self.connection.client
+        self.glue = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GluePipelineConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GluePipelineConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[dict]:
-        """
-        Get List of all pipelines
-        """
         for workflow in self.glue.list_workflows()["Workflows"]:
             jobs = self.glue.get_workflow(Name=workflow, IncludeGraph=True)["Workflow"]
             yield jobs
 
     def get_pipeline_name(self, pipeline_details: dict) -> str:
-        """
-        Get Pipeline Name
-        """
         return pipeline_details[NAME]
 
-    def yield_pipeline(self, pipeline_details: Any) -> Iterable[CreatePipelineRequest]:
-        """
-        Method to Get Pipeline Entity
-        """
+    def yield_pipeline(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[CreatePipelineRequest]]:
+        """Method to Get Pipeline Entity"""
+        source_url = (
+            f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/glue/home?"
+            f"region={self.service_connection.awsConfig.awsRegion}#/v2/etl-configuration/"
+            f"workflows/view/{pipeline_details[NAME]}"
+        )
         self.job_name_list = set()
-        pipeline_ev = CreatePipelineRequest(
+        pipeline_request = CreatePipelineRequest(
             name=pipeline_details[NAME],
             displayName=pipeline_details[NAME],
-            description="",
             tasks=self.get_tasks(pipeline_details),
-            service=EntityReference(
-                id=self.context.pipeline_service.id.__root__, type="pipelineService"
-            ),
+            service=self.context.pipeline_service.fullyQualifiedName.__root__,
+            sourceUrl=source_url,
         )
-        yield pipeline_ev
+        yield Either(right=pipeline_request)
+        self.register_record(pipeline_request=pipeline_request)
 
     def get_tasks(self, pipeline_details: Any) -> List[Task]:
         task_list = []
@@ -137,7 +133,7 @@ class GluepipelineSource(PipelineServiceSource):
 
     def yield_pipeline_status(
         self, pipeline_details: Any
-    ) -> Iterable[OMetaPipelineStatus]:
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         for job in self.job_name_list:
             try:
                 runs = self.glue.get_job_runs(JobName=job)
@@ -161,17 +157,24 @@ class GluepipelineSource(PipelineServiceSource):
                             attempt["JobRunState"].lower(), StatusType.Pending
                         ).value,
                     )
-                    yield OMetaPipelineStatus(
-                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                        pipeline_status=pipeline_status,
+                    yield Either(
+                        right=OMetaPipelineStatus(
+                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                            pipeline_status=pipeline_status,
+                        )
                     )
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Failed to yield pipeline status: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name=self.context.pipeline.fullyQualifiedName.__root__,
+                        error=f"Failed to yield pipeline status: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: Any
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources
         """

@@ -69,7 +69,7 @@ setup(
     packages=find_packages(include=[f"{PLUGIN_NAME}.*", PLUGIN_NAME]),
     include_package_data=True,
     package_data={PLUGIN_NAME: get_package_data()},
-    version="0.13.2.0.dev0",
+    version="1.2.0.0.dev0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
@@ -81,7 +81,7 @@ setup(
             f"{PLUGIN_NAME} = {PLUGIN_NAME}.{PLUGIN_ROOT_FILE}:{PLUGIN_ENTRY_POINT}"
         ]
     },
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     zip_safe=False,
     dependency_links=[],
     project_urls={

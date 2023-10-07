@@ -12,64 +12,14 @@
  */
 
 import { AxiosError } from 'axios';
-import i18next from 'i18next';
-import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
-import { getChartById } from 'rest/chartAPI';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { getChartById } from '../rest/chartAPI';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
-export const defaultFields = `${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},
-${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.CHARTS},${TabSpecificField.EXTENSION}`;
-
-export const dashboardDetailsTabs = [
-  {
-    name: i18next.t('label.detail-plural'),
-    path: 'details',
-  },
-  {
-    name: i18next.t('label.activity-feed-and-task-plural'),
-    path: 'activity_feed',
-    field: TabSpecificField.ACTIVITY_FEED,
-  },
-  {
-    name: i18next.t('label.lineage'),
-    path: 'lineage',
-    field: TabSpecificField.LINEAGE,
-  },
-  {
-    name: i18next.t('label.custom-property-plural'),
-    path: 'custom_properties',
-  },
-];
-
-export const getCurrentDashboardTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'activity_feed':
-      currentTab = 2;
-
-      break;
-
-    case 'lineage':
-      currentTab = 3;
-
-      break;
-
-    case 'custom_properties':
-      currentTab = 4;
-
-      break;
-
-    case 'details':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
+export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},
+${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const sortTagsForCharts = (charts: ChartType[]) => {
   return charts.map((chart) => ({

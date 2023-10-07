@@ -13,17 +13,17 @@
 
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
-import { Pipeline } from '../generated/entity/data/pipeline';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
-import { EntityReference } from '../generated/type/entityReference';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
 import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
+import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
 import domoPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/domoPipelineConnection.json';
 import fivetranConnection from '../jsons/connectionSchemas/connections/pipeline/fivetranConnection.json';
 import gluePipelineConnection from '../jsons/connectionSchemas/connections/pipeline/gluePipelineConnection.json';
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
+import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
@@ -70,25 +70,20 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
 
       break;
     }
+    case PipelineServiceType.DatabricksPipeline: {
+      schema = databricksPipelineConnection;
+
+      break;
+    }
+    case PipelineServiceType.Spline: {
+      schema = splineConnection;
+
+      break;
+    }
 
     default:
       break;
   }
 
   return cloneDeep({ schema, uiSchema });
-};
-
-export const getEntityReferenceFromPipeline = (
-  pipeline: Pipeline
-): EntityReference => {
-  return {
-    deleted: pipeline.deleted,
-    href: pipeline.href ?? '',
-    fullyQualifiedName: pipeline.fullyQualifiedName,
-    id: pipeline.id,
-    description: pipeline.description,
-    displayName: pipeline.displayName,
-    name: pipeline.name ?? '',
-    type: 'pipeline',
-  };
 };

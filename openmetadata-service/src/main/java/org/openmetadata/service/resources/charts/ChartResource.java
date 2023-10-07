@@ -13,7 +13,8 @@
 
 package org.openmetadata.service.resources.charts;
 
-import io.swagger.annotations.Api;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,7 +23,8 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -44,56 +46,59 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateChart;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/charts")
-@Api(value = "Chart data asset collection", tags = "Chart data asset collection")
+@Tag(
+    name = "Charts",
+    description = "A `Chart` are computed from data presents data visually and can be part of " + "`Dashboards`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
+  static final String FIELDS = "owner,followers,tags,domain,dataProducts";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
-    chart.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, chart.getId()));
-    Entity.withHref(uriInfo, chart.getOwner());
+    super.addHref(uriInfo, chart);
     Entity.withHref(uriInfo, chart.getService());
-    Entity.withHref(uriInfo, chart.getFollowers());
     return chart;
   }
 
-  public ChartResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Chart.class, new ChartRepository(dao), authorizer);
+  public ChartResource(Authorizer authorizer) {
+    super(Entity.CHART, authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
+    return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class ChartList extends ResultList<Chart> {
-    @SuppressWarnings("unused")
-    ChartList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
-
-  static final String FIELDS = "owner,followers,tags";
 
   @GET
   @Operation(
       operationId = "listCharts",
       summary = "List charts",
-      tags = "charts",
       description =
           "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -132,8 +137,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -143,7 +147,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "listAllChartVersions",
       summary = "List chart versions",
-      tags = "charts",
       description = "Get a list of all the versions of a chart identified by `id`",
       responses = {
         @ApiResponse(
@@ -154,8 +157,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -163,9 +165,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getChartByID",
-      summary = "Get a Chart",
-      tags = "charts",
-      description = "Get a chart by `id`.",
+      summary = "Get a chart by Id",
+      description = "Get a chart by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -176,7 +177,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Chart get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -187,8 +188,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -196,19 +196,19 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getChartByFQN",
-      summary = "Get a chart by name",
-      tags = "charts",
-      description = "Get a chart by fully qualified name.",
+      summary = "Get a chart by fully qualified name",
+      description = "Get a chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "The chart",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
-        @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Chart for instance {fqn} is not found")
       })
   public Chart getByName(
       @Context UriInfo uriInfo,
-      @PathParam("fqn") String fqn,
+      @Parameter(description = "Fully qualified name of the chart", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -220,8 +220,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -230,8 +229,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "getSpecificChartVersion",
       summary = "Get a version of the chart",
-      tags = "charts",
-      description = "Get a version of the chart by given `id`",
+      description = "Get a version of the chart by given `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -244,13 +242,12 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public Chart getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Chart version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -258,7 +255,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "createChart",
       summary = "Create a chart",
-      tags = "charts",
       description = "Create a chart under an existing `service`.",
       responses = {
         @ApiResponse(
@@ -267,8 +263,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
-      throws IOException {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create) {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, chart);
   }
@@ -278,14 +274,13 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "patchChart",
       summary = "Update a chart",
-      tags = "charts",
       description = "Update an existing chart using JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -294,8 +289,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -303,7 +297,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "createOrUpdateChart",
       summary = "Create or update chart",
-      tags = "charts",
       description = "Create a chart, it it does not exist or update an existing chart.",
       responses = {
         @ApiResponse(
@@ -312,8 +305,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateChart create) {
     Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, chart);
   }
@@ -323,7 +315,6 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "addFollowerToChart",
       summary = "Add a follower",
-      tags = "charts",
       description = "Add a user identified by `userId` as followed of this chart",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -333,9 +324,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
-      throws IOException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
+    return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
@@ -343,28 +333,23 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Operation(
       operationId = "deleteFollowerFromChart",
       summary = "Remove a follower",
-      tags = "charts",
       description = "Remove the user identified `userId` as a follower of the chart.")
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the chart", schema = @Schema(type = "string")) @PathParam("id") String id,
-      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "string"))
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          String userId)
-      throws IOException {
-    return dao.deleteFollower(
-            securityContext.getUserPrincipal().getName(), UUID.fromString(id), UUID.fromString(userId))
-        .toResponse();
+          UUID userId) {
+    return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @DELETE
   @Path("/{id}")
   @Operation(
       operationId = "deleteChart",
-      summary = "Delete a Chart",
-      tags = "charts",
-      description = "Delete a chart by `id`.",
+      summary = "Delete a chart by Id",
+      description = "Delete a chart by `Id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
@@ -376,8 +361,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -385,8 +369,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteChartByFQN",
-      summary = "Delete a Chart",
-      tags = "charts",
+      summary = "Delete a chart by fully qualified name",
       description = "Delete a chart by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -399,17 +382,37 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Chart Name", schema = @Schema(type = "string")) @PathParam("fqn") String fqn)
-      throws IOException {
+      @Parameter(description = "Fully qualified name of the chart", schema = @Schema(type = "string")) @PathParam("fqn")
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted chart.",
-      tags = "charts",
+      summary = "Restore a soft deleted chart",
       description = "Restore a soft deleted chart.",
       responses = {
         @ApiResponse(
@@ -418,17 +421,15 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Chart.class)))
       })
   public Response restoreChart(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Chart getChart(CreateChart create, String user) throws IOException {
+  private Chart getChart(CreateChart create, String user) {
     return copy(new Chart(), create, user)
-        .withService(create.getService())
+        .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
-        .withChartUrl(create.getChartUrl())
-        .withTables(create.getTables())
+        .withSourceUrl(create.getSourceUrl())
         .withTags(create.getTags());
   }
 }

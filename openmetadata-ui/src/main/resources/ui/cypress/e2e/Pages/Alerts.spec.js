@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
+// eslint-disable-next-line spaced-comment
+/// <reference types="cypress" />
+
 import {
+  descriptionBox,
   interceptURL,
   toastNotification,
   uuid,
@@ -21,63 +25,90 @@ import { DELETE_TERM, DESTINATION, TEST_CASE } from '../../constants/constants';
 
 const alertForAllAssets = `Alert-ct-test-${uuid()}`;
 const description = 'This is alert description';
+const teamSearchTerm = 'Applications';
+
+const deleteAlertSteps = (name) => {
+  cy.get('table').should('contain', name).click();
+  cy.get(`[data-testid="alert-delete-${name}"]`).should('be.visible').click();
+  cy.get('.ant-modal-header')
+    .should('be.visible')
+    .should('contain', `Delete ${name}`);
+  cy.get('[data-testid="confirmation-text-input"]')
+    .should('be.visible')
+    .type(DELETE_TERM);
+  interceptURL('DELETE', '/api/v1/events/subscriptions/*', 'deleteAlert');
+  cy.get('[data-testid="confirm-button"]').should('be.visible').click();
+  verifyResponseStatusCode('@deleteAlert', 200);
+
+  toastNotification('Subscription deleted successfully!');
+};
+
+const visitAddAlertPage = () => {
+  cy.wait('@alertsPage').then(({ response }) => {
+    const data = response.body.data?.find((alert) => alert.provider === 'user');
+
+    if (data) {
+      cy.get('[data-testid="create-alert"]').click();
+    } else {
+      // Click on create placeholder button for alerts
+      cy.get('[data-testid="add-placeholder-button"]').click();
+    }
+  });
+};
 
 describe('Alerts page should work properly', () => {
   beforeEach(() => {
+    interceptURL('POST', '/api/v1/events/subscriptions', 'createAlert');
+    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
     cy.login();
-    cy.get('[data-testid="appbar-item-settings"]')
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('exist')
       .and('be.visible')
       .click();
-    interceptURL('GET', '/api/v1/alerts', 'alertsPage');
+    interceptURL('GET', '/api/v1/events/subscriptions', 'alertsPage');
     cy.get('[data-testid="global-setting-left-panel"]')
       .contains('Alerts')
       .scrollIntoView()
-      .should('be.visible')
-      .and('exist')
       .click();
-    verifyResponseStatusCode('@alertsPage', 200);
   });
 
   it('Create new alert for all data assets', () => {
-    interceptURL('POST', '/api/v1/alerts', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
+    visitAddAlertPage();
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
-    cy.get('#description').should('be.visible').type(description);
+    cy.get(descriptionBox).clear().type(description);
     // Click on all data assets
-    cy.get('[data-testid="triggerConfig-type"]').should('be.visible').click();
-    cy.get('.ant-select-item-option-content')
-      .contains('All Data Assets')
-      .click();
+    cy.get('[data-testid="triggerConfig-type"]')
+      .contains('All')
+      .should('be.visible');
+
     // Select filters
-    cy.get('[data-testid="add-filters"]').should('exist').click();
-    cy.get('#filteringRules_0_name').invoke('show').click();
+    cy.get('[data-testid="add-filters"]').click();
+    cy.get('#filteringRules_rules_0_name').invoke('show').click();
     // Select owner
-    cy.get('[title="Owner"]').should('be.visible').click();
+    cy.get('[title="Owner"]').click();
     cy.get('[data-testid="matchAnyOwnerName-select"]')
-      .should('be.visible')
       .click()
-      .type('Engineering');
-    cy.get('[title="Engineering"]').should('be.visible').click();
-    cy.get('#description').should('be.visible').click();
+      .type(teamSearchTerm);
+    verifyResponseStatusCode('@getSearchResult', 200);
+    cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
     cy.get('[title="Include"]').eq(1).click();
 
     // Select Destination
-    cy.get('[data-testid="add=destination"]').should('exist').click();
-    cy.get('#alertActions_0_alertActionType').click();
+    cy.get('[data-testid="alert-action-type"]').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
     // Enter email
-    cy.get('#alertActions_0_alertActionConfig_receivers')
+    cy.get('#subscriptionConfig_receivers')
       .click()
-      .type('testuser@openmetadata.org');
+      .type('testuser@openmetadata.org')
+      .type('{enter}');
     // Click save
-    cy.get('[data-testid="save"]').click();
+    cy.get('[data-testid="save"]').scrollIntoView().click();
     verifyResponseStatusCode('@createAlert', 201);
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', alertForAllAssets);
@@ -89,10 +120,10 @@ describe('Alerts page should work properly', () => {
     cy.get(`[data-testid="alert-edit-${alertForAllAssets}"]`)
       .should('be.visible')
       .click();
-    cy.get('#description')
+    cy.get(descriptionBox)
       .should('be.visible')
+      .click()
       .clear()
-      .focus()
       .type(updatedDescription);
     // Click save
     cy.get('[data-testid="save"]').click();
@@ -100,70 +131,54 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Delete created alert for all data assets', () => {
-    cy.get('table').should('contain', alertForAllAssets).click();
-    cy.get(`[data-testid="alert-delete-${alertForAllAssets}"]`)
-      .should('be.visible')
-      .click();
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .should('contain', `Delete ${alertForAllAssets}`);
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-    interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.disabled')
-      .click();
-    verifyResponseStatusCode('@deleteAlert', 200);
-
-    toastNotification('Alert deleted successfully!');
-    cy.get('table').should('not.contain', alertForAllAssets);
+    deleteAlertSteps(alertForAllAssets);
   });
 
   it('Create new alert for all data assets and multiple filters', () => {
-    interceptURL('GET', '/api/v1/alerts/*', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
-    verifyResponseStatusCode('@createAlert', 200);
+    visitAddAlertPage();
     // Enter alert name
     cy.get('#name').should('be.visible').type(alertForAllAssets);
     // Enter description
-    cy.get('#description').should('be.visible').type(description);
-    // Click on all data assets
-    cy.get('[title="All Data Assets"]').should('be.visible').click();
-    cy.get('[title="All Data Assets"]').eq(1).click();
+    cy.get(descriptionBox)
+      .should('be.visible')
+      .click()
+      .clear()
+      .type(description);
+    // All data assets should be selected
+    cy.get('[data-testid="triggerConfig-type"]')
+      .contains('All')
+      .should('be.visible');
     // Select filters
     cy.get('[data-testid="add-filters"]').should('exist').click();
-    cy.get('#filteringRules_0_name').invoke('show').click();
+    cy.get('#filteringRules_rules_0_name').invoke('show').click();
     // Select first owner
     cy.get('[title="Owner"]').should('be.visible').click();
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Engineering');
-    cy.get('[title="Engineering"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+      .type(teamSearchTerm);
+    verifyResponseStatusCode('@getSearchResult', 200);
+    cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
 
     // Select second owner
     cy.get('[data-testid="matchAnyOwnerName-select"]')
       .should('be.visible')
       .click()
-      .type('Applications');
-    cy.get('[title="Applications"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+      .type('Marketplace');
+    cy.get('[title="Marketplace"]').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
 
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
     cy.get('[title="Include"]').eq(1).click();
 
     // Select Destination
-    cy.get('[data-testid="add=destination"]').should('exist').click();
-    cy.get('#alertActions_0_alertActionType').click();
+    cy.get('[data-testid="alert-action-type"]').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
     // Enter email
-    cy.get('#alertActions_0_alertActionConfig_receivers')
+    cy.get('#subscriptionConfig_receivers')
       .click()
       .type('testuser@openmetadata.org');
     // Click save
@@ -173,49 +188,31 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Delete created alert for all data assets and multiple filters', () => {
-    cy.get('table').should('contain', alertForAllAssets).click();
-    cy.get(`[data-testid="alert-delete-${alertForAllAssets}"]`)
-      .should('be.visible')
-      .click();
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .should('contain', `Delete ${alertForAllAssets}`);
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-    interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.disabled')
-      .click();
-    verifyResponseStatusCode('@deleteAlert', 200);
-
-    toastNotification('Alert deleted successfully!');
-    cy.get('table').should('not.contain', alertForAllAssets);
+    deleteAlertSteps(alertForAllAssets);
   });
 
   it('Create new alert for Test case data asset', () => {
-    interceptURL('GET', '/api/v1/alerts/*', 'createAlert');
-    // Click on create alert button
-    cy.get('[data-testid="create-alert"]').should('be.visible').click();
-    verifyResponseStatusCode('@createAlert', 200);
+    visitAddAlertPage();
+
     // Enter alert name
     cy.get('#name').should('be.visible').type(TEST_CASE.testCaseAlert);
     // Enter description
-    cy.get('#description')
+    cy.get(descriptionBox)
       .should('be.visible')
+      .click()
+      .clear()
       .type(TEST_CASE.testCaseDescription);
     // Click on specific data assets
-    cy.get('[title="All Data Assets"]').should('be.visible').click();
-    cy.get('[title="Specific Data Assets"]').click();
-    cy.get('.ant-select-selection-overflow').should('exist');
+    cy.get('[data-testid="triggerConfig-type"]').click();
+    cy.get('[role="tree"]').find('[title="All"]').click();
+
     // Select Test case data asset
-    cy.get('.ant-select-selection-overflow')
+    cy.get('[data-testid="triggerConfig-type"]')
       .should('be.visible')
       .click()
       .type('TestCase');
 
-    cy.get('.ant-select-dropdown')
+    cy.get('[role="tree"]')
       .contains('Test Case')
       .scrollIntoView()
       .should('be.visible')
@@ -223,32 +220,32 @@ describe('Alerts page should work properly', () => {
 
     // Select filters
     cy.get('[data-testid="add-filters"]').should('exist').click();
-    cy.get('#filteringRules_0_name').invoke('show').click();
+    cy.get('#filteringRules_rules_0_name').invoke('show').click();
     // Select Test results condition
 
     cy.get('[title="Test Results"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
     // Select result
     cy.get('[data-testid="matchTestResult-select"]')
       .should('be.visible')
       .click();
     cy.get('[title="Failed"]').should('be.visible').click();
-    cy.get('#name').should('be.visible').click();
+    cy.get(descriptionBox).should('be.visible').click();
     // Select include/exclude
     cy.get('[title="Include"]').should('be.visible').click();
     cy.get('[title="Include"]').eq(1).click();
 
     // Select Destination
-    cy.get('[data-testid="add=destination"]').should('exist').click();
-    cy.get('#alertActions_0_alertActionType').click();
+    cy.get('[data-testid="alert-action-type"]').click();
 
     cy.get('.ant-select-item-option-content').contains('Email').click();
     // Enter email
-    cy.get('#alertActions_0_alertActionConfig_receivers')
+    cy.get('#subscriptionConfig_receivers')
       .click()
-      .type('testuser@openmetadata.org');
+      .type('testuser@openmetadata.org')
+      .type('{enter}');
     // Click save
-    cy.get('[data-testid="save"]').click();
+    cy.get('[data-testid="save"]').scrollIntoView().click();
     toastNotification('Alerts created successfully.');
     cy.get('table').should('contain', TEST_CASE.testCaseAlert);
     cy.get('.ant-table-cell')
@@ -264,65 +261,48 @@ describe('Alerts page should work properly', () => {
   });
 
   it('Delete test case alert', () => {
-    cy.get('table').should('contain', TEST_CASE.testCaseAlert).click();
-    cy.get(`[data-testid="alert-delete-${TEST_CASE.testCaseAlert}"]`)
-      .should('be.visible')
-      .click();
-    cy.get('.ant-modal-header')
-      .should('be.visible')
-      .should('contain', `Delete ${TEST_CASE.testCaseAlert}`);
-    cy.get('[data-testid="confirmation-text-input"]')
-      .should('be.visible')
-      .type(DELETE_TERM);
-    interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
-    cy.get('[data-testid="confirm-button"]')
-      .should('be.visible')
-      .should('not.disabled')
-      .click();
-    verifyResponseStatusCode('@deleteAlert', 200);
-
-    toastNotification('Alert deleted successfully!');
-    cy.get('table').should('not.contain', TEST_CASE.testCaseAlert);
+    deleteAlertSteps(TEST_CASE.testCaseAlert);
   });
 
   Object.values(DESTINATION).forEach((destination) => {
     it(`Create alert for ${destination.locator}`, () => {
-      interceptURL('POST', '/api/v1/alerts', 'createAlert');
-      // Click on create alert button
-      cy.get('[data-testid="create-alert"]').should('be.visible').click();
+      visitAddAlertPage();
       // Enter alert name
       cy.get('#name').should('be.visible').type(destination.name);
       // Enter description
-      cy.get('#description').should('be.visible').type(destination.description);
+      cy.get(descriptionBox)
+        .should('be.visible')
+        .click()
+        .clear()
+        .type(destination.description);
       // Click on all data assets
-      cy.get('[title="All Data Assets"]').should('be.visible').click();
-      cy.get('[title="All Data Assets"]').eq(1).click();
+      cy.get('[data-testid="triggerConfig-type"]')
+        .contains('All')
+        .should('be.visible');
       // Select filters
       cy.get('[data-testid="add-filters"]').should('exist').click();
-      cy.get('#filteringRules_0_name').invoke('show').click();
+      cy.get('#filteringRules_rules_0_name').invoke('show').click();
       // Select owner
       cy.get('[title="Owner"]').should('be.visible').click();
       cy.get('[data-testid="matchAnyOwnerName-select"]')
         .should('be.visible')
         .click()
-        .type('Engineering');
-      cy.get('[title="Engineering"]').should('be.visible').click();
-      cy.get('#description').should('be.visible').click();
+        .type(teamSearchTerm);
+      verifyResponseStatusCode('@getSearchResult', 200);
+      cy.get(`[title="${teamSearchTerm}"]`).should('be.visible').click();
+      cy.get(descriptionBox).should('be.visible').click();
       // Select include/exclude
       cy.get('[title="Include"]').should('be.visible').click();
       cy.get('[title="Include"]').eq(1).click();
 
       // Select Destination
-      cy.get('[data-testid="add=destination"]').should('exist').click();
-      cy.get('#alertActions_0_alertActionType').click();
+      cy.get('[data-testid="alert-action-type"]').click();
 
       cy.get('.ant-select-item-option-content')
         .contains(destination.locator)
         .click();
       // Enter url
-      cy.get('#alertActions_0_alertActionConfig_endpoint')
-        .click()
-        .type(destination.url);
+      cy.get('#subscriptionConfig_endpoint').click().type(destination.url);
       // Click save
       cy.get('[data-testid="save"]').click();
       verifyResponseStatusCode('@createAlert', 201);
@@ -332,25 +312,7 @@ describe('Alerts page should work properly', () => {
     });
 
     it(`Delete created alert for ${destination.name} `, () => {
-      cy.get('table').should('contain', destination.name).click();
-      cy.get(`[data-testid="alert-delete-${destination.name}"]`)
-        .should('be.visible')
-        .click();
-      cy.get('.ant-modal-header')
-        .should('be.visible')
-        .should('contain', `Delete ${destination.name}`);
-      cy.get('[data-testid="confirmation-text-input"]')
-        .should('be.visible')
-        .type(DELETE_TERM);
-      interceptURL('DELETE', 'api/v1/alerts/*', 'deleteAlert');
-      cy.get('[data-testid="confirm-button"]')
-        .should('be.visible')
-        .should('not.disabled')
-        .click();
-      verifyResponseStatusCode('@deleteAlert', 200);
-
-      toastNotification('Alert deleted successfully!');
-      cy.get('table').should('not.contain', destination.name);
+      deleteAlertSteps(destination.name);
     });
   });
 });

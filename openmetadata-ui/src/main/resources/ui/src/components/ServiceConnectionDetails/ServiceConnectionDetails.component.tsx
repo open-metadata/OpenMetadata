@@ -15,10 +15,10 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
-import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Tooltip } from 'antd';
-import { isEmpty, isNull, isObject } from 'lodash';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Space, Tooltip } from 'antd';
+import Input from 'antd/lib/input/Input';
+import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
@@ -28,6 +28,8 @@ import { MessagingServiceType } from '../../generated/entity/services/messagingS
 import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../../generated/entity/services/searchService';
+import { StorageServiceType } from '../../generated/entity/services/storageService';
 import { ConfigData } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -35,6 +37,8 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
+import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
+import { getStorageServiceConfig } from '../../utils/StorageServiceUtils';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
@@ -75,37 +79,29 @@ const ServiceConnectionDetails = ({
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'credentials'
         ) {
-          if (isObject(value.gcsConfig)) {
-            // Condition for GCS Credentials value
-            const newSchemaPropertyObject =
-              schemaPropertyObject[key].definitions.GCSValues.properties;
+          // Condition for GCP Credentials path
+          const newSchemaPropertyObject =
+            schemaPropertyObject[key].definitions.gcpCredentialsPath;
 
-            return getKeyValues(value.gcsConfig, newSchemaPropertyObject);
-          } else {
-            // Condition for GCS Credentials path
-            const newSchemaPropertyObject =
-              schemaPropertyObject[key].definitions.GCSCredentialsPath;
-
-            return getKeyValues(value, newSchemaPropertyObject);
-          }
+          return getKeyValues(value, newSchemaPropertyObject);
         } else if (
           serviceCategory.slice(0, -1) === EntityType.DATABASE_SERVICE &&
           key === 'configSource'
         ) {
           if (isObject(value.securityConfig)) {
-            if (!value.securityConfig.gcsConfig) {
+            if (!value.securityConfig.gcpConfig) {
               if (Object.keys(schemaPropertyObject[key]).includes(oneOf)) {
                 if (
                   value.securityConfig?.awsAccessKeyId ||
                   value.securityConfig?.awsSecretAccessKey
                 ) {
-                  const newSchemaPropertyObject =
-                    schema.definitions.S3Config.properties.securityConfig
-                      .properties;
-
                   return getKeyValues(
                     value.securityConfig,
-                    newSchemaPropertyObject
+                    get(
+                      schema,
+                      'definitions.S3Config.properties.securityConfig.properties',
+                      {}
+                    )
                   );
                 }
               } else if (
@@ -120,23 +116,27 @@ const ServiceConnectionDetails = ({
                 return getKeyValues(value, newSchemaPropertyObject);
               }
             } else {
-              if (isObject(value.securityConfig.gcsConfig)) {
-                // Condition for GCS Credentials value
-                const newGcsSchemaPropertyObject =
-                  schema.definitions.GCSConfig.properties.securityConfig
-                    .definitions.GCSValues.properties;
-
+              if (isObject(value.securityConfig.gcpConfig)) {
+                // Condition for GCP Credentials value
                 return getKeyValues(
-                  value.securityConfig.gcsConfig,
-                  newGcsSchemaPropertyObject
+                  value.securityConfig.gcpConfig,
+                  get(
+                    schema,
+                    'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
+                    {}
+                  )
                 );
               } else {
-                // Condition for GCS Credentials path
-                const newSchemaPropertyObject =
-                  schema.definitions.GCSConfig.properties.securityConfig
-                    .definitions.GCSCredentialsPath;
+                // Condition for GCP Credentials path
 
-                return getKeyValues(value, newSchemaPropertyObject);
+                return getKeyValues(
+                  value,
+                  get(
+                    schema,
+                    'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
+                    {}
+                  )
+                );
               }
             }
           }
@@ -147,6 +147,15 @@ const ServiceConnectionDetails = ({
           const newSchemaPropertyObject = schemaPropertyObject[
             key
           ].oneOf.filter((item) => item.title === JWT_CONFIG)[0].properties;
+
+          return getKeyValues(value, newSchemaPropertyObject);
+        } else if (
+          serviceCategory.slice(0, -1) === EntityType.DASHBOARD_SERVICE &&
+          key === 'githubCredentials'
+        ) {
+          const newSchemaPropertyObject = schemaPropertyObject[key].oneOf.find(
+            (item) => item.title === 'GitHubCredentials'
+          )?.properties;
 
           return getKeyValues(value, newSchemaPropertyObject);
         } else {
@@ -163,26 +172,32 @@ const ServiceConnectionDetails = ({
           : {};
 
         return (
-          <div className="tw-w-1/2 tw-flex tw-nowrap tw-mb-3" key={key}>
-            <div className="tw-flex">
-              <p className="tw-text-gray-500 tw-m-0">{title || key}:</p>
-              <Tooltip position="bottom" title={description} trigger="hover">
-                <FontAwesomeIcon
-                  className="tw-mx-1"
-                  color="#C4C4C4"
-                  icon={{ ...faInfoCircle }}
+          <Col key={key} span={12}>
+            <Row>
+              <Col className="d-flex items-center" span={8}>
+                <Space size={0}>
+                  <p className="text-grey-muted m-0">{key || title}:</p>
+                  <Tooltip
+                    position="bottom"
+                    title={description}
+                    trigger="hover">
+                    <InfoCircleOutlined
+                      className="m-x-xss"
+                      style={{ color: '#C4C4C4' }}
+                    />
+                  </Tooltip>
+                </Space>
+              </Col>
+              <Col span={16}>
+                <Input
+                  readOnly
+                  className="w-full border-none"
+                  type={format !== 'password' ? 'text' : 'password'}
+                  value={value}
                 />
-              </Tooltip>
-            </div>
-            <div className="tw-mx-3 tw-flex-1">
-              <input
-                readOnly
-                className="tw-w-full tw-outline-none"
-                type={format !== 'password' ? 'text' : 'password'}
-                value={value}
-              />
-            </div>
-          </div>
+              </Col>
+            </Row>
+          </Col>
         );
       } else {
         return null;
@@ -220,6 +235,16 @@ const ServiceConnectionDetails = ({
         setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
 
         break;
+      case EntityType.STORAGE_SERVICE:
+        setSchema(
+          getStorageServiceConfig(serviceFQN as StorageServiceType).schema
+        );
+
+        break;
+      case EntityType.SEARCH_SERVICE:
+        setSchema(
+          getSearchServiceConfig(serviceFQN as SearchServiceType).schema
+        );
     }
   }, [serviceCategory, serviceFQN]);
 
@@ -230,13 +255,15 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <div className="tw-bg-white">
+    <Card>
       <div
-        className="tw-w-full tw-p-5 tw-flex tw-flex-wrap tw-border tw-rounded-lg tw-border-gray-300"
+        className="d-flex flex-wrap p-xss"
         data-testid="service-connection-details">
-        {data}
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
       </div>
-    </div>
+    </Card>
   );
 };
 

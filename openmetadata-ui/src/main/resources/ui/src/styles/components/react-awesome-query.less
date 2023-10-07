@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 .query-builder-container {
   &.query-builder {
     margin: 0;
@@ -47,8 +49,10 @@
 
         .group--conjunctions {
           position: absolute;
-          left: 0px;
+          left: 50%;
           top: 0px;
+          transform: translate(-50%, 16px);
+          z-index: 1;
           .ant-btn-group button span {
             text-transform: uppercase;
           }
@@ -68,7 +72,7 @@
           bottom: 8px;
           z-index: 1;
           max-width: 128px;
-          border-color: #7147e8;
+          border-color: @primary-color;
           border-radius: 4px;
           left: 0;
           right: 0;
@@ -114,6 +118,7 @@
             top: 60px;
             left: auto;
             z-index: 1;
+            transform: none;
 
             .ant-btn-group button span {
               text-transform: uppercase;
@@ -126,7 +131,7 @@
             bottom: 32px;
             z-index: 1;
             display: block;
-            border-color: #7147e8;
+            border-color: @primary-color;
             border-radius: 4px;
           }
 

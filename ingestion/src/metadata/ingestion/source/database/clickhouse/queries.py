@@ -58,6 +58,22 @@ select
 	name as view_name,
 	database as schema,
 	create_table_query as view_def
-from system.tables where engine = 'View'
+from system.tables where engine in ['MaterializedView', 'View']
 """
 )
+
+CLICKHOUSE_SQL_STATEMENT_TEST = """
+        Select
+          query_start_time start_time,
+          DATEADD(query_duration_ms, query_start_time) end_time,
+          query_duration_ms/1000 duration,
+          'default' database_name,
+          user user_name,
+          FALSE aborted,
+          query_id query_id,
+          query query_text,
+          databases schema_name,
+          tables tables
+        From system.query_log
+        LIMIT 2
+"""

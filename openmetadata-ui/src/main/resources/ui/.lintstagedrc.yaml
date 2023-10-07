@@ -12,7 +12,10 @@
 #
 
 # Insert license header
-'*': yarn license-header-fix
+'*':
+  - yarn license-header-fix
+  # Sync localization file
+  - yarn i18n
 
 '*.{ts,tsx,js,jsx}':
   # Organize Imports

@@ -22,17 +22,19 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../../rest/rolesAPIV1', () => ({
   addRole: jest.fn().mockImplementation(() => Promise.resolve()),
   getPolicies: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../../components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock(
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () =>
+    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
 jest.mock('../../../utils/RouterUtils', () => ({
@@ -44,6 +46,25 @@ jest.mock('../../../utils/RouterUtils', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock('../../../components/containers/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children, leftPanel, rightPanel }) => (
+    <div>
+      {leftPanel}
+      {children}
+      {rightPanel}
+    </div>
+  ))
+);
+
+jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 
 describe('Test Add Role Page', () => {
   it('Should Render the Add Role page component', async () => {

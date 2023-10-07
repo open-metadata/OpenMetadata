@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Space,
-  Tooltip as AntdTooltip,
-  Typography,
-} from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -36,7 +29,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -48,16 +42,17 @@ import {
   DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
 } from '../../constants/DataInsight.constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import {
   Kpi,
   KpiResult,
   KpiTargetType,
 } from '../../generated/dataInsight/kpi/kpi';
-import { useAuth } from '../../hooks/authHooks';
 import {
   ChartFilter,
   UIKpiResult,
 } from '../../interface/data-insight.interface';
+import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
   CustomTooltip,
@@ -67,15 +62,23 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
-import KPILatestResults from './KPILatestResults';
+import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
   chartFilter: ChartFilter;
   kpiList: Array<Kpi>;
+  isKpiLoading: boolean;
+  viewKPIPermission: boolean;
+  createKPIPermission: boolean;
 }
 
-const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
-  const { isAdminUser } = useAuth();
+const KPIChart: FC<Props> = ({
+  chartFilter,
+  kpiList,
+  viewKPIPermission,
+  createKPIPermission,
+  isKpiLoading,
+}) => {
   const { t } = useTranslation();
   const history = useHistory();
 
@@ -195,25 +198,24 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
       className="data-insight-card"
       data-testid="kpi-card"
       id="kpi-charts"
-      loading={isLoading}
+      loading={isLoading || isKpiLoading}
       title={
-        <Space className="w-full justify-between">
-          <div>
-            <Typography.Title level={5}>
-              {t('label.kpi-title')}
-            </Typography.Title>
-            <Typography.Text className="data-insight-label-text">
-              {t('message.kpi-subtitle')}
-            </Typography.Text>
-          </div>
-        </Space>
+        <PageHeader
+          data={{
+            header: t('label.kpi-title'),
+            subHeader: t('message.kpi-subtitle'),
+          }}
+        />
       }>
       {kpiList.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           {graphData.length ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
-                <ResponsiveContainer debounce={1} minHeight={400}>
+                <ResponsiveContainer
+                  debounce={1}
+                  id="kpi-chart"
+                  minHeight={400}>
                   <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
                       stroke={GRAPH_BACKGROUND_COLOR}
@@ -262,39 +264,48 @@ const KPIChart: FC<Props> = ({ chartFilter, kpiList }) => {
               </Col>
               {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
                 <Col span={DI_STRUCTURE.rightContainerSpan}>
-                  <KPILatestResults kpiLatestResultsRecord={kpiLatestResults} />
+                  <KPILatestResultsV1
+                    kpiLatestResultsRecord={kpiLatestResults}
+                  />
                 </Col>
               )}
             </>
           ) : (
-            <EmptyGraphPlaceholder />
+            <Col className="justify-center" span={24}>
+              {viewKPIPermission ? (
+                <EmptyGraphPlaceholder />
+              ) : (
+                <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+              )}
+            </Col>
           )}
         </Row>
       ) : (
         <Space
           className="w-full justify-center items-center"
           direction="vertical">
-          <Typography.Text>
-            {t('message.no-kpi-available-add-new-one')}
-          </Typography.Text>
-          <AntdTooltip
-            title={
-              isAdminUser
-                ? t('label.add-entity', {
-                    entity: t('label.kpi-uppercase'),
-                  })
-                : t('message.no-permission-for-action')
+          <ErrorPlaceHolder
+            button={
+              <Button
+                ghost
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={handleAddKpi}>
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
+              </Button>
+            }
+            className="m-0"
+            permission={createKPIPermission}
+            size={SIZE.MEDIUM}
+            type={
+              createKPIPermission
+                ? ERROR_PLACEHOLDER_TYPE.ASSIGN
+                : ERROR_PLACEHOLDER_TYPE.NO_DATA
             }>
-            <Button
-              className="tw-border-primary tw-text-primary"
-              disabled={!isAdminUser}
-              type="default"
-              onClick={handleAddKpi}>
-              {t('label.add-entity', {
-                entity: t('label.kpi-uppercase'),
-              })}
-            </Button>
-          </AntdTooltip>
+            {createKPIPermission && t('message.no-kpi-available-add-new-one')}
+          </ErrorPlaceHolder>
         </Space>
       )}
     </Card>

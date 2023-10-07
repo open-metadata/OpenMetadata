@@ -13,6 +13,7 @@
 
 import {
   act,
+  findAllByTestId,
   findByTestId,
   findByText,
   queryByTestId,
@@ -34,15 +35,18 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  entityFqn: 'topic.fqn',
+  onThreadLinkSelect: jest.fn(),
 };
 
 jest.mock('../../../utils/TagsUtils', () => ({
-  fetchTagsAndGlossaryTerms: jest.fn().mockReturnValue([]),
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../../utils/TopicSchema.utils', () => ({
-  updateFieldTags: jest.fn(),
-  updateFieldDescription: jest.fn(),
+jest.mock('../../../utils/GlossaryUtils', () => ({
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
 jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
@@ -62,14 +66,28 @@ jest.mock(
   })
 );
 
-jest.mock('components/Tag/TagsContainer/tags-container', () =>
+jest.mock('../../TableTags/TableTags.component', () =>
   jest
     .fn()
-    .mockReturnValue(<div data-testid="tag-container">Tag Container</div>)
+    .mockImplementation(() => (
+      <div data-testid="table-tag-container">Table Tag Container</div>
+    ))
 );
 
-jest.mock('components/Tag/TagsViewer/tags-viewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="tag-viewer">Tag Viewer</div>)
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+    ))
+);
+
+jest.mock('../../schema-editor/SchemaEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="schema-editor">SchemaEditor</div>
+    ))
 );
 
 describe('Topic Schema', () => {
@@ -84,17 +102,17 @@ describe('Topic Schema', () => {
     expect(schemaFields).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(10);
+    expect(rows).toHaveLength(20);
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
     const description = await findByText(row1, 'Description Preview');
-    const tags = await findByTestId(row1, 'tag-container');
+    const tagsContainer = await findAllByTestId(row1, 'table-tag-container');
 
     expect(name).toBeInTheDocument();
     expect(dataType).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(tags).toBeInTheDocument();
+    expect(tagsContainer).toHaveLength(2);
   });
 
   it('Should render the children on click of expand icon', async () => {
@@ -115,13 +133,13 @@ describe('Topic Schema', () => {
     expect(singleRowExpandIcon).toBeNull();
 
     // order_id is child of nested row, so should be null initially
-    expect(screen.queryByText('order_id')).toBeNull();
+    expect(await screen.findByText('order_id')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(expandIcon);
     });
 
-    expect(await screen.findByText('order_id')).toBeInTheDocument();
+    expect(screen.queryByText('order_id')).toBeNull();
   });
 
   it('On edit description button click modal editor should render', async () => {

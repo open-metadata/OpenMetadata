@@ -13,28 +13,21 @@
 
 import i18next from 'i18next';
 import React from 'react';
-import AppState from '../AppState';
+import { EntityTabs } from '../enums/entity.enum';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
-import { getCurrentDatasetTab } from './DatasetDetailsUtils';
 
-export const getSteps = (value: string, clearSearchTerm: () => void) => {
+interface ArgObject {
+  searchTerm: string;
+  updateTourPage: (value: CurrentTourPageType) => void;
+  updateActiveTab: (value: EntityTabs) => void;
+  clearSearchTerm: () => void;
+}
+
+export const getTourSteps = (args: ArgObject) => {
+  const { searchTerm, clearSearchTerm, updateActiveTab, updateTourPage } = args;
+
   return [
-    {
-      content: () => (
-        <p>
-          <Transi18next
-            i18nKey="message.tour-step-discover-all-assets-at-one-place"
-            renderElement={<strong />}
-            values={{
-              text: i18next.t('label.open-metadata'),
-            }}
-          />
-        </p>
-      ),
-      stepInteraction: false,
-      selector: '#assetStatsCount',
-    },
     {
       content: () => (
         <p>
@@ -74,23 +67,23 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
             i18nKey="message.tour-step-type-search-term"
             renderElement={<strong />}
             values={{
-              text: value,
+              text: searchTerm,
               enterText: i18next.t('label.enter'),
             }}
           />
         </p>
       ),
       actionType: 'enter',
-      userTypeText: value,
+      userTypeText: searchTerm,
       selector: '#searchBox',
       beforeNext: () => {
         clearSearchTerm();
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.MY_DATA_PAGE;
+        updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
       },
       content: () => (
         <p>
@@ -116,15 +109,60 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
         </p>
       ),
       actionType: 'click',
-      selector: '#tabledatacard0-title',
+      selector: '[data-testid="sample_data.ecommerce_db.shopify.dim_address"]',
       beforeNext: () => {
-        AppState.currentTourPage = CurrentTourPageType.DATASET_PAGE;
+        updateTourPage(CurrentTourPageType.DATASET_PAGE);
       },
     },
     {
       beforePrev: () => {
-        AppState.currentTourPage = CurrentTourPageType.EXPLORE_PAGE;
+        updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
       },
+      content: () => (
+        <p>
+          <Transi18next
+            i18nKey="message.tour-high-level-assets-information-step"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
+        </p>
+      ),
+      stepInteraction: false,
+      selector: '[data-testid="entity-page-header"]',
+    },
+    {
+      content: () => (
+        <p>
+          <Transi18next
+            i18nKey="message.tour-owner-step"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
+        </p>
+      ),
+      stepInteraction: false,
+      selector: '[data-testid="owner-label"]',
+    },
+    {
+      content: () => (
+        <p>
+          <Transi18next
+            i18nKey="message.tour-follow-step"
+            renderElement={<strong />}
+            values={{
+              text: i18next.t('label.schema'),
+            }}
+          />
+        </p>
+      ),
+      stepInteraction: false,
+      selector: '[data-testid="entity-follow-button"]',
+    },
+    {
       content: () => (
         <p>
           <Transi18next
@@ -141,7 +179,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('schema');
+        updateActiveTab(EntityTabs.SCHEMA);
       },
       actionType: 'click',
       content: () => (
@@ -155,10 +193,9 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#sampleData',
+      selector: `[data-testid="${EntityTabs.SAMPLE_DATA}"]`,
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
+        updateActiveTab(EntityTabs.SAMPLE_DATA);
       },
     },
     {
@@ -173,15 +210,14 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#sampleDataDetails',
+      selector: '[data-testid="sample-data-table"]',
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage =
-          getCurrentDatasetTab('sample_data');
+        updateActiveTab(EntityTabs.SAMPLE_DATA);
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
+        updateActiveTab(EntityTabs.PROFILER);
       },
       actionType: 'click',
       content: () => (
@@ -195,7 +231,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#profilerDataQuality',
+      selector: `[data-testid="${EntityTabs.PROFILER}"]`,
     },
     {
       content: () => (
@@ -216,10 +252,10 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
     },
     {
       beforePrev: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('profiler');
+        updateActiveTab(EntityTabs.PROFILER);
       },
       beforeNext: () => {
-        AppState.activeTabforTourDatasetPage = getCurrentDatasetTab('lineage');
+        updateActiveTab(EntityTabs.LINEAGE);
       },
       actionType: 'click',
       content: () => (
@@ -233,7 +269,7 @@ export const getSteps = (value: string, clearSearchTerm: () => void) => {
           />
         </p>
       ),
-      selector: '#lineage',
+      selector: `[data-testid="${EntityTabs.LINEAGE}"]`,
     },
     {
       content: () => (

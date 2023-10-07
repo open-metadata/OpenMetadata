@@ -11,33 +11,25 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Divider, Form, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { addPolicy } from 'rest/rolesAPIV1';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { ERROR_MESSAGE } from '../../../constants/constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { allowedNameRegEx } from '../../../constants/regex.constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   CreatePolicy,
   Effect,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
+import { addPolicy } from '../../../rest/rolesAPIV1';
+import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
   getPath,
   getPolicyWithFqnPath,
@@ -81,7 +73,7 @@ const AddPolicyPage = () => {
     history.push(policiesPath);
   };
 
-  const handleSumbit = async () => {
+  const handleSubmit = async () => {
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const data: CreatePolicy = {
       name: trim(name),
@@ -97,115 +89,130 @@ const AddPolicyPage = () => {
         );
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: t('label.policy'),
+              entityPlural: t('label.policy-lowercase-plural'),
+              name: data.name,
+            })
+          : (error as AxiosError)
+      );
     }
   };
 
   return (
-    <div data-testid="add-policy-container">
-      <PageLayoutV1 center>
-        <Row>
-          <Col span={16}>
-            <Space className="w-full" direction="vertical" size="middle">
-              <TitleBreadcrumb titleLinks={breadcrumb} />
-              <Card>
-                <Typography.Paragraph
-                  className="text-base"
-                  data-testid="form-title">
-                  {t('label.add-new-entity', { entity: t('label.policy') })}
-                </Typography.Paragraph>
-                <Form
-                  data-testid="policy-form"
-                  id="policy-form"
-                  initialValues={{
-                    ruleEffect: ruleData.effect,
-                  }}
-                  layout="vertical"
-                  onFinish={handleSumbit}>
-                  <Form.Item
-                    label={`${t('label.name')}:`}
-                    name="name"
-                    rules={[
-                      {
-                        required: true,
-                        max: 128,
-                        min: 1,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.name'),
-                        }),
-                      },
-                      {
-                        validator: (_, value) => {
-                          if (allowedNameRegEx.test(value)) {
-                            return Promise.reject(
-                              t('message.field-text-is-invalid', {
-                                fieldText: t('label.name'),
-                              })
-                            );
-                          }
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="add-policy-container">
+            <TitleBreadcrumb titleLinks={breadcrumb} />
+            <div className="m-t-md">
+              <Typography.Paragraph
+                className="text-base"
+                data-testid="form-title">
+                {t('label.add-new-entity', { entity: t('label.policy') })}
+              </Typography.Paragraph>
+              <Form
+                data-testid="policy-form"
+                id="policy-form"
+                initialValues={{
+                  ruleEffect: ruleData.effect,
+                }}
+                layout="vertical"
+                onFinish={handleSubmit}>
+                <Form.Item
+                  label={`${t('label.name')}:`}
+                  name="name"
+                  rules={[
+                    {
+                      required: true,
+                      max: 128,
+                      min: 1,
+                      message: `${t('message.entity-size-in-between', {
+                        entity: `${t('label.name')}`,
+                        max: '128',
+                        min: '1',
+                      })}`,
+                    },
+                    {
+                      pattern: ENTITY_NAME_REGEX,
+                      message: t('message.entity-name-validation'),
+                    },
+                  ]}>
+                  <Input
+                    data-testid="policy-name"
+                    placeholder={t('label.policy-name')}
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </Form.Item>
 
-                          return Promise.resolve();
-                        },
-                      },
-                    ]}>
-                    <Input
-                      data-testid="policy-name"
-                      placeholder={t('label.policy-name')}
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </Form.Item>
+                <Form.Item
+                  label={`${t('label.description')}:`}
+                  name="description">
+                  <RichTextEditor
+                    height="200px"
+                    initialValue={description}
+                    placeHolder={t('message.write-your-description')}
+                    style={{ margin: 0 }}
+                    onTextChange={(value) => setDescription(value)}
+                  />
+                </Form.Item>
 
-                  <Form.Item
-                    label={`${t('label.description')}:`}
-                    name="description">
-                    <RichTextEditor
-                      height="200px"
-                      initialValue={description}
-                      placeHolder={t('message.write-your-description')}
-                      style={{ margin: 0 }}
-                      onTextChange={(value) => setDescription(value)}
-                    />
-                  </Form.Item>
+                <Divider data-testid="add-rule-divider">
+                  {t('label.add-entity', {
+                    entity: t('label.rule'),
+                  })}
+                </Divider>
+                <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
 
-                  <Divider data-testid="add-rule-divider">
-                    {t('label.add-entity', {
-                      entity: t('label.rule'),
-                    })}
-                  </Divider>
-                  <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-
-                  <Space align="center" className="w-full justify-end">
-                    <Button
-                      data-testid="cancel-btn"
-                      type="link"
-                      onClick={handleCancel}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      data-testid="submit-btn"
-                      form="policy-form"
-                      htmlType="submit"
-                      type="primary">
-                      {t('label.submit')}
-                    </Button>
-                  </Space>
-                </Form>
-              </Card>
-            </Space>
-          </Col>
-          <Col className="p-l-lg m-t-xlg" span={8}>
+                <Space align="center" className="w-full justify-end">
+                  <Button
+                    data-testid="cancel-btn"
+                    type="link"
+                    onClick={handleCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    data-testid="submit-btn"
+                    form="policy-form"
+                    htmlType="submit"
+                    type="primary">
+                    {t('label.submit')}
+                  </Button>
+                </Space>
+              </Form>
+            </div>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.add-entity', { entity: t('label.policy') })}
+      secondPanel={{
+        children: (
+          <>
             <Typography.Paragraph className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.policy'),
               })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
-          </Col>
-        </Row>
-      </PageLayoutV1>
-    </div>
+          </>
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

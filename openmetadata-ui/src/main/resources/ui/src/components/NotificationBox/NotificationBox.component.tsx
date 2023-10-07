@@ -16,17 +16,18 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFeedsWithFilter } from 'rest/feedsAPI';
 import AppState from '../../AppState';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getUserPath,
   NOTIFICATION_READ_TIMER,
 } from '../../constants/constants';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
-import jsonData from '../../jsons/en';
+import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -52,13 +53,15 @@ const NotificationBox = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [viewAllPath, setViewAllPath] = useState<string>(
-    `${getUserPath(currentUser?.name as string)}/tasks?feedFilter=${
-      FeedFilter.ASSIGNED_TO
-    }`
+    getUserPath(
+      currentUser?.name as string,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    )
   );
 
   const notificationDropDownList = useMemo(() => {
-    return notifications.slice(0, 5).map((feed, idx) => {
+    return notifications.slice(0, 5).map((feed) => {
       const mainFeed = {
         message: feed.message,
         postTs: feed.threadTs,
@@ -75,8 +78,8 @@ const NotificationBox = ({
           entityFQN={entityFQN as string}
           entityType={entityType as string}
           feedType={feed.type || ThreadType.Conversation}
-          key={`${mainFeed.from} ${idx}`}
-          taskDetails={feed.task}
+          key={`${mainFeed.from} ${mainFeed.id}`}
+          task={feed}
           timestamp={mainFeed.postTs}
         />
       );
@@ -95,7 +98,9 @@ const NotificationBox = ({
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages']['fetch-notifications-error']
+          t('server.entity-fetch-error', {
+            entity: t('label.notification'),
+          })
         );
       })
       .finally(() => {
@@ -111,9 +116,13 @@ const NotificationBox = ({
       getNotificationData(threadType, feedFilter);
 
       setViewAllPath(
-        `${getUserPath(
-          currentUser?.name as string
-        )}/${threadType.toLowerCase()}?feedFilter=${feedFilter}`
+        getUserPath(
+          currentUser?.name as string,
+          EntityTabs.ACTIVITY_FEED,
+          key === NotificationTabsKey.TASK
+            ? ActivityFeedTabs.TASKS
+            : ActivityFeedTabs.MENTIONS
+        )
       );
 
       if (hasTaskNotification || hasMentionNotification) {
@@ -124,7 +133,7 @@ const NotificationBox = ({
         }, NOTIFICATION_READ_TIMER);
       }
     },
-    [currentUser, hasTaskNotification, hasMentionNotification]
+    [onTabChange, currentUser, hasTaskNotification, hasMentionNotification]
   );
 
   useEffect(() => {
@@ -159,7 +168,7 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
-          className="tw-min-h-64"
+          className="h-min-64"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
@@ -172,20 +181,20 @@ const NotificationBox = ({
           }
           itemLayout="vertical"
           renderItem={(item) => (
-            <List.Item className="hover:tw-bg-body-hover tw-cursor-pointer">
+            <List.Item className="notification-dropdown-list-btn cursor-pointer">
               {item}
             </List.Item>
           )}
           size="small"
         />
       ),
-    [notifications]
+    [notifications, notificationDropDownList, viewAllPath]
   );
 
   return (
-    <div className="tw-bg-white tw-border tw-border-gray-100 tw-rounded tw-flex tw-flex-col tw-justify-between tw-shadow-lg notification-box">
+    <div className="notification-box">
       <Typography.Title
-        className="tw-px-4 tw-pt-3 tw-pb-1"
+        className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
         level={5}>
         {t('label.notification-plural')}
@@ -204,7 +213,7 @@ const NotificationBox = ({
         {tabsInfo.map(({ name, key }) => (
           <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (
-              <div className="tw-h-64 tw-flex tw-items-center tw-justify-center">
+              <div className="h-64 d-flex items-center justify-center">
                 <Loader size="small" />
               </div>
             ) : (

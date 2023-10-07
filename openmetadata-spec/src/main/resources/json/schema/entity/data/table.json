@@ -3,19 +3,19 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table",
   "$comment": "@om-entity-type",
-  "description": "This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.",
+  "description": "A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.ColumnsEntityInterface"
   ],
   "definitions": {
     "entityName": {
       "description": "Name of a table. Expected to be unique within a database.",
       "type": "string",
       "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[\\w'\\- ./]+$"
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
     },
     "profileSampleType": {
       "description": "Type of Profile Sample (percentage or rows)",
@@ -39,7 +39,8 @@
         "Iceberg",
         "Local",
         "Partitioned",
-        "Foreign"
+        "Foreign",
+        "Transient"
       ],
       "javaEnums": [
         {
@@ -68,6 +69,9 @@
         },
         {
           "name": "Foreign"
+        },
+        {
+          "name": "Transient"
         }
       ]
     },
@@ -116,10 +120,38 @@
         "UUID",
         "VARIANT",
         "GEOMETRY",
+        "BYTEA",
+        "AGGREGATEFUNCTION",
+        "ERROR",
+        "FIXED",
+        "RECORD",
+        "NULL",
+        "SUPER",
+        "HLLSKETCH",
+        "PG_LSN",
+        "PG_SNAPSHOT",
+        "TSQUERY",
+        "TXID_SNAPSHOT",
+        "XML",
+        "MACADDR",
+        "TSVECTOR",
+        "UNKNOWN",
+        "CIDR",
+        "INET",
+        "CLOB",
+        "ROWID",
+        "LOWCARDINALITY",
+        "YEAR",
         "POINT",
         "POLYGON",
-        "BYTEA",
-        "AGGREGATEFUNCTION"
+        "TUPLE",
+        "SPATIAL",
+        "TABLE",
+        "NTEXT",
+        "IMAGE",
+        "IPV4",
+        "IPV6",
+        "DATETIMERANGE"
       ]
     },
     "constraint": {
@@ -146,7 +178,9 @@
           "enum": [
             "UNIQUE",
             "PRIMARY_KEY",
-            "FOREIGN_KEY"
+            "FOREIGN_KEY",
+            "SORT_KEY",
+            "DIST_KEY"
           ]
         },
         "columns": {
@@ -155,6 +189,14 @@
           "items": {
             "type": "string"
           }
+        },
+        "referredColumns": {
+          "description": "List of referred columns for the constraint.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+          },
+          "default": null
         }
       },
       "additionalProperties": false
@@ -162,9 +204,9 @@
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
-      "pattern": "^[\\w'\\-\" .+]+$",
       "minLength": 1,
-      "maxLength": 128
+      "maxLength": 256,
+      "pattern": "^((?!::).)*$"
     },
     "tablePartition": {
       "type": "object",
@@ -185,7 +227,8 @@
             "TIME-UNIT",
             "INTEGER-RANGE",
             "INGESTION-TIME",
-            "COLUMN-VALUE"
+            "COLUMN-VALUE",
+            "OTHER"
           ]
         },
         "interval": {
@@ -407,7 +450,7 @@
           "type": "number"
         },
         "valuesPercentage": {
-          "description": "Percentage of values in this column with respect to rowcount.",
+          "description": "Percentage of values in this column with respect to row count.",
           "type": "number"
         },
         "validCount": {
@@ -518,6 +561,22 @@
           "description": "Median of a column.",
           "type": "number"
         },
+        "firstQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "thirdQuartile": {
+          "description": "First quartile of a column.",
+          "type": "number"
+        },
+        "interQuartileRange": {
+          "description": "Inter quartile range of a column.",
+          "type": "number"
+        },
+        "nonParametricSkew": {
+          "description": "Non parametric skew of a column.",
+          "type": "number"
+        },
         "histogram": {
           "description": "Histogram of a column.",
           "properties": {
@@ -614,7 +673,9 @@
           "type": "string",
           "enum": [
             "TIME-UNIT",
-            "INGESTION-TIME"
+            "INTEGER-RANGE",
+            "INGESTION-TIME",
+            "COLUMN-VALUE"
           ]
         },
         "partitionInterval": {
@@ -634,6 +695,16 @@
         "partitionValues": {
           "description": "unit used for the partition interval",
           "type": "array"
+        },
+        "partitionIntegerRangeStart": {
+          "description": "start of the integer range for partitioning",
+          "type": "integer",
+          "default": null
+        },
+        "partitionIntegerRangeEnd": {
+          "description": "end of the integer range for partitioning",
+          "type": "integer",
+          "default": null
         }
       }
     },
@@ -701,48 +772,20 @@
         "rowCount": {
           "description": "No.of rows in the table. This is always executed on the whole table.",
           "type": "number"
+        },
+        "sizeInByte": {
+          "description": "Table size in GB",
+          "type": "number"
+        },
+        "createDateTime": {
+          "description": "Table creation time.",
+          "type": "string",
+          "format": "date-time"
         }
       },
       "required": [
         "timestamp"
       ],
-      "additionalProperties": false
-    },
-    "sqlQuery": {
-      "type": "object",
-      "javaType": "org.openmetadata.schema.type.SQLQuery",
-      "description": "This schema defines the type to capture the table's sql queries.",
-      "properties": {
-        "query": {
-          "description": "SQL Query text that matches the table name.",
-          "type": "string"
-        },
-        "duration": {
-          "description": "How long did the query took to run in seconds.",
-          "type": "number"
-        },
-        "users": {
-          "description": "List of users who ran this query.",
-          "type": "array",
-          "items": {
-            "$ref": "../../type/entityReference.json"
-          },
-          "default": null
-        },
-        "vote": {
-          "description": "Users can vote up to rank the popular queries.",
-          "type": "number",
-          "default": 1
-        },
-        "checksum": {
-          "description": "Checksum to avoid registering duplicate queries.",
-          "type": "string"
-        },
-        "queryDate": {
-          "description": "Date on which the query ran.",
-          "$ref": "../../type/basic.json#/definitions/date"
-        }
-      },
       "additionalProperties": false
     },
     "modelType": {
@@ -817,6 +860,11 @@
         "sql"
       ],
       "additionalProperties": false
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "type": "string",
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
     }
   },
   "properties": {
@@ -923,7 +971,7 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",
@@ -944,13 +992,9 @@
       "$ref": "#/definitions/tableProfile",
       "default": null
     },
-    "tableQueries": {
-      "description": "List of queries that ran against a table.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/sqlQuery"
-      },
-      "default": null
+    "testSuite": {
+      "description": "Executable test suite associated with this table",
+      "$ref": "../../tests/testSuite.json"
     },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
@@ -965,9 +1009,36 @@
       "type": "boolean",
       "default": false
     },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the table. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database schema, if it exists.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of table.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref" : "#/definitions/fileFormat"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": [

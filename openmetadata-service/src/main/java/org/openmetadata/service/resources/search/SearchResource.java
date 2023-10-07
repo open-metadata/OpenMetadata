@@ -13,24 +13,25 @@
 
 package org.openmetadata.service.resources.search;
 
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
-import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
+import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -39,70 +40,33 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.common.xcontent.XContentParser;
-import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MatchNoneQueryBuilder;
-import org.elasticsearch.index.query.Operator;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.QueryStringQueryBuilder;
-import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
-import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.elasticsearch.search.SearchModule;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.elasticsearch.search.sort.SortOrder;
 import org.elasticsearch.search.suggest.Suggest;
-import org.elasticsearch.search.suggest.SuggestBuilder;
-import org.elasticsearch.search.suggest.SuggestBuilders;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.schema.api.CreateEventPublisherJob;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.util.ElasticSearchClientUtils;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ReIndexingHandler;
 
 @Slf4j
 @Path("/v1/search")
-@Api(value = "Search collection", tags = "Search collection")
+@Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "search")
+@Collection(name = "elasticsearch")
 public class SearchResource {
-  private RestHighLevelClient client;
-  private static final Integer MAX_AGGREGATE_SIZE = 50;
-  private static final Integer MAX_RESULT_HITS = 10000;
-  private static final String NAME = "name";
-  private static final String DISPLAY_NAME = "displayName";
-  private static final String DESCRIPTION = "description";
-  private static final String UNIFIED = "unified";
+  private final Authorizer authorizer;
+  private final SearchRepository searchRepository;
 
-  private static final NamedXContentRegistry xContentRegistry;
+  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
-  static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
-
-    xContentRegistry = new NamedXContentRegistry(searchModule.getNamedXContents());
-  }
-
-  public SearchResource() {}
-
-  public void initialize(OpenMetadataApplicationConfig config) {
-    if (config.getElasticSearchConfiguration() != null) {
-      this.client = ElasticSearchClientUtils.createElasticSearchClient(config.getElasticSearchConfiguration());
-    }
+  public SearchResource(Authorizer authorizer) {
+    this.authorizer = authorizer;
+    this.searchRepository = Entity.getSearchRepository();
+    ReIndexingHandler.initialize(searchRepository);
   }
 
   @GET
@@ -110,7 +74,6 @@ public class SearchResource {
   @Operation(
       operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
-      tags = "search",
       description =
           "Search entities using query test. Use query params `from` and `size` for pagination. Use "
               + "`sort_field` to sort the results in `sort_order`.",
@@ -169,7 +132,7 @@ public class SearchResource {
       @Parameter(description = "Sort order asc for ascending or desc for descending, " + "defaults to desc")
           @DefaultValue("desc")
           @QueryParam("sort_order")
-          SortOrder sortOrder,
+          String sortOrder,
       @Parameter(description = "Track Total Hits") @DefaultValue("false") @QueryParam("track_total_hits")
           boolean trackTotalHits,
       @Parameter(
@@ -192,101 +155,71 @@ public class SearchResource {
       query = "*";
     }
 
-    SearchSourceBuilder searchSourceBuilder;
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
+            .from(from)
+            .queryFilter(queryFilter)
+            .postFilter(postFilter)
+            .fetchSource(fetchSource)
+            .trackTotalHits(trackTotalHits)
+            .sortFieldParam(sortFieldParam)
+            .deleted(deleted)
+            .sortOrder(sortOrder)
+            .includeSourceFields(includeSourceFields)
+            .build();
+    return searchRepository.search(request);
+  }
 
-    switch (index) {
-      case "topic_search_index":
-        searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
-        break;
-      case "dashboard_search_index":
-        searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
-        break;
-      case "pipeline_search_index":
-        searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
-        break;
-      case "mlmodel_search_index":
-        searchSourceBuilder = buildMlModelSearchBuilder(query, from, size);
-        break;
-      case "table_search_index":
-        searchSourceBuilder = buildTableSearchBuilder(query, from, size);
-        break;
-      case "user_search_index":
-        searchSourceBuilder = buildUserSearchBuilder(query, from, size);
-        break;
-      case "team_search_index":
-        searchSourceBuilder = buildTeamSearchBuilder(query, from, size);
-        break;
-      case "glossary_search_index":
-        searchSourceBuilder = buildGlossaryTermSearchBuilder(query, from, size);
-        break;
-      case "tag_search_index":
-        searchSourceBuilder = buildTagSearchBuilder(query, from, size);
-        break;
-      default:
-        searchSourceBuilder = buildAggregateSearchBuilder(query, from, size);
-        break;
-    }
+  @GET
+  @Path("/fieldQuery")
+  @Operation(
+      operationId = "searchEntitiesWithSpecificFieldAndValue",
+      summary = "Search entities",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchByField(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "field name") @QueryParam("fieldName") String fieldName,
+      @Parameter(description = "field value") @QueryParam("fieldValue") String fieldValue,
+      @Parameter(description = "Search Index name, defaults to table_search_index")
+          @DefaultValue("table_search_index")
+          @QueryParam("index")
+          String index)
+      throws IOException {
 
-    if (!nullOrEmpty(queryFilter)) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON
-                .xContent()
-                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
-        searchSourceBuilder.query(newQuery);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
-      }
-    }
+    return searchRepository.searchByField(fieldName, fieldValue, index);
+  }
 
-    if (!nullOrEmpty(postFilter)) {
-      try {
-        XContentParser filterParser =
-            XContentType.JSON.xContent().createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, postFilter);
-        QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        searchSourceBuilder.postFilter(filter);
-      } catch (Exception ex) {
-        LOG.warn("Error parsing post_filter from query parameters, ignoring filter", ex);
-      }
-    }
+  @GET
+  @Path("/sourceUrl")
+  @Operation(
+      operationId = "searchEntitiesWithSourceUrl",
+      summary = "Search entities",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchBySourceUrl(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
+      throws IOException {
 
-    /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(searchSourceBuilder.query()).must(QueryBuilders.termQuery("deleted", deleted)));
-
-    if (!nullOrEmpty(sortFieldParam)) {
-      searchSourceBuilder.sort(sortFieldParam, sortOrder);
-    }
-
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
-    if we enable trackTotalHits parameter it will try to match every result, count and return hits
-    however in most cases for search results an approximate value is good enough.
-    we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
-    searchSourceBuilder.fetchSource(
-        new FetchSourceContext(fetchSource, includeSourceFields.toArray(String[]::new), new String[] {}));
-
-    if (trackTotalHits) {
-      searchSourceBuilder.trackTotalHits(true);
-    } else {
-      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
-    }
-
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
-
-    return Response.status(OK).entity(response).build();
+    return searchRepository.searchBySourceUrl(sourceUrl);
   }
 
   @GET
   @Path("/suggest")
   @Operation(
       operationId = "getSuggestedEntities",
-      summary = "Suggest Entities",
-      tags = "search",
+      summary = "Suggest entities",
       description = "Get suggested entities used for auto-completion.",
       responses = {
         @ApiResponse(
@@ -326,42 +259,29 @@ public class SearchResource {
                   "Get only selected fields of the document body for each hit. Empty value will return all fields")
           @QueryParam("include_source_fields")
           List<String> includeSourceFields,
-      @DefaultValue("false") @QueryParam("deleted") String deleted)
+      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
       throws IOException {
 
     if (nullOrEmpty(query)) {
       query = "*";
     }
 
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    CompletionSuggestionBuilder suggestionBuilder =
-        SuggestBuilders.completionSuggestion(fieldName).prefix(query, Fuzziness.AUTO).size(size).skipDuplicates(true);
-    if (fieldName.equalsIgnoreCase("suggest")) {
-      suggestionBuilder.contexts(
-          Collections.singletonMap(
-              "deleted", Collections.singletonList(CategoryQueryContext.builder().setCategory(deleted).build())));
-    }
-    SuggestBuilder suggestBuilder = new SuggestBuilder();
-    suggestBuilder.addSuggestion("metadata-suggest", suggestionBuilder);
-    searchSourceBuilder
-        .suggest(suggestBuilder)
-        .timeout(new TimeValue(30, TimeUnit.SECONDS))
-        .fetchSource(new FetchSourceContext(fetchSource, includeSourceFields.toArray(String[]::new), new String[] {}));
-    SearchRequest searchRequest = new SearchRequest(index).source(searchSourceBuilder);
-
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    Suggest suggest = searchResponse.getSuggest();
-
-    return Response.status(OK).entity(suggest.toString()).build();
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
+            .fieldName(fieldName)
+            .deleted(deleted)
+            .fetchSource(fetchSource)
+            .includeSourceFields(includeSourceFields)
+            .build();
+    return searchRepository.suggest(request);
   }
 
   @GET
   @Path("/aggregate")
   @Operation(
       operationId = "getAggregateFields",
-      summary = "Get Aggregated Fields",
-      tags = "search",
-      description = "Get Aggregated Fields from Entities.",
+      summary = "Get aggregated fields",
+      description = "Get aggregated fields from entities.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -373,6 +293,26 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @DefaultValue("table_search_index") @QueryParam("index") String index,
       @Parameter(description = "Field in an entity.") @QueryParam("field") String fieldName,
+      @Parameter(description = "value for searching in aggregation") @DefaultValue("") @QueryParam("value")
+          String value,
+      @Parameter(
+              description =
+                  "Search Query Text, Pass *text* for substring match; "
+                      + "Pass without wildcards for exact match. <br/> "
+                      + "1. For listing all tables or topics pass q=* <br/>"
+                      + "2. For search tables or topics pass q=*search_term* <br/>"
+                      + "3. For searching field names such as search by column_name "
+                      + "pass q=column_names:address <br/>"
+                      + "4. For searching by tag names pass q=tags:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "AND platform:MYSQL <br/>"
+                      + "6. Search with multiple values of same filter q=tags:user.email "
+                      + "AND tags:user.address <br/>"
+                      + " logic operators such as AND and OR must be in uppercase ",
+              required = true)
+          @DefaultValue("*")
+          @QueryParam("q")
+          String query,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
           @QueryParam("size")
@@ -380,245 +320,125 @@ public class SearchResource {
       @DefaultValue("false") @QueryParam("deleted") String deleted)
       throws IOException {
 
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(fieldName).field(fieldName).size(MAX_AGGREGATE_SIZE).order(BucketOrder.key(true)))
-        .size(0);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client.search(new SearchRequest(index).source(searchSourceBuilder), RequestOptions.DEFAULT).toString();
-    return Response.status(OK).entity(response).build();
+    return searchRepository.aggregate(index, fieldName, value, query);
   }
 
-  private SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query).lenient(true);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
-    return addAggregation(searchSourceBuilder);
+  @GET
+  @Path("/reindex/latest")
+  @Operation(
+      operationId = "getLatestReindexBatchJob",
+      summary = "Get Latest Reindexing Batch Job",
+      description = "Fetches the Latest Reindexing Job",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "No Job Found")
+      })
+  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
   }
 
-  private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryStringBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 20.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("columns.name", 2.0f)
-            .field("columns.description", 1.0f)
-            .field("columns.children.name", 2.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-    FieldValueFactorFunctionBuilder boostScoreBuilder =
-        ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count").missing(1).factor(4);
-    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-          new FunctionScoreQueryBuilder.FilterFunctionBuilder(new MatchNoneQueryBuilder(), boostScoreBuilder)
-        };
-    FunctionScoreQueryBuilder queryBuilder = QueryBuilders.functionScoreQuery(queryStringBuilder, functions);
-    HighlightBuilder.Field highlightTableName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTableName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    HighlightBuilder.Field highlightColumns = new HighlightBuilder.Field("columns.name");
-    highlightColumns.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnDescriptions = new HighlightBuilder.Field("columns.description");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightColumnChildren = new HighlightBuilder.Field("columns.children.name");
-    highlightColumnDescriptions.highlighterType(UNIFIED);
-    hb.field(highlightDescription);
-    hb.field(highlightTableName);
-    hb.field(highlightColumns);
-    hb.field(highlightColumnDescriptions);
-    hb.field(highlightColumnChildren);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-    SearchSourceBuilder searchSourceBuilder =
-        new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms("database.name.keyword").field("database.name.keyword"));
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"));
-
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("messageSchema.schemaFields.name", 2.0f)
-            .field("messageSchema.schemaFields.description", 1.0f)
-            .field("messageSchema.schemaFields.children.name", 2.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-    HighlightBuilder.Field highlightTopicName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightTopicName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightTopicName);
-    hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
-    hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms("messageSchema.schemaFields.name").field("messageSchema.schemaFields.name"));
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(FIELD_DESCRIPTION, 2.0f)
-            .field("charts.name", 2.0f)
-            .field("charts.description")
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-    HighlightBuilder.Field highlightDashboardName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightDashboardName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightCharts = new HighlightBuilder.Field("charts.name");
-    highlightCharts.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightChartDescriptions = new HighlightBuilder.Field("charts.description");
-    highlightChartDescriptions.highlighterType(UNIFIED);
-
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightDashboardName);
-    hb.field(highlightCharts);
-    hb.field(highlightChartDescriptions);
-
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(DESCRIPTION, 2.0f)
-            .field("tasks.name", 2.0f)
-            .field("tasks.description")
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightPipelineName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("tasks.name");
-    highlightTasks.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("tasks.description");
-    highlightTaskDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightPipelineName);
-    hb.field(highlightTasks);
-    hb.field(highlightTaskDescriptions);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(FIELD_DISPLAY_NAME, 10.0f)
-            .field(DESCRIPTION, 2.0f)
-            .field("mlFeatures.name", 2.0f)
-            .field("mlFeatures.description")
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-    HighlightBuilder.Field highlightPipelineName = new HighlightBuilder.Field(FIELD_DISPLAY_NAME);
-    highlightPipelineName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTasks = new HighlightBuilder.Field("mlFeatures.name");
-    highlightTasks.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightTaskDescriptions = new HighlightBuilder.Field("mlFeatures.description");
-    highlightTaskDescriptions.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightPipelineName);
-    hb.field(highlightTasks);
-    hb.field(highlightTaskDescriptions);
-    SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    return addAggregation(searchSourceBuilder);
-  }
-
-  private SearchSourceBuilder searchBuilder(QueryBuilder queryBuilder, HighlightBuilder hb, int from, int size) {
-    SearchSourceBuilder builder = new SearchSourceBuilder().query(queryBuilder).from(from).size(size);
-    if (hb != null) {
-      hb.preTags("<span class=\"text-highlighter\">");
-      hb.postTags("</span>");
-      builder.highlighter(hb);
+  @GET
+  @Path("/reindex/stream/status")
+  @Operation(
+      operationId = "getStreamJobStatus",
+      summary = "Get Stream Job Latest Status",
+      description = "Stream Job Status",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Status not found")
+      })
+  public Response reindexAllJobLastStatus(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    // Check if there is a running job for reindex for requested entity
+    String jobRecord;
+    jobRecord =
+        Entity.getCollectionDAO()
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+    if (jobRecord != null) {
+      return Response.status(Response.Status.OK)
+          .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
+          .build();
     }
-    return builder;
+    return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
 
-  private SearchSourceBuilder addAggregation(SearchSourceBuilder builder) {
-    builder
-        .aggregation(AggregationBuilders.terms("serviceType").field("serviceType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("service.name.keyword").field("service.name.keyword").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("entityType").field("entityType").size(MAX_AGGREGATE_SIZE))
-        .aggregation(AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN"))
-        .aggregation(AggregationBuilders.terms("tags.tagFQN").field("tags.tagFQN").size(MAX_AGGREGATE_SIZE));
-
-    return builder;
+  @GET
+  @Path("/reindex/{jobId}")
+  @Operation(
+      operationId = "getBatchReindexBatchJobWithId",
+      summary = "Get Batch Reindexing Job with Id",
+      description = "Get reindex job with Id",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response reindexJobWithId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
   }
 
-  private SearchSourceBuilder buildUserSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 1.0f).lenient(true);
-    return searchBuilder(queryBuilder, null, from, size);
+  @GET
+  @Path("/reindex")
+  @Operation(
+      operationId = "getAllReindexBatchJobs",
+      summary = "Get all reindex batch jobs",
+      description = "Get all reindex batch jobs",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Not found")
+      })
+  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();
   }
 
-  private SearchSourceBuilder buildTeamSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query).field(NAME, 5.0f).field(DISPLAY_NAME, 3.0f).lenient(true);
-    return searchBuilder(queryBuilder, null, from, size);
+  @POST
+  @Path("/reindex")
+  @Operation(
+      operationId = "runBatchReindexing",
+      summary = "Run Batch Reindexing",
+      description = "Reindex Elastic Search Reindexing Entities",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response reindexEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateEventPublisherJob createRequest) {
+    // Only admins or bot can issue a reindex request
+    authorizer.authorizeAdminOrBot(securityContext);
+    return Response.status(Response.Status.CREATED)
+        .entity(
+            ReIndexingHandler.getInstance()
+                .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
+        .build();
   }
 
-  private SearchSourceBuilder buildGlossaryTermSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
-            .field(DESCRIPTION, 3.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-
-    HighlightBuilder.Field highlightGlossaryName = new HighlightBuilder.Field(NAME);
-    highlightGlossaryName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightGlossaryName);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-
-    return searchBuilder(queryBuilder, hb, from, size);
-  }
-
-  private SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
-    QueryStringQueryBuilder queryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .field(NAME, 10.0f)
-            .field(DESCRIPTION, 3.0f)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO);
-
-    HighlightBuilder.Field highlightTagName = new HighlightBuilder.Field(NAME);
-    highlightTagName.highlighterType(UNIFIED);
-    HighlightBuilder.Field highlightDescription = new HighlightBuilder.Field(FIELD_DESCRIPTION);
-    highlightDescription.highlighterType(UNIFIED);
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightTagName);
-    hb.preTags("<span class=\"text-highlighter\">");
-    hb.postTags("</span>");
-
-    return searchBuilder(queryBuilder, hb, from, size);
+  @PUT
+  @Path("/reindex/stop/{jobId}")
+  @Operation(
+      operationId = "stopAJobWithId",
+      summary = "Stop Reindex Job",
+      description = "Stop a Reindex Job",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response stopReindexJob(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().stopRunningJob(id)).build();
   }
 }

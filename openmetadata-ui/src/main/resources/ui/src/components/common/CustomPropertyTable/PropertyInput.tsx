@@ -11,31 +11,26 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Input } from 'antd';
 import React, { ChangeEvent, FC, useState } from 'react';
-import { Button } from '../../buttons/Button/Button';
+import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
 
-interface PropertInputProps {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  value: any;
-  type: string;
+export interface PropertyInputProps {
+  value: string | number;
+  type: 'text' | 'number';
   propertyName: string;
   onCancel: () => void;
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  onSave: (value: any) => void;
+  onSave: (value: string | number) => Promise<void>;
 }
 
-export const PropertyInput: FC<PropertInputProps> = ({
+export const PropertyInput: FC<PropertyInputProps> = ({
   value,
   onCancel,
   type,
   propertyName,
   onSave,
-}) => {
-  const inputType = type === 'string' ? 'text' : 'number';
-
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const [inputValue, setInputValue] = useState<any>(value || '');
+}: PropertyInputProps) => {
+  const [inputValue, setInputValue] = useState<string | number>(value);
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { value: updatedValue } = e.target;
@@ -43,42 +38,22 @@ export const PropertyInput: FC<PropertInputProps> = ({
     setInputValue(updatedValue);
   };
 
-  const handleSave = () => {
-    onSave(inputValue);
+  const handleSave = async () => {
+    await onSave(inputValue);
   };
 
   return (
-    <div className="tw-flex tw-items-center tw-gap-1">
-      <input
-        className="tw-form-inputs tw-form-inputs-padding tw-py-0.5 tw-w-64"
+    <InlineEdit onCancel={onCancel} onSave={handleSave}>
+      <Input
+        className="w-64"
         data-testid="value-input"
         id="value"
         name={propertyName}
         placeholder="value"
-        type={inputType}
+        type={type}
         value={inputValue}
         onChange={onChange}
       />
-      <div className="tw-flex tw-justify-end" data-testid="buttons">
-        <Button
-          className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
-          data-testid="cancel-value"
-          size="custom"
-          theme="primary"
-          variant="contained"
-          onMouseDown={onCancel}>
-          <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="times" />
-        </Button>
-        <Button
-          className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
-          data-testid="save-value"
-          size="custom"
-          theme="primary"
-          variant="contained"
-          onClick={handleSave}>
-          <FontAwesomeIcon className="tw-w-3.5 tw-h-3.5" icon="check" />
-        </Button>
-      </div>
-    </div>
+    </InlineEdit>
   );
 };

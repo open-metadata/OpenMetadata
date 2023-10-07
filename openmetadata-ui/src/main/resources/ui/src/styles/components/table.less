@@ -14,23 +14,25 @@
 .ant-table-wrapper {
   .ant-table-thead {
     tr > th {
-      font-weight: @typography-title-font-weight;
-      color: #5e5c58;
+      font-weight: 500;
+      color: @grey-4;
+      text-transform: uppercase;
+      border-right: none;
     }
-    background: @white;
+    tr > td {
+      color: @text-color;
+    }
+    background: @grey-1;
+  }
+  .ant-table-cell {
+    vertical-align: top;
   }
   .ant-table-bordered {
     table {
-      border: 1px solid #dde3ea;
-
       tbody {
         tr {
           td {
             .drag-icon {
-              width: 12px;
-              height: 12px;
-              margin-right: 2px;
-              display: inline-flex;
               visibility: hidden;
             }
 
@@ -39,7 +41,7 @@
             }
 
             .expand-cell-empty-icon-container {
-              width: 16px;
+              width: 18px;
               height: 16px;
               display: inline-flex;
             }
@@ -52,16 +54,28 @@
         }
       }
     }
-    .ant-table-container > .ant-table-content > table > tbody > tr > td {
-      border-right: none;
-    }
-  }
-}
+    .ant-table-container {
+      border: 1px solid @border-color;
+      border-radius: 6px;
+      overflow: hidden;
 
-.table-shadow {
-  .ant-table-bordered {
-    table {
-      box-shadow: 1px 1px 3px 0px rgba(0, 0, 0, 0.12);
+      .ant-table-content > table {
+        border-top: none;
+        tbody > tr {
+          td {
+            border-right: none;
+          }
+
+          &:last-child td {
+            border-bottom: none;
+          }
+        }
+        thead > tr {
+          th {
+            border-right: none;
+          }
+        }
+      }
     }
   }
 }
@@ -72,4 +86,36 @@
 
 .ant-table.ant-table-small .ant-table-tbody > tr > td:first-child {
   padding-left: 16px;
+}
+
+.drop-over-background {
+  .drop-over-child {
+    td {
+      background: @active-color;
+      border: 2px dashed @primary-color;
+      border-left: transparent;
+
+      &:first-child {
+        border-left: 2px dashed @primary-color;
+      }
+      &:last-child {
+        border-right: 2px dashed @primary-color !important;
+      }
+    }
+  }
+}
+
+.drop-over-table {
+  .ant-table {
+    table {
+      border-collapse: collapse;
+      .ant-table-tbody {
+        border: 2px dashed @primary-color;
+
+        td {
+          background: @active-color;
+        }
+      }
+    }
+  }
 }

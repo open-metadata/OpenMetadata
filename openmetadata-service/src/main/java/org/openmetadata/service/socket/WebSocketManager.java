@@ -1,6 +1,7 @@
 package org.openmetadata.service.socket;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.USER;
 
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -11,11 +12,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 
 @Slf4j
 public class WebSocketManager {
-  private static WebSocketManager INSTANCE;
+  private static WebSocketManager instance;
   @Getter private final EngineIoServer engineIoServer;
   @Getter private final SocketIoServer socketIoServer;
   public static final String FEED_BROADCAST_CHANNEL = "activityFeed";
@@ -85,7 +89,7 @@ public class WebSocketManager {
   }
 
   public static WebSocketManager getInstance() {
-    return INSTANCE;
+    return instance;
   }
 
   public void broadCastMessageToAll(String event, String message) {
@@ -95,6 +99,17 @@ public class WebSocketManager {
   public void sendToOne(UUID receiver, String event, String message) {
     if (activityFeedEndpoints.containsKey(receiver)) {
       activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
+    }
+  }
+
+  public void sendToOne(String username, String event, String message) {
+    try {
+      UUID receiver = Entity.getEntityReferenceByName(USER, username, Include.NON_DELETED).getId();
+      if (activityFeedEndpoints.containsKey(receiver)) {
+        activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.error("User with {} not found", username);
     }
   }
 
@@ -110,7 +125,7 @@ public class WebSocketManager {
     private WebSocketManagerBuilder() {}
 
     public static void build(EngineIoServerOptions eiOptions) {
-      INSTANCE = new WebSocketManager(eiOptions);
+      instance = new WebSocketManager(eiOptions);
     }
   }
 }

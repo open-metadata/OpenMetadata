@@ -30,7 +30,7 @@ public class EventMonitorPublisher extends AbstractEventPublisher {
   }
 
   @Override
-  public void publish(EventResource.ChangeEventList events) throws EventPublisherException {
+  public void publish(EventResource.EventList events) throws EventPublisherException {
     for (ChangeEvent event : events.getData()) {
       String entityType = event.getEntityType();
       if (Entity.INGESTION_PIPELINE.equals(entityType)) {

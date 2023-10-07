@@ -3,36 +3,34 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.DailyActiveUsers;
 
-public class DailyActiveUsersAggregator extends DataInsightAggregatorInterface {
+public abstract class DailyActiveUsersAggregator<A, H, B> implements DataInsightAggregatorInterface {
+  private final A aggregations;
 
-  public DailyActiveUsersAggregator(
-      Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    super(aggregations, dataInsightChartType);
+  public DailyActiveUsersAggregator(A aggregations) {
+    this.aggregations = aggregations;
   }
 
   @Override
-  public DataInsightChartResult process() throws ParseException {
-    List<Object> data = this.aggregate();
-    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
-  }
-
-  @Override
-  List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
+  public List<Object> aggregate() throws ParseException {
+    H histogramBucket = getHistogramBucket(this.aggregations);
     List<Object> data = new ArrayList<>();
-    for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
-      String dateTimeString = timestampBucket.getKeyAsString();
-      Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
-      long activeUsers = timestampBucket.getDocCount();
+    for (B bucket : getBuckets(histogramBucket)) {
+      String dateTimeString = getKeyAsString(bucket);
+      Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
+      long activeUsers = getDocCount(bucket);
 
       data.add(new DailyActiveUsers().withTimestamp(timestamp).withActiveUsers((int) activeUsers));
     }
-
     return data;
   }
+
+  protected abstract H getHistogramBucket(A aggregations);
+
+  protected abstract List<? extends B> getBuckets(H histogramBucket);
+
+  protected abstract String getKeyAsString(B bucket);
+
+  protected abstract Long getDocCount(B bucket);
 }

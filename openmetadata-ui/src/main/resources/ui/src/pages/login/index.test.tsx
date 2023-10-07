@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
+import {
+  findByTestId,
+  findByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import SigninPage from './index';
 
 const mockUseAuthContext = useAuthContext as jest.Mock;
@@ -23,15 +28,18 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('components/authentication/auth-provider/AuthProvider', () => ({
+jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
   useAuthContext: jest.fn(),
 }));
-
 jest.mock(
-  'components/containers/PageContainer',
-  () =>
-    ({ children }: { children: React.ReactNode }) =>
-      <div data-testid="PageContainer">{children}</div>
+  '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
+  () => ({
+    useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
+      customLogoUrlPath: 'https://customlink.source',
+
+      customMonogramUrlPath: 'https://customlink.source',
+    })),
+  })
 );
 
 jest.mock('../../assets/img/login-bg.png', () => 'login-bg.png');
@@ -76,26 +84,27 @@ describe('Test SigninPage Component', () => {
     ['custom-oidc', 'Sign in with sso'],
     ['aws-cognito', 'Sign in with aws cognito'],
     ['unknown-provider', 'SSO Provider unknown-provider is not supported'],
-  ])(
-    'Sign in button should render correctly for %s',
-    async (provider, buttonText) => {
-      mockUseAuthContext.mockReturnValue({
-        isAuthDisabled: false,
-        authConfig: { provider },
-        onLoginHandler: jest.fn(),
-        onLogoutHandler: jest.fn(),
-      });
-      const { container } = render(<SigninPage />, {
-        wrapper: MemoryRouter,
-      });
-      const signinButton = await findByText(
-        container,
-        new RegExp(buttonText, 'i')
-      );
+  ])('Sign in button should render correctly for %s', async (provider) => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider },
+      onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
+    });
+    const { container } = render(<SigninPage />, {
+      wrapper: MemoryRouter,
+    });
+    const isUnknow = provider === 'unknown-provider';
 
-      expect(signinButton).toBeInTheDocument();
-    }
-  );
+    const signinButton = await findByText(
+      container,
+      isUnknow
+        ? /message.sso-provider-not-supported/i
+        : /label.sign-in-with-sso/i
+    );
+
+    expect(signinButton).toBeInTheDocument();
+  });
 
   it('Sign in button should render correctly with custom provider name', async () => {
     mockUseAuthContext.mockReturnValue({
@@ -107,11 +116,26 @@ describe('Test SigninPage Component', () => {
     const { container } = render(<SigninPage />, {
       wrapper: MemoryRouter,
     });
-    const signinButton = await findByText(
-      container,
-      /sign in with custom oidc/i
-    );
+    const signinButton = await findByText(container, /label.sign-in-with-sso/i);
 
     expect(signinButton).toBeInTheDocument();
+  });
+
+  it('Page should render the correct logo image', async () => {
+    mockUseAuthContext.mockReturnValue({
+      isAuthDisabled: false,
+      authConfig: { provider: 'custom-oidc', providerName: 'Custom OIDC' },
+      onLoginHandler: jest.fn(),
+      onLogoutHandler: jest.fn(),
+    });
+    render(<SigninPage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const brandLogoImage = await screen.findByTestId('brand-logo-image');
+
+    expect(brandLogoImage).toBeInTheDocument();
+
+    expect(brandLogoImage).toHaveAttribute('src', 'https://customlink.source');
   });
 });

@@ -12,9 +12,8 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { ExplorePageTabs } from '../../../enums/Explore.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
 import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
@@ -48,6 +47,15 @@ jest.mock('./DashboardSummary/DashboardSummary.component', () =>
     ))
 );
 
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
+  getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+}));
+jest.mock('../../../utils/StringsUtils', () => ({
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+  stringToHTML: jest.fn(),
+}));
+
 jest.mock('./PipelineSummary/PipelineSummary.component', () =>
   jest
     .fn()
@@ -66,126 +74,116 @@ jest.mock('./MlModelSummary/MlModelSummary.component', () =>
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
+  Link: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+}));
+
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermission: jest.fn().mockReturnValue({
+      ViewBasic: true,
+      ViewAll: true,
+    }),
+  }),
 }));
 
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: mockTableEntityDetails,
-          entityType: ExplorePageTabs.TABLES,
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
-
-    const tableSummary = screen.getByTestId('TableSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
-
-    expect(tableSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
     await act(async () => {
-      userEvent.click(closeIcon);
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
     });
 
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
+    const tableSummary = screen.getByTestId('TableSummary');
+
+    expect(tableSummary).toBeInTheDocument();
   });
 
   it('TopicSummary should render for topics data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: mockTopicEntityDetails,
-          entityType: ExplorePageTabs.TOPICS,
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
-
-    const topicSummary = screen.getByTestId('TopicSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
-
-    expect(topicSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
     await act(async () => {
-      userEvent.click(closeIcon);
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTopicEntityDetails,
+              entityType: EntityType.TOPIC,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
     });
 
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
+    const topicSummary = screen.getByTestId('TopicSummary');
+
+    expect(topicSummary).toBeInTheDocument();
   });
 
   it('DashboardSummary should render for dashboard data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: mockDashboardEntityDetails,
-          entityType: ExplorePageTabs.DASHBOARDS,
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
-
-    const dashboardSummary = screen.getByTestId('DashboardSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
-
-    expect(dashboardSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
     await act(async () => {
-      userEvent.click(closeIcon);
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockDashboardEntityDetails,
+              entityType: EntityType.DASHBOARD,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
     });
 
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
+    const dashboardSummary = screen.getByTestId('DashboardSummary');
+
+    expect(dashboardSummary).toBeInTheDocument();
   });
 
   it('PipelineSummary should render for pipeline data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: mockPipelineEntityDetails,
-          entityType: ExplorePageTabs.PIPELINES,
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
-
-    const pipelineSummary = screen.getByTestId('PipelineSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
-
-    expect(pipelineSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
     await act(async () => {
-      userEvent.click(closeIcon);
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockPipelineEntityDetails,
+              entityType: EntityType.PIPELINE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
     });
 
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
+    const pipelineSummary = screen.getByTestId('PipelineSummary');
+
+    expect(pipelineSummary).toBeInTheDocument();
   });
 
   it('MlModelSummary should render for mlModel data', async () => {
-    render(
-      <EntitySummaryPanel
-        entityDetails={{
-          details: mockMlModelEntityDetails,
-          entityType: ExplorePageTabs.MLMODELS,
-        }}
-        handleClosePanel={mockHandleClosePanel}
-      />
-    );
-
-    const mlModelSummary = screen.getByTestId('MlModelSummary');
-    const closeIcon = screen.getByTestId('summary-panel-close-icon');
-
-    expect(mlModelSummary).toBeInTheDocument();
-    expect(closeIcon).toBeInTheDocument();
-
     await act(async () => {
-      userEvent.click(closeIcon);
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockMlModelEntityDetails,
+              entityType: EntityType.MLMODEL,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
     });
 
-    expect(mockHandleClosePanel).toHaveBeenCalledTimes(1);
+    const mlModelSummary = screen.getByTestId('MlModelSummary');
+
+    expect(mlModelSummary).toBeInTheDocument();
   });
 });

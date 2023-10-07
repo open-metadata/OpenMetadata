@@ -17,9 +17,7 @@ import {
   getByTestId,
   queryByText,
   render,
-  screen,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { LoadingState } from 'Models';
 import React from 'react';
 import {
@@ -91,11 +89,11 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <a>{children}</a>),
 }));
 
-jest.mock('components/GlossaryDetails/GlossaryDetails.component', () => {
+jest.mock('./GlossaryDetails/GlossaryDetails.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Details component</>);
 });
 
-jest.mock('components/GlossaryTerms/GlossaryTermsV1.component', () => {
+jest.mock('./GlossaryTerms/GlossaryTermsV1.component', () => {
   return jest.fn().mockReturnValue(<>Glossary-Term component</>);
 });
 
@@ -113,17 +111,10 @@ jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<span>U</span>)
 );
-jest.mock('../../utils/TimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('Jan 15, 1970, 12:26 PM'),
-}));
 
-jest.mock('./ExportGlossaryModal/ExportGlossaryModal', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="export-glossary">ExportGlossaryModal</div>
-    )
-);
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+});
 
 jest.mock('./ImportGlossary/ImportGlossary', () =>
   jest
@@ -135,23 +126,15 @@ const mockProps: GlossaryV1Props = {
   deleteStatus: 'initial' as LoadingState,
   selectedData: mockedGlossaries[0],
   isGlossaryActive: true,
-  handleGlossaryTermUpdate: jest.fn(),
+  onGlossaryTermUpdate: jest.fn(),
   updateGlossary: jest.fn(),
   onGlossaryDelete: jest.fn(),
   onGlossaryTermDelete: jest.fn(),
+  isVersionsView: false,
+  isSummaryPanelOpen: false,
 };
 
 describe('Test Glossary component', () => {
-  it('Should render Glossary header', async () => {
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const header = getByTestId(container, 'header');
-
-      expect(header).toBeInTheDocument();
-    });
-  });
-
   it('Should render Glossary-details', async () => {
     const { container } = render(<GlossaryV1 {...mockProps} />);
 
@@ -201,44 +184,6 @@ describe('Test Glossary component', () => {
       const importGlossary = getByTestId(container, 'import-glossary');
 
       expect(importGlossary).toBeInTheDocument();
-    });
-  });
-
-  it('Should render export glossary component', async () => {
-    params = { ...params, action: 'export' };
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const exportGlossary = getByTestId(container, 'export-glossary');
-
-      expect(exportGlossary).toBeInTheDocument();
-    });
-  });
-
-  it('Should render export and import option', async () => {
-    await act(async () => {
-      const { container } = render(<GlossaryV1 {...mockProps} />);
-
-      const manageButton = getByTestId(container, 'manage-button');
-
-      expect(manageButton).toBeInTheDocument();
-
-      await act(async () => {
-        userEvent.click(manageButton);
-      });
-
-      const exportOption = await screen.getByTestId('export-button');
-
-      const importOption = await screen.getByTestId('import-button');
-
-      expect(exportOption).toBeInTheDocument();
-      expect(importOption).toBeInTheDocument();
-
-      await act(async () => {
-        userEvent.click(importOption);
-      });
-
-      expect(mockPush).toHaveBeenCalled();
     });
   });
 });

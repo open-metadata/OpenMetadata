@@ -26,7 +26,7 @@ def create_and_bind_session(engine: Engine) -> Session:
     return session()
 
 
-def create_and_bind_thread_safe_session(engine: Engine) -> Session:
+def create_and_bind_thread_safe_session(engine: Engine) -> scoped_session:
     """
     Given an engine, create a session bound
     to it to make our operations.

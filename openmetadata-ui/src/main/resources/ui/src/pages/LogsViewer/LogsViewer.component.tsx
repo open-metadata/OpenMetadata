@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { CopyToClipboardButton } from 'components/buttons/CopyToClipboardButton/CopyToClipboardButton';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { IngestionRecentRuns } from 'components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import Loader from 'components/Loader/Loader';
 import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
 import React, {
   Fragment,
@@ -28,14 +24,20 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { useParams } from 'react-router-dom';
-import {
-  getIngestionPipelineByName,
-  getIngestionPipelineLogById,
-} from 'rest/ingestionPipelineAPI';
+import { CopyToClipboardButton } from '../../components/buttons/CopyToClipboardButton/CopyToClipboardButton';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { IngestionRecentRuns } from '../../components/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
+import Loader from '../../components/Loader/Loader';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
+import {
+  getIngestionPipelineByName,
+  getIngestionPipelineLogById,
+} from '../../rest/ingestionPipelineAPI';
 import { getLogBreadCrumbs } from '../../utils/LogsViewer.utils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import LogViewerSkeleton from './LogsViewer-skeleton.component';
 import { LogViewerParams } from './LogsViewer.interfaces';
@@ -95,6 +97,11 @@ const LogsViewer = () => {
           break;
         case PipelineType.DataInsight:
           setLogs(logs.concat(res.data?.data_insight_task || ''));
+
+          break;
+
+        case PipelineType.ElasticSearchReindex:
+          setLogs(logs.concat(res.data?.elasticsearch_reindex_task || ''));
 
           break;
 
@@ -215,16 +222,18 @@ const LogsViewer = () => {
     };
   }, [ingestionDetails]);
 
-  return isLoading ? (
-    <Loader />
-  ) : (
-    <div className="m-xs ">
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.log-viewer')}>
       <Space align="start" className="w-full m-md m-t-xs" direction="vertical">
         <Space align="center">
           <TitleBreadcrumb
             titleLinks={getLogBreadCrumbs(
               logEntityType,
-              ingestionName,
+              getDecodedFqn(ingestionName),
               ingestionDetails
             )}
           />
@@ -236,77 +245,76 @@ const LogsViewer = () => {
         </Space>
       </Space>
 
-      <Card className="h-full p-0 log-card">
-        {!isEmpty(logs) ? (
-          <Row>
-            <Col className="p-md" span={18}>
-              <Row className="relative" gutter={[16, 16]}>
-                <Col span={24}>
-                  <Row justify="end">
-                    <Col>
-                      <Button
-                        ghost
-                        data-testid="jump-to-end-button"
-                        type="primary"
-                        onClick={handleJumpToEnd}>
-                        {t('label.jump-to-end')}
-                      </Button>
-                    </Col>
-                    <Col>
-                      <CopyToClipboardButton copyText={logs} />
-                    </Col>
-                  </Row>
-                </Col>
-                <Col
-                  className="h-min-80 lazy-log-container"
-                  data-testid="lazy-log"
-                  span={24}>
-                  <LazyLog
-                    caseInsensitive
-                    enableSearch
-                    selectableLines
-                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
-                    text={logs}
-                  />
-                </Col>
-              </Row>
-            </Col>
-            <Col span={6}>
-              <Card className="h-full" data-testid="summary-card">
-                <Space className="p-md w-full" direction="vertical">
-                  <Typography.Title level={5}>
-                    {t('label.summary')}
-                  </Typography.Title>
+      {!isEmpty(logs) ? (
+        <Row className="border-top">
+          <Col className="p-md border-right" span={18}>
+            <Row className="relative" gutter={[16, 16]}>
+              <Col span={24}>
+                <Row justify="end">
+                  <Col>
+                    <Button
+                      ghost
+                      data-testid="jump-to-end-button"
+                      type="primary"
+                      onClick={handleJumpToEnd}>
+                      {t('label.jump-to-end')}
+                    </Button>
+                  </Col>
+                  <Col>
+                    <CopyToClipboardButton copyText={logs} />
+                  </Col>
+                </Row>
+              </Col>
+              <Col
+                className="h-min-80 lazy-log-container"
+                data-testid="lazy-log"
+                span={24}>
+                <LazyLog
+                  caseInsensitive
+                  enableSearch
+                  selectableLines
+                  extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                  text={logs}
+                />
+              </Col>
+            </Row>
+          </Col>
+          <Col span={6}>
+            <Space
+              className="p-md w-full"
+              data-testid="summary-card"
+              direction="vertical">
+              <Typography.Title level={5}>
+                {t('label.summary')}
+              </Typography.Title>
 
-                  <div>
-                    <Typography.Text type="secondary">
-                      {t('label.basic-configuration')}
-                    </Typography.Text>
+              <div>
+                <Typography.Text type="secondary">
+                  {t('label.basic-configuration')}
+                </Typography.Text>
 
-                    <Row className="m-t-xs" gutter={[8, 8]}>
-                      {Object.entries(logSummaries).map(([key, value]) => {
-                        return (
-                          <Fragment key={key}>
-                            <Col className="summary-key" span={12}>
-                              {key}
-                            </Col>
-                            <Col className="flex" span={12}>
-                              {value}
-                            </Col>
-                          </Fragment>
-                        );
-                      })}
-                    </Row>
-                  </div>
-                </Space>
-              </Card>
-            </Col>
-          </Row>
-        ) : (
-          <LogViewerSkeleton />
-        )}
-      </Card>
-    </div>
+                <Row className="m-t-xs" gutter={[8, 8]}>
+                  {Object.entries(logSummaries).map(([key, value]) => {
+                    return (
+                      <Fragment key={key}>
+                        <Col className="summary-key" span={12}>
+                          {key}
+                        </Col>
+                        <Col className="flex" span={12}>
+                          {value}
+                        </Col>
+                      </Fragment>
+                    );
+                  })}
+                </Row>
+              </div>
+            </Space>
+          </Col>
+        </Row>
+      ) : (
+        <LogViewerSkeleton />
+      )}
+    </PageLayoutV1>
   );
 };
 

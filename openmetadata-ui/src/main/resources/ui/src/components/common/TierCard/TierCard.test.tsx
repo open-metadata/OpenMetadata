@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { findByTestId, getByTestId, render } from '@testing-library/react';
+import {
+  findByTestId,
+  getByTestId,
+  getByText,
+  render,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import TierCard from './TierCard';
 
@@ -31,12 +38,19 @@ const mockTierData = [
   },
 ];
 
-jest.mock('rest/tagAPI', () => ({
-  getTags: jest.fn().mockResolvedValue({ data: mockTierData }),
-}));
+const mockGetTags = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({ data: mockTierData }));
+const mockOnUpdate = jest.fn();
+const mockShowErrorToast = jest.fn();
+const mockProps = {
+  currentTier: 'currentTier',
+  updateTier: mockOnUpdate,
+  children: <div>Child</div>,
+};
 
-jest.mock('../../cardlist/CardListItem/CardWithListItem', () => ({
-  CardListItem: jest.fn().mockReturnValue(<div>CardListItem</div>),
+jest.mock('../../../rest/tagAPI', () => ({
+  getTags: jest.fn().mockImplementation(() => mockGetTags()),
 }));
 
 jest.mock('../../Loader/Loader', () => {
@@ -44,7 +58,7 @@ jest.mock('../../Loader/Loader', () => {
 });
 
 jest.mock('../../../utils/ToastUtils', () => {
-  return jest.fn().mockReturnValue(<div>showErrorToast</div>);
+  return jest.fn().mockImplementation(() => mockShowErrorToast());
 });
 
 // Mock Antd components
@@ -53,51 +67,58 @@ jest.mock('antd', () => ({
 
   Popover: jest
     .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="tier-card-container">{children}</div>
-    )),
+    .mockImplementation(({ content, onOpenChange, children }) => {
+      onOpenChange(true);
+
+      return (
+        <>
+          {content}
+          {children}
+        </>
+      );
+    }),
 }));
 
-const MockOnUpdate = jest.fn();
-const MockOnRemove = jest.fn();
+jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<div>RichTextEditorPreviewer</div>);
+});
 
 describe('Test TierCard Component', () => {
-  it('Component should render', () => {
-    const { container } = render(
-      <TierCard
-        hideTier
-        currentTier=""
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
-
-    expect(getByTestId(container, 'tier-card-container')).toBeInTheDocument();
-  });
-
   it('Component should have card', async () => {
-    const { container } = render(
-      <TierCard
-        currentTier=""
-        hideTier={false}
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
+    const { container } = render(<TierCard {...mockProps} />);
+
+    await expect(getByText(container, 'Loader')).toBeInTheDocument();
+
+    expect(mockGetTags).toHaveBeenCalled();
 
     expect(await findByTestId(container, 'cards')).toBeInTheDocument();
   });
 
-  it('Card should have Clear button if item selected', async () => {
-    const { container } = render(
-      <TierCard
-        currentTier="Tier.Tier1"
-        hideTier={false}
-        removeTier={MockOnRemove}
-        updateTier={MockOnUpdate}
-      />
-    );
+  it('should call the mockOnUpdate when click on radio button', async () => {
+    const { container } = render(<TierCard {...mockProps} />);
 
-    expect(await findByTestId(container, 'remove-tier')).toBeInTheDocument();
+    await waitForElementToBeRemoved(() => getByText(container, 'Loader'));
+
+    const radioButton = getByTestId(container, 'radio-btn-Tier1');
+
+    expect(radioButton).toBeInTheDocument();
+
+    userEvent.click(radioButton);
+
+    expect(mockOnUpdate).toHaveBeenCalled();
+  });
+
+  it('should call the mockOnUpdate when click on Clear button', async () => {
+    const { container } = render(<TierCard {...mockProps} />);
+
+    await waitForElementToBeRemoved(() => getByText(container, 'Loader'));
+
+    const clearTier = getByTestId(container, 'clear-tier');
+
+    expect(clearTier).toBeInTheDocument();
+
+    userEvent.click(clearTier);
+
+    expect(mockOnUpdate).toHaveBeenCalled();
   });
 });

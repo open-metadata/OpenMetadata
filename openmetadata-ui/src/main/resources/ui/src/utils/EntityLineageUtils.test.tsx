@@ -11,18 +11,27 @@
  *  limitations under the License.
  */
 
+import { Edge } from 'reactflow';
 import {
   CustomEdgeData,
   EdgeTypeEnum,
   SelectedEdge,
-} from 'components/EntityLineage/EntityLineage.interface';
-import { Edge } from 'reactflow';
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
+import {
+  getDashboardDetailsPath,
+  getMlModelPath,
+  getPipelineDetailsPath,
+  getTableTabPath,
+  getTopicDetailsPath,
+} from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { LineageDetails } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityReference';
 import {
   COLUMN_LINEAGE_DETAILS,
   EDGE_TO_BE_REMOVED,
+  MOCK_CHILD_MAP,
   MOCK_COLUMN_LINEAGE_EDGE,
   MOCK_LINEAGE_DATA,
   MOCK_NODES_AND_EDGES,
@@ -44,8 +53,11 @@ import {
   getAllTracedColumnEdge,
   getAllTracedEdges,
   getAllTracedNodes,
+  getChildMap,
   getClassifiedEdge,
+  getEdgeStyle,
   getEdgeType,
+  getEntityLineagePath,
   getRemovedNodeData,
   getUpdatedEdge,
   getUpdatedEdgeWithPipeline,
@@ -298,5 +310,45 @@ describe('Test EntityLineageUtils utility', () => {
     });
     expect(isColumnTracedTruthy).toBeTruthy();
     expect(isColumnTracedFalsy).toBeFalsy();
+  });
+
+  it('should return the correct lineage path for the given entity type and FQN', () => {
+    expect(getEntityLineagePath(EntityType.TABLE, 'myTable')).toEqual(
+      getTableTabPath('myTable', 'lineage')
+    );
+    expect(getEntityLineagePath(EntityType.TOPIC, 'myTopic')).toEqual(
+      getTopicDetailsPath('myTopic', 'lineage')
+    );
+    expect(getEntityLineagePath(EntityType.DASHBOARD, 'myDashboard')).toEqual(
+      getDashboardDetailsPath('myDashboard', 'lineage')
+    );
+    expect(getEntityLineagePath(EntityType.PIPELINE, 'myPipeline')).toEqual(
+      getPipelineDetailsPath('myPipeline', 'lineage')
+    );
+    expect(getEntityLineagePath(EntityType.MLMODEL, 'myModel')).toEqual(
+      getMlModelPath('myModel', 'lineage')
+    );
+  });
+
+  it('getChildMap should return valid map object', () => {
+    expect(getChildMap(MOCK_LINEAGE_DATA)).toEqual(MOCK_CHILD_MAP);
+  });
+
+  it('getEdgeStyle should returns the expected edge style for a value', () => {
+    const expectedStyle = {
+      opacity: 1,
+      strokeWidth: 2,
+      stroke: '#2196f3',
+    };
+
+    expect(getEdgeStyle(true)).toEqual(expectedStyle);
+
+    const expectedFalseStyle = {
+      opacity: 0.25,
+      strokeWidth: 1,
+      stroke: undefined,
+    };
+
+    expect(getEdgeStyle(false)).toEqual(expectedFalseStyle);
   });
 });

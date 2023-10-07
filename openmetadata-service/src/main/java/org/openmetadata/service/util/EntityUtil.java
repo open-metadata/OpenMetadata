@@ -17,44 +17,37 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
 import lombok.Getter;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Hex;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Field;
-import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.MlFeature;
-import org.openmetadata.schema.type.MlHyperParameter;
-import org.openmetadata.schema.type.TableConstraint;
-import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.Task;
-import org.openmetadata.schema.type.UsageDetails;
-import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -70,8 +63,6 @@ public final class EntityUtil {
   //
   // Comparators used for sorting list based on the given type
   //
-
-  // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
   public static final Comparator<EntityReference> compareEntityReference =
       Comparator.comparing(EntityReference::getName);
   public static final Comparator<EntityVersionPair> compareVersion =
@@ -93,7 +84,7 @@ public final class EntityUtil {
       (ref1, ref2) -> ref1.getId().equals(ref2.getId()) && ref1.getType().equals(ref2.getType());
 
   public static final BiPredicate<TagLabel, TagLabel> tagLabelMatch =
-      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN());
+      (tag1, tag2) -> tag1.getTagFQN().equals(tag2.getTagFQN()) && tag1.getSource().equals(tag2.getSource());
 
   public static final BiPredicate<Task, Task> taskMatch = (task1, task2) -> task1.getName().equals(task2.getName());
 
@@ -111,7 +102,9 @@ public final class EntityUtil {
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
-              && constraint1.getColumns().equals(constraint2.getColumns());
+              && constraint1.getColumns().equals(constraint2.getColumns())
+              && ((constraint1.getReferredColumns() == null && constraint2.getReferredColumns() == null)
+                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
@@ -119,6 +112,7 @@ public final class EntityUtil {
   public static final BiPredicate<GlossaryTerm, GlossaryTerm> glossaryTermMatch =
       (filter1, filter2) -> filter1.getFullyQualifiedName().equals(filter2.getFullyQualifiedName());
 
+  public static final BiPredicate<ContainerFileFormat, ContainerFileFormat> containerFileFormatMatch = Enum::equals;
   public static final BiPredicate<TermReference, TermReference> termReferenceMatch =
       (ref1, ref2) -> ref1.getName().equals(ref2.getName()) && ref1.getEndpoint().equals(ref2.getEndpoint());
 
@@ -133,25 +127,30 @@ public final class EntityUtil {
       (field1, field2) ->
           field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
+  public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch =
+      (field1, field2) ->
+          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException, IOException {
+  public static <T> T validate(Object id, String json, Class<T> clz) throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), identity));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id.toString()));
     }
     return entity;
   }
 
   // TODO delete
-  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
+  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
-        EntityReference ref2 = Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL);
+        EntityReference ref2 = Entity.getEntityReference(ref, ALL);
         EntityUtil.copy(ref2, ref);
       }
       list.sort(compareEntityReference);
@@ -160,8 +159,8 @@ public final class EntityUtil {
   }
 
   // TODO delete
-  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
-    if (list == null) {
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
+    if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
     List<EntityReference> refs = new ArrayList<>();
@@ -172,18 +171,7 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferences(
-      List<EntityRelationshipRecord> records, @NonNull String entityType) throws IOException {
-    List<EntityReference> refs = new ArrayList<>(records.size());
-    for (EntityRelationshipRecord id : records) {
-      refs.add(Entity.getEntityReferenceById(entityType, id.getId(), ALL));
-    }
-    refs.sort(compareEntityReference);
-    return refs;
-  }
-
-  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType)
-      throws IOException {
+  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType) {
     List<EntityReference> refs = toEntityReferences(list, entityType);
     return populateEntityReferences(refs);
   }
@@ -191,9 +179,6 @@ public final class EntityUtil {
   public static EntityReference validateEntityLink(EntityLink entityLink) {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
-
-    // TODO: add more validation for field name and array fields
-
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
   }
 
@@ -213,15 +198,15 @@ public final class EntityUtil {
     return details;
   }
 
-  /** Merge derivedTags into tags, if it already does not exist in tags */
-  public static void mergeTags(List<TagLabel> tags, List<TagLabel> derivedTags) {
-    if (nullOrEmpty(derivedTags)) {
+  /** Merge two sets of tags */
+  public static void mergeTags(List<TagLabel> mergeTo, List<TagLabel> mergeFrom) {
+    if (nullOrEmpty(mergeFrom)) {
       return;
     }
-    for (TagLabel derivedTag : derivedTags) {
-      TagLabel tag = tags.stream().filter(t -> tagLabelMatch.test(t, derivedTag)).findAny().orElse(null);
-      if (tag == null) { // Derived tag does not exist in the list. Add it.
-        tags.add(derivedTag);
+    for (TagLabel fromTag : mergeFrom) {
+      TagLabel tag = mergeTo.stream().filter(t -> tagLabelMatch.test(t, fromTag)).findAny().orElse(null);
+      if (tag == null) { // The tag does not exist in the mergeTo list. Add it.
+        mergeTo.add(fromTag);
       }
     }
   }
@@ -230,56 +215,59 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<EntityReference> toEntityReferences(List<T> entities) {
+  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
+    List<String> entityReferences = new ArrayList<>();
     for (T entity : entities) {
-      entityReferences.add(entity.getEntityReference());
+      entityReferences.add(entity.getFullyQualifiedName());
     }
     return entityReferences;
   }
 
-  public static List<UUID> toIDs(List<String> list) {
-    List<UUID> ids = new ArrayList<>(list.size());
-    list.forEach(entry -> ids.add(UUID.fromString(entry)));
-    return ids;
+  public static List<UUID> strToIds(List<String> list) {
+    return list.stream().map(UUID::fromString).collect(Collectors.toList());
   }
 
   public static List<EntityReference> toEntityReferences(List<UUID> ids, String entityType) {
     if (ids == null) {
       return null;
     }
-    List<EntityReference> entityReferences = new ArrayList<>();
-    for (UUID id : ids) {
-      entityReferences.add(new EntityReference().withId(id).withType(entityType));
-    }
-    return entityReferences;
+    return ids.stream().map(id -> new EntityReference().withId(id).withType(entityType)).collect(Collectors.toList());
   }
 
-  public static List<UUID> toIds(List<EntityReference> refs) {
+  public static List<UUID> refToIds(List<EntityReference> refs) {
     if (refs == null) {
       return null;
     }
-    List<UUID> ids = new ArrayList<>();
-    for (EntityReference ref : refs) {
-      ids.add(ref.getId());
-    }
-    return ids;
+    return refs.stream().map(EntityReference::getId).collect(Collectors.toList());
   }
 
-  @RequiredArgsConstructor
-  public static class Fields {
-    public static final Fields EMPTY_FIELDS = new Fields(null, null);
-    @Getter private final List<String> fieldList;
+  public static <T> boolean isDescriptionRequired(Class<T> clz) {
+    // Returns true if description field in entity is required
+    try {
+      java.lang.reflect.Field description = clz.getDeclaredField(Entity.FIELD_DESCRIPTION);
+      return description.getAnnotation(NotNull.class) != null;
+    } catch (NoSuchFieldException e) {
+      return false;
+    }
+  }
 
-    public Fields(List<String> allowedFields, String fieldsParam) {
+  public static class Fields {
+    public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
+    @Getter private final Set<String> fieldList;
+
+    public Fields(Set<String> fieldList) {
+      this.fieldList = fieldList;
+    }
+
+    public Fields(Set<String> allowedFields, String fieldsParam) {
       if (nullOrEmpty(fieldsParam)) {
-        fieldList = new ArrayList<>();
+        fieldList = new HashSet<>();
         return;
       }
-      fieldList = Arrays.asList(fieldsParam.replace(" ", "").split(","));
+      fieldList = new HashSet<>(Arrays.asList(fieldsParam.replace(" ", "").split(",")));
       for (String field : fieldList) {
         if (!allowedFields.contains(field)) {
           throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
@@ -287,13 +275,29 @@ public final class EntityUtil {
       }
     }
 
+    public Fields(Set<String> allowedFields, Set<String> fieldsParam) {
+      if (CommonUtil.nullOrEmpty(fieldsParam)) {
+        fieldList = new HashSet<>();
+        return;
+      }
+      for (String field : fieldsParam) {
+        if (!allowedFields.contains(field)) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+        }
+      }
+      fieldList = new HashSet<>(fieldsParam);
+    }
+
+    public void addField(Set<String> allowedFields, String field) {
+      if (!allowedFields.contains(field)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
+      }
+      fieldList.add(field);
+    }
+
     @Override
     public String toString() {
       return fieldList.toString();
-    }
-
-    public void add(Fields fields) {
-      fieldList.addAll(fields.fieldList);
     }
 
     public boolean contains(String field) {
@@ -328,10 +332,9 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static String getColumnField(Table table, Column column, String columnField) {
+  public static String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
-    String localColumnName =
-        EntityUtil.getLocalColumnName(table.getFullyQualifiedName(), column.getFullyQualifiedName());
+    String localColumnName = column.getName();
     return columnField == null
         ? FullyQualifiedName.build("columns", localColumnName)
         : FullyQualifiedName.build("columns", localColumnName, columnField);
@@ -344,6 +347,15 @@ public final class EntityUtil {
     return fieldName == null
         ? FullyQualifiedName.build("schemaFields", localFieldName)
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+  /** Return searchIndex field name of format "fields".fieldName.fieldName */
+  public static String getSearchIndexField(SearchIndex searchIndex, SearchIndexField field, String fieldName) {
+    // Remove topic FQN from schemaField FQN to get the local name
+    String localFieldName =
+        EntityUtil.getLocalColumnName(searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("fields", localFieldName)
+        : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
@@ -400,6 +412,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
+        .withDescription(term.getDescription())
+        .withStyle(term.getStyle())
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
@@ -407,9 +423,13 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle())
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
-        .withSource(TagSource.TAG);
+        .withSource(TagSource.CLASSIFICATION);
   }
 
   public static String addField(String fields, String newField) {
@@ -430,7 +450,7 @@ public final class EntityUtil {
     change.getFieldsUpdated().add(fieldChange);
   }
 
-  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
+  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
     return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
   }
 
@@ -446,8 +466,34 @@ public final class EntityUtil {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
+  public static List<String> getFqns(List<EntityReference> refs) {
+    if (nullOrEmpty(refs)) {
+      return null;
+    }
+    List<String> fqns = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      fqns.add(getFqn(ref));
+    }
+    return fqns;
+  }
+
   public static EntityReference getEntityReference(EntityInterface entity) {
     return entity == null ? null : entity.getEntityReference();
+  }
+
+  public static EntityReference getEntityReference(String entityType, String fqn) {
+    return fqn == null ? null : new EntityReference().withType(entityType).withFullyQualifiedName(fqn);
+  }
+
+  public static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+    if (nullOrEmpty(fqns)) {
+      return null;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (String fqn : fqns) {
+      references.add(getEntityReference(entityType, fqn));
+    }
+    return references;
   }
 
   public static Column getColumn(Table table, String columnName) {
@@ -458,5 +504,57 @@ public final class EntityUtil {
     // Note - before calling this method - fullyQualifiedName should set up for the tags
     // Sort tags by tag hierarchy. Tags with parents null come first, followed by tags with
     tags.sort(Comparator.comparing(Tag::getFullyQualifiedName));
+  }
+
+  /**
+   * This method is used to populate the entity with all details of EntityReference Users/Tools can send minimum details
+   * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
+   * fully populated object such that ElasticSearch index has all the details.
+   */
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include) {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> refs = new ArrayList<>();
+    for (EntityReference entityReference : entities) {
+      EntityReference entityRef = Entity.getEntityReference(entityReference, include);
+      refs.add(entityRef);
+    }
+    return refs;
+  }
+
+  public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
+    if (profileSampleType.equals("PERCENTAGE") && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
+      throw new IllegalArgumentException("Profile sample value must be between 0 and 100");
+    }
+  }
+
+  @SneakyThrows
+  public static String hash(String input) {
+    if (input != null) {
+      byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
+      return Hex.encodeHexString(checksum);
+    }
+    return null;
+  }
+
+  public static boolean isDescriptionTask(TaskType taskType) {
+    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
+  }
+
+  public static boolean isTagTask(TaskType taskType) {
+    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
+  }
+
+  public static boolean isApprovalTask(TaskType taskType) {
+    return taskType == TaskType.RequestApproval;
+  }
+
+  public static Column findColumn(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(c -> c.getName().equals(columnName))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 }

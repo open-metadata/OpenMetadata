@@ -14,12 +14,11 @@ Test Bigquery connector with CLI
 """
 from typing import List
 
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base_common import CliCommonDB
 
 
 class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
         CREATE TABLE `open-metadata-beta.exclude_me`.orders (
             id int,
@@ -52,6 +51,12 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def delete_table_and_view(self) -> None:
         SQACommonMethods.delete_table_and_view(self)
 
+    def delete_table_rows(self) -> None:
+        SQACommonMethods.run_delete_queries(self)
+
+    def update_table_row(self) -> None:
+        SQACommonMethods.run_update_queries(self)
+
     @staticmethod
     def get_connector_name() -> str:
         return "bigquery"
@@ -63,21 +68,28 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def inserted_rows_count(self) -> int:
         return len(self.insert_data_queries)
 
+    def view_column_lineage_count(self) -> int:
+        return 2
+
+    @staticmethod
+    def _expected_profiled_tables() -> int:
+        return 2
+
     @staticmethod
     def fqn_created_table() -> str:
         return "local_bigquery.open-metadata-beta.exclude_me.orders"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["testschema"]
+        return ["exclude_me"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
-        return ["testtable"]
+        return ["exclude_table"]
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return ["exclude_table"]
+        return ["testtable"]
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
@@ -98,3 +110,19 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 1
+
+    @staticmethod
+    def delete_queries() -> List[str]:
+        return [
+            """
+            DELETE FROM `open-metadata-beta.exclude_me`.orders WHERE id IN (1)
+            """,
+        ]
+
+    @staticmethod
+    def update_queries() -> List[str]:
+        return [
+            """
+            UPDATE `open-metadata-beta.exclude_me`.orders SET order_name = 'NINTENDO' WHERE id = 2
+            """,
+        ]

@@ -21,11 +21,11 @@ helpFunction()
    printf "\t-s Skip maven build: [true, false]. Default [false]\n"
    printf "\t-x Open JVM debug port on 5005: [true, false]. Default [false]\n"
    printf "\t-h For usage help\n"
-   printf "\t-r For Cleaning DB Volumes"
+   printf "\t-r For Cleaning DB Volumes. [true, false]. Default [true]\n"
    exit 1 # Exit script after printing help
 }
 
-while getopts "m:d:s:x:h" opt
+while getopts "m:d:s:x:r:h" opt
 do
    case "$opt" in
       m ) mode="$OPTARG" ;;
@@ -43,10 +43,15 @@ database="${database:=mysql}"
 skipMaven="${skipMaven:=false}"
 debugOM="${debugOM:=false}"
 authorizationToken="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+cleanDbVolumes="${cleanDbVolumes:=true}"
 
-echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven]"
+echo "Running local docker using mode [$mode] database [$database] and skipping maven build [$skipMaven] with cleanDB as [$cleanDbVolumes]"
 
 cd ../
+
+echo "Stopping any previous Local Docker Containers"
+docker compose -f docker/development/docker-compose-postgres.yml down
+docker compose -f docker/development/docker-compose.yml down
 
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
@@ -72,9 +77,9 @@ fi
 
 if [[ $cleanDbVolumes == "true" ]]
 then
-  if [[ -d "/docker-volume" ]]
+  if [[ -d "$PWD/docker/development/docker-volume/" ]]
   then
-      rm -rf $PWD/docker-volume
+      rm -rf $PWD/docker/development/docker-volume
     fi
 fi
 
@@ -86,17 +91,14 @@ else
   make install_dev generate
 fi
 
-echo "Stopping any previous Local Docker Containers"
-docker compose -f docker/local-metadata/docker-compose-postgres.yml down
-docker compose -f docker/local-metadata/docker-compose.yml down
 
 echo "Starting Local Docker Containers"
 echo "Using ingestion dependency: ${INGESTION_DEPENDENCY:-all}"
 
 if [[ $database == "postgresql" ]]; then
-    docker compose -f docker/local-metadata/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose-postgres.yml up -d
+    docker compose -f docker/development/docker-compose-postgres.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose-postgres.yml up -d
 else
-    docker compose -f docker/local-metadata/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/local-metadata/docker-compose.yml up --build -d
+    docker compose -f docker/development/docker-compose.yml build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && docker compose -f docker/development/docker-compose.yml up -d
 fi
 
 RESULT=$?
@@ -124,6 +126,7 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_data' \
 
 printf 'Validate sample data DAG...'
 sleep 5
+python -m pip install ingestion/
 python docker/validate_compose.py
 
 until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables/name/sample_data.ecommerce_db.shopify.fact_sale"; do
@@ -152,6 +155,14 @@ curl --location --request PATCH 'localhost:8080/api/v1/dags/sample_lineage' \
   --data-raw '{
       "is_paused": false
       }'
+echo "✔running reindexing"
+# Trigger ElasticSearch ReIndexing from UI
+curl 'http://localhost:8585/api/v1/search/reindex' \
+  -H 'Authorization: Bearer eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg' \
+  -H 'Content-Type: application/json' \
+  --data-raw '{"recreateIndex":true,"entities":["table","topic","dashboard","pipeline","mlmodel","user","team","glossaryTerm","tag","entityReportData","webAnalyticEntityViewReportData","webAnalyticUserActivityReportData","container","query", "testCase"],"batchSize":10,"searchIndexMappingLanguage":"EN","runMode":"batch","publisherType":"elasticSearch"}' \
+  --compressed
+sleep 60 # Sleep for 60 seconds to make sure the elasticsearch reindexing from UI finishes
 tput setaf 2
 echo "✔ OpenMetadata is up and running"
 

@@ -13,7 +13,6 @@
 
 import {
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   mySqlConnectionInput,
   testServiceCreationAndIngestion,
@@ -27,7 +26,7 @@ import {
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const serviceName = `${serviceType}.ct%test-${uuid()}`;
 const tableName = TEAM_ENTITY;
 const description = `This is ${tableName} description`;
 
@@ -40,22 +39,25 @@ describe('MySQL Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
-      // cy.get('[data-testid="filter-pattern-container"]').first().scrollIntoView().should('be.visible');
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
-        .should('be.visible')
-        .type(Cypress.env('mysqlDatabaseSchema'));
+      cy.get('#root\\/schemaFilterPattern\\/includes')
+        .scrollIntoView()
+        .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    const viewIngestionInput = () => {
+      cy.get('.ant-select-selection-item-content')
+        .scrollIntoView()
+        .contains(`${Cypress.env('mysqlDatabaseSchema')}`);
+    };
+
+    testServiceCreationAndIngestion({
       serviceType,
-      mySqlConnectionInput,
+      connectionInput: mySqlConnectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+      viewIngestionInput,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -65,14 +67,6 @@ describe('MySQL Ingestion', () => {
       description,
       SERVICE_TYPE.Database,
       'tables'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
     );
   });
 

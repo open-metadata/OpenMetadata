@@ -11,64 +11,39 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
-
-const stepsData = [
-  {
-    step: 1,
-    title: 'Explore Data',
-    description: 'Look at the popular data assets in your organization.',
-  },
-  {
-    step: 2,
-    title: 'Claim Ownership',
-    description:
-      'Data works well when it is owned. Take a look at the data assets that you own and claim ownership.',
-  },
-  {
-    step: 3,
-    title: 'Stay Up-to-date',
-    description:
-      'Follow the datasets that you frequently use to stay informed about it.',
-  },
-];
+import { ONBOARDING_STEPS_DATA } from '../../constants/Onboarding.constants';
 
 const Onboarding: FC = () => {
   return (
-    <div
-      className="tw-mt-10 tw-text-base tw-font-medium"
-      data-testid="onboarding">
-      <div className="tw-text-center tw-text-xl tw-font-semibold tw-mb-1">
-        Welcome to OpenMetadata!
+    <div className="text-base font-medium" data-testid="onboarding">
+      <div className="text-center text-xl font-semibold ">
+        {t('message.welcome-to-open-metadata')}
       </div>
-      <div className="tw-mb-5">
-        <div className="tw-mb-3 tw-text-center">
-          A central place to discover and collaborate on all your data
-        </div>
-        <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
-          {stepsData.map((data) => (
-            <div
-              className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
-              key={uniqueId()}>
+      <div>
+        <div className="text-center">{t('message.om-description')}</div>
+        <div>
+          {ONBOARDING_STEPS_DATA.map((data) => (
+            <Card className="d-flex flex-col justify-between " key={uniqueId()}>
               <div>
-                <div className="tw-flex tw-mb-2">
-                  <div className="tw-rounded-full tw-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
+                <div className="d-flex mb-2">
+                  <div className="d-flex justify-center items-center text-lg font-bold text-primary">
                     {data.step}
                   </div>
                 </div>
 
                 <h6
-                  className="tw-text-base tw-text-grey-body tw-font-medium"
+                  className="text-base text-grey-body font-medium"
                   data-testid="service-name">
-                  {data.title}
+                  {t(data.title)}
                 </h6>
 
-                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {data.description}
-                </p>
+                <p className="text-grey-body text-sm">{t(data.description)}</p>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       </div>

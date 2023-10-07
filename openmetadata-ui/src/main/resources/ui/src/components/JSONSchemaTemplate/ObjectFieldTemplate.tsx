@@ -11,53 +11,119 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ObjectFieldTemplateProps } from '@rjsf/core';
+import { PlusOutlined } from '@ant-design/icons';
+import {
+  ObjectFieldTemplatePropertyType,
+  ObjectFieldTemplateProps,
+} from '@rjsf/utils';
+import { Button, Collapse, Space } from 'antd';
 import classNames from 'classnames';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
-import { Button } from '../buttons/Button/Button';
+import { useTranslation } from 'react-i18next';
+import { ADVANCED_PROPERTIES } from '../../constants/Services.constant';
+import './object-field-template.less';
+
+const { Panel } = Collapse;
+
+interface PropertyMap {
+  advancedProperties: ObjectFieldTemplatePropertyType[];
+  normalProperties: ObjectFieldTemplatePropertyType[];
+}
 
 export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
   (props: ObjectFieldTemplateProps) => {
-    return (
+    const { t } = useTranslation();
+
+    const { formContext, idSchema, title, onAddClick, schema, properties } =
+      props;
+
+    const { advancedProperties, normalProperties } = properties.reduce(
+      (propertyMap, currentProperty) => {
+        const isAdvancedProperty = ADVANCED_PROPERTIES.includes(
+          currentProperty.name
+        );
+
+        let advancedProperties = [...propertyMap.advancedProperties];
+        let normalProperties = [...propertyMap.normalProperties];
+
+        if (isAdvancedProperty) {
+          advancedProperties = [...advancedProperties, currentProperty];
+        } else {
+          normalProperties = [...normalProperties, currentProperty];
+        }
+
+        return { ...propertyMap, advancedProperties, normalProperties };
+      },
+      {
+        advancedProperties: [],
+
+        normalProperties: [],
+      } as PropertyMap
+    );
+
+    const fieldElement = (
       <Fragment>
-        <div className="tw-flex tw-justify-between tw-items-center">
-          <div>
-            <label
-              className="control-label"
-              id={`${props.idSchema.$id}__title`}>
-              {props.title}
-            </label>
-            <p
-              className="field-description"
-              id={`${props.idSchema.$id}__description`}>
-              {props.description}
-            </p>
-          </div>
-          {props.schema.additionalProperties && (
+        <Space className="w-full justify-between">
+          <label
+            className={classNames('control-label', {
+              'font-medium text-base-color text-md':
+                !schema.additionalProperties,
+            })}
+            id={`${idSchema.$id}__title`}>
+            {title}
+          </label>
+
+          {schema.additionalProperties && (
             <Button
-              className="tw-h-7 tw-w-7 tw-px-2"
-              data-testid={`add-item-${props.title}`}
-              id={`${props.idSchema.$id}__add`}
+              data-testid={`add-item-${title}`}
+              icon={
+                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
+              }
+              id={`${idSchema.$id}`}
               size="small"
-              theme="primary"
-              variant="contained"
+              type="primary"
               onClick={() => {
-                props.onAddClick(props.schema)();
-              }}>
-              <FontAwesomeIcon icon="plus" />
-            </Button>
+                onAddClick(schema)();
+              }}
+              onFocus={() => {
+                if (!isUndefined(formContext.handleFocus)) {
+                  formContext.handleFocus(idSchema.$id);
+                }
+              }}
+            />
           )}
-        </div>
-        {props.properties.map((element, index) => (
+        </Space>
+        {normalProperties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
-              'additional-fields': props.schema.additionalProperties,
+              'additional-fields': schema.additionalProperties,
             })}
             key={`${element.content.key}-${index}`}>
             {element.content}
           </div>
         ))}
+        {!isEmpty(advancedProperties) && (
+          <>
+            <Collapse
+              className="advanced-properties-collapse"
+              expandIconPosition="end">
+              <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
+                {advancedProperties.map((element, index) => (
+                  <div
+                    className={classNames('property-wrapper', {
+                      'additional-fields': schema.additionalProperties,
+                    })}
+                    key={`${element.content.key}-${index}`}>
+                    {element.content}
+                  </div>
+                ))}
+              </Panel>
+            </Collapse>
+          </>
+        )}
       </Fragment>
     );
+
+    return fieldElement;
   };

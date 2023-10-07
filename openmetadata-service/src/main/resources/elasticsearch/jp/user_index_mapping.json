@@ -1,4 +1,42 @@
-{
+{"settings": {
+  "analysis": {
+    "normalizer": {
+      "lowercase_normalizer": {
+        "type": "custom",
+        "char_filter": [],
+        "filter": [
+          "lowercase"
+        ]
+      }
+    },
+    "analyzer": {
+      "om_analyzer_jp" : {
+        "tokenizer" : "kuromoji_tokenizer",
+        "type" : "custom",
+        "filter" : [
+          "kuromoji_baseform",
+          "kuromoji_part_of_speech",
+          "kuromoji_number",
+          "kuromoji_stemmer"
+        ]
+      },
+      "om_ngram": {
+        "tokenizer": "ngram",
+        "min_gram": 1,
+        "max_gram": 2,
+        "filter": [
+          "lowercase"
+        ]
+      }
+    },
+    "filter": {
+      "om_stemmer": {
+        "type": "stemmer",
+        "name": "english"
+      }
+    }
+  }
+},
   "mappings": {
     "properties": {
       "id": {
@@ -16,12 +54,20 @@
       "fullyQualifiedName": {
         "type": "text"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "om_analyzer_jp",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -43,6 +89,44 @@
       },
       "isAdmin": {
         "type": "text"
+      },
+
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "teams": {
         "properties": {

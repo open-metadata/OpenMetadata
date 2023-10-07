@@ -12,12 +12,14 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Edge } from 'components/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
+import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
-import { AirflowConfiguration } from '../generated/configuration/airflowConfiguration';
+import { ApplicationConfiguration } from '../generated/configuration/applicationConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
-import { EntitiesCount } from '../generated/entity/utils/entitiesCount';
+import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
@@ -65,7 +67,22 @@ export const getOwnershipCount = (
 
 export const fetchAuthenticationConfig = async () => {
   const response = await APIClient.get<AuthenticationConfiguration>(
-    '/config/auth'
+    '/system/config/auth'
+  );
+
+  return response.data;
+};
+export const getApplicationConfig = async () => {
+  const response = await APIClient.get<ApplicationConfiguration>(
+    '/system/config/applicationConfig'
+  );
+
+  return response.data;
+};
+
+export const fetchAuthorizerConfig = async () => {
+  const response = await APIClient.get<AuthorizerConfiguration>(
+    '/system/config/authorizer'
   );
 
   return response.data;
@@ -73,18 +90,16 @@ export const fetchAuthenticationConfig = async () => {
 
 export const fetchSandboxConfig = async () => {
   const response = await APIClient.get<{ sandboxModeEnabled: boolean }>(
-    '/config/sandbox'
+    '/system/config/sandbox'
   );
 
   return response.data;
 };
 
-export const fetchSlackConfig = (): Promise<AxiosResponse> => {
-  return APIClient.get('/config/slackChat');
-};
-
 export const fetchAirflowConfig = async () => {
-  const response = await APIClient.get<AirflowConfiguration>('/config/airflow');
+  const response = await APIClient.get<PipelineServiceClientConfiguration>(
+    '/system/config/pipeline-service-client'
+  );
 
   return response.data;
 };
@@ -101,6 +116,12 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.TOPIC,
       SearchIndex.PIPELINE,
       SearchIndex.MLMODEL,
+      SearchIndex.CONTAINER,
+      SearchIndex.STORED_PROCEDURE,
+      SearchIndex.DASHBOARD_DATA_MODEL,
+      SearchIndex.GLOSSARY,
+      SearchIndex.TAG,
+      SearchIndex.SEARCH_INDEX,
     ],
   };
 
@@ -119,7 +140,13 @@ export const getSuggestions = <T extends SearchIndex>(
 };
 
 export const getVersion = async () => {
-  const response = await APIClient.get<{ version: string }>('/version');
+  const response = await APIClient.get<{ version: string }>('/system/version');
+
+  return response.data;
+};
+
+export const postSamlLogout = async (data: { token: string }) => {
+  const response = await APIClient.post(`/users/logout`, { ...data });
 
   return response.data;
 };
@@ -153,7 +180,7 @@ export const getSuggestedTeams = (term: string) => {
 
 export const getUserSuggestions = (term: string) => {
   const params = {
-    q: term,
+    q: term || WILD_CARD_CHAR,
     index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
   };
 
@@ -183,7 +210,7 @@ export const getTeamsByQuery = async (params: {
 export const getTagSuggestions = (term: string) => {
   const params = {
     q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.TAG}`,
+    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
   };
 
   return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
@@ -202,9 +229,18 @@ export const getSearchedUsers = (
 export const getSearchedTeams = (
   queryString: string,
   from: number,
+  filter?: string,
   size = 10
 ) => {
-  return searchData(queryString, from, size, '', '', '', SearchIndex.TEAM);
+  return searchData(
+    queryString,
+    from,
+    size,
+    filter ?? '',
+    '',
+    '',
+    SearchIndex.TEAM
+  );
 };
 
 export const getSearchedUsersAndTeams = async (
@@ -248,11 +284,24 @@ export const getAdvancedFieldOptions = (
   });
 };
 
-export const getAdvancedFieldDefaultOptions = (
-  index: SearchIndex,
-  field: string
+/**
+ * Retrieves the aggregate field options based on the provided parameters.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const getAggregateFieldOptions = (
+  index: SearchIndex | SearchIndex[],
+  field: string,
+  value: string,
+  q: string
 ) => {
-  const params = { index, field };
+  const withWildCardValue = value ? `.*${value}.*` : '.*';
+  const params = { index, field, value: withWildCardValue, q };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -273,8 +322,23 @@ export const getEntityCount = async (
   return response.data;
 };
 
-export const getAllEntityCount = async () => {
-  const response = await APIClient.get<EntitiesCount>('/util/entities/count');
+export const fetchMarkdownFile = async (filePath: string) => {
+  let baseURL;
+
+  try {
+    const url = new URL(filePath);
+    baseURL = `${url.origin}/`;
+  } catch (error) {
+    baseURL = '/';
+  }
+
+  const response = await APIClient.get<string>(filePath, {
+    baseURL,
+    headers: {
+      'Content-Type': 'text/markdown',
+      Accept: 'text/markdown',
+    },
+  });
 
   return response.data;
 };

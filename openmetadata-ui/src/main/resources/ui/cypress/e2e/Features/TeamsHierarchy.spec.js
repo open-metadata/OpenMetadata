@@ -30,6 +30,7 @@ const getTeam = (teamName) => {
     teamType: 'BusinessUnit',
     description: `Team ${teamName} Description`,
     ownername: 'admin',
+    email: 'team@gmail.com',
   };
 };
 
@@ -37,36 +38,31 @@ describe('Add nested teams and test TeamsSelectable', () => {
   beforeEach(() => {
     cy.login();
 
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-    interceptURL('GET', '/api/v1/users*', 'getTeams');
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
+    interceptURL('GET', '/api/v1/teams/name/*', 'getOrganization');
+    interceptURL('GET', '/api/v1/permissions/team/name/*', 'getPermissions');
     // Clicking on teams
     cy.get('[data-menu-id*="teams"]')
       .should('exist')
       .should('be.visible')
       .click();
 
-    verifyResponseStatusCode('@getTeams', 200);
+    verifyResponseStatusCode('@getOrganization', 200);
   });
 
   it('Add teams', () => {
-    interceptURL('GET', '/api/v1/permissions/team/*', 'getPermissions');
-    teamNames.forEach((teamName) => {
-      addTeam(getTeam(teamName));
+    verifyResponseStatusCode('@getPermissions', 200);
+    teamNames.forEach((teamName, index) => {
+      addTeam(getTeam(teamName), index);
+      verifyResponseStatusCode('@getOrganization', 200);
 
-      cy.reload();
-      interceptURL(
-        'GET',
-        '/api/v1/search/query?q=*&from=*&size=*&index=*',
-        'getCreatedTeam'
-      );
       // asserting the added values
       cy.get('table').find('.ant-table-row').contains(teamName).click();
-
-      verifyResponseStatusCode('@getCreatedTeam', 200);
+      verifyResponseStatusCode('@getOrganization', 200);
+      verifyResponseStatusCode('@getPermissions', 200);
     });
-
-    verifyResponseStatusCode('@getPermissions', 200);
-    cy.wait(1000);
   });
 
   it('Check hierarchy in Add User page', () => {
@@ -79,7 +75,7 @@ describe('Add nested teams and test TeamsSelectable', () => {
     cy.get('[data-testid="add-user"]').should('be.visible').click();
 
     // Enter team name
-    cy.get('#create-user-bot-form .ant-select-selector')
+    cy.get('[data-testid="team-select"] .ant-select-selector')
       .should('exist')
       .scrollIntoView()
       .should('be.visible')
@@ -87,21 +83,17 @@ describe('Add nested teams and test TeamsSelectable', () => {
       .type(buTeamName);
 
     teamNames.forEach((teamName) => {
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
 
     teamNames.forEach((teamName) => {
-      cy.get('#create-user-bot-form .ant-select-selector')
+      cy.get('[data-testid="team-select"] .ant-select-selector')
         .should('exist')
         .scrollIntoView()
         .should('be.visible')
         .click()
         .type(teamName);
-      cy.get('.ant-tree-select-dropdown')
-        .contains(teamName)
-        .should('be.visible');
+      cy.get('.ant-tree-select-dropdown').should('contain', teamName);
     });
   });
 });

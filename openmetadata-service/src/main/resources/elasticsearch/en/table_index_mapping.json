@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -34,10 +42,15 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -47,13 +60,21 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer",
-        "norms": false
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -67,6 +88,12 @@
       },
       "href": {
         "type": "text"
+      },
+      "sourceUrl": {
+        "type": "keyword"
+      },
+      "tableType": {
+        "type": "keyword"
       },
       "columns": {
         "properties": {
@@ -88,12 +115,14 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fqnParts": {
+            "type": "keyword"
           },
           "tags": {
             "properties": {
@@ -278,6 +307,96 @@
             "type": "text"
           }
         }
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "extension": {
+        "type": "keyword"
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "location": {
         "properties": {

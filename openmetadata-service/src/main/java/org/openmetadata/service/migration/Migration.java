@@ -35,6 +35,17 @@ public final class Migration {
     }
   }
 
+  public static Optional<String> lastMigratedServer(Jdbi jdbi) {
+    try {
+      return jdbi.withExtension(MigrationDAO.class, MigrationDAO::getMaxServerMigrationVersion);
+    } catch (StatementException e) {
+      throw new IllegalArgumentException(
+          "Exception encountered when trying to obtain last migrated Server version."
+              + " Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.",
+          e);
+    }
+  }
+
   public static String lastMigrationFile(MigrationConfiguration conf) throws IOException {
     List<String> migrationFiles = getMigrationVersions(conf);
     return Collections.max(migrationFiles);
@@ -43,7 +54,7 @@ public final class Migration {
   /** Read the migrations path from the Catalog YAML config and return a list of all the files' versions. */
   private static List<String> getMigrationVersions(MigrationConfiguration conf) throws IOException {
     try (Stream<String> names =
-        Files.walk(Paths.get(conf.getPath()))
+        Files.walk(Paths.get(conf.getFlywayPath()))
             .filter(Files::isRegularFile)
             .map(Path::toFile)
             .map(File::getName)

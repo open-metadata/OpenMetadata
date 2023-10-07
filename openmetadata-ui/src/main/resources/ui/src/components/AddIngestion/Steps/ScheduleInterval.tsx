@@ -11,82 +11,69 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { CheckOutlined } from '@ant-design/icons';
+import { Button, Col, Form } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../../buttons/Button/Button';
+import { LOADING_STATE } from '../../../enums/common.enum';
 import CronEditor from '../../common/CronEditor/CronEditor';
-import { Field } from '../../Field/Field';
-import Loader from '../../Loader/Loader';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 
 const ScheduleInterval = ({
+  disabledCronChange,
   includePeriodOptions,
   onBack,
   onChange,
   onDeploy,
-  repeatFrequency,
+  scheduleInterval,
   status,
   submitButtonLabel,
+  children,
 }: ScheduleIntervalProps) => {
-  const handleRepeatFrequencyChange = (repeatFrequency: string) =>
-    onChange({
-      repeatFrequency: repeatFrequency,
-    });
   const { t } = useTranslation();
 
   return (
-    <div data-testid="schedule-intervel-container">
-      <Field>
-        <div>
-          <CronEditor
-            includePeriodOptions={includePeriodOptions}
-            value={repeatFrequency}
-            onChange={handleRepeatFrequencyChange}
-          />
-        </div>
-      </Field>
-      <Field className="tw-flex tw-justify-end tw-mt-5">
+    <Form
+      data-testid="schedule-intervel-container"
+      layout="vertical"
+      onFinish={onDeploy}>
+      <CronEditor
+        disabledCronChange={disabledCronChange}
+        includePeriodOptions={includePeriodOptions}
+        value={scheduleInterval}
+        onChange={onChange}
+      />
+
+      {children}
+
+      <Col className="d-flex justify-end mt-4" span={24}>
         <Button
-          className="tw-mr-2"
+          className="m-r-xs"
           data-testid="back-button"
-          size="regular"
-          theme="primary"
-          variant="text"
+          type="link"
           onClick={onBack}>
           <span>{t('label.back')}</span>
         </Button>
 
-        {status === 'waiting' ? (
+        {status === 'success' ? (
           <Button
             disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <Loader size="small" type="white" />
-          </Button>
-        ) : status === 'success' ? (
-          <Button
-            disabled
-            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
-            size="regular"
-            theme="primary"
-            variant="contained">
-            <FontAwesomeIcon icon="check" />
+            className="w-16 opacity-100 p-x-md p-y-xxs"
+            type="primary">
+            <CheckOutlined />
           </Button>
         ) : (
           <Button
+            className="font-medium p-x-md p-y-xxs h-auto rounded-6"
             data-testid="deploy-button"
-            size="regular"
-            theme="primary"
-            variant="contained"
-            onClick={onDeploy}>
-            <span>{submitButtonLabel}</span>
+            htmlType="submit"
+            loading={status === LOADING_STATE.WAITING}
+            type="primary">
+            {submitButtonLabel}
           </Button>
         )}
-      </Field>
-    </div>
+      </Col>
+    </Form>
   );
 };
 

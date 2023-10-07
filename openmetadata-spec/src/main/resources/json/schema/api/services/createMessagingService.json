@@ -37,8 +37,12 @@
     "owner": {
       "description": "Owner of this messaging service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Messaging Service belongs to.",
+      "type": "string"
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

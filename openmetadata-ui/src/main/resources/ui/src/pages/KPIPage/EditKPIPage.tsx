@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Card,
   Col,
   DatePicker,
   Form,
@@ -28,26 +27,23 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
 import { compare } from 'fast-json-patch';
 import { isUndefined, toInteger, toNumber } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getChartById } from 'rest/DataInsightAPI';
-import { getKPIByName, patchKPI } from 'rest/KpiAPI';
-import { ROUTES } from '../../constants/constants';
-import {
-  KPI_DATE_PICKER_FORMAT,
-  VALIDATE_MESSAGES,
-} from '../../constants/DataInsight.constants';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '../../components/Loader/Loader';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
+import { getChartById } from '../../rest/DataInsightAPI';
+import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
 import {
   getDisabledDates,
   getKpiTargetValueByMetricType,
@@ -241,220 +237,222 @@ const EditKPIPage = () => {
   }
 
   return (
-    <>
-      {kpiData ? (
-        <Row
-          className="bg-body-main h-full"
-          data-testid="edit-kpi-container"
-          gutter={[16, 16]}>
-          <Col offset={4} span={12}>
+    <ResizablePanels
+      firstPanel={{
+        children: (
+          <div
+            className="max-width-md w-9/10 service-form-container"
+            data-testid="edit-kpi-container">
             <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
-            <Card>
-              <Typography.Paragraph
-                className="text-base"
-                data-testid="form-title">
-                {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
-              </Typography.Paragraph>
-              <Form
-                data-testid="kpi-form"
-                form={form}
-                id="kpi-form"
-                initialValues={initialValues}
-                layout="vertical"
-                validateMessages={VALIDATE_MESSAGES}
-                onFinish={handleSubmit}
-                onValuesChange={handleFormValuesChange}>
+            <Typography.Paragraph
+              className="text-base"
+              data-testid="form-title">
+              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+            </Typography.Paragraph>
+            <Form
+              data-testid="kpi-form"
+              form={form}
+              id="kpi-form"
+              initialValues={initialValues}
+              layout="vertical"
+              validateMessages={VALIDATION_MESSAGES}
+              onFinish={handleSubmit}
+              onValuesChange={handleFormValuesChange}>
+              <Form.Item
+                label={t('label.data-insight-chart')}
+                name="dataInsightChart">
+                <Input
+                  disabled
+                  data-testid="dataInsightChart"
+                  value={selectedChart?.displayName || selectedChart?.name}
+                />
+              </Form.Item>
+
+              <Form.Item label={t('label.display-name')} name="displayName">
+                <Input
+                  data-testid="displayName"
+                  placeholder={t('label.kpi-display-name')}
+                  type="text"
+                />
+              </Form.Item>
+
+              <Form.Item label={t('label.metric-type')} name="metricType">
+                <Input
+                  disabled
+                  data-testid="metricType"
+                  value={metricData?.name}
+                />
+              </Form.Item>
+
+              {!isUndefined(metricData) && (
                 <Form.Item
-                  label={t('label.data-insight-chart')}
-                  name="dataInsightChart">
-                  <Input
-                    disabled
-                    data-testid="dataInsightChart"
-                    value={selectedChart?.displayName || selectedChart?.name}
-                  />
-                </Form.Item>
+                  label={t('label.metric-value')}
+                  name="metricValue"
+                  rules={[
+                    {
+                      required: true,
+                      validator: () => {
+                        if (metricValue >= 0) {
+                          return Promise.resolve();
+                        }
 
-                <Form.Item label={t('label.display-name')} name="displayName">
-                  <Input
-                    data-testid="displayName"
-                    placeholder={t('label.kpi-display-name')}
-                    type="text"
-                  />
+                        return Promise.reject(
+                          t('message.field-text-is-required', {
+                            fieldText: t('label.metric-value'),
+                          })
+                        );
+                      },
+                    },
+                  ]}>
+                  <>
+                    {kpiData?.metricType === KpiTargetType.Percentage && (
+                      <Row data-testid="metric-percentage-input" gutter={20}>
+                        <Col span={20}>
+                          <Slider
+                            className="kpi-slider"
+                            marks={{
+                              0: '0%',
+                              100: '100%',
+                            }}
+                            max={100}
+                            min={0}
+                            tooltip={{ open: false }}
+                            value={metricValue}
+                            onChange={(value) => {
+                              setMetricValue(value);
+                            }}
+                          />
+                        </Col>
+                        <Col span={4}>
+                          <InputNumber
+                            formatter={(value) => `${value}%`}
+                            max={100}
+                            min={0}
+                            step={1}
+                            value={metricValue}
+                            onChange={(value) => {
+                              setMetricValue(Number(value));
+                            }}
+                          />
+                        </Col>
+                      </Row>
+                    )}
+                    {kpiData?.metricType === KpiTargetType.Number && (
+                      <InputNumber
+                        className="w-full"
+                        data-testid="metric-number-input"
+                        min={0}
+                        value={metricValue}
+                        onChange={(value) => setMetricValue(Number(value))}
+                      />
+                    )}
+                  </>
                 </Form.Item>
+              )}
 
-                <Form.Item label={t('label.metric-type')} name="metricType">
-                  <Input
-                    disabled
-                    data-testid="metricType"
-                    value={metricData?.name}
-                  />
-                </Form.Item>
-
-                {!isUndefined(metricData) && (
+              <Row gutter={[8, 8]}>
+                <Col span={12}>
                   <Form.Item
-                    label={t('label.metric-value')}
-                    name="metricValue"
+                    label={t('label.start-entity', {
+                      entity: t('label.date'),
+                    })}
+                    messageVariables={{ fieldName: 'startDate' }}
+                    name="startDate"
                     rules={[
                       {
                         required: true,
-                        validator: () => {
-                          if (metricValue >= 0) {
-                            return Promise.resolve();
-                          }
-
-                          return Promise.reject(
-                            t('message.field-text-is-required', {
-                              fieldText: t('label.metric-value'),
-                            })
-                          );
-                        },
+                        message: t('label.field-required', {
+                          field: t('label.start-entity', {
+                            entity: t('label.date'),
+                          }),
+                        }),
                       },
                     ]}>
-                    <>
-                      {kpiData?.metricType === KpiTargetType.Percentage && (
-                        <Row data-testid="metric-percentage-input" gutter={20}>
-                          <Col span={20}>
-                            <Slider
-                              className="kpi-slider"
-                              marks={{
-                                0: '0%',
-                                100: '100%',
-                              }}
-                              max={100}
-                              min={0}
-                              tooltip={{ open: false }}
-                              value={metricValue}
-                              onChange={(value) => {
-                                setMetricValue(value);
-                              }}
-                            />
-                          </Col>
-                          <Col span={4}>
-                            <InputNumber
-                              formatter={(value) => `${value}%`}
-                              max={100}
-                              min={0}
-                              step={1}
-                              value={metricValue}
-                              onChange={(value) => {
-                                setMetricValue(Number(value));
-                              }}
-                            />
-                          </Col>
-                        </Row>
-                      )}
-                      {kpiData?.metricType === KpiTargetType.Number && (
-                        <InputNumber
-                          className="w-full"
-                          data-testid="metric-number-input"
-                          min={0}
-                          value={metricValue}
-                          onChange={(value) => setMetricValue(Number(value))}
-                        />
-                      )}
-                    </>
+                    <DatePicker
+                      className="w-full"
+                      data-testid="start-date"
+                      disabledDate={getDisabledDates}
+                      format={KPI_DATE_PICKER_FORMAT}
+                    />
                   </Form.Item>
-                )}
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label={t('label.end-date')}
+                    messageVariables={{ fieldName: 'endDate' }}
+                    name="endDate"
+                    rules={[
+                      {
+                        required: true,
+                        message: t('label.field-required', {
+                          field: t('label.end-date'),
+                        }),
+                      },
+                    ]}>
+                    <DatePicker
+                      className="w-full"
+                      data-testid="end-date"
+                      disabledDate={getDisabledDates}
+                      format={KPI_DATE_PICKER_FORMAT}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-                <Row gutter={[8, 8]}>
-                  <Col span={12}>
-                    <Form.Item
-                      label={t('label.start-entity', {
-                        entity: t('label.date'),
-                      })}
-                      messageVariables={{ fieldName: 'startDate' }}
-                      name="startDate"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.start-entity', {
-                              entity: t('label.date'),
-                            }),
-                          }),
-                        },
-                      ]}>
-                      <DatePicker
-                        className="w-full"
-                        data-testid="start-date"
-                        disabledDate={getDisabledDates}
-                        format={KPI_DATE_PICKER_FORMAT}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label={t('label.end-date')}
-                      messageVariables={{ fieldName: 'endDate' }}
-                      name="endDate"
-                      rules={[
-                        {
-                          required: true,
-                          message: t('label.field-required', {
-                            field: t('label.end-date'),
-                          }),
-                        },
-                      ]}>
-                      <DatePicker
-                        className="w-full"
-                        data-testid="end-date"
-                        disabledDate={getDisabledDates}
-                        format={KPI_DATE_PICKER_FORMAT}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
+              <Form.Item label={t('label.description')} name="description">
+                <RichTextEditor
+                  height="200px"
+                  initialValue={description}
+                  placeHolder={t('message.write-your-description')}
+                  style={{ margin: 0 }}
+                  onTextChange={(value) => setDescription(value)}
+                />
+              </Form.Item>
 
-                <Form.Item label={t('label.description')} name="description">
-                  <RichTextEditor
-                    height="200px"
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
-
-                <Space align="center" className="w-full justify-end">
-                  <Button
-                    data-testid="cancel-btn"
-                    type="link"
-                    onClick={handleCancel}>
-                    {t('label.go-back')}
-                  </Button>
-                  <Tooltip
-                    title={
-                      isAdminUser
-                        ? t('label.save')
-                        : t('message.no-permission-for-action')
-                    }>
+              <Space align="center" className="w-full justify-end">
+                <Button
+                  data-testid="cancel-btn"
+                  type="link"
+                  onClick={handleCancel}>
+                  {t('label.go-back')}
+                </Button>
+                {isAdminUser ? (
+                  <Tooltip title={t('label.save')}>
                     <Button
                       data-testid="submit-btn"
-                      disabled={!isAdminUser}
-                      form="kpi-form"
                       htmlType="submit"
                       loading={isUpdatingKPI}
                       type="primary">
                       {t('label.save')}
                     </Button>
                   </Tooltip>
-                </Space>
-              </Form>
-            </Card>
-          </Col>
-          <Col className="m-t-md" data-testid="right-panel" span={4}>
+                ) : null}
+              </Space>
+            </Form>
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+      secondPanel={{
+        children: (
+          <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
               {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
-          </Col>
-        </Row>
-      ) : (
-        <ErrorPlaceHolder>
-          {t('message.no-kpi-found', { name: kpiName })}
-        </ErrorPlaceHolder>
-      )}
-    </>
+          </div>
+        ),
+        className: 'p-md service-doc-panel',
+        minWidth: 60,
+        overlay: {
+          displayThreshold: 200,
+          header: t('label.setup-guide'),
+          rotation: 'counter-clockwise',
+        },
+      }}
+    />
   );
 };
 

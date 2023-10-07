@@ -11,123 +11,88 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Row, Typography } from 'antd';
+import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
 import { t } from 'i18next';
-import { capitalize, toLower } from 'lodash';
+import { capitalize } from 'lodash';
 import React from 'react';
-import {
-  getFilterPatternDocsLinks,
-  getSeparator,
-} from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import { Field } from '../../Field/Field';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
   showSeparator = true,
+  isDisabled = false,
   checked,
   includePattern,
   excludePattern,
   handleChecked,
   getIncludeValue,
   getExcludeValue,
+  includePatternExtraInfo,
   type,
 }: FilterPatternProps) => {
-  const includeFilterChangeHandler = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
-    getIncludeValue(value, type);
-  };
-
-  const excludeFilterChangeHandler = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const value = event.target.value ? event.target.value.split(',') : [];
-    getExcludeValue(value, type);
-  };
-
   return (
-    <div className="m-t-md" data-testid="filter-pattern-container">
+    <div data-testid="filter-pattern-container">
       <Row>
-        <Col>
+        <Col span={8}>
+          <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
+            type
+          )} ${t('label.filter-pattern')}`}</label>
+        </Col>
+        <Col span={16}>
           <Checkbox
             checked={checked}
-            className="m-r-sm filter-pattern-checkbox"
+            className="filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
-            id={`${type}FilterPatternCheckbox`}
-            name={`${type}FilterPatternCheckbox`}
+            disabled={isDisabled}
+            id={`root/${type}FilterPattern`}
+            name={`root/${type}FilterPattern`}
             onChange={(e) => handleChecked(e.target.checked)}
           />
         </Col>
-        <Col className="d-flex flex-col">
-          <label htmlFor={`${type}FilterPatternCheckbox`}>{`${capitalize(
-            type
-          )} Filter Pattern`}</label>
-          <Typography.Text
-            className="text-grey-muted m-t-xss"
-            data-testid="filter-pattern-info">
-            {t('message.filter-pattern-info', {
-              filterPattern: type,
-            })}{' '}
-            <Typography.Link
-              href={getFilterPatternDocsLinks(type)}
-              target="_blank">
-              {t('label.read-type', {
-                type: t('label.more-lowercase'),
-              })}{' '}
-              <SVGIcons
-                alt="external-link"
-                className="m-l-xss"
-                icon={Icons.EXTERNAL_LINK}
-                width="14px"
-              />
-            </Typography.Link>
-          </Typography.Text>
-        </Col>
       </Row>
       {checked && (
-        <div data-testid="field-container">
-          <Field>
-            <label className="d-flex flex-col">{t('label.include')}:</label>
-            <Typography.Text
-              className="text-grey-muted m-t-xss m-b-xss"
-              data-testid="filter-pattern-include-info">
-              {t('message.filter-pattern-include-exclude-info', {
-                activity: toLower(t('label.include')),
-                filterPattern: type,
-              })}
-            </Typography.Text>
-            <Input
+        <Row className="m-t-xs" data-testid="field-container" gutter={[0, 16]}>
+          <Col span={24}>
+            <Space size={2}>
+              <label className="d-flex flex-col">{t('label.include')}:</label>
+            </Space>
+
+            <Select
               className="m-t-xss"
               data-testid={`filter-pattern-includes-${type}`}
-              placeholder={t('message.list-of-strings-regex-patterns-csv')}
-              type="text"
-              value={includePattern}
-              onChange={includeFilterChangeHandler}
+              disabled={isDisabled}
+              mode="tags"
+              open={false}
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={includePattern ?? []}
+              onChange={(value) => getIncludeValue(value, type)}
             />
-          </Field>
-          <Field>
-            <label className="d-flex flex-col">{t('label.exclude')}:</label>
-            <Typography.Text
-              className="text-grey-muted m-t-xss m-b-xss"
-              data-testid="filter-pattern-exclude-info">
-              {t('message.filter-pattern-include-exclude-info', {
-                activity: toLower(t('label.exclude')),
-                filterPattern: type,
-              })}
-            </Typography.Text>
-            <Input
+
+            {includePatternExtraInfo && (
+              <Typography.Text
+                className="text-grey-muted m-t-xss m-b-xss"
+                data-testid="filter-pattern-include-info">
+                {includePatternExtraInfo}
+              </Typography.Text>
+            )}
+          </Col>
+          <Col span={24}>
+            <Space size={2}>
+              <label className="d-flex flex-col">{t('label.exclude')}:</label>
+            </Space>
+            <Select
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
-              placeholder={t('message.list-of-strings-regex-patterns-csv')}
-              type="text"
-              value={excludePattern}
-              onChange={excludeFilterChangeHandler}
+              disabled={isDisabled}
+              mode="tags"
+              open={false}
+              placeholder={t('message.filter-pattern-placeholder')}
+              value={excludePattern ?? []}
+              onChange={(value) => getExcludeValue(value, type)}
             />
-          </Field>
-          {showSeparator && getSeparator('')}
-        </div>
+
+            {showSeparator && <Divider />}
+          </Col>
+        </Row>
       )}
     </div>
   );

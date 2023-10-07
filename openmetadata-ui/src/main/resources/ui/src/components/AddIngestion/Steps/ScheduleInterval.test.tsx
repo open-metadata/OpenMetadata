@@ -13,22 +13,16 @@
 
 import { findByTestId, findByText, render } from '@testing-library/react';
 import React from 'react';
-import { ScheduleIntervalProps } from '../addIngestion.interface';
+import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 import ScheduleInterval from './ScheduleInterval';
 
 jest.mock('../../common/CronEditor/CronEditor', () => {
   return jest.fn().mockImplementation(() => <div>CronEditor.component</div>);
 });
 
-jest.mock('../../common/toggle-switch/ToggleSwitchV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>ToggleSwitchV1.component</div>);
-});
-
 const mockScheduleIntervalProps: ScheduleIntervalProps = {
   status: 'initial',
-  repeatFrequency: '',
+  scheduleInterval: '',
   onBack: jest.fn(),
   onDeploy: jest.fn(),
   submitButtonLabel: 'Add',

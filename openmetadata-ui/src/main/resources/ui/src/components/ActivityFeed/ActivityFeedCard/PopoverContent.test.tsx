@@ -25,6 +25,7 @@ const mockProps = {
   isAnnouncement: false,
   isAuthor: true,
   isThread: false,
+  editAnnouncementPermission: true,
   onConfirmation,
   onEdit,
   onPopoverHide,

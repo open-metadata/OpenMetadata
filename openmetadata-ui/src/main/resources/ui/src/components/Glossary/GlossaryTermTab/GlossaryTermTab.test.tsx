@@ -11,134 +11,103 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { mockedGlossaries, mockedGlossaryTerms } from 'mocks/Glossary.mock';
+import {
+  fireEvent,
+  getAllByTestId,
+  getAllByText,
+  getByTestId,
+  getByText,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getGlossaryTerms } from 'rest/glossaryAPI';
+import {
+  mockedGlossaryTerms,
+  MOCK_PERMISSIONS,
+} from '../../../mocks/Glossary.mock';
 import GlossaryTermTab from './GlossaryTermTab.component';
 
-jest.mock('rest/glossaryAPI', () => ({
+const mockOnAddGlossaryTerm = jest.fn();
+const mockRefreshGlossaryTerms = jest.fn();
+const mockOnEditGlossaryTerm = jest.fn();
+
+const mockProps1 = {
+  childGlossaryTerms: [],
+  isGlossary: false,
+  permissions: MOCK_PERMISSIONS,
+  refreshGlossaryTerms: mockRefreshGlossaryTerms,
+  selectedData: mockedGlossaryTerms[0],
+  termsLoading: false,
+  onAddGlossaryTerm: mockOnAddGlossaryTerm,
+  onEditGlossaryTerm: mockOnEditGlossaryTerm,
+};
+
+const mockProps2 = {
+  ...mockProps1,
+  childGlossaryTerms: mockedGlossaryTerms,
+};
+
+jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
+  patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('components/common/searchbar/Searchbar', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ searchValue, onSearch }) => (
-      <input
-        data-testid="search-box"
-        type="text"
-        value={searchValue}
-        onChange={(e) => onSearch(e.target.value)}
-      />
-    ));
-});
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
       <p data-testid="description">{markdown}</p>
     ))
 );
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
+  jest
+    .fn()
+    .mockImplementation(({ onClick }) => (
+      <div onClick={onClick}>ErrorPlaceHolder</div>
+    ))
+);
+
+jest.mock('../../Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <div>Loader</div>)
+);
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
+}));
 
 describe('Test GlossaryTermTab component', () => {
-  it('GlossaryTermTab Page Should render', async () => {
-    act(() => {
-      render(<GlossaryTermTab glossaryId={mockedGlossaries[0].id} />, {
-        wrapper: MemoryRouter,
-      });
+  it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
+    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
+      wrapper: MemoryRouter,
     });
 
-    expect(await screen.findByTestId('search-box')).toBeInTheDocument();
-    expect(
-      await screen.findByText(mockedGlossaryTerms[0].name)
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('add-new-tag-button')).toBeInTheDocument();
-    expect(await screen.findByTestId('description')).toBeInTheDocument();
-    expect(
-      await screen.findByText(mockedGlossaryTerms[0].name)
-    ).toBeInTheDocument();
-    expect(await screen.findByText('label.tag-plural')).toBeInTheDocument();
-    expect(await screen.findByText('label.term-plural')).toBeInTheDocument();
-    expect(await screen.findByText('label.description')).toBeInTheDocument();
-    expect(
-      await screen.findByText(mockedGlossaryTerms[0].description)
-    ).toBeInTheDocument();
+    expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
   });
 
-  it('If Glossaryid is provided API should go accordingly', async () => {
-    const mockGetGlossaryTerms = getGlossaryTerms as jest.Mock;
-    await act(async () => {
-      render(<GlossaryTermTab glossaryId={mockedGlossaries[0].id} />, {
-        wrapper: MemoryRouter,
-      });
+  it('should call the onAddGlossaryTerm fn onClick of add button in ErrorPlaceHolder', () => {
+    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
+      wrapper: MemoryRouter,
     });
-    const params = mockGetGlossaryTerms.mock.calls[0][0];
 
-    expect(mockGetGlossaryTerms.mock.calls).toHaveLength(1);
-    expect(params.glossary).toBe(mockedGlossaries[0].id);
-    expect(params.parent).toBeUndefined();
+    fireEvent.click(getByText(container, 'ErrorPlaceHolder'));
+
+    expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
   });
 
-  it('If glossaryTermId is provided API should go accordingly', async () => {
-    const mockGetGlossaryTerms = getGlossaryTerms as jest.Mock;
-    await act(async () => {
-      render(<GlossaryTermTab glossaryTermId={mockedGlossaryTerms[0].id} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-    const params = mockGetGlossaryTerms.mock.calls[0][0];
-
-    expect(mockGetGlossaryTerms.mock.calls).toHaveLength(1);
-    expect(params.parent).toBe(mockedGlossaryTerms[0].id);
-    expect(params.glossary).toBeUndefined();
-  });
-
-  it('Search functionality should work properly', async () => {
-    const searchTerm = 'testSearch';
-    await act(async () => {
-      render(<GlossaryTermTab glossaryId={mockedGlossaries[0].id} />, {
-        wrapper: MemoryRouter,
-      });
+  it('should contain all necessary fields value in table when glossary data is not empty', async () => {
+    const { container } = render(<GlossaryTermTab {...mockProps2} />, {
+      wrapper: MemoryRouter,
     });
 
-    const searchbox = await screen.findByTestId('search-box');
-
-    expect(searchbox).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(searchbox, { target: { value: searchTerm } });
-    });
-
-    expect(await screen.findByTestId('search-box')).toBeInTheDocument();
+    expect(getByTestId(container, 'Clothing')).toBeInTheDocument();
     expect(
-      await screen.findByText('message.no-entity-found-for-name')
+      getByText(container, 'description of Business Glossary.Sales')
     ).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.change(searchbox, { target: { value: '' } });
-    });
+    expect(getAllByText(container, 'OwnerLabel')).toHaveLength(2);
 
-    expect(
-      await screen.findByText(mockedGlossaryTerms[0].name)
-    ).toBeInTheDocument();
-  });
-
-  it('No data placeholder should visible if there is no data', async () => {
-    (getGlossaryTerms as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject()
-    );
-    await act(async () => {
-      render(<GlossaryTermTab glossaryId={mockedGlossaries[0].id} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    expect(screen.queryByTestId('search-box')).not.toBeInTheDocument();
-    expect(
-      await screen.findByText('message.no-entity-data-available')
-    ).toBeInTheDocument();
+    expect(getAllByTestId(container, 'add-classification')).toHaveLength(2);
+    expect(getAllByTestId(container, 'edit-button')).toHaveLength(2);
   });
 });

@@ -11,142 +11,134 @@
  *  limitations under the License.
  */
 
-import { Space, Table, Tooltip } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
+import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
-import { EntityTags, ExtraInfo, TagOption } from 'Models';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
-import { restoreDashboard } from 'rest/dashboardAPI';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { EntityField } from '../../constants/Feeds.constants';
-import { observerOptions } from '../../constants/Mydata.constants';
-import { SettledStatus } from '../../enums/axios.enum';
-import { EntityInfo, EntityType } from '../../enums/entity.enum';
-import { OwnerType } from '../../enums/user.enum';
+import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as ExternalLinkIcon } from '../../assets/svg/external-links.svg';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../components/TableDescription/TableDescription.component';
+import TableTags from '../../components/TableTags/TableTags.component';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import {
+  getDashboardDetailsPath,
+  PRIMERY_COLOR,
+} from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { EntityReference } from '../../generated/type/entityReference';
-import { Paging } from '../../generated/type/paging';
-import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
-import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import jsonData from '../../jsons/en';
+import { TagSource } from '../../generated/type/schema';
+import { TagLabel } from '../../generated/type/tagLabel';
+import { restoreDashboard } from '../../rest/dashboardAPI';
+import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import {
-  getCurrentUserId,
   getEntityName,
-  getEntityPlaceHolder,
-  getOwnerValue,
-  refreshPage,
-} from '../../utils/CommonUtils';
+  getEntityReferenceFromEntity,
+} from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
-import {
-  fetchGlossaryTerms,
-  getGlossaryTermlist,
-} from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getLineageViewPath } from '../../utils/RouterUtils';
-import SVGIcons from '../../utils/SvgUtils';
-import { getTagsWithoutTier } from '../../utils/TableUtils';
-import { getClassifications, getTaglist } from '../../utils/TagsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../utils/TableTags/TableTags.utils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import ActivityFeedList from '../ActivityFeed/ActivityFeedList/ActivityFeedList';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import Description from '../common/description/Description';
-import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../common/TabsPane/TabsPane';
-import PageContainerV1 from '../containers/PageContainerV1';
-import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
-import Loader from '../Loader/Loader';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
-import TagsContainer from '../Tag/TagsContainer/tags-container';
-import TagsViewer from '../Tag/TagsViewer/tags-viewer';
-import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
+import {
+  ChartsPermissions,
+  ChartType,
+  DashboardDetailsProps,
+} from './DashboardDetails.interface';
 
 const DashboardDetails = ({
-  entityName,
-  followers,
-  followDashboardHandler,
-  unfollowDashboardHandler,
-  owner,
-  tier,
-  slashedDashboardName,
-  activeTab,
-  setActiveTabHandler,
-  description,
-  serviceType,
-  dashboardUrl,
-  dashboardTags,
-  dashboardDetails,
-  descriptionUpdateHandler,
-  settingsUpdateHandler,
-  tagUpdateHandler,
+  updateDashboardDetailsState,
   charts,
+  dashboardDetails,
+  fetchDashboard,
+  followDashboardHandler,
+  unFollowDashboardHandler,
   chartDescriptionUpdateHandler,
   chartTagUpdateHandler,
-  entityLineage,
-  isNodeLoading,
-  lineageLeafNodes,
-  loadNodeHandler,
   versionHandler,
-  version,
-  deleted,
-  addLineageHandler,
-  removeLineageHandler,
-  entityLineageHandler,
-  isLineageLoading,
-  entityThread,
-  isentityThreadLoading,
-  postFeedHandler,
-  feedCount,
-  entityFieldThreadCount,
   createThread,
-  dashboardFQN,
-  deletePostHandler,
-  paging,
-  fetchFeedHandler,
-  updateThreadHandler,
-  entityFieldTaskCount,
-  onExtensionUpdate,
+  onUpdateVote,
+  onDashboardUpdate,
+  handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { fqn: dashboardFQN, tab: activeTab = EntityTabs.DETAILS } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
+
+  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [isEdit, setIsEdit] = useState(false);
-  const [followersCount, setFollowersCount] = useState(0);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
   }>();
-  const [editChartTags, setEditChartTags] = useState<{
-    chart: ChartType;
-    index: number;
-  }>();
-  const [tagList, setTagList] = useState<Array<TagOption>>([]);
-  const [tagFetchFailed, setTagFetchFailed] = useState<boolean>(false);
-  const [isTagLoading, setIsTagLoading] = useState<boolean>(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
   const [threadLink, setThreadLink] = useState<string>('');
 
-  const [elementRef, isInView] = useInfiniteScroll(observerOptions);
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
   const [dashboardPermissions, setDashboardPermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [chartsPermissionsArray, setChartsPermissionsArray] = useState<
+    Array<ChartsPermissions>
+  >([]);
+
+  const {
+    owner,
+    description,
+    entityName,
+    followers = [],
+    deleted,
+    dashboardTags,
+    tier,
+  } = useMemo(() => {
+    const { tags = [] } = dashboardDetails;
+
+    return {
+      ...dashboardDetails,
+      tier: getTierTags(tags),
+      dashboardTags: getTagsWithoutTier(tags),
+      entityName: getEntityName(dashboardDetails),
+    };
+  }, [dashboardDetails]);
+
+  const { isFollowing } = useMemo(() => {
+    return {
+      isFollowing: followers?.some(({ id }) => id === getCurrentUserId()),
+    };
+  }, [followers]);
 
   const { getEntityPermission } = usePermissionProvider();
 
@@ -159,7 +151,9 @@ const DashboardDetails = ({
       setDashboardPermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.dashboard'),
+        })
       );
     }
   }, [dashboardDetails.id, getEntityPermission, setDashboardPermissions]);
@@ -170,78 +164,66 @@ const DashboardDetails = ({
     }
   }, [dashboardDetails.id]);
 
-  const setFollowersData = (followers: Array<EntityReference>) => {
-    setIsFollowing(
-      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
-    );
-    setFollowersCount(followers?.length);
-  };
-  const tabs = [
-    {
-      name: 'Details',
-      icon: {
-        alt: 'schema',
-        name: 'icon-schema',
-        title: 'Details',
-        selectedName: 'icon-schemacolor',
-      },
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: 'Activity Feeds & Tasks',
-      icon: {
-        alt: 'activity_feed',
-        name: 'activity_feed',
-        title: 'Activity Feed',
-        selectedName: 'activity-feed-color',
-      },
-      isProtected: false,
-      position: 2,
-      count: feedCount,
-    },
-    {
-      name: 'Lineage',
-      icon: {
-        alt: 'lineage',
-        name: 'icon-lineage',
-        title: 'Lineage',
-        selectedName: 'icon-lineagecolor',
-      },
-      isProtected: false,
-      position: 3,
-    },
-    {
-      name: 'Custom Properties',
-      isProtected: false,
-      position: 4,
-    },
-  ];
+  const fetchChartPermissions = useCallback(async (id: string) => {
+    try {
+      const chartPermission = await getEntityPermission(
+        ResourceEntity.CHART,
+        id
+      );
 
-  const extraInfo: Array<ExtraInfo> = [
-    {
-      key: EntityInfo.OWNER,
-      value: getOwnerValue(owner),
-      placeholderText: getEntityPlaceHolder(
-        getEntityName(owner),
-        owner?.deleted
-      ),
-      isLink: true,
-      openInNewTab: false,
-      profileName: owner?.type === OwnerType.USER ? owner?.name : undefined,
+      return chartPermission;
+    } catch (error) {
+      return DEFAULT_ENTITY_PERMISSION;
+    }
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(EntityType.DASHBOARD, dashboardFQN, setFeedCount);
+  };
+
+  useEffect(() => {
+    getEntityFeedCount();
+  }, [dashboardFQN]);
+
+  const getAllChartsPermissions = useCallback(
+    async (charts: ChartType[]) => {
+      const permissionsArray: Array<ChartsPermissions> = [];
+      try {
+        await Promise.all(
+          charts.map(async (chart) => {
+            const chartPermissions = await fetchChartPermissions(chart.id);
+            permissionsArray.push({
+              id: chart.id,
+              permissions: chartPermissions,
+            });
+          })
+        );
+
+        setChartsPermissionsArray(permissionsArray);
+      } catch {
+        showErrorToast(
+          t('server.fetch-entity-permissions-error', {
+            entity: t('label.chart'),
+          })
+        );
+      }
     },
-    {
-      key: EntityInfo.TIER,
-      value: tier?.tagFQN ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : '',
-    },
-    {
-      key: `${serviceType} ${EntityInfo.URL}`,
-      value: dashboardUrl,
-      placeholderText: entityName,
-      isLink: true,
-      openInNewTab: true,
-    },
-  ];
+    [dashboardDetails]
+  );
+
+  useEffect(() => {
+    if (charts) {
+      getAllChartsPermissions(charts);
+    }
+  }, [charts]);
+
+  const handleTabChange = (activeKey: string) => {
+    if (activeKey !== activeTab) {
+      history.push(
+        getDashboardDetailsPath(getDecodedFqn(dashboardFQN), activeKey)
+      );
+    }
+  };
 
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
@@ -252,12 +234,12 @@ const DashboardDetails = ({
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (description !== updatedHTML) {
-      const updatedDashboardDetails = {
+      const updatedDashboard = {
         ...dashboardDetails,
         description: updatedHTML,
       };
       try {
-        await descriptionUpdateHandler(updatedDashboardDetails);
+        await onDashboardUpdate(updatedDashboard, 'description');
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -268,64 +250,51 @@ const DashboardDetails = ({
     }
   };
 
-  const onOwnerUpdate = (newOwner?: Dashboard['owner']) => {
-    if (newOwner) {
-      const updatedDashboardDetails = {
+  const onOwnerUpdate = useCallback(
+    async (newOwner?: Dashboard['owner']) => {
+      const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner
-          ? { ...dashboardDetails.owner, ...newOwner }
-          : dashboardDetails.owner,
+        owner: newOwner ? { ...owner, ...newOwner } : undefined,
       };
-      settingsUpdateHandler(updatedDashboardDetails);
-    }
+      await onDashboardUpdate(updatedDashboard, 'owner');
+    },
+    [owner]
+  );
+
+  const onTierUpdate = async (newTier?: Tag) => {
+    const tierTag = updateTierTag(dashboardDetails?.tags ?? [], newTier);
+    const updatedDashboard = {
+      ...dashboardDetails,
+      tags: tierTag,
+    };
+    await onDashboardUpdate(updatedDashboard, 'tags');
   };
 
-  const onOwnerRemove = () => {
-    if (dashboardDetails) {
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        owner: undefined,
-      };
-      settingsUpdateHandler(updatedDashboardDetails);
-    }
+  const onDataProductsUpdate = async (updatedData: DataProduct[]) => {
+    const dataProductsEntity = updatedData?.map((item) => {
+      return getEntityReferenceFromEntity(item, EntityType.DATA_PRODUCT);
+    });
+
+    const updatedDashboard = {
+      ...dashboardDetails,
+      dataProducts: dataProductsEntity,
+    };
+
+    await onDashboardUpdate(updatedDashboard, 'dataProducts');
   };
 
-  const onTierUpdate = (newTier?: string) => {
-    if (newTier) {
-      const tierTag: Dashboard['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : dashboardDetails.tags;
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        tags: tierTag,
-      };
-      settingsUpdateHandler(updatedDashboardDetails);
-    }
+  const onUpdateDisplayName = async (data: EntityName) => {
+    const updatedData = {
+      ...dashboardDetails,
+      displayName: data.displayName,
+    };
+    await onDashboardUpdate(updatedData, 'displayName');
   };
-
-  const onRemoveTier = () => {
-    if (dashboardDetails) {
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        tags: undefined,
-      };
-      settingsUpdateHandler(updatedDashboardDetails);
-    }
-  };
-
-  const onTagUpdate = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      tagUpdateHandler(updatedDashboard);
-    }
+  const onExtensionUpdate = async (updatedData: Dashboard) => {
+    await onDashboardUpdate(
+      { ...dashboardDetails, extension: updatedData.extension },
+      'extension'
+    );
   };
 
   const handleRestoreDashboard = async () => {
@@ -337,7 +306,7 @@ const DashboardDetails = ({
         }),
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -348,22 +317,13 @@ const DashboardDetails = ({
     }
   };
 
-  const followDashboard = () => {
-    if (isFollowing) {
-      setFollowersCount((preValu) => preValu - 1);
-      setIsFollowing(false);
-      unfollowDashboardHandler();
-    } else {
-      setFollowersCount((preValu) => preValu + 1);
-      setIsFollowing(true);
-      followDashboardHandler();
-    }
+  const followDashboard = async () => {
+    isFollowing
+      ? await unFollowDashboardHandler()
+      : await followDashboardHandler();
   };
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
-  };
-  const handleEditChartTag = (chart: ChartType, index: number): void => {
-    setEditChartTags({ chart, index });
   };
 
   const closeEditChartModal = (): void => {
@@ -393,89 +353,30 @@ const DashboardDetails = ({
     }
   };
 
-  const handleChartTagSelection = (
-    selectedTags?: Array<EntityTags>,
-    chart?: {
-      chart: ChartType;
-      index: number;
-    }
+  const handleChartTagSelection = async (
+    selectedTags: Array<EntityTags>,
+    editColumnTag: ChartType
   ) => {
-    const chartTag = isUndefined(editChartTags) ? chart : editChartTags;
-    if (selectedTags && chartTag) {
-      const prevTags = chartTag.chart.tags?.filter((tag) =>
+    if (selectedTags && editColumnTag) {
+      const prevTags = editColumnTag.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
       );
-      const newTags = selectedTags
-        .filter(
+      const newTags = createTagObject(
+        selectedTags.filter(
           (selectedTag) =>
-            !chartTag.chart.tags?.some(
+            !editColumnTag.tags?.some(
               (tag) => tag.tagFQN === selectedTag.tagFQN
             )
         )
-        .map((tag) => ({
-          labelType: 'Manual',
-          state: 'Confirmed',
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
 
       const updatedChart = {
-        ...chartTag.chart,
+        ...editColumnTag,
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
-      const jsonPatch = compare(charts[chartTag.index], updatedChart);
-      chartTagUpdateHandler(chartTag.index, chartTag.chart.id, jsonPatch);
+      const jsonPatch = compare(editColumnTag, updatedChart);
+      await chartTagUpdateHandler(editColumnTag.id, jsonPatch);
     }
-    setEditChartTags(undefined);
-  };
-
-  const fetchTagsAndGlossaryTerms = () => {
-    setIsTagLoading(true);
-    Promise.allSettled([getClassifications(), fetchGlossaryTerms()])
-      .then(async (values) => {
-        let tagsAndTerms: TagOption[] = [];
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[0].value.data
-        ) {
-          const tagList = await getTaglist(values[0].value.data);
-          tagsAndTerms = tagList.map((tag) => {
-            return { fqn: tag, source: 'Tag' };
-          });
-        }
-        if (
-          values[1].status === SettledStatus.FULFILLED &&
-          values[1].value &&
-          values[1].value.length > 0
-        ) {
-          const glossaryTerms: TagOption[] = getGlossaryTermlist(
-            values[1].value
-          ).map((tag) => {
-            return { fqn: tag, source: 'Glossary' };
-          });
-          tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-        }
-        setTagList(tagsAndTerms);
-        if (
-          values[0].status === SettledStatus.FULFILLED &&
-          values[1].status === SettledStatus.FULFILLED
-        ) {
-          setTagFetchFailed(false);
-        } else {
-          setTagFetchFailed(true);
-        }
-      })
-      .catch(() => {
-        setTagList([]);
-        setTagFetchFailed(true);
-      })
-      .finally(() => {
-        setIsTagLoading(false);
-      });
-  };
-
-  const handleFullScreenClick = () => {
-    history.push(getLineageViewPath(EntityType.DASHBOARD, dashboardFQN));
   };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
@@ -489,44 +390,41 @@ const DashboardDetails = ({
     setThreadLink('');
   };
 
-  const getLoader = () => {
-    return isentityThreadLoading ? <Loader /> : null;
+  const hasEditTagAccess = (record: ChartType) => {
+    const permissionsObject = chartsPermissionsArray?.find(
+      (chart) => chart.id === record.id
+    )?.permissions;
+
+    return (
+      !isUndefined(permissionsObject) &&
+      (permissionsObject.EditTags || permissionsObject.EditAll)
+    );
   };
 
-  const fetchMoreThread = (
-    isElementInView: boolean,
-    pagingObj: Paging,
-    isLoading: boolean
-  ) => {
-    if (isElementInView && pagingObj?.after && !isLoading) {
-      fetchFeedHandler(pagingObj.after);
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
+
+    if (updatedTags && dashboardDetails) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
+      await onDashboardUpdate(updatedDashboard, 'tags');
     }
   };
 
-  const handleTagContainerClick = (chart: ChartType, index: number) => {
-    if (!editChartTags) {
-      // Fetch tags and terms only once
-      if (tagList.length === 0 || tagFetchFailed) {
-        fetchTagsAndGlossaryTerms();
-      }
-      handleEditChartTag(chart, index);
-    }
-  };
-
-  useEffect(() => {
-    setFollowersData(followers);
-  }, [followers]);
-
-  useEffect(() => {
-    fetchMoreThread(isInView as boolean, paging, isentityThreadLoading);
-  }, [paging, isentityThreadLoading, isInView]);
-
-  const handleFeedFilterChange = useCallback(
-    (feedType, threadType) => {
-      fetchFeedHandler(paging.after, feedType, threadType);
-    },
-    [paging]
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
   );
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(charts);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [charts]);
 
   const tableColumn: ColumnsType<ChartType> = useMemo(
     () => [
@@ -537,19 +435,20 @@ const DashboardDetails = ({
         dataIndex: 'chartName',
         key: 'chartName',
         width: 200,
-        render: (_, record) => (
-          <Link target="_blank" to={{ pathname: record.chartUrl }}>
-            <Space>
-              <span>{getEntityName(record as unknown as EntityReference)}</span>
-              <SVGIcons
-                alt="external-link"
-                className="tw-align-middle"
-                icon="external-link"
-                width="16px"
-              />
-            </Space>
-          </Link>
-        ),
+        render: (_, record) => {
+          const chartName = getEntityName(record);
+
+          return record.sourceUrl ? (
+            <Typography.Link href={record.sourceUrl} target="_blank">
+              <Space>
+                {chartName}
+                <ExternalLinkIcon height={14} width={14} />
+              </Space>
+            </Typography.Link>
+          ) : (
+            <Typography.Text>{chartName}</Typography.Text>
+          );
+        },
       },
       {
         title: t('label.chart-entity', {
@@ -557,282 +456,315 @@ const DashboardDetails = ({
         }),
         dataIndex: 'chartType',
         key: 'chartType',
-        width: 100,
+        width: 120,
       },
       {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 300,
-        render: (text, record, index) => (
-          <Space
-            className="w-full tw-group cursor-pointer"
-            data-testid="description">
-            <div>
-              {text ? (
-                <RichTextEditorPreviewer markdown={text} />
-              ) : (
-                <span className="tw-no-description">
-                  {t('label.no-entity', {
-                    entity: t('label.description'),
-                  })}
-                </span>
-              )}
-            </div>
-            {!deleted && (
-              <Tooltip
-                title={
-                  dashboardPermissions.EditAll
-                    ? t('label.edit-entity', { entity: t('label.description') })
-                    : t('message.no-permission-for-action')
-                }>
-                <button
-                  className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"
-                  disabled={!dashboardPermissions.EditAll}
-                  onClick={() => handleUpdateChart(record, index)}>
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="16px"
-                  />
-                </button>
-              </Tooltip>
-            )}
-          </Space>
-        ),
+        width: 350,
+        render: (_, record, index) => {
+          const permissionsObject = chartsPermissionsArray?.find(
+            (chart) => chart.id === record.id
+          )?.permissions;
+
+          const editDescriptionPermissions =
+            !isUndefined(permissionsObject) &&
+            (permissionsObject.EditDescription || permissionsObject.EditAll);
+
+          return (
+            <TableDescription
+              columnData={{
+                fqn: record.fullyQualifiedName ?? '',
+                field: record.description,
+              }}
+              entityFqn={dashboardFQN}
+              entityType={EntityType.DASHBOARD}
+              hasEditPermission={editDescriptionPermissions}
+              index={index}
+              isReadOnly={deleted}
+              onClick={() => handleUpdateChart(record, index)}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
+          );
+        },
       },
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
+        accessor: 'tags',
         width: 300,
-        render: (tags: Dashboard['tags'], record, index) => {
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
-            <div
-              className="relative tableBody-cell"
-              data-testid="tags-wrapper"
-              onClick={() => handleTagContainerClick(record, index)}>
-              {deleted ? (
-                <Space>
-                  <TagsViewer sizeCap={-1} tags={tags || []} />
-                </Space>
-              ) : (
-                <TagsContainer
-                  editable={editChartTags?.index === index}
-                  isLoading={isTagLoading && editChartTags?.index === index}
-                  selectedTags={tags || []}
-                  showAddTagButton={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditTags
-                  }
-                  size="small"
-                  tagList={tagList}
-                  type="label"
-                  onCancel={() => {
-                    handleChartTagSelection();
-                  }}
-                  onSelectionChange={(tags) => {
-                    handleChartTagSelection(tags, {
-                      chart: record,
-                      index,
-                    });
-                  }}
-                />
-              )}
-            </div>
+            <TableTags<ChartType>
+              entityFqn={dashboardFQN}
+              entityType={EntityType.DASHBOARD}
+              handleTagSelection={handleChartTagSelection}
+              hasTagEditAccess={hasEditTagAccess(record)}
+              index={index}
+              isReadOnly={deleted}
+              record={record}
+              tags={tags}
+              type={TagSource.Classification}
+              onThreadLinkSelect={onThreadLinkSelect}
+            />
           );
         },
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
+      },
+      {
+        title: t('label.glossary-term-plural'),
+        dataIndex: 'tags',
+        key: 'glossary',
+        accessor: 'tags',
+        width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        render: (tags: TagLabel[], record: ChartType, index: number) => (
+          <TableTags<ChartType>
+            entityFqn={dashboardFQN}
+            entityType={EntityType.DASHBOARD}
+            handleTagSelection={handleChartTagSelection}
+            hasTagEditAccess={hasEditTagAccess(record)}
+            index={index}
+            isReadOnly={deleted}
+            record={record}
+            tags={tags}
+            type={TagSource.Glossary}
+            onThreadLinkSelect={onThreadLinkSelect}
+          />
+        ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
       },
     ],
     [
-      dashboardPermissions.EditAll,
-      dashboardPermissions.EditTags,
-      editChartTags,
-      tagList,
       deleted,
-      isTagLoading,
-      charts,
+      chartsPermissionsArray,
+      onThreadLinkSelect,
+      hasEditTagAccess,
+      handleUpdateChart,
+      handleChartTagSelection,
+      getEntityFieldThreadCounts,
     ]
   );
 
-  return (
-    <PageContainerV1>
-      <div className="entity-details-container">
-        <EntityPageInfo
-          canDelete={dashboardPermissions.Delete}
-          currentOwner={dashboardDetails.owner}
-          deleted={deleted}
-          entityFieldTasks={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldTaskCount
-          )}
-          entityFieldThreads={getEntityFieldThreadCounts(
-            EntityField.TAGS,
-            entityFieldThreadCount
-          )}
-          entityFqn={dashboardFQN}
-          entityId={dashboardDetails.id}
-          entityName={entityName}
-          entityType={EntityType.DASHBOARD}
-          extraInfo={extraInfo}
-          followHandler={followDashboard}
-          followers={followersCount}
-          followersList={followers}
-          isFollowing={isFollowing}
-          isTagEditable={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTags
-          }
-          removeOwner={
-            dashboardPermissions.EditAll || dashboardPermissions.EditOwner
-              ? onOwnerRemove
-              : undefined
-          }
-          removeTier={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTier
-              ? onRemoveTier
-              : undefined
-          }
-          tags={dashboardTags}
-          tagsHandler={onTagUpdate}
-          tier={tier || ''}
-          titleLinks={slashedDashboardName}
-          updateOwner={
-            dashboardPermissions.EditAll || dashboardPermissions.EditOwner
-              ? onOwnerUpdate
-              : undefined
-          }
-          updateTier={
-            dashboardPermissions.EditAll || dashboardPermissions.EditTier
-              ? onTierUpdate
-              : undefined
-          }
-          version={version}
-          versionHandler={versionHandler}
-          onRestoreEntity={handleRestoreDashboard}
-          onThreadLinkSelect={onThreadLinkSelect}
-        />
-        <div className="tw-mt-4 tw-flex tw-flex-col tw-flex-grow">
-          <TabsPane
-            activeTab={activeTab}
-            className="tw-flex-initial"
-            setActiveTab={setActiveTabHandler}
-            tabs={tabs}
-          />
+  const tabs = useMemo(
+    () => [
+      {
+        label: (
+          <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
+        ),
+        key: EntityTabs.DETAILS,
+        children: (
+          <Row gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <div className="d-flex flex-col gap-4">
+                <DescriptionV1
+                  description={dashboardDetails.description}
+                  entityFqn={dashboardFQN}
+                  entityName={entityName}
+                  entityType={EntityType.DASHBOARD}
+                  hasEditAccess={
+                    dashboardPermissions.EditAll ||
+                    dashboardPermissions.EditDescription
+                  }
+                  isEdit={isEdit}
+                  isReadOnly={dashboardDetails.deleted}
+                  owner={dashboardDetails.owner}
+                  onCancel={onCancel}
+                  onDescriptionEdit={onDescriptionEdit}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
 
-          <div className="tw-flex-grow tw-flex tw-flex-col tw--mx-6 tw-px-7 tw-py-4">
-            <div className="tw-bg-white tw-flex-grow tw-p-4 tw-shadow tw-rounded-md">
-              {activeTab === 1 && (
-                <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
-                    <div className="tw-col-span-full">
-                      <Description
-                        description={description}
-                        entityFieldTasks={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldTaskCount
-                        )}
-                        entityFieldThreads={getEntityFieldThreadCounts(
-                          EntityField.DESCRIPTION,
-                          entityFieldThreadCount
-                        )}
-                        entityFqn={dashboardFQN}
-                        entityName={entityName}
-                        entityType={EntityType.DASHBOARD}
-                        hasEditAccess={
-                          dashboardPermissions.EditAll ||
-                          dashboardPermissions.EditDescription
-                        }
-                        isEdit={isEdit}
-                        isReadOnly={deleted}
-                        owner={owner}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  </div>
+                {isEmpty(charts) ? (
+                  <ErrorPlaceHolder />
+                ) : (
                   <Table
                     bordered
-                    className="p-t-xs"
                     columns={tableColumn}
                     data-testid="charts-table"
                     dataSource={charts}
                     pagination={false}
                     rowKey="id"
+                    scroll={{ x: 1200 }}
                     size="small"
                   />
-                </>
-              )}
-              {activeTab === 2 && (
-                <div
-                  className="tw-py-4 tw-px-7 tw-grid tw-grid-cols-3 entity-feed-list tw--mx-7 tw--my-4"
-                  id="activityfeed">
-                  <div />
-                  <ActivityFeedList
-                    isEntityFeed
-                    withSidePanel
-                    className=""
-                    deletePostHandler={deletePostHandler}
-                    entityName={entityName}
-                    feedList={entityThread}
-                    isFeedLoading={isentityThreadLoading}
-                    postFeedHandler={postFeedHandler}
-                    updateThreadHandler={updateThreadHandler}
-                    onFeedFiltersUpdate={handleFeedFilterChange}
-                  />
-                  <div />
-                </div>
-              )}
-              {activeTab === 3 && (
-                <div className="h-full">
-                  <EntityLineageComponent
-                    addLineageHandler={addLineageHandler}
-                    deleted={deleted}
-                    entityLineage={entityLineage}
-                    entityLineageHandler={entityLineageHandler}
-                    entityType={EntityType.DASHBOARD}
-                    hasEditAccess={
-                      dashboardPermissions.EditAll ||
-                      dashboardPermissions.EditLineage
-                    }
-                    isLoading={isLineageLoading}
-                    isNodeLoading={isNodeLoading}
-                    lineageLeafNodes={lineageLeafNodes}
-                    loadNodeHandler={loadNodeHandler}
-                    removeLineageHandler={removeLineageHandler}
-                    onFullScreenClick={handleFullScreenClick}
-                  />
-                </div>
-              )}
-              {activeTab === 4 && (
-                <CustomPropertyTable
-                  entityDetails={
-                    dashboardDetails as CustomPropertyProps['entityDetails']
-                  }
-                  entityType={EntityType.DASHBOARD}
-                  handleExtensionUpdate={onExtensionUpdate}
-                  hasEditAccess={
-                    dashboardPermissions.EditAll ||
-                    dashboardPermissions.EditCustomFields
-                  }
-                />
-              )}
-              <div
-                data-testid="observer-element"
-                id="observer-element"
-                ref={elementRef as RefObject<HTMLDivElement>}>
-                {getLoader()}
+                )}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+            </Col>
+            <Col
+              className="entity-tag-right-panel-container"
+              data-testid="entity-right-panel"
+              flex="320px">
+              <Space className="w-full" direction="vertical" size="large">
+                <DataProductsContainer
+                  activeDomain={dashboardDetails?.domain}
+                  dataProducts={dashboardDetails?.dataProducts ?? []}
+                  hasPermission={
+                    dashboardPermissions.EditAll && !dashboardDetails.deleted
+                  }
+                  onSave={onDataProductsUpdate}
+                />
+
+                <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
+                  entityFqn={dashboardFQN}
+                  entityType={EntityType.DASHBOARD}
+                  permission={
+                    (dashboardPermissions.EditAll ||
+                      dashboardPermissions.EditTags) &&
+                    !dashboardDetails.deleted
+                  }
+                  selectedTags={dashboardTags}
+                  tagType={TagSource.Classification}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+
+                <TagsContainerV2
+                  displayType={DisplayType.READ_MORE}
+                  entityFqn={dashboardFQN}
+                  entityType={EntityType.DASHBOARD}
+                  permission={
+                    (dashboardPermissions.EditAll ||
+                      dashboardPermissions.EditTags) &&
+                    !dashboardDetails.deleted
+                  }
+                  selectedTags={dashboardTags}
+                  tagType={TagSource.Glossary}
+                  onSelectionChange={handleTagSelection}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                />
+              </Space>
+            </Col>
+          </Row>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            count={feedCount}
+            id={EntityTabs.ACTIVITY_FEED}
+            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
+          />
+        ),
+        key: EntityTabs.ACTIVITY_FEED,
+        children: (
+          <ActivityFeedTab
+            entityType={EntityType.DASHBOARD}
+            fqn={dashboardDetails?.fullyQualifiedName ?? ''}
+            onFeedUpdate={getEntityFeedCount}
+            onUpdateEntityDetails={fetchDashboard}
+          />
+        ),
+      },
+      {
+        label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+        key: EntityTabs.LINEAGE,
+        children: (
+          <EntityLineageComponent
+            entity={dashboardDetails}
+            entityType={EntityType.DASHBOARD}
+            hasEditAccess={
+              dashboardPermissions.EditAll || dashboardPermissions.EditLineage
+            }
+          />
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityType={EntityType.DASHBOARD}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={
+              dashboardPermissions.EditAll ||
+              dashboardPermissions.EditCustomFields
+            }
+            hasPermission={dashboardPermissions.ViewAll}
+          />
+        ),
+      },
+    ],
+    [
+      feedCount,
+      activeTab,
+      isEdit,
+      tableColumn,
+      dashboardDetails,
+      charts,
+      entityName,
+      dashboardPermissions,
+      dashboardTags,
+      getEntityFieldThreadCounts,
+      onCancel,
+      onDescriptionEdit,
+      onDescriptionUpdate,
+      onThreadLinkSelect,
+      handleTagSelection,
+    ]
+  );
+
+  return (
+    <PageLayoutV1
+      className="bg-white"
+      pageTitle="Table details"
+      title="Table details">
+      <Row gutter={[0, 12]}>
+        <Col className="p-x-lg" span={24}>
+          <DataAssetsHeader
+            afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateDashboardDetailsState}
+            dataAsset={dashboardDetails}
+            entityType={EntityType.DASHBOARD}
+            permissions={dashboardPermissions}
+            onDisplayNameUpdate={onUpdateDisplayName}
+            onFollowClick={followDashboard}
+            onOwnerUpdate={onOwnerUpdate}
+            onRestoreDataAsset={handleRestoreDashboard}
+            onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
+            onVersionClick={versionHandler}
+          />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            className="entity-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+
       {editChart && (
         <ModalWithMarkdownEditor
-          header={t('label.edit-chart', {
-            chartName: editChart.chart.displayName,
+          header={t('label.edit-chart-name', {
+            name: editChart.chart.displayName,
           })}
           placeholder={t('label.enter-field-description', {
             field: t('label.chart'),
@@ -846,17 +778,17 @@ const DashboardDetails = ({
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}
-          deletePostHandler={deletePostHandler}
+          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeedHandler}
+          postFeedHandler={postFeed}
           threadLink={threadLink}
           threadType={threadType}
-          updateThreadHandler={updateThreadHandler}
+          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}
-    </PageContainerV1>
+    </PageLayoutV1>
   );
 };
 
-export default DashboardDetails;
+export default withActivityFeed<DashboardDetailsProps>(DashboardDetails);

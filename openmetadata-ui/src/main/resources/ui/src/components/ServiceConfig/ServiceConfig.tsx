@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ISubmitEvent } from '@rjsf/core';
+import { IChangeEvent } from '@rjsf/core';
 import { LoadingState, ServicesData } from 'Models';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -34,11 +34,8 @@ interface ServiceConfigProps {
     serviceCategory: ServiceCategory
   ) => Promise<void>;
   disableTestConnection: boolean;
+  onFocus: (id: string) => void;
 }
-
-export const Field = ({ children }: { children: React.ReactNode }) => {
-  return <div className="tw-mt-4">{children}</div>;
-};
 
 const ServiceConfig = ({
   serviceCategory,
@@ -47,25 +44,29 @@ const ServiceConfig = ({
   data,
   handleUpdate,
   disableTestConnection,
+  onFocus,
 }: ServiceConfigProps) => {
   const history = useHistory();
   const [status, setStatus] = useState<LoadingState>('initial');
 
-  const handleOnSaveClick = (e: ISubmitEvent<ConfigData>) => {
+  const handleOnSaveClick = async (e: IChangeEvent<ConfigData>) => {
+    if (!e.formData) {
+      return;
+    }
     setStatus('waiting');
-
-    handleUpdate(e.formData, serviceCategory)
-      .then(() => {
-        setTimeout(() => {
-          setStatus('success');
-          history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
-        }, 200);
-      })
-      .finally(() => {
-        setTimeout(() => {
-          setStatus('initial');
-        }, 500);
-      });
+    try {
+      await handleUpdate(e.formData, serviceCategory);
+      setTimeout(() => {
+        setStatus('success');
+        history.push(getPathByServiceFQN(serviceCategory, serviceFQN));
+      }, 200);
+    } catch (err) {
+      // Nothing here
+    } finally {
+      setTimeout(() => {
+        setStatus('initial');
+      }, 500);
+    }
   };
 
   const onCancel = () => {
@@ -87,6 +88,7 @@ const ServiceConfig = ({
         serviceType={serviceType}
         status={status}
         onCancel={onCancel}
+        onFocus={onFocus}
         onSave={handleOnSaveClick}
       />
     );
@@ -98,7 +100,7 @@ const ServiceConfig = ({
         className="w-full p-b-lg"
         data-testid="service-config"
         id="serviceConfig">
-        <div className="tw-mx-auto">{getDynamicFields()}</div>
+        <div className="m-x-auto">{getDynamicFields()}</div>
       </div>
     </div>
   );

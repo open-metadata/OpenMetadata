@@ -11,56 +11,54 @@
  *  limitations under the License.
  */
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ArrayFieldTemplateProps } from '@rjsf/core';
+import Icon, { PlusOutlined } from '@ant-design/icons';
+import { ArrayFieldTemplateProps } from '@rjsf/utils';
+import { Button } from 'antd';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { Button } from '../buttons/Button/Button';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
 ) => {
+  const { formContext, idSchema, title, canAdd, onAddClick, items } = props;
+
   return (
     <Fragment>
-      <div className="tw-flex tw-justify-between tw-items-center">
-        <div>
-          <label className="control-label">{props.title}</label>
-          <p className="field-description">{props.schema.description}</p>
-        </div>
-        {props.canAdd && (
+      <div className="d-flex justify-between items-center">
+        <label className="control-label">{title}</label>
+        {canAdd && (
           <Button
-            className="tw-h-7 tw-w-7 tw-px-2"
-            data-testid={`add-item-${props.title}`}
+            data-testid={`add-item-${title}`}
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            id={`${idSchema.$id}`}
             size="small"
-            theme="primary"
-            variant="contained"
-            onClick={props.onAddClick}>
-            <FontAwesomeIcon icon="plus" />
-          </Button>
+            type="primary"
+            onClick={onAddClick}
+            onFocus={() => {
+              if (!isUndefined(formContext.handleFocus)) {
+                formContext.handleFocus(idSchema.$id);
+              }
+            }}
+          />
         )}
       </div>
-      {props.items.map((element, index) => (
+      {items.map((element, index) => (
         <div
-          className={classNames('tw-flex tw-items-center tw-w-full', {
-            'tw-mt-2': index > 0,
+          className={classNames('d-flex items-center w-full', {
+            'm-t-sm': index > 0,
           })}
           key={`${element.key}-${index}`}>
-          <div className="tw-flex-1 array-fields">{element.children}</div>
+          <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <button
-              className="focus:tw-outline-none tw-w-7 tw-ml-3"
-              type="button"
+            <Icon
+              className="w-7 h-0 m-l-sm"
+              component={DeleteIcon}
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
-              }}>
-              <SVGIcons
-                alt="delete"
-                icon={Icons.DELETE}
-                title="Delete"
-                width="16px"
-              />
-            </button>
+              }}
+            />
           )}
         </div>
       ))}

@@ -25,7 +25,15 @@ export interface EntityFieldThreadCount {
   entityLink: string;
 }
 
-export type EntityThreadField = 'description' | 'columns' | 'tags' | 'tasks';
+export type EntityThreadField =
+  | 'description'
+  | 'columns'
+  | 'tags'
+  | 'tasks'
+  | 'charts'
+  | 'dataModel'
+  | 'mlFeatures'
+  | 'messageSchema';
 export interface EntityFieldThreads {
   entityLink: string;
   count: number;

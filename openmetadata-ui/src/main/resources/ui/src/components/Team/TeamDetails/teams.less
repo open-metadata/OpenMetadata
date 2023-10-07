@@ -1,0 +1,125 @@
+/*
+ *  Copyright 2022 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import url('../../../styles/variables.less');
+
+.team-list-container {
+  padding: 20px;
+  .ant-btn {
+    border-radius: 4px;
+  }
+}
+
+.teams-list-table,
+.list-table {
+  .ant-table-row .ant-table-cell:first-child,
+  .ant-table-thead .ant-table-cell:first-child {
+    padding-left: 16px;
+  }
+}
+
+.remove-icon {
+  .ant-btn {
+    height: 22px;
+    width: 22px;
+  }
+}
+
+.roles-and-policy {
+  > .ant-space-item:first-child {
+    align-self: flex-end;
+  }
+}
+
+.teams-list-table {
+  .ant-table-thead {
+    tr > th {
+      border-right: 0px !important;
+      border-bottom: 1px solid @border-color;
+    }
+  }
+  .ant-table-bordered {
+    .ant-table-container .ant-table-content table tbody {
+      tr {
+        td {
+          border-right: none;
+          background: @body-bg-color;
+        }
+        .ant-table-cell-row-hover {
+          background: @body-dark-bg-color;
+        }
+      }
+      .ant-table-row-level-0 {
+        td {
+          background: @white;
+        }
+        .ant-table-cell-row-hover {
+          background: @body-dark-bg-color;
+        }
+      }
+
+      .drop-over-having-child {
+        td {
+          background: @active-color;
+        }
+      }
+    }
+  }
+}
+
+.teams-layout {
+  margin: -16px -16px 0 -16px;
+
+  .ant-card-head-title {
+    padding-top: 0;
+    padding-bottom: 12px;
+  }
+
+  .teams-profile {
+    background-color: @team-avatar-bg;
+  }
+
+  .teams-profile-container {
+    background: @user-profile-background;
+
+    .ant-card {
+      background: none;
+    }
+  }
+
+  .teams-tabs-content-container {
+    width: 100%;
+    .teams-scroll-component {
+      width: 100%;
+      height: calc(100vh - 120px);
+      overflow-y: scroll;
+    }
+  }
+
+  .site-collapse-custom-collapse .site-collapse-custom-panel {
+    overflow: hidden;
+    padding: 0;
+    background: @user-profile-background;
+    border: 0px;
+
+    .ant-collapse-content-box {
+      padding: 0;
+    }
+  }
+}
+.team-assets-right-panel {
+  .summary-panel-container {
+    height: 100%;
+    border: 0;
+  }
+}

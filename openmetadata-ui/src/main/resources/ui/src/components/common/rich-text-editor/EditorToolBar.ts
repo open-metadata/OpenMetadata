@@ -12,6 +12,7 @@
  */
 
 import MarkdownIcon from '../../../assets/svg/markdown.svg';
+import i18n from '../../../utils/i18next/LocalUtil';
 
 /**
  * Read more : https://nhn.github.io/tui.editor/latest/tutorial-example15-customizing-toolbar-buttons
@@ -33,6 +34,7 @@ const markdownButton = (): HTMLButtonElement => {
     <img
       alt="markdown-icon"
       className="svg-icon"
+      height="16px"
       src=${MarkdownIcon} />
   </a>`;
 
@@ -52,8 +54,8 @@ export const EDITOR_TOOLBAR_ITEMS = [
   'code',
   'codeblock',
   {
-    name: 'Markdown Guide',
+    name: i18n.t('label.markdown-guide'),
     el: markdownButton(),
-    tooltip: 'Markdown Guide',
+    tooltip: i18n.t('label.markdown-guide'),
   },
 ];

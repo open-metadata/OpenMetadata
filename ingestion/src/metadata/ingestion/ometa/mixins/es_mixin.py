@@ -14,12 +14,19 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import functools
+import json
 import traceback
-from typing import Generic, List, Optional, Type, TypeVar
+from typing import Generic, List, Optional, Set, Type, TypeVar
 
 from pydantic import BaseModel
+from requests.utils import quote
 
-from metadata.ingestion.ometa.client import REST
+from metadata.generated.schema.api.createEventPublisherJob import (
+    CreateEventPublisherJob,
+)
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
 
@@ -37,14 +44,21 @@ class ESMixin(Generic[T]):
 
     client: REST
 
-    fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
+    fqdn_search = (
+        "/search/fieldQuery?fieldName=fullyQualifiedName&fieldValue={fqn}&from={from_}"
+        "&size={size}&index={index}"
+    )
 
-    @functools.lru_cache()
+    @functools.lru_cache(maxsize=512)
     def _search_es_entity(
-        self, entity_type: Type[T], query_string: str
+        self,
+        entity_type: Type[T],
+        query_string: str,
+        fields: Optional[List[str]] = None,
     ) -> Optional[List[T]]:
         """
-        Run the ES query and return a list of entities that match
+        Run the ES query and return a list of entities that match. It does an extra query to the OM API with the
+        requested fields per each entity found in ES.
         :param entity_type: Entity to look for
         :param query_string: Query to run
         :return: List of Entities or None
@@ -56,6 +70,7 @@ class ESMixin(Generic[T]):
                 self.get_by_name(
                     entity=entity_type,
                     fqn=hit["_source"]["fullyQualifiedName"],
+                    fields=fields,
                 )
                 for hit in response["hits"]["hits"]
             ] or None
@@ -68,6 +83,7 @@ class ESMixin(Generic[T]):
         fqn_search_string: str,
         from_count: int = 0,
         size: int = 10,
+        fields: Optional[List[str]] = None,
     ) -> Optional[List[T]]:
         """
         Given a service_name and some filters, search for entities using ES
@@ -76,6 +92,7 @@ class ESMixin(Generic[T]):
         :param fqn_search_string: string used to search by FQN. E.g., service.*.schema.table
         :param from_count: Records to expect
         :param size: Number of records
+        :param fields: Fields to be returned
         :return: List of entities
         """
         query_string = self.fqdn_search.format(
@@ -87,7 +104,7 @@ class ESMixin(Generic[T]):
 
         try:
             response = self._search_es_entity(
-                entity_type=entity_type, query_string=query_string
+                entity_type=entity_type, query_string=query_string, fields=fields
             )
             return response
         except KeyError as err:
@@ -101,3 +118,65 @@ class ESMixin(Generic[T]):
                 f"Elasticsearch search failed for query [{query_string}]: {exc}"
             )
         return None
+
+    def reindex_es(
+        self,
+        config: CreateEventPublisherJob,
+    ) -> Optional[EventPublisherResult]:
+        """
+        Method to trigger elasticsearch reindex
+        """
+        try:
+            resp = self.client.post(path="/search/reindex", data=config.json())
+            return EventPublisherResult(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to trigger es reindex job due to {err}")
+            return None
+
+    def get_reindex_job_status(self, job_id: str) -> Optional[EventPublisherResult]:
+        """
+        Method to fetch the elasticsearch reindex job status
+        """
+        try:
+            resp = self.client.get(path=f"/search/reindex/{job_id}")
+            return EventPublisherResult(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch reindex job status due to {err}")
+            return None
+
+    @staticmethod
+    def get_query_with_lineage_filter(service_name: str) -> str:
+        query_lineage_filter = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"processedLineage": True}},
+                        {"term": {"service.name.keyword": service_name}},
+                    ]
+                }
+            }
+        }
+        return quote(json.dumps(query_lineage_filter))
+
+    @functools.lru_cache(maxsize=12)
+    def es_get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
+        """Get a set of query checksums that have already been processed for lineage"""
+        try:
+            resp = self.client.get(
+                f"/search/query?q=&index={ES_INDEX_MAP[Query.__name__]}"
+                "&include_source_fields=checksum&include_source_fields="
+                f"processedLineage&query_filter={self.get_query_with_lineage_filter(service_name)}"
+            )
+            return {elem["_source"]["checksum"] for elem in resp["hits"]["hits"]}
+
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get queries from ES due to [{err}]")
+            return None
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unknown error extracting results from ES query [{err}]")
+            return None

@@ -50,9 +50,8 @@
       "default": null
     },
     "databaseSchema": {
-      "description": "Schema corresponding to this table",
-      "$ref": "../../type/entityReference.json",
-      "default": null
+      "description": "FullyQualified name of the Schema corresponding to this table",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "tags": {
       "description": "Tags for this table",
@@ -67,9 +66,36 @@
       "$ref": "../../type/basic.json#/definitions/sqlQuery",
       "default": null
     },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of table.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "fileFormat": {
+      "description": "File format in case of file/datalake tables.",
+      "$ref": "../../entity/data/table.json#/definitions/fileFormat"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "columns", "databaseSchema"],

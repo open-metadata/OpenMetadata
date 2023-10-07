@@ -22,6 +22,8 @@ server:
   adminConnectors:
     - type: http
       port: 0
+  requestLog:
+    type: external
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
@@ -90,33 +92,28 @@ logging:
   level: INFO
   appenders:
     - type: console
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
-    - type: file
-      currentLogFilename: './logs/openmetadata.log'
-      archivedLogFilenamePattern: './logs/openmetadata-%d-%i.log.gz'
-      archive: true
-      archivedFileCount: 7
-      maxFileSize: '1MiB'
-      logFormat: "%level [%d{ISO8601,UTC}] [%t] %logger{5} - %msg%n"
+      logFormat: "%level %logger{5} - %msg%n"
 
 database:
   # the name of the JDBC driver, h2 is used for testing
-  driverClass: com.postgresql.Driver
+  driverClass: org.postgresql.Driver
   # the username and password
   user: test
   password:
   # the JDBC URL; the database is called openmetadata_test_db
-  url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
+  url: jdbc:postgresql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "../bootstrap/sql"
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
 
 #elasticsearch:
 #  host: localhost
 #  port: 0
 
 secretsManagerConfiguration:
-  secretsManager: in-memory
+  secretsManager: noop
+
 
 health:
   delayedShutdownHandlerEnabled: true
@@ -132,6 +129,7 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
+    - "hello.world"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"
@@ -154,6 +152,32 @@ authenticationConfiguration:
     - "preferred_username"
     - "sub"
   enableSelfSignup : true
+  samlConfiguration:
+    debugMode: false
+    idp:
+      entityId: ""
+      ssoLoginUrl: ""
+      idpX509Certificate: ""
+      authorityUrl: ""
+      nameId: ""
+    sp:
+      entityId: ""
+      acs: ""
+      spX509Certificate: ""
+      callback: ""
+    security:
+      strictMode: false
+      tokenValidity: 3600
+      sendEncryptedNameId: false
+      sendSignedAuthRequest: false
+      signSpMetadata: false
+      wantMessagesSigned: false
+      wantAssertionsSigned: false
+      wantAssertionEncrypted: false
+      wantNameIdEncrypted: false
+      keyStoreFilePath: ""
+      keyStoreAlias: ""
+      keyStorePassword: ""
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"
@@ -161,17 +185,32 @@ jwtTokenConfiguration:
   jwtissuer: "open-metadata.org"
   keyId: "Gb389a-9f76-gdjs-a92j-0242bk94356"
 
+eventMonitoringConfiguration:
+  eventMonitor: "prometheus"
+  batchSize: 10
+  pathPattern: ["/*"]
+  latency: [0.90]
+
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
 
-airflowConfiguration:
-  apiEndpoint: "http://localhost:8080"
-  username: "admin"
-  password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
+pipelineServiceClientConfiguration:
+  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  metadataApiEndpoint: http://localhost:8585/api
+  apiEndpoint: http://localhost:8080
+  hostIp: ""
+  healthCheckInterval: 300
+  verifySSL: "no-ssl"
   authProvider: "openmetadata"
+
+  parameters:
+    username: admin
+    password: admin
+    timeout: 10
+    truststorePath: ""
+    truststorePassword: ""
 
 email:
   enableSmtpServer : false
@@ -185,9 +224,12 @@ email:
   password: ""
   transportationStrategy: "SMTP_TLS"
 
-slackChat:
-  slackUrl: "http://localhost:8080"
-
-login:
-  maxLoginFailAttempts: 3
-  accessBlockTime: 600
+applicationConfig:
+  logoConfig:
+    customLogoUrlPath: ""
+    customMonogramUrlPath: ""
+  loginConfig:
+    maxLoginFailAttempts: 3
+    accessBlockTime: 600
+    jwtTokenExpiryTime: 3600
+  

@@ -1,0 +1,16 @@
+{
+  "name": "AggregatedUsedvsUnusedAssetsSize",
+  "fullyQualifiedName": "AggregatedUsedvsUnusedAssetsSize",
+  "displayName": "Used vs Unused Assets Size",
+  "description": "Displays the size of used vs unused assets over time.",
+  "dataIndexType": "aggregated_cost_analysis_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","chartDataType":"INT"}
+  ],
+  "metrics": [
+    {"name": "UnusedPercentage", "displayName": "Percentage of Unused Assets (Storage Size)", "chartDataType": "FLOAT"},
+    {"name": "UsedPercentage", "displayName": "Percentage of Used Assets (Storage Size)", "chartDataType": "FLOAT"},
+    {"name": "Unused", "displayName": "Unused Assets (Storage Size)", "chartDataType": "INT"},
+    {"name": "Used", "displayName": "Used Assets (Storage Size)", "chartDataType": "INT"}
+  ]
+}

@@ -9,8 +9,25 @@
         "description": "event type",
         "type": "string",
         "enum": [
-          "PageView"
+          "PageView",
+          "CustomEvent"
         ]
+      },
+      "fullUrl": {
+        "description": "complete URL of the page",
+        "type": "string"
+      },
+      "url": {
+        "description": "url part after the domain specification",
+        "type": "string"
+      },
+      "hostname": {
+        "description": "domain name",
+        "type": "string"
+      },
+      "sessionId": {
+        "description": "Unique ID identifying a session",
+        "$ref": "../type/basic.json#/definitions/uuid"
       }
     }
   }

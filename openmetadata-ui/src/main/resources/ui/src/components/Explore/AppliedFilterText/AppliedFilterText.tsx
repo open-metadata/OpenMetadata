@@ -14,6 +14,7 @@
 import { Button, Space, Typography } from 'antd';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import './AppliedFilterText.less';
 
@@ -29,7 +30,7 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Space className="w-full" direction="vertical">
+    <Space className="p-x-xs w-full" direction="vertical">
       <Typography.Text className="text-grey-muted">
         {t('label.applied-advanced-search')}
       </Typography.Text>
@@ -45,10 +46,8 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
           <Typography>{filterText}</Typography>
         </Space>
         <Button
-          className="p-0"
-          icon={
-            <SVGIcons alt="edit" icon={Icons.IC_EDIT_PRIMARY} width="16px" />
-          }
+          className="flex-center"
+          icon={<EditIcon width={16} />}
           type="text"
           onClick={onEdit}
         />

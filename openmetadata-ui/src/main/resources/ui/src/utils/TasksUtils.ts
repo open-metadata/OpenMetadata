@@ -15,37 +15,68 @@ import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEqual, isUndefined } from 'lodash';
+import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import {
+  getDatabaseDetailsPath,
+  getDatabaseSchemaDetailsPath,
+  getServiceDetailsPath,
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  PLACEHOLDER_ROUTE_FQN,
+  ROUTES,
+} from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
+import {
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
+} from '../enums/entity.enum';
+import { ServiceCategory } from '../enums/service.enum';
+import { Chart } from '../generated/entity/data/chart';
+import { Container } from '../generated/entity/data/container';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
+import { Pipeline, Task } from '../generated/entity/data/pipeline';
+import { Column, Table } from '../generated/entity/data/table';
+import { Field, Topic } from '../generated/entity/data/topic';
+import { TaskType, Thread } from '../generated/entity/feed/thread';
+import { TagLabel } from '../generated/type/tagLabel';
 import {
   EntityData,
   Option,
   TaskAction,
   TaskActionMode,
-} from 'pages/TasksPage/TasksPage.interface';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
-import { getUserSuggestions } from 'rest/miscAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
+} from '../pages/TasksPage/TasksPage.interface';
+import { getDashboardByFqn } from '../rest/dashboardAPI';
 import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getServiceDetailsPath,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
-  PLACEHOLDER_TASK_ID,
-  ROUTES,
-} from '../constants/constants';
-import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
-import { Column, Table } from '../generated/entity/data/table';
-import { TaskType } from '../generated/entity/feed/thread';
-import { getEntityName, getPartialNameFromTableFQN } from './CommonUtils';
-import { defaultFields as DashboardFields } from './DashboardDetailsUtils';
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../rest/databaseAPI';
+import { getDataModelDetailsByFQN } from '../rest/dataModelsAPI';
+import { getUserSuggestions } from '../rest/miscAPI';
+import { getMlModelByFQN } from '../rest/mlModelAPI';
+import { getPipelineByFqn } from '../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../rest/tableAPI';
+import { getTopicByFqn } from '../rest/topicsAPI';
+import { getEntityDetailLink, getPartialNameFromTableFQN } from './CommonUtils';
+import { ContainerFields } from './ContainerDetailUtils';
+import {
+  defaultFields as DashboardFields,
+  fetchCharts,
+} from './DashboardDetailsUtils';
+import { DatabaseFields } from './DatabaseDetails.utils';
+import { defaultFields as DatabaseSchemaFields } from './DatabaseSchemaDetailsUtils';
+import { defaultFields as DataModelFields } from './DataModelsUtils';
 import { defaultFields as TableFields } from './DatasetDetailsUtils';
+import { getEntityName } from './EntityUtils';
+import { getEntityFQN, getEntityType } from './FeedUtils';
 import { defaultFields as MlModelFields } from './MlModelDetailsUtils';
 import { defaultFields as PipelineFields } from './PipelineDetailsUtils';
 import { serviceTypeLogo } from './ServiceUtils';
+import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -58,7 +89,7 @@ export const getRequestDescriptionPath = (
   let pathname = ROUTES.REQUEST_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -78,7 +109,7 @@ export const getRequestTagsPath = (
   let pathname = ROUTES.REQUEST_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -98,7 +129,7 @@ export const getUpdateDescriptionPath = (
   let pathname = ROUTES.UPDATE_DESCRIPTION;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -118,7 +149,7 @@ export const getUpdateTagsPath = (
   let pathname = ROUTES.UPDATE_TAGS;
   pathname = pathname
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, entityFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFQN);
   const searchParams = new URLSearchParams();
 
   if (!isUndefined(field) && !isUndefined(value)) {
@@ -129,10 +160,16 @@ export const getUpdateTagsPath = (
   return { pathname, search: searchParams.toString() };
 };
 
-export const getTaskDetailPath = (taskId: string) => {
-  const pathname = ROUTES.TASK_DETAIL.replace(PLACEHOLDER_TASK_ID, taskId);
+export const getTaskDetailPath = (task: Thread) => {
+  const entityFQN = getEntityFQN(task.about) ?? '';
+  const entityType = getEntityType(task.about) ?? '';
 
-  return { pathname };
+  return getEntityDetailLink(
+    entityType as EntityType,
+    entityFQN,
+    EntityTabs.ACTIVITY_FEED,
+    ActivityFeedTabs.TASKS
+  );
 };
 
 export const getDescriptionDiff = (
@@ -160,19 +197,66 @@ export const fetchOptions = (
     .catch((err: AxiosError) => showErrorToast(err));
 };
 
+export const getEntityColumnsDetails = (
+  entityType: string,
+  entityData: EntityData
+) => {
+  switch (entityType) {
+    case EntityType.TOPIC:
+      return (entityData as Topic).messageSchema?.schemaFields ?? [];
+
+    case EntityType.DASHBOARD:
+      return (entityData as Dashboard).charts ?? [];
+
+    case EntityType.PIPELINE:
+      return (entityData as Pipeline).tasks ?? [];
+
+    case EntityType.MLMODEL:
+      return (entityData as Mlmodel).mlFeatures ?? [];
+
+    case EntityType.CONTAINER:
+      return (entityData as Container).dataModel?.columns ?? [];
+
+    default:
+      return (entityData as Table).columns ?? [];
+  }
+};
+
+type EntityColumns = Column[] | Task[] | MlFeature[] | Field[];
+
+interface EntityColumnProps {
+  description: string;
+  tags: TagLabel[];
+}
+
 export const getColumnObject = (
   columnName: string,
-  columns: Table['columns']
-): Column => {
-  let columnObject: Column = {} as Column;
+  columns: EntityColumns,
+  entityType: EntityType,
+  chartData?: Chart[]
+): EntityColumnProps => {
+  let columnObject: EntityColumnProps = {} as EntityColumnProps;
+
   for (let index = 0; index < columns.length; index++) {
     const column = columns[index];
     if (isEqual(column.name, columnName)) {
-      columnObject = column;
+      columnObject = {
+        description: column.description ?? '',
+        tags:
+          column.tags ??
+          (entityType === EntityType.DASHBOARD
+            ? chartData?.find((item) => item.name === columnName)?.tags ?? []
+            : []),
+      };
 
       break;
     } else {
-      columnObject = getColumnObject(columnName, column.children || []);
+      columnObject = getColumnObject(
+        columnName,
+        (column as Column).children || [],
+        entityType,
+        chartData
+      );
     }
   }
 
@@ -185,6 +269,11 @@ export const TASK_ENTITIES = [
   EntityType.TOPIC,
   EntityType.PIPELINE,
   EntityType.MLMODEL,
+  EntityType.CONTAINER,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DASHBOARD_DATA_MODEL,
+  EntityType.STORED_PROCEDURE,
+  EntityType.SEARCH_INDEX,
 ];
 
 export const getBreadCrumbList = (
@@ -254,6 +343,34 @@ export const getBreadCrumbList = (
       return [service(ServiceCategory.ML_MODEL_SERVICES), activeEntity];
     }
 
+    case EntityType.SEARCH_INDEX: {
+      return [service(ServiceCategory.SEARCH_SERVICES), activeEntity];
+    }
+
+    case EntityType.DATABASE_SCHEMA: {
+      return [
+        service(ServiceCategory.DATABASE_SERVICES),
+        database,
+        activeEntity,
+      ];
+    }
+    case EntityType.DASHBOARD_DATA_MODEL: {
+      return [service(ServiceCategory.DASHBOARD_SERVICES), activeEntity];
+    }
+
+    case EntityType.CONTAINER: {
+      return [service(ServiceCategory.STORAGE_SERVICES), activeEntity];
+    }
+
+    case EntityType.STORED_PROCEDURE: {
+      return [
+        service(ServiceCategory.DATABASE_SERVICES),
+        database,
+        databaseSchema,
+        activeEntity,
+      ];
+    }
+
     default:
       return [];
   }
@@ -262,7 +379,8 @@ export const getBreadCrumbList = (
 export const fetchEntityDetail = (
   entityType: EntityType,
   entityFQN: string,
-  setEntityData: (value: React.SetStateAction<EntityData>) => void
+  setEntityData: (value: React.SetStateAction<EntityData>) => void,
+  setChartData?: (value: React.SetStateAction<Chart[]>) => void
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
@@ -285,6 +403,11 @@ export const fetchEntityDetail = (
       getDashboardByFqn(entityFQN, DashboardFields)
         .then((res) => {
           setEntityData(res);
+          fetchCharts(res.charts)
+            .then((chart) => {
+              setChartData?.(chart);
+            })
+            .catch((err: AxiosError) => showErrorToast(err));
         })
         .catch((err: AxiosError) => showErrorToast(err));
 
@@ -306,12 +429,68 @@ export const fetchEntityDetail = (
 
       break;
 
+    case EntityType.DATABASE:
+      getDatabaseDetailsByFQN(entityFQN, DatabaseFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.DATABASE_SCHEMA:
+      getDatabaseSchemaDetailsByFQN(entityFQN, DatabaseSchemaFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.DASHBOARD_DATA_MODEL:
+      getDataModelDetailsByFQN(entityFQN, DataModelFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.CONTAINER:
+      getContainerByFQN(entityFQN, ContainerFields)
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
+    case EntityType.SEARCH_INDEX:
+      getSearchIndexDetailsByFQN(entityFQN, '')
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.STORED_PROCEDURE:
+      getStoredProceduresDetailsByFQN(
+        entityFQN,
+        STORED_PROCEDURE_DEFAULT_FIELDS
+      )
+        .then((res) => {
+          setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+
     default:
       break;
   }
 };
 
-export const getTaskActionList = (): TaskAction[] => [
+export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
@@ -327,3 +506,56 @@ export const isDescriptionTask = (taskType: TaskType) =>
 
 export const isTagsTask = (taskType: TaskType) =>
   [TaskType.RequestTag, TaskType.UpdateTag].includes(taskType);
+
+export const getEntityTaskDetails = (
+  entityType: EntityType
+): {
+  fqnPart: FqnPart[];
+  entityField: string;
+} => {
+  let fqnPartTypes: FqnPart;
+  let entityField: string;
+  switch (entityType) {
+    case EntityType.TABLE:
+      fqnPartTypes = FqnPart.NestedColumn;
+      entityField = EntityField.COLUMNS;
+
+      break;
+
+    case EntityType.TOPIC:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = EntityField.MESSAGE_SCHEMA;
+
+      break;
+
+    case EntityType.DASHBOARD:
+      fqnPartTypes = FqnPart.Database;
+      entityField = EntityField.CHARTS;
+
+      break;
+
+    case EntityType.PIPELINE:
+      fqnPartTypes = FqnPart.Schema;
+      entityField = EntityField.TASKS;
+
+      break;
+
+    case EntityType.MLMODEL:
+      fqnPartTypes = FqnPart.Schema;
+      entityField = EntityField.ML_FEATURES;
+
+      break;
+
+    case EntityType.CONTAINER:
+      fqnPartTypes = FqnPart.Topic;
+      entityField = EntityField.DATA_MODEL;
+
+      break;
+
+    default:
+      fqnPartTypes = FqnPart.Table;
+      entityField = EntityField.COLUMNS;
+  }
+
+  return { fqnPart: [fqnPartTypes], entityField };
+};

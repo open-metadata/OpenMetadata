@@ -29,9 +29,11 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
-from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.entity.services.searchService import SearchService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.workflow_output_handler import print_status
 
 try:
     from airflow.operators.python import PythonOperator
@@ -42,9 +44,6 @@ from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
     parse_validation_err,
-)
-from openmetadata_managed_apis.workflows.ingestion.credentials_builder import (
-    build_secrets_manager_credentials,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -63,12 +62,21 @@ from metadata.ingestion.api.parser import (
     InvalidWorkflowException,
     ParsingConfigurationError,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.utils import model_str
+from metadata.workflow.metadata import MetadataWorkflow
 
 logger = workflow_logger()
 
-# logging.getLogger("airflow.task.operators").setLevel(logging.WARNING)
+ENTITY_CLASS_MAP = {
+    "databaseService": DatabaseService,
+    "pipelineService": PipelineService,
+    "dashboardService": DashboardService,
+    "messagingService": MessagingService,
+    "mlmodelService": MlModelService,
+    "metadataService": MetadataService,
+    "storageService": StorageService,
+    "searchService": SearchService,
+}
 
 
 class InvalidServiceException(Exception):
@@ -84,9 +92,11 @@ class GetServiceException(Exception):
 
     def __init__(self, service_type: str, service_name: str):
         self.message = (
-            f"Could not get service from type {service_type}. This means that the"
+            f"Could not get service from type [{service_type}]. This means that the"
             " OpenMetadata client running in the Airflow host had issues getting"
-            f" the service {service_name}. Validate your ingestion-bot authentication."
+            f" the service [{service_name}]. Make sure the ingestion-bot JWT token"
+            " is valid and that the Workflow is deployed with the latest one. If this error"
+            " persists, recreate the JWT token and redeploy the Workflow."
         )
         super().__init__(self.message)
 
@@ -105,15 +115,12 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     :param ingestion_pipeline: With the service ref
     :return: WorkflowSource
     """
-    secrets_manager = (
-        ingestion_pipeline.openMetadataServerConnection.secretsManagerProvider
-    )
-    ingestion_pipeline.openMetadataServerConnection.secretsManagerCredentials = (
-        build_secrets_manager_credentials(secrets_manager)
-    )
 
     try:
         metadata = OpenMetadata(config=ingestion_pipeline.openMetadataServerConnection)
+
+        # check we can access OM server
+        metadata.health_check()
     except Exception as exc:
         raise ClientInitializationError(
             f"Failed to initialize the OpenMetadata client due to: {exc}."
@@ -124,53 +131,25 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     service_type = ingestion_pipeline.service.type
 
-    if service_type == "testSuite":
-        service = metadata.get_by_name(
-            entity=TestSuite, fqn=ingestion_pipeline.service.name
-        )  # check we are able to access OM server
-        if not service:
-            raise GetServiceException(service_type, ingestion_pipeline.service.name)
+    entity_class = ENTITY_CLASS_MAP.get(service_type)
+    try:
+        if service_type == "testSuite":
+            return WorkflowSource(
+                type=service_type,
+                serviceName=ingestion_pipeline.service.name,
+                sourceConfig=ingestion_pipeline.sourceConfig,
+                serviceConnection=None,  # retrieved from the test suite workflow using the `sourceConfig.config.entityFullyQualifiedName`
+            )
 
-        return WorkflowSource(
-            type=service_type,
-            serviceName=ingestion_pipeline.service.name,
-            sourceConfig=ingestion_pipeline.sourceConfig,
+        if entity_class is None:
+            raise InvalidServiceException(f"Invalid Service Type: {service_type}")
+
+        service = metadata.get_by_name(
+            entity=entity_class,
+            fqn=ingestion_pipeline.service.name,
+            nullable=False,
         )
 
-    entity_class = None
-    try:
-        if service_type == "databaseService":
-            entity_class = DatabaseService
-            service: DatabaseService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        elif service_type == "pipelineService":
-            entity_class = PipelineService
-            service: PipelineService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        elif service_type == "dashboardService":
-            entity_class = DashboardService
-            service: DashboardService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        elif service_type == "messagingService":
-            entity_class = MessagingService
-            service: MessagingService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        elif service_type == "mlmodelService":
-            entity_class = MlModelService
-            service: MlModelService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        elif service_type == "metadataService":
-            entity_class = MetadataService
-            service: MetadataService = metadata.get_by_name(
-                entity=entity_class, fqn=ingestion_pipeline.service.name
-            )
-        else:
-            raise InvalidServiceException(f"Invalid Service Type: {service_type}")
     except ValidationError as original_error:
         try:
             resp = metadata.client.get(
@@ -219,11 +198,11 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     set_operator_logger(workflow_config)
 
     config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
-    workflow = Workflow.create(config)
+    workflow = MetadataWorkflow.create(config)
 
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 
@@ -249,7 +228,9 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     return {
         "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
-        "description": ingestion_pipeline.description,
+        "description": ingestion_pipeline.description.__root__
+        if ingestion_pipeline.description is not None
+        else None,
         "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
         if ingestion_pipeline.airflowConfig.startDate
         else airflow.utils.dates.days_ago(1),
@@ -330,7 +311,6 @@ def build_dag(
     """
 
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
-
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
         workflow_config.pipelineRunId = str(uuid.uuid4())
@@ -340,7 +320,7 @@ def build_dag(
             python_callable=workflow_fn,
             op_kwargs={"workflow_config": workflow_config},
             # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
-            retries=0,
+            retries=ingestion_pipeline.airflowConfig.retries or 0,
             # each DAG will call its own OpenMetadataWorkflowConfig
             on_failure_callback=partial(send_failed_status_callback, workflow_config),
             # Add tag and ownership to easily identify DAGs generated by OM

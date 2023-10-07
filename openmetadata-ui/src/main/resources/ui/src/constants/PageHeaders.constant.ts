@@ -11,107 +11,149 @@
  *  limitations under the License.
  */
 
+import i18n from '../utils/i18next/LocalUtil';
+
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
-    header: 'Advanced Search',
-    subHeader:
-      'Discover the right data assets quickly using the syntax editor with and/or conditions.',
+    header: i18n.t('label.advanced-search'),
+    subHeader: i18n.t('message.page-sub-header-for-advanced-search'),
   },
   TABLE_PROFILE: {
-    header: 'Table Profile',
-    subHeader:
-      'Monitor and understand your tables structure with the profiler.',
+    header: i18n.t('label.table-profile'),
+    subHeader: i18n.t('message.page-sub-header-for-table-profile'),
   },
   DATA_QUALITY: {
-    header: 'Data Quality',
-    subHeader:
-      'Build trust in your data with quality tests and build reliable data products.',
+    header: i18n.t('label.data-quality'),
+    subHeader: i18n.t('message.page-sub-header-for-data-quality'),
   },
   COLUMN_PROFILE: {
-    header: 'Column Profile',
-    subHeader:
-      'Monitor and understand your columns structure with the profiler',
+    header: i18n.t('label.column-profile'),
+    subHeader: i18n.t('message.page-sub-header-for-column-profile'),
   },
   ADMIN: {
-    header: 'Admins',
-    subHeader:
-      'Know the other Admins in your organization, along with their Teams and Roles.',
+    header: i18n.t('label.admin-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-admins'),
   },
   USERS: {
-    header: 'Users',
-    subHeader:
-      'Represent your entire organizational structure with hierarchical teams.',
+    header: i18n.t('label.user-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-users'),
   },
   TEAMS: {
-    header: 'Teams',
-    subHeader:
-      'Represent your entire organizational structure with hierarchical teams.',
+    header: i18n.t('label.team-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-teams'),
   },
   ROLES: {
-    header: 'Roles',
-    subHeader: 'Assign comprehensive role based access to Users or Teams.',
+    header: i18n.t('label.role-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-roles'),
   },
   POLICIES: {
-    header: 'Policies',
-    subHeader:
-      'Define policies with a set of rules for fine-grained access control.',
+    header: i18n.t('label.policy-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-policies'),
   },
   DATABASES_SERVICES: {
-    header: 'Databases',
-    subHeader: 'Ingest metadata from the most popular database services.',
+    header: i18n.t('label.database-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-databases'),
   },
   MESSAGING_SERVICES: {
-    header: 'Messaging',
-    subHeader: 'Ingest metadata from the most used messaging services.',
+    header: i18n.t('label.messaging'),
+    subHeader: i18n.t('message.page-sub-header-for-messagings'),
   },
   DASHBOARD_SERVICES: {
-    header: 'Dashboards',
-    subHeader: 'Ingest metadata from the most popular dashboard services.',
+    header: i18n.t('label.dashboard-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-dashboards'),
   },
   PIPELINES_SERVICES: {
-    header: 'Pipelines',
-    subHeader: 'Ingest metadata from the most used pipeline services.',
+    header: i18n.t('label.pipeline-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-pipelines'),
   },
   ML_MODELS_SERVICES: {
-    header: 'ML Models',
-    subHeader: 'Ingest metadata from ML Model services through the UI',
+    header: i18n.t('label.ml-model-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-ml-models'),
   },
   METADATA_SERVICES: {
-    header: 'Metadata',
-    subHeader: 'Ingest metadata from metadata services, right from the UI.',
+    header: i18n.t('label.metadata-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-metadata'),
+  },
+  STORAGE_SERVICES: {
+    header: i18n.t('label.storage-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-storages'),
+  },
+  SEARCH_SERVICES: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search'),
   },
   ACTIVITY_FEED: {
-    header: 'Activity Feed',
-    subHeader:
-      'Monitor and understand your tables structure with the profiler.',
+    header: i18n.t('label.activity-feed'),
+    subHeader: i18n.t('message.page-sub-header-for-activity-feed'),
   },
   TABLES_CUSTOM_ATTRIBUTES: {
-    header: 'Tables',
-    subHeader:
-      'Define additional properties for tables to serve your organizational needs.',
+    header: i18n.t('label.table-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.table-plural'),
+    }),
   },
   TOPICS_CUSTOM_ATTRIBUTES: {
-    header: 'Topics',
-    subHeader:
-      'Define custom properties for topics to serve your organizational needs.',
+    header: i18n.t('label.topic-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.topic-plural'),
+    }),
   },
   DASHBOARD_CUSTOM_ATTRIBUTES: {
-    header: 'Dashboards',
-    subHeader:
-      'Define custom attributes for dashboards to serve your organizational needs.',
+    header: i18n.t('label.dashboard-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.dashboard-plural'),
+    }),
   },
   PIPELINES_CUSTOM_ATTRIBUTES: {
-    header: 'Pipelines',
-    subHeader:
-      'Define additional attributes for pipelines to serve your organizational needs.',
+    header: i18n.t('label.pipeline-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.pipeline-plural'),
+    }),
   },
   ML_MODELS_CUSTOM_ATTRIBUTES: {
-    header: 'ML Models',
-    subHeader:
-      'Define custom properties for ML models to serve your organizational needs.',
+    header: i18n.t('label.ml-model-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.ml-model-plural'),
+    }),
+  },
+  CONTAINER_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.container-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.container-plural'),
+    }),
+  },
+  STORED_PROCEDURE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.stored-procedure-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.stored-procedure-plural'),
+    }),
+  },
+  SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.search-index-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.search-index-plural'),
+    }),
+  },
+  GLOSSARY_TERM_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.glossary-term'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.glossary-term'),
+    }),
+  },
+  DATABASE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database'),
+    }),
+  },
+  DATABASE_SCHEMA_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.database-schema'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.database-schema'),
+    }),
   },
   BOTS: {
-    header: 'Bots',
-    subHeader: 'Create well-defined bots with scoped access permissions.',
+    header: i18n.t('label.bot-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-bots'),
   },
 };

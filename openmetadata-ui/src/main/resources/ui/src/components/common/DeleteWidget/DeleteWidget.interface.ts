@@ -24,7 +24,7 @@ export interface DeleteWidgetModalProps {
   entityId?: string;
   prepareType?: boolean;
   isRecursiveDelete?: boolean;
-  afterDeleteAction?: () => void;
+  afterDeleteAction?: (isSoftDelete?: boolean) => void;
 }
 
 export interface DeleteSectionProps {

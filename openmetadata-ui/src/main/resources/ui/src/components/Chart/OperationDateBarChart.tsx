@@ -13,7 +13,6 @@
 
 import { Col, Row } from 'antd';
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
   Bar,
   CartesianGrid,
@@ -23,6 +22,7 @@ import {
   ResponsiveContainer,
   Scatter,
   Tooltip,
+  TooltipProps,
   XAxis,
 } from 'recharts';
 import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
@@ -36,13 +36,12 @@ const OperationDateBarChart = ({
   name,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
-  const { t } = useTranslation();
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
-  const tooltipFormatter = (
-    _value: number,
-    _label: string,
-    data: { payload: Record<string, number> }
+  const tooltipFormatter: TooltipProps<number | string, string>['formatter'] = (
+    _value,
+    _label,
+    data
   ) => {
     return formatNumberWithComma(data.payload.data);
   };
@@ -55,20 +54,20 @@ const OperationDateBarChart = ({
 
   if (data.length === 0) {
     return (
-      <Row
-        align="middle"
-        className="h-full w-full"
-        data-testid="no-data-placeholder"
-        justify="center">
+      <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder>{t('message.no-data-available')}</ErrorPlaceHolder>
+          <ErrorPlaceHolder className="mt-0-important" />
         </Col>
       </Row>
     );
   }
 
   return (
-    <ResponsiveContainer debounce={200} id={`${name}_graph`} minHeight={300}>
+    <ResponsiveContainer
+      className="custom-legend"
+      debounce={200}
+      id={`${name}_graph`}
+      minHeight={300}>
       <ComposedChart className="w-full" data={data} margin={{ left: 16 }}>
         <XAxis
           dataKey="name"

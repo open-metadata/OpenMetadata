@@ -39,7 +39,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
+          wait-interval: 90
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -62,7 +62,7 @@ jobs:
 
       - name: Install Ubuntu related dependencies
         run: |
-          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+          sudo apt-get update  && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
 
       - name: Install Python & Openmetadata related dependencies
         run: |

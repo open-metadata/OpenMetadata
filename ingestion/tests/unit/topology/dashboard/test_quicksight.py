@@ -1,3 +1,14 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 """
 Test QuickSight using the topology
 """
@@ -20,7 +31,9 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
 
 mock_file_path = (
@@ -32,6 +45,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="quicksight_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QuickSight,
 )
@@ -41,7 +55,6 @@ MOCK_DASHBOARD = Dashboard(
     name="do_it_all_with_default_config",
     fullyQualifiedName="quicksight_source.do_it_all_with_default_config",
     displayName="do_it_all_with_default_config",
-    description="",
     service=EntityReference(
         id="85811038-099a-11ed-861d-0242ac120002", type="dashboardService"
     ),
@@ -89,21 +102,11 @@ MOCK_DASHBOARD_DETAILS = {
 EXPECTED_DASHBOARD = CreateDashboardRequest(
     name="552315335",
     displayName="New Dashboard",
-    description="",
-    dashboardUrl="https://dashboards.example.com/embed/1234",
+    sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
     tags=None,
     owner=None,
-    service=EntityReference(
-        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-        type="dashboardService",
-        name=None,
-        fullyQualifiedName=None,
-        description=None,
-        displayName=None,
-        deleted=None,
-        href=None,
-    ),
+    service="quicksight_source_test",
     extension=None,
 )
 
@@ -111,68 +114,31 @@ EXPECTED_DASHBOARDS = [
     CreateChartRequest(
         name="1108771657",
         displayName="Top Salespeople",
-        description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/1108771657",
-        tables=None,
+        sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
     CreateChartRequest(
         name="1985861713",
         displayName="Milan Datasets",
-        description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/1985861713",
-        tables=None,
+        sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
     CreateChartRequest(
         name="2025899139",
         displayName="Page Fans",
-        description="",
         chartType="Other",
-        chartUrl="https://dashboards.example.com/embed/1234/sheets/2025899139",
-        tables=None,
+        sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-            type="dashboardService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="quicksight_source_test",
     ),
 ]
-
-
-def mock_get_dashboard_embed_url(AwsAccountId, DashboardId, IdentityType, Namespace):
-    return {"EmbedUrl": "https://dashboards.example.com/embed/1234"}
 
 
 class QuickSightUnitTest(TestCase):
@@ -192,18 +158,19 @@ class QuickSightUnitTest(TestCase):
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.quicksight.dashboard_url = "https://dashboards.example.com/embed/1234"
+        self.quicksight.dashboard_url = (
+            "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
+        )
         self.quicksight.context.__dict__["dashboard"] = MOCK_DASHBOARD
         self.quicksight.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE
-        self.quicksight.client.get_dashboard_embed_url = mock_get_dashboard_embed_url
 
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
         results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
         for result in results:
-            if isinstance(result, CreateDashboardRequest):
-                dashboard_list.append(result)
+            if isinstance(result, Either) and result.right:
+                dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     @pytest.mark.order(2)

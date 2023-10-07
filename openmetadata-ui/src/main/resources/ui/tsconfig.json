@@ -2,7 +2,6 @@
   "compilerOptions": {
     "outDir": "./build",
     "rootDir": "./src",
-    "baseUrl": "./src",
     "typeRoots": ["./src/@types", "./node_modules/@types"],
     "incremental": true,
     "target": "ES5",
@@ -30,7 +29,8 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "allowUnreachableCode": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noImplicitAny": true
   },
   "include": ["src"]
 }

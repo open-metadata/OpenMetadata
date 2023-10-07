@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.analytics;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -26,8 +28,8 @@ import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.analytics.WebAnalyticEventResource.WebAnalyticEventDataList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -37,8 +39,9 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
         Entity.WEB_ANALYTIC_EVENT,
         WebAnalyticEvent.class,
         WebAnalyticEventResource.WebAnalyticEventList.class,
-        "analytics/webAnalyticEvent",
+        "analytics/web/events",
         WebAnalyticEventResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test
@@ -98,7 +101,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
             TestUtils.dateToTimestamp("2022-10-11"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(webAnalyticEventDataResultList.getData().size(), 1);
+    assertEquals(1, webAnalyticEventDataResultList.getData().size());
 
     ResultList<WebAnalyticEventData> emptyWebAnalyticEventDataResultList =
         getWebAnalyticEventData(
@@ -107,7 +110,7 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
             TestUtils.dateToTimestamp("2022-10-10"),
             ADMIN_AUTH_HEADERS);
 
-    assertEquals(emptyWebAnalyticEventDataResultList.getData().size(), 0);
+    assertEquals(0, emptyWebAnalyticEventDataResultList.getData().size());
   }
 
   @Test
@@ -124,11 +127,9 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
     putWebAnalyticEventData(webAnalyticEventData, ADMIN_AUTH_HEADERS);
 
     assertResponse(
-        () ->
-            deleteWebAnalyticEventData(
-                TestUtils.dateToTimestamp("2022-10-11"), authHeaders(USER_WITH_DATA_CONSUMER_ROLE.getName())),
+        () -> deleteWebAnalyticEventData(TestUtils.dateToTimestamp("2022-10-11"), authHeaders(DATA_CONSUMER.getName())),
         FORBIDDEN,
-        permissionNotAllowed(USER_WITH_DATA_CONSUMER_ROLE.getName(), List.of(MetadataOperation.DELETE)));
+        permissionNotAllowed(DATA_CONSUMER.getName(), List.of(MetadataOperation.DELETE)));
   }
 
   @Override
@@ -174,26 +175,25 @@ public class WebAnalyticEventResourceTest extends EntityResourceTest<WebAnalytic
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {}
 
-  public static void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
+  public void putWebAnalyticEventData(WebAnalyticEventData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("analytics/webAnalyticEvent/collect");
+    WebTarget target = getCollection().path("/collect");
     TestUtils.put(target, data, OK, authHeaders);
   }
 
-  public static void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders) throws IOException {
-    String url =
-        String.format("analytics/webAnalyticEvent/%s/%s/collect", WebAnalyticEventType.PAGE_VIEW.value(), timestamp);
-    WebTarget target = OpenMetadataApplicationTest.getResource(url);
+  public void deleteWebAnalyticEventData(Long timestamp, Map<String, String> authHeaders) throws IOException {
+    String url = String.format("/%s/%s/collect", WebAnalyticEventType.PAGE_VIEW.value(), timestamp);
+    WebTarget target = getCollection().path(url);
     TestUtils.delete(target, WebAnalyticEvent.class, authHeaders);
   }
 
-  public static ResultList<WebAnalyticEventData> getWebAnalyticEventData(
+  public ResultList<WebAnalyticEventData> getWebAnalyticEventData(
       String eventType, Long start, Long end, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("analytics/webAnalyticEvent/collect");
+    WebTarget target = getCollection().path("/collect");
     target = target.queryParam("startTs", start);
     target = target.queryParam("endTs", end);
     target = target.queryParam("eventType", eventType);
-    return TestUtils.get(target, WebAnalyticEventResource.WebAnalyticEventDataList.class, authHeaders);
+    return TestUtils.get(target, WebAnalyticEventDataList.class, authHeaders);
   }
 
   private void verifyWebAnalyticEventData(

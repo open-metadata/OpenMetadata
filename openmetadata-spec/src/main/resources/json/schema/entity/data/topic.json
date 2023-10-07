@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Topic",
   "$comment": "@om-entity-type",
-  "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.",
+  "description": "A `Topic` is a feed or an event stream in a `Messaging Service` into which publishers publish messages and consumed by consumers.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Topic",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -126,7 +126,8 @@
     },
     "followers": {
       "description": "Followers of this table.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this table.",
@@ -152,6 +153,25 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of topic.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["id", "name", "partitions", "service"],

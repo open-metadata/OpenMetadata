@@ -11,68 +11,59 @@
  *  limitations under the License.
  */
 
-import {
-  checkCheckboxStatus,
-  openFilterDropdown,
-  searchAndClickOnOption,
-} from '../../common/advancedSearchQuickFilters';
+import { addOwner, FIELDS, removeOwner } from '../../common/advancedSearch';
+import { searchAndClickOnOption } from '../../common/advancedSearchQuickFilters';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { QUICK_FILTERS_BY_ASSETS } from '../../constants/advancedSearchQuickFilters.constants';
 
-QUICK_FILTERS_BY_ASSETS.map((asset) => {
-  describe(`Advanced search quick filters should work properly for ${asset.label} assets`, () => {
-    beforeEach(() => {
-      cy.login();
-    });
+describe('Initial Setup for Advanced Search Quick Filters', () => {
+  beforeEach(() => {
+    cy.login();
+  });
 
-    it(`search dropdown should work properly for ${asset.label}`, () => {
-      // Navigate to explore page
-      cy.get('[data-testid="appbar-item-explore"]')
-        .should('exist')
-        .and('be.visible')
-        .click();
+  it('Pre-requisite for advance search', () => {
+    addOwner(FIELDS.Owner.searchCriteriaFirstGroup);
+  });
+});
 
-      cy.get(`[data-testid="${asset.tab}"]`)
-        .scrollIntoView()
-        .should('exist')
-        .and('be.visible')
-        .click();
+describe(`Advanced search quick filters should work properly for assets`, () => {
+  beforeEach(() => {
+    cy.login();
+  });
 
-      cy.wait(1000);
+  it(`should show the quick filters for respective assets`, () => {
+    // Navigate to explore page
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    QUICK_FILTERS_BY_ASSETS.map((asset) => {
+      cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
       asset.filters.map((filter) => {
-        const isSecondOption = filter.selectOption2 !== undefined;
+        cy.get(`[data-testid="search-dropdown-${filter.label}"]`)
+          .should('exist')
+          .and('be.visible');
+      });
+    });
+  });
 
-        openFilterDropdown(asset, filter);
+  it('search dropdown should work properly for tables', () => {
+    // Table
+    const asset = QUICK_FILTERS_BY_ASSETS[0];
 
-        const optionName1 =
-          filter.label === 'Service' ? asset.serviceName : filter.selectOption1;
-        const optionTestId1 =
-          filter.label === 'Service'
-            ? asset.serviceName
-            : filter.selectOptionTestId1;
+    // Navigate to explore page
+    cy.get('[data-testid="app-bar-item-explore"]').click();
+    cy.get(`[data-testid="${asset.tab}"]`).scrollIntoView().click();
 
-        searchAndClickOnOption(optionName1, optionTestId1, true);
+    asset.filters
+      .filter((item) => item.select)
+      .map((filter) => {
+        cy.get(`[data-testid="search-dropdown-${filter.label}"]`).click();
+        searchAndClickOnOption(asset, filter, true);
 
-        let querySearchURL = `http://localhost:8585/api/v1/search/query?*index=${
+        const querySearchURL = `/api/v1/search/query?*index=${
           asset.searchIndex
-        }*query_filter=*should*${filter.key}*${encodeURI(optionName1)}*`;
-
-        if (isSecondOption) {
-          const optionName2 =
-            filter.label === 'Service'
-              ? asset.serviceName
-              : filter.selectOption2;
-          const optionTestId2 =
-            filter.label === 'Service'
-              ? asset.serviceName
-              : filter.selectOptionTestId2;
-
-          searchAndClickOnOption(optionName2, optionTestId2, true);
-
-          querySearchURL =
-            querySearchURL + `${filter.key}*${encodeURI(optionName2)}*`;
-        }
+        }*query_filter=*should*${filter.key}*${encodeURI(
+          filter.selectOption1
+        )}*`;
 
         interceptURL('GET', querySearchURL, 'querySearchAPI');
 
@@ -82,36 +73,16 @@ QUICK_FILTERS_BY_ASSETS.map((asset) => {
           .click();
 
         verifyResponseStatusCode('@querySearchAPI', 200);
-
-        // Check for clear all and close button functionality
-        if (isSecondOption) {
-          const optionTestId2 =
-            filter.label === 'Service'
-              ? asset.serviceName
-              : filter.selectOptionTestId2;
-
-          openFilterDropdown(asset, filter);
-
-          // Check if clear all button works
-          cy.get(`[data-testid="clear-button"]`)
-            .should('exist')
-            .and('be.visible')
-            .click();
-
-          cy.get(`[data-testid="clear-button"]`).should('not.exist');
-
-          // Check close button works without changing filters
-          cy.get(`[data-testid="close-btn"]`)
-            .should('exist')
-            .and('be.visible')
-            .click();
-
-          openFilterDropdown(asset, filter);
-
-          checkCheckboxStatus(`${optionTestId1}-checkbox`, true);
-          checkCheckboxStatus(`${optionTestId2}-checkbox`, true);
-        }
       });
-    });
+  });
+});
+
+describe('Cleanup for Advanced Search Quick Filters', () => {
+  beforeEach(() => {
+    cy.login();
+  });
+
+  it('Cleanup of owners', () => {
+    removeOwner(FIELDS.Owner.searchCriteriaFirstGroup);
   });
 });

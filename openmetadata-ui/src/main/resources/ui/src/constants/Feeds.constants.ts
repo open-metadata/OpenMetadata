@@ -22,10 +22,12 @@ export const teamsLinkRegEx = /\((.+?\/\/.+?)\/(.+?\/.+?\/.+?)\/(.+?)\)/;
 export const entityLinkRegEx = /<#E::([^<>]+?)::([^<>]+?)>/g;
 export const entityRegex = /<#E::([^<>]+?)::([^<>]+?)\|(\[(.+?)?\]\((.+?)?\))>/;
 
-export const entityUrlMap = {
+export const ENTITY_URL_MAP = {
   team: 'settings/members/teams',
   user: 'users',
 };
+
+export type EntityUrlMapType = keyof typeof ENTITY_URL_MAP;
 
 export const confirmStateInitialValue = {
   state: false,
@@ -58,10 +60,33 @@ export enum PanelTab {
 export enum EntityField {
   DESCRIPTION = 'description',
   COLUMNS = 'columns',
+  SCHEMA_FIELDS = 'schemaFields',
   TAGS = 'tags',
   TASKS = 'tasks',
+  ML_FEATURES = 'mlFeatures',
+  SCHEMA_TEXT = 'schemaText',
+  OWNER = 'owner',
+  REVIEWERS = 'reviewers',
+  SYNONYMS = 'synonyms',
+  RELATEDTERMS = 'relatedTerms',
+  REFERENCES = 'references',
+  EXTENSION = 'extension',
+  DISPLAYNAME = 'displayName',
+  NAME = 'name',
+  MESSAGE_SCHEMA = 'messageSchema',
+  CHARTS = 'charts',
+  DATA_MODEL = 'dataModel',
+  CONSTRAINT = 'constraint',
+  TABLE_CONSTRAINTS = 'tableConstraints',
+  PARTITIONS = 'partitions',
+  REPLICATION_FACTOR = 'replicationFactor',
+  SOURCE_URL = 'sourceUrl',
+  MUTUALLY_EXCLUSIVE = 'mutuallyExclusive',
+  EXPERTS = 'experts',
+  FIELDS = 'fields',
 }
 
 export const ANNOUNCEMENT_BG = '#FFFDF8';
 export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';
+export const GLOBAL_BORDER = '#dde3ea';

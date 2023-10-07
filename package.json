@@ -11,7 +11,7 @@
     "url": "https://github.com/open-metadata/OpenMetadata.git"
   },
   "devDependencies": {
-    "quicktype": "^15.0.260"
+    "quicktype": "^17.0.6"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

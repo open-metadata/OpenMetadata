@@ -12,16 +12,15 @@
  */
 
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -30,20 +29,22 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
-import jsonData from '../../jsons/en';
+import { searchData } from '../../rest/miscAPI';
+import { getUsers, UsersQueryParams } from '../../rest/userAPI';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
 
 const UserListPageV1 = () => {
+  const { t } = useTranslation();
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
   const history = useHistory();
   const location = useLocation();
   const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
     tab === GlobalSettingOptions.ADMINS || undefined
   );
-  const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
+
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);
   const [userList, setUserList] = useState<User[]>([]);
@@ -53,45 +54,43 @@ const UserListPageV1 = () => {
 
   const initialSetup = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
-    setIsPageLoading(true);
     setIsDataLoading(true);
     setShowDeletedUser(false);
     setSearchValue('');
     setCurrentPage(INITIAL_PAGING_VALUE);
   };
 
-  const fetchUsersList = async (
-    isAdmin: boolean | undefined = undefined,
-    param = {} as Record<string, string>,
-    limit = PAGE_SIZE_MEDIUM
-  ) => {
+  const fetchUsersList = async (params: UsersQueryParams) => {
     setIsDataLoading(true);
     try {
-      const { data, paging } = await getUsers(
-        'profile,teams,roles',
-        limit,
-        param,
-        isAdmin,
-        false
-      );
+      const { data, paging } = await getUsers({
+        isBot: false,
+        limit: PAGE_SIZE_BASE,
+        fields: 'profile,teams,roles',
+        ...params,
+      });
       if (data) {
         setUserList(data);
         setPaging(paging);
       } else {
-        throw jsonData['api-error-messages']['fetch-users-error'];
+        throw t('server.entity-fetch-error', {
+          entity: t('label.user'),
+        });
       }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-users-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.user'),
+        })
       );
     }
     setIsDataLoading(false);
-    setIsPageLoading(false);
   };
 
   const handleFetch = () => {
-    fetchUsersList(isAdminPage, {
+    fetchUsersList({
+      isAdmin: isAdminPage,
       include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
     });
   };
@@ -102,16 +101,16 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = '';
+    let filters = 'isBot:false';
     if (isAdmin) {
-      filters = '(isAdmin:true)';
+      filters = 'isAdmin:true isBot:false';
     }
 
     return new Promise<Array<User>>((resolve) => {
       searchData(
         text,
         currentPage,
-        PAGE_SIZE_MEDIUM,
+        PAGE_SIZE_BASE,
         filters,
         '',
         '',
@@ -130,7 +129,9 @@ const UserListPageV1 = () => {
         .catch((err: AxiosError) => {
           showErrorToast(
             err,
-            jsonData['api-error-messages']['fetch-users-error']
+            t('server.entity-fetch-error', {
+              entity: t('label.user'),
+            })
           );
           resolve([]);
         });
@@ -148,17 +149,18 @@ const UserListPageV1 = () => {
     );
   };
 
-  const handlePagingChange = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePagingChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (searchValue) {
-      setCurrentPage(cursorValue as number);
-      getSearchedUsers(searchValue, cursorValue as number);
-    } else {
-      setCurrentPage(activePage as number);
-      fetchUsersList(isAdminPage, {
-        [cursorValue]: paging[cursorValue as keyof Paging] as string,
+      setCurrentPage(currentPage);
+      getSearchedUsers(searchValue, currentPage);
+    } else if (cursorType && paging[cursorType]) {
+      setCurrentPage(currentPage);
+      fetchUsersList({
+        isAdmin: isAdminPage,
+        [cursorType]: paging[cursorType],
         include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
       });
     }
@@ -168,7 +170,8 @@ const UserListPageV1 = () => {
     setCurrentPage(INITIAL_PAGING_VALUE);
     setSearchValue('');
     setShowDeletedUser(value);
-    fetchUsersList(isAdminPage, {
+    fetchUsersList({
+      isAdmin: isAdminPage,
       include: value ? Include.Deleted : Include.NonDeleted,
     });
   };
@@ -176,7 +179,7 @@ const UserListPageV1 = () => {
   const handleSearch = (value: string) => {
     setSearchValue(value);
     setCurrentPage(INITIAL_PAGING_VALUE);
-    const params = new URLSearchParams({ search: value });
+    const params = new URLSearchParams({ user: value });
     // This function is called onChange in the search input with debouncing
     // Hence using history.replace instead of history.push to avoid adding multiple routes in history
     history.replace({
@@ -200,26 +203,23 @@ const UserListPageV1 = () => {
         // Converting string to URLSearchParameter
         const searchParameter = new URLSearchParams(location.search);
         // Getting the searched name
-        const searchTerm = searchParameter.get('search') || '';
-        setSearchValue(searchTerm);
-        getSearchedUsers(searchTerm, 1);
-        setIsPageLoading(false);
+        const userSearchTerm = searchParameter.get('user') || '';
+        setSearchValue(userSearchTerm);
+        getSearchedUsers(userSearchTerm, 1);
+        setIsDataLoading(false);
       } else {
-        fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
+        fetchUsersList({
+          isAdmin: tab === GlobalSettingOptions.ADMINS || undefined,
+        });
       }
     } else {
-      setIsPageLoading(false);
       setIsDataLoading(false);
     }
   }, [tab]);
 
-  if (isPageLoading) {
-    return <Loader />;
-  }
-
   return (
     <UserListV1
-      afterDeleteAction={handleFetch}
+      afterDeleteAction={() => handleSearch('')}
       currentPage={currentPage}
       data={userList}
       isAdminPage={isAdminPage}

@@ -18,23 +18,19 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
+import { UserProfile } from '../components/authentication/auth-provider/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
-import { validEmailRegEx } from '../constants/regex.constants';
-import { AuthTypes } from '../enums/signin.enum';
+import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;
 
-export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
-
-export const getOidcExpiry = () => {
-  return new Date(Date.now() + 60 * 60 * 24 * 1000);
-};
+export const EXPIRY_THRESHOLD_MILLES = 5 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
@@ -76,11 +72,12 @@ export const getAuthConfig = (
     provider,
     providerName,
     enableSelfSignup,
+    samlConfiguration,
   } = authClient;
   let config = {};
   const redirectUri = getRedirectUri(callbackUrl);
   switch (provider) {
-    case AuthTypes.OKTA:
+    case AuthProvider.Okta:
       {
         config = {
           clientId,
@@ -93,7 +90,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.CUSTOM_OIDC:
+    case AuthProvider.CustomOidc:
       {
         config = {
           authority,
@@ -107,7 +104,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.GOOGLE:
+    case AuthProvider.Google:
       {
         config = {
           authority,
@@ -120,7 +117,16 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.AWS_COGNITO:
+    case AuthProvider.Saml:
+      {
+        config = {
+          samlConfiguration,
+          provider,
+        };
+      }
+
+      break;
+    case AuthProvider.AwsCognito:
       {
         config = {
           authority,
@@ -133,7 +139,7 @@ export const getAuthConfig = (
       }
 
       break;
-    case AuthTypes.AUTH0: {
+    case AuthProvider.Auth0: {
       config = {
         authority,
         clientId,
@@ -143,8 +149,8 @@ export const getAuthConfig = (
 
       break;
     }
-    case AuthTypes.LDAP:
-    case AuthTypes.BASIC: {
+    case AuthProvider.LDAP:
+    case AuthProvider.Basic: {
       config = {
         auth: {
           authority,
@@ -161,7 +167,7 @@ export const getAuthConfig = (
 
       break;
     }
-    case AuthTypes.AZURE:
+    case AuthProvider.Azure:
       {
         config = {
           auth: {
@@ -191,13 +197,9 @@ export const setMsalInstance = (configs: Configuration) => {
 export const msalLoginRequest: PopupRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
 };
-// Add here the endpoints for MS Graph API services you would like to use.
-export const msalGraphConfig = {
-  graphMeEndpoint: 'https://graph.microsoft.com',
-};
 
 export const getNameFromEmail = (email: string) => {
-  if (email?.match(validEmailRegEx)) {
+  if (email?.match(EMAIL_REG_EX)) {
     return email.split('@')[0];
   } else {
     // if the string does not conform to email format return the string
@@ -207,7 +209,8 @@ export const getNameFromEmail = (email: string) => {
 
 export const getNameFromUserData = (
   user: UserProfile,
-  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = []
+  jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
+  principleDomain = ''
 ) => {
   // filter and extract the present claims in user profile
   const jwtClaims = jwtPrincipalClaims.reduce(
@@ -226,15 +229,17 @@ export const getNameFromUserData = (
   const firstClaim = first(jwtClaims);
 
   let userName = '';
+  let domain = principleDomain;
 
   // if claims contains the "@" then split it out otherwise assign it to username as it is
   if (firstClaim?.includes('@')) {
-    userName = getNameFromEmail(firstClaim);
+    userName = firstClaim.split('@')[0];
+    domain = firstClaim.split('@')[1];
   } else {
     userName = firstClaim ?? '';
   }
 
-  return userName;
+  return { name: userName, email: userName + '@' + domain };
 };
 
 export const isProtectedRoute = (pathname: string) => {
@@ -245,6 +250,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.FORGOT_PASSWORD,
       ROUTES.CALLBACK,
       ROUTES.SILENT_CALLBACK,
+      ROUTES.SAML_CALLBACK,
       ROUTES.REGISTER,
       ROUTES.RESET_PASSWORD,
       ROUTES.ACCOUNT_ACTIVATION,
@@ -277,14 +283,23 @@ export const extractDetailsFromToken = () => {
     try {
       const { exp } = jwtDecode<JwtPayload>(token);
       const dateNow = Date.now();
+      if (exp === null) {
+        return {
+          exp,
+          isExpired: false,
+          timeoutExpiry: 0,
+        };
+      }
 
       const diff = exp && exp * 1000 - dateNow;
-      const timeoutExpiry = diff && diff - EXPIRY_THRESHOLD_MILLES;
+      const timeoutExpiry =
+        diff && diff > EXPIRY_THRESHOLD_MILLES
+          ? diff - EXPIRY_THRESHOLD_MILLES
+          : 0;
 
       return {
         exp,
         isExpired: exp && dateNow >= exp * 1000,
-        diff,
         timeoutExpiry,
       };
     } catch (error) {
@@ -296,7 +311,7 @@ export const extractDetailsFromToken = () => {
   return {
     exp: 0,
     isExpired: true,
-    diff: 0,
+
     timeoutExpiry: 0,
   };
 };

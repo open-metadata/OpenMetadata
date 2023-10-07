@@ -19,15 +19,30 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "dashboardUrl": {
+    "dashboardType": {
+      "$ref": "../../entity/data/dashboard.json#/definitions/dashboardType"
+    },
+    "sourceUrl": {
       "description": "Dashboard URL suffix from its service.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "project": {
+      "description": "Name of the project / workspace / collection in which the dashboard is contained",
       "type": "string"
     },
     "charts": {
-      "description": "All the charts included in this Dashboard.",
+      "description": "List of fully qualified name of charts included in this Dashboard.",
       "type": "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "default": null
+    },
+    "dataModels": {
+      "description": "List of fully qualified name of data models included in this Dashboard.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
     },
@@ -44,12 +59,27 @@
       "$ref": "../../type/entityReference.json"
     },
     "service": {
-      "description": "Link to the dashboard service where this dashboard is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Link to the dashboard service fully qualified name where this dashboard is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Dashboard belongs to.",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service"],

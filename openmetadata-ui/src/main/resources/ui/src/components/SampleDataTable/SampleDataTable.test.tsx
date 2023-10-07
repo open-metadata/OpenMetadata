@@ -12,43 +12,112 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { getSampleDataByTableId } from '../../rest/tableAPI';
 import SampleDataTable from './SampleDataTable.component';
+
+const mockProps = {
+  tableId: 'id',
+  ownerId: 'ownerId',
+  permissions: {
+    Create: true,
+    Delete: true,
+    ViewAll: true,
+    EditAll: true,
+    EditDescription: true,
+    EditDisplayName: true,
+    EditCustomFields: true,
+  } as OperationPermission,
+};
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'test' })),
 }));
 
-jest.mock('rest/tableAPI', () => ({
+jest.mock('../../rest/tableAPI', () => ({
   getSampleDataByTableId: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
+jest.mock('../common/error-with-placeholder/ErrorPlaceHolder', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="error-placeholder">ErrorPlaceholder</div>
+    );
+});
+
+jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
+  return jest.fn().mockReturnValue(<p>EntityDeleteModal</p>);
+});
+
 describe('Test SampleDataTable Component', () => {
-  it('Renders all the data that was sent to the component', async () => {
+  it('Render error placeholder if the columns passed are empty', async () => {
+    (getSampleDataByTableId as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: '' })
+    );
+
     await act(async () => {
-      render(<SampleDataTable tableId="id" />);
+      render(<SampleDataTable {...mockProps} />);
     });
-    const columns = screen.getAllByTestId('column-name');
 
-    expect(columns).toHaveLength(4);
+    const errorPlaceholder = screen.getByTestId('error-placeholder');
 
-    const rows = screen.getAllByTestId('row');
-
-    expect(rows).toHaveLength(3);
-
-    const cells = screen.getAllByTestId('cell');
-
-    expect(cells).toHaveLength(12);
+    expect(errorPlaceholder).toBeInTheDocument();
   });
 
-  it('Renders no data if the columns passed are empty', () => {
-    const { queryByTestId } = render(<SampleDataTable tableId="id" />);
+  it('Renders all the data that was sent to the component', async () => {
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
 
-    expect(queryByTestId('column-name')).toBeNull();
-    expect(queryByTestId('cell')).toBeNull();
+    const deleteButton = screen.getByTestId('sample-data-manage-button');
+    const table = screen.getByTestId('sample-data-table');
+
+    expect(deleteButton).toBeInTheDocument();
+    expect(table).toBeInTheDocument();
+  });
+
+  it('Sample Data menu dropdown should not be present when not have permission', async () => {
+    await act(async () => {
+      render(
+        <SampleDataTable
+          {...mockProps}
+          permissions={{
+            ...mockProps.permissions,
+            EditAll: false,
+          }}
+        />
+      );
+    });
+
+    expect(
+      screen.queryByTestId('sample-data-manage-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Render Delete Modal when delete sample data button is clicked', async () => {
+    await act(async () => {
+      render(<SampleDataTable {...mockProps} />);
+    });
+
+    const dropdown = screen.getByTestId('sample-data-manage-button');
+
+    expect(dropdown).toBeInTheDocument();
+
+    userEvent.click(dropdown);
+
+    const deleteButton = screen.getByTestId('delete-button-details-container');
+
+    userEvent.click(deleteButton);
+
+    const deleteModal = screen.getByText('EntityDeleteModal');
+
+    expect(deleteModal).toBeInTheDocument();
   });
 });

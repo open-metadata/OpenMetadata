@@ -34,3 +34,5 @@ mock-api/
 src/antlr/generated/
 src/generated/antlr/
 
+# connection schemas
+src/jsons/connectionSchemas/

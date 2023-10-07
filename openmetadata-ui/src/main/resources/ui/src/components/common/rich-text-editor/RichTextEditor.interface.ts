@@ -34,6 +34,7 @@ export interface PreviewerProp {
   maxLength?: number;
   className?: string;
   enableSeeMoreVariant?: boolean;
+  showReadMoreBtn?: boolean;
   textVariant?: TextVariant;
 }
 
@@ -43,7 +44,7 @@ export type EditorType = 'markdown' | 'wysiwyg';
 
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
-  initialValue: string;
+  initialValue?: string;
   placeHolder?: string;
   previewStyle?: PreviewStyle;
   editorType?: EditorType;

@@ -13,7 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isNil, isUndefined } from 'lodash';
+
 import { PagingResponse } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -25,38 +25,25 @@ import { Bot } from '../generated/entity/bot';
 import { Role } from '../generated/entity/teams/role';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getUsers = async (
-  arrQueryFields?: string,
-  limit?: number,
-  team?: { [key: string]: string },
-  isAdmin?: boolean,
-  isBot?: boolean
-) => {
-  let qParam = '';
-  if (!isUndefined(team)) {
-    const paramArr = Object.entries(team);
-    qParam = paramArr.reduce((pre, curr, index) => {
-      return (
-        pre + `${curr[0]}=${curr[1]}${index !== paramArr.length - 1 ? '&' : ''}`
-      );
-    }, '');
-  }
-  if (!isUndefined(isAdmin)) {
-    qParam = `${qParam}&isAdmin=${isAdmin}`;
-  }
-  if (!isUndefined(isBot)) {
-    qParam = `${qParam}&isBot=${isBot}`;
-  }
-  const url =
-    `${getURLWithQueryFields('/users', arrQueryFields, qParam)}` +
-    (!isNil(limit)
-      ? `${arrQueryFields?.length || qParam ? '&' : '?'}limit=${limit}`
-      : '');
+export interface UsersQueryParams {
+  fields?: string;
+  team?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+  isAdmin?: boolean;
+  isBot?: boolean;
+  include?: Include;
+}
 
-  const response = await APIClient.get<PagingResponse<User[]>>(url);
+export const getUsers = async (params: UsersQueryParams) => {
+  const response = await APIClient.get<PagingResponse<User[]>>('/users', {
+    params,
+  });
 
   return response.data;
 };
@@ -75,8 +62,16 @@ export const updateUserDetail = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
-export const getUserByName = async (name: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields('/users/name/' + name, arrQueryFields);
+export const getUserByName = async (
+  name: string,
+  arrQueryFields?: string,
+  params?: string
+) => {
+  const url = getURLWithQueryFields(
+    '/users/name/' + name,
+    arrQueryFields,
+    params
+  );
 
   const response = await APIClient.get<User>(url);
 
@@ -200,8 +195,16 @@ export const getAuthMechanismForBotUser = async (botId: string) => {
   return response.data;
 };
 
-export const getBotByName = async (name: string, arrQueryFields?: string) => {
-  const url = getURLWithQueryFields(`/bots/name/${name}`, arrQueryFields);
+export const getBotByName = async (
+  name: string,
+  arrQueryFields?: string,
+  params?: string
+) => {
+  const url = getURLWithQueryFields(
+    `/bots/name/${name}`,
+    arrQueryFields,
+    params
+  );
 
   const response = await APIClient.get<Bot>(url);
 

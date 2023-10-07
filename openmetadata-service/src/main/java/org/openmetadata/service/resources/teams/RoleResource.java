@@ -16,7 +16,6 @@ package org.openmetadata.service.resources.teams;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import io.dropwizard.jersey.PATCH;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,6 +24,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -48,51 +48,60 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.RoleCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/roles")
-@Api(value = "Roles collection", tags = "Roles collection")
+@Tag(
+    name = "Roles",
+    description =
+        "A `Role` is a collection of `Policies` that provides access control. A user or a "
+            + "team can be assigned one or multiple roles that provide privileges to a user and members of a team to perform the job function.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "roles", order = 1) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
   public static final String COLLECTION_PATH = "/v1/roles/";
+  public static final String FIELDS = "policies,teams,users";
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
+    super.addHref(uriInfo, role);
     Entity.withHref(uriInfo, role.getPolicies());
     Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());
     return role;
   }
 
-  public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Role.class, new RoleRepository(collectionDAO), authorizer);
+  public RoleResource(Authorizer authorizer) {
+    super(Entity.ROLE, authorizer);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("policies,teams,users", MetadataOperation.VIEW_BASIC);
+    return null;
   }
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    List<Role> roles = dao.getEntitiesFromSeedData();
+    List<Role> roles = repository.getEntitiesFromSeedData();
     for (Role role : roles) {
       role.setFullyQualifiedName(role.getName());
       List<EntityReference> policies = role.getPolicies();
@@ -100,24 +109,19 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         EntityReference ref = Entity.getEntityReferenceByName(Entity.POLICY, policy.getName(), Include.NON_DELETED);
         policy.setId(ref.getId());
       }
-      dao.initializeEntity(role);
+      repository.initializeEntity(role);
     }
-    RoleCache.initialize();
   }
 
   public static class RoleList extends ResultList<Role> {
-    @SuppressWarnings("unused") /* Required for tests */
-    RoleList() {}
+    /* Required for serde */
   }
-
-  public static final String FIELDS = "policies,teams,users";
 
   @GET
   @Valid
   @Operation(
       operationId = "listRoles",
       summary = "List roles",
-      tags = "roles",
       description =
           "Get a list of roles. Use cursor-based pagination to limit the number of entries in the list using `limit`"
               + " and `before` or `after` query params.",
@@ -155,17 +159,16 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter(include);
 
     ResultList<Role> roles;
     if (before != null) { // Reverse paging
-      roles = dao.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
+      roles = repository.listBefore(uriInfo, fields, filter, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      roles = dao.listAfter(uriInfo, fields, filter, limitParam, after);
+      roles = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
     return addHref(uriInfo, roles);
   }
@@ -175,7 +178,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "listAllRoleVersion",
       summary = "List role versions",
-      tags = "roles",
       description = "Get a list of all the versions of a role identified by `id`",
       responses = {
         @ApiResponse(
@@ -186,8 +188,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "role Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -196,8 +197,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/{id}")
   @Operation(
       operationId = "getRoleByID",
-      summary = "Get a role",
-      tags = "roles",
+      summary = "Get a role by id",
       description = "Get a role by `id`.",
       responses = {
         @ApiResponse(
@@ -209,7 +209,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Role get(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -220,8 +220,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -231,7 +230,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "getRoleByFQN",
       summary = "Get a role by name",
-      tags = "roles",
       description = "Get a role by `name`.",
       responses = {
         @ApiResponse(
@@ -243,7 +241,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Role getByName(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("name") String name,
+      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -254,8 +252,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -264,7 +261,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "getSpecificRoleVersion",
       summary = "Get a version of the role",
-      tags = "roles",
       description = "Get a version of the role by given `id`",
       responses = {
         @ApiResponse(
@@ -278,13 +274,12 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public Role getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Role Id", schema = @Schema(type = "string")) @PathParam("id") UUID id,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
               description = "Role version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -292,7 +287,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "createRole",
       summary = "Create a role",
-      tags = "roles",
       description = "Create a new role.",
       responses = {
         @ApiResponse(
@@ -302,8 +296,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, role);
   }
@@ -312,7 +305,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "createOrUpdateRole",
       summary = "Update role",
-      tags = "roles",
       description = "Create or Update a role.",
       responses = {
         @ApiResponse(
@@ -322,12 +314,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, role);
-    RoleCache.getInstance().invalidateRole(role.getId());
-    return response;
+    return createOrUpdate(uriInfo, securityContext, role);
   }
 
   @PATCH
@@ -336,13 +325,12 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "patchRole",
       summary = "Update a role",
-      tags = "roles",
       description = "Update an existing role with JsonPatch.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   public Response patch(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -351,12 +339,8 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
-    Role role = (Role) response.getEntity();
-    RoleCache.getInstance().invalidateRole(role.getId());
-    return response;
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, id, patch);
   }
 
   @DELETE
@@ -364,7 +348,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "deleteRole",
       summary = "Delete a role",
-      tags = "roles",
       description = "Delete a role by given `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -377,13 +360,10 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
-    Response response = delete(uriInfo, securityContext, id, true, hardDelete);
-    RoleCache.getInstance().invalidateRole(id);
-    return response;
+    return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @DELETE
@@ -391,7 +371,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Operation(
       operationId = "deleteRoleByName",
       summary = "Delete a role",
-      tags = "roles",
       description = "Delete a role by given `name`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
@@ -404,8 +383,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -413,8 +391,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted role.",
-      tags = "roles",
+      summary = "Restore a soft deleted role",
       description = "Restore a soft deleted role.",
       responses = {
         @ApiResponse(
@@ -423,20 +400,19 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
       })
   public Response restoreRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Role getRole(CreateRole create, String user) throws IOException {
+  private Role getRole(CreateRole create, String user) {
     if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
-    return copy(new Role(), create, user).withPolicies(create.getPolicies());
+    return copy(new Role(), create, user).withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
   }
 
   public static EntityReference getRole(String roleName) {
-    EntityRepository<EntityInterface> dao = Entity.getEntityRepository(Entity.ROLE);
-    return dao.dao.findEntityReferenceByName(roleName);
+    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+    return roleRepository.getReferenceByName(roleName, Include.NON_DELETED);
   }
 }

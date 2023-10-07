@@ -30,15 +30,24 @@ jobs:
       pull-requests: write
 
     steps:
-
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: false
+            swap-storage: true
+            docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
+        uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0  
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
+          wait-interval: 90
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -54,11 +63,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Set up JDK 11
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Run checkstyle
         run: mvn googleformatter:format@reformat-sources

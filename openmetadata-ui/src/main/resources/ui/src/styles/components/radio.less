@@ -13,28 +13,26 @@
 
 @import '../variables.less';
 
-@primary-color-lite: #7147e833;
-
 .radio-switch {
   .ant-radio-button-wrapper,
   .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
-    border-color: @primary-color-lite;
+    border-color: @primary-color-hover;
   }
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
-    background-color: @primary-color-lite;
+    background-color: @primary-color-hover;
   }
 
   .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
-    background-color: @primary-color-lite;
+    background-color: @primary-color-hover;
     color: @primary-color;
-    border-color: @primary-color-lite;
+    border-color: @primary-color-hover;
     z-index: 0;
 
     &:hover {
-      background-color: @primary-color-lite;
+      background-color: @primary-color-hover;
       color: @primary-color;
-      border-color: @primary-color-lite;
+      border-color: @primary-color-hover;
     }
   }
 }

@@ -10,13 +10,13 @@
     {
       "name": "minValue",
       "displayName": "Min",
-      "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of rows",
+      "description": "The {minValue} value for the column entry. If minValue is not included, maxValue is treated as upperBound and there will be no minimum",
       "dataType": "INT"
     },
     {
       "name": "maxValue",
       "displayName": "Max",
-      "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will eb no maximum number of rows",
+      "description": "The {maxValue} value for the column entry. if maxValue is not included, minValue is treated as lowerBound and there will be no maximum",
       "dataType": "INT"
     }
   ]

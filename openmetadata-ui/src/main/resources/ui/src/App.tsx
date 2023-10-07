@@ -11,68 +11,63 @@
  *  limitations under the License.
  */
 
-import { library } from '@fortawesome/fontawesome-svg-core';
-import {
-  faCheck,
-  faCheckCircle,
-  faCheckSquare,
-  faChevronDown,
-  faChevronRight,
-  faChevronUp,
-  faEllipsisV,
-  faPlus,
-  faSearch,
-  faTimes,
-} from '@fortawesome/free-solid-svg-icons';
-import Appbar from 'components/app-bar/Appbar';
-import { AuthProvider } from 'components/authentication/auth-provider/AuthProvider';
-import ErrorBoundry from 'components/ErrorBoundry/ErrorBoundry';
-import GlobalSearchProvider from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import PermissionProvider from 'components/PermissionProvider/PermissionProvider';
-import AppRouter from 'components/router/AppRouter';
-import WebSocketProvider from 'components/web-scoket/web-scoket.provider';
-import WebAnalyticsProvider from 'components/WebAnalytics/WebAnalyticsProvider';
-import { TOAST_OPTIONS } from 'constants/Toasts.constants';
-import React, { FunctionComponent } from 'react';
+import React, { FC, ReactNode } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
-import i18n from 'utils/i18next/LocalUtil';
+import ApplicationConfigProvider from './components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { AuthProvider } from './components/authentication/auth-provider/AuthProvider';
+import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
+import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import GlobalSearchProvider from './components/GlobalSearchProvider/GlobalSearchProvider';
+import PermissionProvider from './components/PermissionProvider/PermissionProvider';
+import AppRouter from './components/router/AppRouter';
+import TourProvider from './components/TourProvider/TourProvider';
+import WebSocketProvider from './components/web-scoket/web-scoket.provider';
+import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
+import { TOAST_OPTIONS } from './constants/Toasts.constants';
+import { history } from './utils/HistoryUtils';
+import i18n from './utils/i18next/LocalUtil';
 
-const App: FunctionComponent = () => {
-  library.add(
-    faTimes,
-    faCheck,
-    faSearch,
-    faPlus,
-    faCheckSquare,
-    faCheckCircle,
-    faChevronDown,
-    faChevronRight,
-    faChevronUp,
-    faEllipsisV
-  );
+interface AppProps {
+  routeElements?: ReactNode;
+  sideBarElements?: ReactNode;
+}
 
+const App: FC<AppProps> = ({ routeElements, sideBarElements }) => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
-        <Router>
+        <Router history={history}>
           <I18nextProvider i18n={i18n}>
-            <ErrorBoundry>
-              <AuthProvider childComponentType={AppRouter}>
-                <WebAnalyticsProvider>
-                  <PermissionProvider>
-                    <WebSocketProvider>
-                      <GlobalSearchProvider>
-                        <Appbar />
-                        <AppRouter />
-                      </GlobalSearchProvider>
-                    </WebSocketProvider>
-                  </PermissionProvider>
-                </WebAnalyticsProvider>
-              </AuthProvider>
-            </ErrorBoundry>
+            <ErrorBoundary>
+              <ApplicationConfigProvider
+                routeElements={routeElements}
+                sideBarElements={sideBarElements}>
+                <AuthProvider childComponentType={AppRouter}>
+                  <TourProvider>
+                    <HelmetProvider>
+                      <WebAnalyticsProvider>
+                        <PermissionProvider>
+                          <WebSocketProvider>
+                            <GlobalSearchProvider>
+                              <DomainProvider>
+                                <EntityExportModalProvider>
+                                  <AppRouter />
+                                </EntityExportModalProvider>
+                              </DomainProvider>
+                            </GlobalSearchProvider>
+                          </WebSocketProvider>
+                        </PermissionProvider>
+                      </WebAnalyticsProvider>
+                    </HelmetProvider>
+                  </TourProvider>
+                </AuthProvider>
+              </ApplicationConfigProvider>
+            </ErrorBoundary>
           </I18nextProvider>
         </Router>
         <ToastContainer {...TOAST_OPTIONS} newestOnTop />

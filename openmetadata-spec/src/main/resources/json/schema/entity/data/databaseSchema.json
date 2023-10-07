@@ -2,10 +2,20 @@
   "$id": "https://open-metadata.org/schema/entity/data/databaseSchema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database Schema",
-  "description": "This schema defines the Database Schema entity. A database schema is collection of tables, views, stored procedures, and other database objects.",
+  "$comment": "@om-entity-type",
+  "description": "This schema defines the Database Schema entity. A `Database Schema` is collection of tables, views, stored procedures, and other database objects.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this schema instance.",
@@ -13,7 +23,7 @@
     },
     "name": {
       "description": "Name that identifies the schema.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",
@@ -61,11 +71,19 @@
     },
     "tables": {
       "description": "References to tables in the schema.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageSummary": {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this Database Schema Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
       "default": null
     },
     "changeDescription": {
@@ -76,6 +94,29 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the database schema. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is inherited from the parent database, if it exists.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of database schema.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "database", "service"],

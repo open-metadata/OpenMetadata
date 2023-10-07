@@ -10,55 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitForElement,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { CSVImportResult, Status } from 'generated/type/csvImportResult';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import ImportGlossary from './ImportGlossary';
 
 const mockPush = jest.fn();
 const glossaryName = 'Glossary1';
-let mockCsvImportResult = {
+const mockCsvImportResult = {
   dryRun: true,
   status: 'success',
   numberOfRowsProcessed: 3,
   numberOfRowsPassed: 3,
   numberOfRowsFailed: 0,
-  importResultsCsv: `status,details,parent,name*,displayName,description*,synonyms,relatedTerms,references,tags\r
-  success,Entity updated,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
-  success,Entity updated,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
+  importResultsCsv: `status,details,parent,name*,displayName,description,synonyms,relatedTerms,references,tags\r
+  success,Entity created,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
+  success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
 
-const mockCsvContent = `parent,name*,displayName,description*,synonyms,relatedTerms,references,tags
-,Glossary2 Term,Glossary2 Term,Description for Glossary2 Term,,,,
-,Glossary2 term2,Glossary2 term2,Description data.,,,,`;
-
-const mockIncorrectCsvContent = `parent,name*,displayName,description*,synonyms,relatedTerms,references,tags
-,,Glossary2 Term,Glossary2 Term,Description for Glossary2 Term,,,,
-,,Glossary2 term2,Glossary2 term2,Description data.,,,,
-`;
-
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
+jest.mock('../../common/title-breadcrumb/title-breadcrumb.component', () =>
   jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../ImportResult/ImportResult', () =>
-  jest
+jest.mock('../ImportResult/GlossaryImportResult.component', () => ({
+  GlossaryImportResult: jest
     .fn()
-    .mockReturnValue(<div data-testid="import-results">Import Result</div>)
-);
+    .mockReturnValue(<div>GlossaryImportResult</div>),
+}));
 
-jest.mock('rest/glossaryAPI', () => ({
+jest.mock('../../../rest/glossaryAPI', () => ({
   importGlossaryInCSVFormat: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockCsvImportResult)),
@@ -70,232 +54,43 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('utils/RouterUtils', () => ({
-  getGlossaryPath: jest.fn().mockImplementation(() => 'glossary-path'),
+jest.mock('../../../utils/RouterUtils', () => ({
+  getGlossaryPath: jest.fn().mockImplementation((fqn) => `/glossary/${fqn}`),
 }));
 
-jest.mock('utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-
-jest.mock('components/IngestionStepper/IngestionStepper.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="stepper">Stepper</div>)
-);
+jest.mock('../../common/EntityImport/EntityImport.component', () => ({
+  EntityImport: jest.fn().mockImplementation(({ children, onImport }) => {
+    return (
+      <div data-testid="entity-import">
+        {children}{' '}
+        <button data-testid="import" onClick={onImport}>
+          import
+        </button>
+      </div>
+    );
+  }),
+}));
 
 describe('Import Glossary', () => {
   it('Should render the all components', async () => {
     render(<ImportGlossary glossaryName={glossaryName} />);
 
-    const breadcrumb = await screen.getByTestId('breadcrumb');
-    const title = await screen.getByTestId('title');
-    const uploader = await screen.getByTestId('upload-file-widget');
-    const uploadButton = await screen.getByTestId('upload-button');
-    const stepper = await screen.getByTestId('stepper');
-
-    expect(breadcrumb).toBeInTheDocument();
-    expect(title).toBeInTheDocument();
-    expect(uploader).toBeInTheDocument();
-    expect(uploadButton).toBeInTheDocument();
-    expect(stepper).toBeInTheDocument();
+    expect(await screen.findByTestId('breadcrumb')).toBeInTheDocument();
+    expect(await screen.findByTestId('title')).toBeInTheDocument();
+    expect(await screen.findByTestId('entity-import')).toBeInTheDocument();
   });
 
-  it('Import Should work', async () => {
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
-    });
-    const flushPromises = () => new Promise(setImmediate);
-
+  it('GlossaryImportResult should visible', async () => {
     render(<ImportGlossary glossaryName={glossaryName} />);
 
-    const uploadDragger = await waitForElement(() =>
-      screen.getByTestId('upload-file-widget')
-    );
-
-    expect(uploadDragger).toBeInTheDocument();
-
+    const importBtn = await screen.findByTestId('import');
     await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
+      fireEvent.click(importBtn);
     });
 
-    const successBadge = await screen.getByTestId('success-badge');
-    const cancelButton = await screen.getByTestId('cancel-button');
-    const previewButton = await screen.getByTestId('preview-button');
-    const fileName = await screen.getByTestId('file-name');
-
-    expect(successBadge).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(previewButton).toBeInTheDocument();
-    expect(fileName).toHaveTextContent('glossary-terms.csv');
-
-    // preview should work
-
-    await act(async () => {
-      userEvent.click(previewButton);
-    });
-
-    const importButton = await screen.getByTestId('import-button');
-
-    expect(await screen.getByTestId('import-results')).toBeInTheDocument();
-    expect(importButton).toBeInTheDocument();
-  });
-
-  it('Import Should work for partial success', async () => {
-    mockCsvImportResult = {
-      ...mockCsvImportResult,
-      status: Status.PartialSuccess,
-    };
-
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
-    });
-    const flushPromises = () => new Promise(setImmediate);
-
-    render(<ImportGlossary glossaryName={glossaryName} />);
-
-    const uploadDragger = await waitForElement(() =>
-      screen.getByTestId('upload-file-widget')
-    );
-
-    expect(uploadDragger).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
-    });
-
-    const successBadge = await screen.getByTestId('success-badge');
-    const cancelButton = await screen.getByTestId('cancel-button');
-    const previewButton = await screen.getByTestId('preview-button');
-    const fileName = await screen.getByTestId('file-name');
-
-    expect(successBadge).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(previewButton).toBeInTheDocument();
-    expect(fileName).toHaveTextContent('glossary-terms.csv');
-
-    // preview should work
-
-    await act(async () => {
-      userEvent.click(previewButton);
-    });
-
-    const importButton = await screen.getByTestId('import-button');
-
-    expect(await screen.getByTestId('import-results')).toBeInTheDocument();
-    expect(importButton).toBeInTheDocument();
-  });
-
-  it('Import Should not work for failure', async () => {
-    mockCsvImportResult = { ...mockCsvImportResult, status: Status.Failure };
-
-    const file = new File([mockIncorrectCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
-    });
-    const flushPromises = () => new Promise(setImmediate);
-
-    render(<ImportGlossary glossaryName={glossaryName} />);
-
-    const uploadDragger = await waitForElement(() =>
-      screen.getByTestId('upload-file-widget')
-    );
-
-    expect(uploadDragger).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
-    });
-
-    // for in correct data should show the failure badge
-    const failureBadge = await screen.getByTestId('failure-badge');
-
-    const cancelButton = await screen.getByTestId('cancel-button');
-    const previewButton = await screen.getByTestId('preview-button');
-    const fileName = await screen.getByTestId('file-name');
-
-    expect(failureBadge).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(previewButton).toBeInTheDocument();
-    expect(fileName).toBeInTheDocument();
-
-    // preview should work
-
-    await act(async () => {
-      userEvent.click(previewButton);
-    });
-
-    const importButton = screen.queryByTestId('import-button');
-    const cancelPreviewButton = await screen.getByTestId(
-      'preview-cancel-button'
-    );
-
-    expect(await screen.getByTestId('import-results')).toBeInTheDocument();
-
-    // for failure import button should not render
-    expect(importButton).not.toBeInTheDocument();
-
-    expect(cancelPreviewButton).toBeInTheDocument();
-  });
-
-  it('Import Should not work for aborted', async () => {
-    mockCsvImportResult = {
-      ...mockCsvImportResult,
-      status: Status.Aborted,
-      abortReason: 'Something went wrong',
-    };
-
-    const file = new File([mockCsvContent], 'glossary-terms.csv', {
-      type: 'text/plain',
-    });
-    const flushPromises = () => new Promise(setImmediate);
-
-    render(<ImportGlossary glossaryName={glossaryName} />);
-
-    const uploadDragger = await waitForElement(() =>
-      screen.getByTestId('upload-file-widget')
-    );
-
-    expect(uploadDragger).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.change(uploadDragger, { target: { files: [file] } });
-    });
-    await act(async () => {
-      await flushPromises();
-    });
-
-    const abortedReason = await screen.getByTestId('abort-reason');
-    const cancelButton = await screen.getByTestId('cancel-button');
-    const previewButton = await screen.getByTestId('preview-button');
-
-    expect(abortedReason).toBeInTheDocument();
-    expect(abortedReason).toHaveTextContent('Something went wrong');
-    expect(cancelButton).toBeInTheDocument();
-    expect(previewButton).toBeInTheDocument();
-
-    // preview should work
-
-    await act(async () => {
-      userEvent.click(previewButton);
-    });
-
-    const importButton = screen.queryByTestId('import-button');
-    const cancelPreviewButton = await screen.getByTestId(
-      'preview-cancel-button'
-    );
-
-    expect(await screen.getByTestId('import-results')).toBeInTheDocument();
-
-    // for abort import button should not render
-    expect(importButton).not.toBeInTheDocument();
-
-    expect(cancelPreviewButton).toBeInTheDocument();
+    expect(await screen.findByText('GlossaryImportResult')).toBeInTheDocument();
   });
 });

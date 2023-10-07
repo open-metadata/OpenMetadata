@@ -1,0 +1,35 @@
+{
+    "name": "Looker",
+    "displayName": "Looker Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description": "Validate that the API is accessible with the given credentials",
+            "errorMessage": "Failed to connect to looker, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "ValidateVersion",
+            "description": "Validate that the API version support the SKD 4.0",
+            "errorMessage": "API Version 4.0 is not listed on your instance supported versions. Note that 4.0 is the stable version: https://cloud.google.com/looker/docs/api-sdk",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "ListDashboards",
+            "description": "The user has permissions to list a non-empty list of dashboards",
+            "errorMessage": "Failed to list dashboards, please review your permissions.",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "ListLookMLModels",
+            "description": "The user has permissions to list a non-empty list of LookML Models",
+            "errorMessage": "Failed to list LookML Model, please review your permissions. Note that without this step, lineage won't be present.",
+            "shortCircuit": false,
+            "mandatory": false
+        }
+    ]
+}

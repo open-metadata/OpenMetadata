@@ -16,9 +16,21 @@
         "required": {
           "type": "boolean",
           "default": false
+        },
+        "description" : {
+          "description": "Description of the header field for documentation purposes.",
+          "$ref" : "basic.json#/definitions/markdown"
+        },
+        "examples" : {
+          "description": "Example values for the field",
+          "type" : "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["name", "description", "examples"]
     },
     "csvRecord": {
       "javaType": "org.openmetadata.schema.type.csv.CsvRecord",

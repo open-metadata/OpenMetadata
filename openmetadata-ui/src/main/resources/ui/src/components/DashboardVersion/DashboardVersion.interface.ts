@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -19,14 +19,15 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 
 export interface DashboardVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: Dashboard;
   isVersionLoading: boolean;
   owner: Dashboard['owner'];
+  domain: Dashboard['domain'];
   tier: TagLabel;
   slashedDashboardName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

@@ -15,12 +15,14 @@ OpenMetadata high-level API Table test
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
+from typing import List
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -29,19 +31,22 @@ from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnJoins,
     ColumnProfile,
     DataType,
     JoinedWith,
-    SqlQuery,
     SystemProfile,
     Table,
     TableData,
     TableJoins,
     TableProfile,
     TableProfilerConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -54,9 +59,11 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -81,10 +88,12 @@ class OMetaTableTest(TestCase):
 
     assert metadata.health_check()
 
-    user = metadata.create_or_update(
+    user: User = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owner = EntityReference(
+        id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.__root__
+    )
 
     service = CreateDatabaseServiceRequest(
         name="test-service-table",
@@ -92,7 +101,9 @@ class OMetaTableTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -109,36 +120,31 @@ class OMetaTableTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            service=cls.service_entity.fullyQualifiedName,
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
 
-        cls.db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db", type="database"
-        )
-
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema", database=cls.db_reference
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
         )
 
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        cls.schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-        )
+        cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
         cls.entity = Table(
             id=uuid.uuid4(),
             name="test",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=EntityReference(
+                id=cls.create_schema_entity.id, type="databaseSchema"
+            ),
             fullyQualifiedName="test-service-table.test-db.test-schema.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
         cls.create = CreateTableRequest(
             name="test",
-            databaseSchema=cls.schema_reference,
+            databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -186,7 +192,10 @@ class OMetaTableTest(TestCase):
         res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated owner
-        self.assertEqual(res.databaseSchema.id, updated_entity.databaseSchema.id)
+        self.assertEqual(
+            res.databaseSchema.fullyQualifiedName,
+            updated_entity.databaseSchema.__root__,
+        )
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
@@ -201,6 +210,10 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
+
+        # Now check that we get a None if the table does not exist
+        nullable_res = self.metadata.get_by_name(entity=Table, fqn="something.made.up")
+        self.assertIsNone(nullable_res)
 
     def test_get_id(self):
         """
@@ -336,7 +349,7 @@ class OMetaTableTest(TestCase):
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=datetime.now(tz=timezone.utc).timestamp(),
+                timestamp=datetime.now(tz=timezone.utc).timestamp() + 1,
                 operation="UPDATE",
                 rowsAffected=110,
             ),
@@ -388,14 +401,14 @@ class OMetaTableTest(TestCase):
 
         column_join_table_req = CreateTableRequest(
             name="another-test",
-            databaseSchema=self.schema_reference,
+            databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="another_id", dataType=DataType.BIGINT)],
         )
         column_join_table_res = self.metadata.create_or_update(column_join_table_req)
 
         direct_join_table_req = CreateTableRequest(
             name="direct-join-test",
-            databaseSchema=self.schema_reference,
+            databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[],
         )
         direct_join_table_res = self.metadata.create_or_update(direct_join_table_req)
@@ -441,28 +454,36 @@ class OMetaTableTest(TestCase):
             entity=Table, fqn=self.entity.fullyQualifiedName
         )
 
-        query_no_user = SqlQuery(query="select * from awesome")
-
-        self.metadata.ingest_table_queries_data(
-            table=res, table_queries=[query_no_user]
+        query_no_user = CreateQueryRequest(
+            query=SqlQuery(__root__="select * from awesome"),
+            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
-        table_with_query: Table = self.metadata.get_table_queries(res.id)
 
-        assert len(table_with_query.tableQueries) == 1
-        assert table_with_query.tableQueries[0].query == query_no_user.query
-        assert table_with_query.tableQueries[0].users is None
+        self.metadata.ingest_entity_queries_data(entity=res, queries=[query_no_user])
+        table_with_query: List[Query] = self.metadata.get_entity_queries(
+            res.id, fields=["*"]
+        )
+
+        assert len(table_with_query) == 1
+        assert table_with_query[0].query == query_no_user.query
+        assert table_with_query[0].users == []
 
         # Validate that we can properly add user information
-        query_with_user = SqlQuery(query="select * from awesome", users=[self.owner])
-
-        self.metadata.ingest_table_queries_data(
-            table=res, table_queries=[query_with_user]
+        query_with_user = CreateQueryRequest(
+            query="select * from awesome",
+            users=[self.owner.fullyQualifiedName],
+            service=FullyQualifiedEntityName(__root__=self.service.name.__root__),
         )
-        table_with_query: Table = self.metadata.get_table_queries(res.id)
 
-        assert len(table_with_query.tableQueries) == 1
-        assert table_with_query.tableQueries[0].query == query_with_user.query
-        assert table_with_query.tableQueries[0].users == [self.owner]
+        self.metadata.ingest_entity_queries_data(entity=res, queries=[query_with_user])
+        table_with_query: List[Query] = self.metadata.get_entity_queries(
+            res.id, fields=["*"]
+        )
+
+        assert len(table_with_query) == 1
+        assert table_with_query[0].query == query_with_user.query
+        assert len(table_with_query[0].users) == 1
+        assert table_with_query[0].users[0].id == self.owner.id
 
     def test_list_versions(self):
         """

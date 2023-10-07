@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getAdvancedFieldOptions } from 'rest/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { ExploreQuickFilterField } from '../Explore/explore.interface';
 import { SearchDropdownProps } from '../SearchDropdown/SearchDropdown.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
   mockAdvancedFieldDefaultOptions,
-  mockAdvancedFieldDuplicateOptions,
   mockAdvancedFieldOptions,
+  mockAggregations,
   mockTagSuggestions,
   mockUserSuggestions,
 } from './mocks/ExploreQuickFilters.mock';
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn(),
+  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
+  useParams: jest.fn().mockReturnValue({
+    tab: 'tables',
+  }),
+}));
 
 const mockOnFieldRemove = jest.fn();
 const mockOnAdvanceSearch = jest.fn();
@@ -68,8 +75,8 @@ jest.mock('./AdvanceSearchModal.component', () => ({
   AdvanceSearchModal: jest.fn().mockReturnValue(<p>AdvanceSearchModal</p>),
 }));
 
-jest.mock('rest/miscAPI', () => ({
-  getAdvancedFieldDefaultOptions: jest
+jest.mock('../../rest/miscAPI', () => ({
+  getAggregateFieldOptions: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),
   getAdvancedFieldOptions: jest
@@ -128,6 +135,7 @@ const onUpdateFilterValues = mockOnUpdateFilterValues;
 const mockProps = {
   index,
   fields: mockFields,
+  aggregations: mockAggregations,
   onFieldRemove,
   onAdvanceSearch,
   onClear,
@@ -146,23 +154,6 @@ describe('Test ExploreQuickFilters component', () => {
     expect(fields).toHaveLength(fields.length);
   });
 
-  it('Should call onAdvanceSearch method on click of Advance Search button', async () => {
-    const { findByTestId, findAllByTitle } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
-
-    const fields = await findAllByTitle('search-dropdown');
-    const advanceSearchButton = await findByTestId('advance-search-button');
-
-    expect(fields).toHaveLength(mockFields.length);
-
-    expect(advanceSearchButton).toBeInTheDocument();
-
-    fireEvent.click(advanceSearchButton);
-
-    expect(onAdvanceSearch).toHaveBeenCalled();
-  });
-
   it('All options should be passed to SearchDropdown component for proper API response', async () => {
     const { findByTestId, findAllByTestId } = render(
       <ExploreQuickFilters {...mockProps} />
@@ -178,67 +169,6 @@ describe('Test ExploreQuickFilters component', () => {
 
     const options = await findAllByTestId('option-database.name');
 
-    expect(options).toHaveLength(
-      mockAdvancedFieldOptions.data.suggest['metadata-suggest'][0].options
-        .length
-    );
-  });
-
-  it('No previous options should be present after getAdvancedFieldDefaultOptions API fails', async () => {
-    const { findByTestId, findAllByTestId, queryAllByTestId } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
-
-    const databaseFieldOnSearch = await findByTestId('onSearch-database.name');
-
-    expect(databaseFieldOnSearch).toBeInTheDocument();
-
-    await act(async () => {
-      userEvent.click(databaseFieldOnSearch);
-    });
-
-    let options = await findAllByTestId('option-database.name');
-
-    expect(options).toHaveLength(
-      mockAdvancedFieldOptions.data.suggest['metadata-suggest'][0].options
-        .length
-    );
-
-    (getAdvancedFieldOptions as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject('not done')
-    );
-
-    await act(async () => {
-      userEvent.click(databaseFieldOnSearch);
-    });
-
-    options = queryAllByTestId('option-database.name');
-
-    expect(options).toHaveLength(0);
-  });
-
-  it('No duplicate options should be sent to SearchDropdown component', async () => {
-    const { findByTestId, findAllByTestId } = render(
-      <ExploreQuickFilters {...mockProps} />
-    );
-
-    const databaseFieldOnSearch = await findByTestId('onSearch-database.name');
-
-    expect(databaseFieldOnSearch).toBeInTheDocument();
-
-    (getAdvancedFieldOptions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve(mockAdvancedFieldDuplicateOptions)
-    );
-
-    await act(async () => {
-      userEvent.click(databaseFieldOnSearch);
-    });
-
-    const options = await findAllByTestId('option-database.name');
-
-    expect(options).toHaveLength(
-      mockAdvancedFieldDuplicateOptions.data.suggest['metadata-suggest'][0]
-        .options.length - 1 // expected value reduced by 1 as one option in response is duplicated
-    );
+    expect(options).toHaveLength(3);
   });
 });

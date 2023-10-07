@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React from 'react';
@@ -19,14 +18,11 @@ import { LeftPanelCardProps } from './LeftPanelCard.interface';
 
 const LeftPanelCard = ({ children, id, className }: LeftPanelCardProps) => {
   return (
-    <Card
-      className={classNames(
-        className,
-        'left-panel-card tw-h-full page-layout-v1-left-panel page-layout-v1-vertical-scroll'
-      )}
+    <div
+      className={classNames(className, 'left-panel-card')}
       data-testid={`${lowerCase(id)}-left-panel`}>
-      <div>{children}</div>
-    </Card>
+      {children}
+    </div>
   );
 };
 

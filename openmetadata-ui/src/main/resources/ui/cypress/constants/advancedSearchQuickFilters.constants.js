@@ -16,15 +16,19 @@ import { MYDATA_SUMMARY_OPTIONS } from './constants';
 export const COMMON_DROPDOWN_ITEMS = [
   {
     label: 'Owner',
-    key: 'owner.displayName',
-    selectOption1: 'admin',
-    selectOptionTestId1: 'admin',
+    key: 'owner.displayName.keyword',
+    aggregateKey: 'displayName.keyword',
+    filterSearchIndex: 'user_search_index%2Cteam_search_index',
+    selectOption1: 'Aaron Johnson',
+    selectOptionTestId1: 'Aaron Johnson',
     selectOption2: 'Aaron Singh',
     selectOptionTestId2: 'Aaron Singh',
+    select: true,
   },
   {
     label: 'Tag',
     key: 'tags.tagFQN',
+    filterSearchIndex: 'tag_search_index%2Cglossary_search_index',
     selectOption1: 'PersonalData.Personal',
     selectOptionTestId1: 'PersonalData.Personal',
     selectOption2: 'PII.Sensitive',
@@ -34,6 +38,14 @@ export const COMMON_DROPDOWN_ITEMS = [
     label: 'Service',
     key: 'service.name',
   },
+  {
+    label: 'Tier',
+    key: 'tier.tagsFQN',
+  },
+  {
+    label: 'Service Type',
+    key: 'serviceType.keyword',
+  },
 ];
 
 export const TABLE_DROPDOWN_ITEMS = [
@@ -41,10 +53,9 @@ export const TABLE_DROPDOWN_ITEMS = [
   {
     label: 'Column',
     key: 'columns.name',
-    selectOption1: 'ad_id',
-    selectOptionTestId1: 'ad_id',
-    selectOption2: 'gross_sales',
-    selectOptionTestId2: 'gross_sales',
+    selectOption1: 'comments',
+    selectOptionTestId1: 'comments',
+    select: true,
   },
 
   {
@@ -67,9 +78,9 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
     label: 'Chart',
     key: 'charts.name',
     selectOption1: 'ETA Predictions Accuracy',
-    selectOptionTestId1: '210',
+    selectOptionTestId1: 'ETA Predictions Accuracy',
     selectOption2: 'Birth in France by department in 2016',
-    selectOptionTestId2: '161',
+    selectOptionTestId2: 'Birth in France by department in 2016',
   },
 ];
 
@@ -78,10 +89,40 @@ export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: 'Task',
     key: 'tasks.name',
-    selectOption1: 'hive_create_table',
-    selectOptionTestId1: 'hive_create_table',
-    selectOption2: 'presto_task',
-    selectOptionTestId2: 'presto_task',
+    selectOption1: 'Hive Create Table',
+    selectOptionTestId1: 'Hive Create Table',
+    selectOption2: 'Presto Task',
+    selectOptionTestId2: 'Presto Task',
+  },
+];
+
+export const CONTAINER_DROPDOWN_ITEMS = [
+  ...COMMON_DROPDOWN_ITEMS,
+  {
+    label: 'Column',
+    key: 'dataModel.columns.name.keyword',
+  },
+];
+
+export const GLOSSARY_DROPDOWN_ITEMS = [
+  {
+    label: 'Owner',
+    key: 'owner.displayName.keyword',
+  },
+  {
+    label: 'Tag',
+    key: 'tags.tagFQN',
+  },
+  {
+    label: 'Glossaries',
+    key: 'glossary.name.keyword',
+  },
+];
+
+export const TAG_DROPDOWN_ITEMS = [
+  {
+    label: 'Classification',
+    key: 'classification.name.keyword',
   },
 ];
 
@@ -124,16 +165,34 @@ export const QUICK_FILTERS_BY_ASSETS = [
     serviceName: 'sample_airflow',
     tag: 'PersonalData.Personal',
   },
-  // Commented below code as suggest API for ML Model is not working properly,
-  // as it is not returning the services after search.
-  // Uncomment this once fixed
-  // {
-  //   label: 'Ml Models',
-  //   searchIndex: 'mlmodel_search_index',
-  //   filters: COMMON_DROPDOWN_ITEMS,
-  //   tab: 'ml models-tab',
-  //   entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
-  //   serviceName: 'mlflow_svc',
-  //   tag: 'PersonalData.Personal',
-  // },
+  {
+    label: 'Ml Models',
+    searchIndex: 'mlmodel_search_index',
+    filters: COMMON_DROPDOWN_ITEMS,
+    tab: 'ml models-tab',
+    entity: MYDATA_SUMMARY_OPTIONS.mlmodels,
+    serviceName: 'mlflow_svc',
+    tag: 'PersonalData.Personal',
+  },
+  {
+    label: 'Containers',
+    searchIndex: 'container_search_index',
+    filters: CONTAINER_DROPDOWN_ITEMS,
+    tab: 'containers-tab',
+    entity: MYDATA_SUMMARY_OPTIONS.containers,
+  },
+  {
+    label: 'Glossaries',
+    searchIndex: 'glossary_search_index',
+    filters: GLOSSARY_DROPDOWN_ITEMS,
+    tab: 'glossaries-tab',
+    entity: MYDATA_SUMMARY_OPTIONS.glossaryTerms,
+  },
+  {
+    label: 'Tags',
+    searchIndex: 'tag_search_index',
+    filters: TAG_DROPDOWN_ITEMS,
+    tab: 'tags-tab',
+    entity: MYDATA_SUMMARY_OPTIONS.tags,
+  },
 ];

@@ -30,6 +30,8 @@ const localState = {
   },
 
   removeOidcToken: () => localStorage.removeItem(oidcTokenKey),
+
+  removeRefreshToken: () => localStorage.removeItem(refreshTokenKey),
 };
 
 export default localState;

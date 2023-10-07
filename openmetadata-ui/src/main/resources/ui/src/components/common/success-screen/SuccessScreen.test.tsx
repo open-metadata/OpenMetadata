@@ -11,96 +11,141 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import SuccessScreen from './SuccessScreen';
+import SuccessScreen, { SuccessScreenProps } from './SuccessScreen';
 
 jest.mock('../../../hooks/useAirflowStatus', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     isAirflowAvailable: true,
     fetchAirflowStatus: jest.fn(),
     isFetchingStatus: false,
+    platform: PIPELINE_SERVICE_PLATFORM,
   })),
 }));
 
+const mockViewService = jest.fn();
+const mockDeployService = jest.fn();
+const mockIngestService = jest.fn();
+
+const mockProps: SuccessScreenProps = {
+  name: 'newService',
+  suffix: 'suffix',
+  successMessage: 'this is success message',
+  showIngestionButton: true,
+  showDeployButton: true,
+  state: FormSubmitType.ADD,
+  viewServiceText: 'View New Service',
+  handleViewServiceClick: mockViewService,
+  handleDeployClick: mockDeployService,
+  handleIngestionClick: mockIngestService,
+};
+
 describe('Test SuccessScreen component', () => {
   it('SuccessScreen component should render', async () => {
-    const { container } = render(
-      <SuccessScreen
-        showIngestionButton
-        handleViewServiceClick={jest.fn()}
-        name="NewService"
-        state={FormSubmitType.ADD}
-        successMessage={<span>title</span>}
-      />
-    );
+    render(<SuccessScreen {...mockProps} />);
 
-    const succsessScreenContainer = await findByTestId(
-      container,
+    const successScreenContainer = await screen.findByTestId(
       'success-screen-container'
     );
-    const successIcon = await findByTestId(container, 'success-icon');
-    const successLine = await findByTestId(container, 'success-line');
-    const viewServiceBtn = await findByTestId(container, 'view-service-button');
-    const addIngestionBtn = await findByTestId(
-      container,
-      'add-ingestion-button'
-    );
-    const statusMsg = queryByTestId(container, 'airflow-status-msg');
-    const airflowDoc = queryByTestId(container, 'airflow-doc-link');
-    const statusCheck = queryByTestId(container, 'airflow-status-check');
+    const successIcon = await screen.findByTestId('success-icon');
+    const successLine = await screen.findByTestId('success-line');
+    const viewServiceBtn = await screen.findByTestId('view-service-button');
+    const addIngestionBtn = await screen.findByTestId('add-ingestion-button');
+    const deployButton = await screen.findByTestId('deploy-ingestion-button');
 
-    expect(succsessScreenContainer).toBeInTheDocument();
+    const statusMsg = screen.queryByTestId('airflow-platform-message');
+
+    expect(successScreenContainer).toBeInTheDocument();
+
     expect(successIcon).toBeInTheDocument();
     expect(successLine).toBeInTheDocument();
+
     expect(viewServiceBtn).toBeInTheDocument();
     expect(addIngestionBtn).toBeInTheDocument();
+    expect(deployButton).toBeInTheDocument();
+
     expect(statusMsg).not.toBeInTheDocument();
-    expect(airflowDoc).not.toBeInTheDocument();
-    expect(statusCheck).not.toBeInTheDocument();
   });
 
-  it('SuccessScreen component should render with airflow helper text', async () => {
-    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+  it('Should Render airflow message if pipeline service client is not available and platform is airflow', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
       fetchAirflowStatus: jest.fn(),
       isFetchingStatus: false,
+      platform: PIPELINE_SERVICE_PLATFORM,
     }));
+    render(<SuccessScreen {...mockProps} />);
 
-    const { container } = render(
-      <SuccessScreen
-        showIngestionButton
-        handleViewServiceClick={jest.fn()}
-        name="NewService"
-        state={FormSubmitType.ADD}
-        successMessage={<span>title</span>}
-      />
+    const airflowPlatformMessage = screen.getByTestId(
+      'airflow-platform-message'
     );
 
-    const succsessScreenContainer = await findByTestId(
-      container,
-      'success-screen-container'
-    );
-    const successIcon = await findByTestId(container, 'success-icon');
-    const successLine = await findByTestId(container, 'success-line');
-    const viewServiceBtn = await findByTestId(container, 'view-service-button');
-    const addIngestionBtn = await findByTestId(
-      container,
-      'add-ingestion-button'
-    );
-    const statusMsg = await findByTestId(container, 'airflow-status-msg');
-    const airflowDoc = await findByTestId(container, 'airflow-doc-link');
-    const statusCheck = await findByTestId(container, 'airflow-status-check');
+    expect(airflowPlatformMessage).toBeInTheDocument();
 
-    expect(succsessScreenContainer).toBeInTheDocument();
-    expect(successIcon).toBeInTheDocument();
-    expect(successLine).toBeInTheDocument();
-    expect(viewServiceBtn).toBeInTheDocument();
-    expect(addIngestionBtn).toBeInTheDocument();
-    expect(statusMsg).toBeInTheDocument();
-    expect(airflowDoc).toBeInTheDocument();
-    expect(statusCheck).toBeInTheDocument();
+    expect(
+      screen.getByText('message.manage-airflow-api-failed')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('message.airflow-guide-message')
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText('label.install-airflow-api >>')
+    ).toBeInTheDocument();
+  });
+
+  it('Should Render pipeline scheduler message if pipeline service client is not available and platform is argo', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: 'Argo',
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    const argoPlatformMessage = screen.getByTestId('argo-platform-message');
+
+    expect(argoPlatformMessage).toBeInTheDocument();
+
+    expect(
+      screen.getByText('message.pipeline-scheduler-message')
+    ).toBeInTheDocument();
+
+    expect(screen.getByTestId('collate-support')).toBeInTheDocument();
+  });
+
+  it('Should not render any message if pipeline service client is available with any platform', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: true,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: false,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    }));
+    render(<SuccessScreen {...mockProps} />);
+    const airflowPlatformMessage = screen.queryByTestId(
+      'airflow-platform-message'
+    );
+
+    const argoPlatformMessage = screen.queryByTestId('argo-platform-message');
+
+    expect(airflowPlatformMessage).not.toBeInTheDocument();
+    expect(argoPlatformMessage).not.toBeInTheDocument();
+  });
+
+  it('Should render the loader if status is fetching', () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      isAirflowAvailable: false,
+      fetchAirflowStatus: jest.fn(),
+      isFetchingStatus: true,
+      platform: PIPELINE_SERVICE_PLATFORM,
+    }));
+    render(<SuccessScreen {...mockProps} />);
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 });

@@ -15,8 +15,11 @@ package org.openmetadata.service.resources;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.setup.Environment;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfo;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import io.swagger.annotations.Api;
-import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -27,11 +30,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.ws.rs.Path;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -40,14 +40,9 @@ import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.CollectionDescriptor;
 import org.openmetadata.schema.type.CollectionInfo;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
-import org.openmetadata.service.util.RestUtil;
-import org.reflections.Reflections;
-import org.reflections.scanners.MethodAnnotationsScanner;
-import org.reflections.util.ClasspathHelper;
-import org.reflections.util.ConfigurationBuilder;
+import org.openmetadata.service.util.ClassUtil;
 
 /**
  * Collection registry is a registry of all the REST collections in the catalog. It is used for building REST endpoints
@@ -57,6 +52,7 @@ import org.reflections.util.ConfigurationBuilder;
 @Slf4j
 public final class CollectionRegistry {
   private static CollectionRegistry instance = null;
+  private static volatile boolean initialized = false;
 
   /** Map of collection endpoint path to collection details */
   private final Map<String, CollectionDetails> collectionMap = new LinkedHashMap<>();
@@ -64,21 +60,14 @@ public final class CollectionRegistry {
   /** Map of class name to list of functions exposed for writing conditions */
   private final Map<Class<?>, List<org.openmetadata.schema.type.Function>> functionMap = new ConcurrentHashMap<>();
 
-  /**
-   * Some functions are used for capturing resource based rules where policies are applied based on resource being
-   * accessed and team hierarchy the resource belongs to instead of the subject.
-   */
-  @Getter private final List<String> resourceBasedFunctions = new ArrayList<>();
-
   /** Resources used only for testing */
   @VisibleForTesting private final List<Object> testResources = new ArrayList<>();
 
   private CollectionRegistry() {}
 
   public static CollectionRegistry getInstance() {
-    if (instance == null) {
-      instance = new CollectionRegistry();
-      instance.initialize();
+    if (!initialized) {
+      initialize();
     }
     return instance;
   }
@@ -87,20 +76,15 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
-  private void initialize() {
-    loadCollectionDescriptors();
-    loadConditionFunctions();
-  }
-
-  /** For a collection at {@code collectionPath} returns JSON document that describes it and it's children */
-  public CollectionDescriptor[] getCollectionForPath(String collectionPath, UriInfo uriInfo) {
-    CollectionDetails parent = collectionMap.get(collectionPath);
-    CollectionDescriptor[] children = parent.getChildCollections();
-    for (CollectionDescriptor child : children) {
-      URI href = child.getCollection().getHref();
-      child.getCollection().setHref(RestUtil.getHref(uriInfo, href.getPath()));
+  public static void initialize() {
+    if (!initialized) {
+      instance = new CollectionRegistry();
+      initialized = true;
+      instance.loadCollectionDescriptors();
+      instance.loadConditionFunctions();
+    } else {
+      LOG.info("[Collection Registry] is already initialized.");
     }
-    return children;
   }
 
   public Map<String, CollectionDetails> getCollectionMap() {
@@ -122,55 +106,33 @@ public final class CollectionRegistry {
         }
       }
     }
-
-    // Now add collections to their parents
-    // Example add to /v1 collections services databases etc.
-    for (CollectionDetails details : collectionMap.values()) {
-      CollectionInfo collectionInfo = details.cd.getCollection();
-      if (collectionInfo.getName().equals("root")) {
-        // Collection root does not have any parent
-        continue;
-      }
-      String parent = new File(collectionInfo.getHref().getPath()).getParent();
-      CollectionDetails parentCollection = collectionMap.get(parent);
-      if (parentCollection != null) {
-        collectionMap.get(parent).addChildCollection(details);
-      }
-    }
   }
 
   /**
    * Resource such as Policy provide a set of functions for authoring SpEL based conditions. The registry loads all
-   * those conditions and makes it available listing them.
+   * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
-    Reflections reflections =
-        new Reflections(
-            new ConfigurationBuilder()
-                .setUrls(ClasspathHelper.forPackage("org.openmetadata.service"))
-                .setScanners(new MethodAnnotationsScanner()));
+    try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
+      for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
+        List<Method> methods = ClassUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
+        for (Method method : methods) {
+          Function annotation = method.getAnnotation(Function.class);
+          List<org.openmetadata.schema.type.Function> functionList =
+              functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
 
-    // Get classes marked with @Collection annotation
-    Set<Method> methods = reflections.getMethodsAnnotatedWith(Function.class);
-    for (Method method : methods) {
-      Function annotation = method.getAnnotation(Function.class);
-      List<org.openmetadata.schema.type.Function> functionList =
-          functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
-
-      org.openmetadata.schema.type.Function function =
-          new org.openmetadata.schema.type.Function()
-              .withName(annotation.name())
-              .withInput(annotation.input())
-              .withDescription(annotation.description())
-              .withExamples(List.of(annotation.examples()))
-              .withParameterInputType(annotation.paramInputType());
-      functionList.add(function);
-      functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-
-      if (annotation.resourceBased()) {
-        resourceBasedFunctions.add(annotation.name());
+          org.openmetadata.schema.type.Function function =
+              new org.openmetadata.schema.type.Function()
+                  .withName(annotation.name())
+                  .withInput(annotation.input())
+                  .withDescription(annotation.description())
+                  .withExamples(List.of(annotation.examples()))
+                  .withParameterInputType(annotation.paramInputType());
+          functionList.add(function);
+          functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
+          LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
+        }
       }
-      LOG.info("Initialized for {} function {}\n", method.getDeclaringClass().getSimpleName(), function);
     }
   }
 
@@ -191,9 +153,7 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-        Objects.requireNonNull(daoObject, "CollectionDAO must not be null");
-        Object resource = createResource(daoObject, resourceClass, config, authorizer, authenticatorHandler);
+        Object resource = createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler);
         details.setResource(resource);
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
@@ -233,43 +193,50 @@ public final class CollectionRegistry {
     return new CollectionDetails(cd, cl.getCanonicalName(), order);
   }
 
-  /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
+  /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    Reflections reflections = new Reflections("org.openmetadata.service.resources");
-
-    // Get classes marked with @Collection annotation
-    Set<Class<?>> collectionClasses = reflections.getTypesAnnotatedWith(Collection.class);
-    List<CollectionDetails> collections = new ArrayList<>();
-    for (Class<?> cl : collectionClasses) {
-      CollectionDetails cd = getCollection(cl);
-      collections.add(cd);
+    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+      ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
+      List<Class<?>> collectionClasses = classList.loadClasses();
+      List<CollectionDetails> collections = new ArrayList<>();
+      for (Class<?> cl : collectionClasses) {
+        CollectionDetails cd = getCollection(cl);
+        collections.add(cd);
+      }
+      return collections;
     }
-    return collections;
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
   private static Object createResource(
-      CollectionDAO daoObject,
+      Jdbi jdbi,
       String resourceClass,
       OpenMetadataApplicationConfig config,
       Authorizer authorizer,
       AuthenticatorHandler authHandler)
       throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
-    Object resource;
+
+    Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
     try {
-      resource = clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class).newInstance(daoObject, authorizer);
+      resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
     } catch (NoSuchMethodException e) {
       try {
         resource =
-            clz.getDeclaredConstructor(CollectionDAO.class, Authorizer.class, AuthenticatorHandler.class)
-                .newInstance(daoObject, authorizer, authHandler);
+            clz.getDeclaredConstructor(Authorizer.class, AuthenticatorHandler.class)
+                .newInstance(authorizer, authHandler);
       } catch (NoSuchMethodException ex) {
-        resource = Class.forName(resourceClass).getConstructor().newInstance();
+        try {
+          resource = clz.getDeclaredConstructor(Jdbi.class, Authorizer.class).newInstance(jdbi, authorizer);
+        } catch (NoSuchMethodException exe) {
+          resource = Class.forName(resourceClass).getConstructor().newInstance();
+        }
       }
+    } catch (Exception ex) {
+      LOG.warn("Exception encountered while creating resource for {}", clz, ex);
     }
 
     // Call initialize method, if it exists
@@ -279,7 +246,7 @@ public final class CollectionRegistry {
     } catch (NoSuchMethodException ignored) {
       // Method does not exist and initialize is not called
     } catch (Exception ex) {
-      LOG.warn("Encountered exception ", ex);
+      LOG.warn("Encountered exception while initializing resource for {}", clz, ex);
     }
 
     // Call upgrade method, if it exists
@@ -295,29 +262,15 @@ public final class CollectionRegistry {
   }
 
   public static class CollectionDetails {
-    private final int order;
-
     @Getter private final String resourceClass;
-    private final CollectionDescriptor cd;
-    private final List<CollectionDescriptor> childCollections = new ArrayList<>();
-
     @Getter @Setter private Object resource;
+    private final CollectionDescriptor cd;
+    private final int order;
 
     CollectionDetails(CollectionDescriptor cd, String resourceClass, int order) {
       this.cd = cd;
       this.resourceClass = resourceClass;
       this.order = order;
-    }
-
-    public void addChildCollection(CollectionDetails child) {
-      CollectionInfo collectionInfo = child.cd.getCollection();
-      LOG.info(
-          "Adding child collection {} to parent collection {}", collectionInfo.getName(), cd.getCollection().getName());
-      childCollections.add(child.cd);
-    }
-
-    public CollectionDescriptor[] getChildCollections() {
-      return childCollections.toArray(new CollectionDescriptor[0]);
     }
   }
 }

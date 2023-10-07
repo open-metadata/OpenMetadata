@@ -19,7 +19,6 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'build');
 
@@ -89,7 +88,8 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/tailwindcss'),
+          path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
+          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
           path.resolve(__dirname, 'node_modules/reactflow'),
           path.resolve(__dirname, 'node_modules/codemirror'),
           path.resolve(__dirname, 'node_modules/react-toastify'),
@@ -127,7 +127,7 @@ module.exports = {
       },
       // different urls to be handled by url-loader
       {
-        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff|woff2)$/i,
+        test: /\.(png|jpg|jpeg|gif|svg|ico)$/i,
         use: [
           {
             loader: 'url-loader',
@@ -139,25 +139,20 @@ module.exports = {
         ],
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
         ], // Just the source code
       },
-      // Font files to be handled by file-loader
+      // Font files to be handled by asset-modules, see https://webpack.js.org/guides/asset-modules/
       {
-        test: /\.ttf$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[name].[ext]',
-              outputPath: 'fonts/',
-            },
-          },
-        ],
+        test: /\.(ttf|eot|woff|woff2)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[name][ext]',
+        },
         include: [
           path.resolve(__dirname, 'src'),
-          path.resolve(__dirname, 'node_modules/slick-carousel'),
+          path.resolve(__dirname, 'node_modules/@fontsource/poppins'),
+          path.resolve(__dirname, 'node_modules/@fontsource/source-code-pro'),
         ], // Just the source code
       },
     ],
@@ -166,7 +161,7 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.svg', '.ttf'],
+    extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.svg'],
     fallback: {
       http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
@@ -174,7 +169,6 @@ module.exports = {
       fs: false,
       url: require.resolve('url/'),
     },
-    plugins: [new TsconfigPathsPlugin()],
   },
 
   plugins: [
@@ -216,6 +210,10 @@ module.exports = {
         },
         {
           from: path.join(__dirname, 'public/robots.txt'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/locales'),
           to: outputPath,
         },
       ],

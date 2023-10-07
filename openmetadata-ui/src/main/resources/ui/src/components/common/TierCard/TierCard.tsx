@@ -11,183 +11,150 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Popover, Row, Typography } from 'antd';
+import {
+  Card,
+  Collapse,
+  Popover,
+  Radio,
+  RadioChangeEvent,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { LoadingState, TableDetail } from 'Models';
-import React, { useEffect, useState } from 'react';
-import { getTags } from 'rest/tagAPI';
+import { t } from 'i18next';
+import React, { useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { EntityReference } from '../../../generated/type/entityReference';
-import jsonData from '../../../jsons/en';
+import { Tag } from '../../../generated/entity/classification/tag';
+import { getTags } from '../../../rest/tagAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import CardListItem from '../../cardlist/CardListItem/CardWithListItem';
-import { CardWithListItems } from '../../cardlist/CardListItem/CardWithListItem.interface';
 import Loader from '../../Loader/Loader';
-import './tier-card.css';
+import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+import './tier-card.style.less';
+import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
-export interface TierCardProps {
-  currentTier?: string;
-  hideTier?: boolean;
-  updateTier?: (value: string) => void;
-  onSave?: (
-    owner?: EntityReference,
-    tier?: TableDetail['tier'],
-    isJoinable?: boolean
-  ) => Promise<void>;
-  removeTier?: () => void;
-}
-
-const TierCard = ({
-  currentTier,
-  hideTier,
-  updateTier,
-  removeTier,
-}: TierCardProps) => {
-  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
-  const [activeTier, setActiveTier] = useState(currentTier);
-  const [statusTier, setStatusTier] = useState<LoadingState>('initial');
+const { Panel } = Collapse;
+const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
+  const [tiers, setTiers] = useState<Array<Tag>>([]);
+  const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
+    []
+  );
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
-  const handleCardSelection = (cardId: string) => {
-    setActiveTier(cardId);
-  };
-
-  const setInitialTierLoadingState = () => {
-    setStatusTier('initial');
-  };
-
-  const getTierData = () => {
+  const getTierData = async () => {
     setIsLoadingTierData(true);
-    getTags({
-      parent: 'Tier',
-    })
-      .then(({ data }) => {
-        if (data) {
-          const tierData: CardWithListItems[] =
-            data.map((tier: { name: string; description: string }) => ({
-              id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-              title: tier.name,
-              description: tier.description.substring(
-                0,
-                tier.description.indexOf('\n\n')
-              ),
-              data: tier.description.substring(
-                tier.description.indexOf('\n\n') + 1
-              ),
-            })) ?? [];
-
-          setTierData(tierData);
-        } else {
-          setTierData([]);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-tiers-error']
-        );
-      })
-      .finally(() => {
-        setIsLoadingTierData(false);
+    try {
+      const { data } = await getTags({
+        parent: 'Tier',
       });
-  };
 
-  const prepareTier = (updatedTier: string) => {
-    return updatedTier !== currentTier ? updatedTier : undefined;
-  };
-
-  const handleTierSave = (updatedTier: string) => {
-    setStatusTier('waiting');
-
-    const newTier = prepareTier(updatedTier);
-    updateTier?.(newTier as string);
-  };
-  const getTierCards = () => {
-    return (
-      <Card
-        className="tier-card"
-        data-testid="cards"
-        headStyle={{
-          borderBottom: 'none',
-          paddingLeft: '16px',
-          paddingTop: '12px',
-        }}
-        title={
-          <Row>
-            <Col span={21}>
-              <Typography.Title className="m-b-0" level={5}>
-                Edit Tier
-              </Typography.Title>
-            </Col>
-            <Col span={3}>
-              {currentTier ? (
-                <Button
-                  className="font-medium"
-                  data-testid="remove-tier"
-                  type="link"
-                  onClick={removeTier}>
-                  {' '}
-                  Clear Tier
-                </Button>
-              ) : (
-                ''
-              )}
-            </Col>
-          </Row>
-        }>
-        {tierData.map((card, i) => (
-          <CardListItem
-            card={card}
-            className={classNames(
-              'tw-mb-0 tw-rounded-t-none pl-[16px]',
-              {
-                'tw-rounded-t-md': i === 0,
-              },
-              {
-                'tw-rounded-b-md ': i === tierData.length - 1,
-              }
-            )}
-            index={i}
-            isActive={activeTier === card.id}
-            isSelected={card.id === currentTier}
-            key={i}
-            tierStatus={statusTier}
-            onCardSelect={handleCardSelection}
-            onSave={handleTierSave}
-          />
-        ))}
-      </Card>
-    );
-  };
-
-  const getTierWidget = () => {
-    if (hideTier) {
-      return null;
-    } else {
-      return isLoadingTierData ? <Loader /> : getTierCards();
+      if (data) {
+        const tierData: CardWithListItems[] =
+          data.map((tier: { name: string; description: string }) => ({
+            id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
+            title: getEntityName(tier),
+            description: tier.description.substring(
+              0,
+              tier.description.indexOf('\n\n')
+            ),
+            data: tier.description.substring(
+              tier.description.indexOf('\n\n') + 1
+            ),
+          })) ?? [];
+        setTierCardData(tierData);
+        setTiers(data);
+      } else {
+        setTierCardData([]);
+      }
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.tier-plural-lowercase'),
+        })
+      );
+    } finally {
+      setIsLoadingTierData(false);
     }
   };
 
-  useEffect(() => {
-    if (!hideTier) {
-      getTierData();
-    }
-  }, []);
+  const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
+    const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
+    updateTier?.(tier);
+  };
 
-  useEffect(() => {
-    setActiveTier(currentTier);
-    if (statusTier === 'waiting') {
-      setStatusTier('success');
-      setTimeout(() => {
-        setInitialTierLoadingState();
-      }, 300);
-    }
-  }, [currentTier]);
+  const clearTierSelection = () => {
+    updateTier?.();
+  };
 
   return (
-    <Popover data-testid="tier-card-container" trigger="click">
-      {getTierWidget()}
+    <Popover
+      className="p-0"
+      content={
+        <Card
+          className="tier-card"
+          data-testid="cards"
+          title={
+            <Space className="w-full p-xs justify-between">
+              <Typography.Text className="m-b-0 font-medium text-md">
+                {t('label.edit-entity', { entity: t('label.tier') })}
+              </Typography.Text>
+              <Typography.Text
+                className="m-b-0 font-normal text-primary cursor-pointer"
+                data-testid="clear-tier"
+                onClick={clearTierSelection}>
+                {t('label.clear')}
+              </Typography.Text>
+            </Space>
+          }>
+          <Radio.Group value={currentTier} onChange={handleTierSelection}>
+            <Collapse
+              accordion
+              className="bg-white border-none"
+              collapsible="icon"
+              defaultActiveKey={currentTier}
+              expandIconPosition="end">
+              {tierCardData.map((card) => (
+                <Panel
+                  data-testid="card-list"
+                  header={
+                    <Radio
+                      className="radio-input"
+                      data-testid={`radio-btn-${card.title}`}
+                      value={card.id}>
+                      <Space direction="vertical" size={0}>
+                        <Typography.Paragraph className="m-b-0 font-regular text-grey-body">
+                          {card.title}
+                        </Typography.Paragraph>
+                        <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                          {card.description.replace(/\*/g, '')}
+                        </Typography.Paragraph>
+                      </Space>
+                    </Radio>
+                  }
+                  key={card.id}>
+                  <div className="m-l-md">
+                    <RichTextEditorPreviewer
+                      className="tier-card-description"
+                      enableSeeMoreVariant={false}
+                      markdown={card.data}
+                    />
+                  </div>
+                </Panel>
+              ))}
+            </Collapse>
+          </Radio.Group>
+          {isLoadingTierData && <Loader />}
+        </Card>
+      }
+      overlayClassName="tier-card-popover"
+      placement="bottomRight"
+      showArrow={false}
+      trigger="click"
+      onOpenChange={(visible) =>
+        visible && !tierCardData.length && getTierData()
+      }>
+      {children}
     </Popover>
   );
 };

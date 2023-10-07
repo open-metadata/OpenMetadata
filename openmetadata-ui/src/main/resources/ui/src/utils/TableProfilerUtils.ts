@@ -11,14 +11,11 @@
  *  limitations under the License.
  */
 
-import { MetricChartType } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { findLast, sortBy } from 'lodash';
+import { MetricChartType } from '../components/ProfilerDashboard/profilerDashboard.interface';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { TableProfile } from '../generated/entity/data/table';
-import {
-  getFormattedDateFromMilliSeconds,
-  getFormattedDateFromSeconds,
-} from './TimeUtils';
+import { customFormatDateTime } from './date-time/DateTimeUtils';
 
 export const calculateRowCountMetrics = (
   profiler: TableProfile[],
@@ -28,7 +25,7 @@ export const calculateRowCountMetrics = (
   const rowCountMetricData: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = getFormattedDateFromSeconds(data.timestamp);
+    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
 
     rowCountMetricData.push({
       name: timestamp,
@@ -55,10 +52,7 @@ export const calculateSystemMetrics = (
   const operationDateMetrics: MetricChartType['data'] = [];
 
   updateProfilerData.forEach((data) => {
-    const timestamp = getFormattedDateFromMilliSeconds(
-      Number(data.timestamp),
-      'dd/MMM HH:mm'
-    );
+    const timestamp = customFormatDateTime(data.timestamp, 'MMM dd, hh:mm');
 
     operationMetrics.push({
       name: timestamp,
@@ -94,10 +88,7 @@ export const calculateSystemMetrics = (
       ...item,
       stackId: stackId,
       latestValue: operation?.timestamp
-        ? getFormattedDateFromMilliSeconds(
-            Number(operation?.timestamp),
-            'dd/MMM HH:mm'
-          )
+        ? customFormatDateTime(operation?.timestamp, 'MMM dd, hh:mm')
         : '--',
     };
   });

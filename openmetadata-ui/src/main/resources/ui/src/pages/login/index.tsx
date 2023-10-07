@@ -13,19 +13,19 @@
 
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import Loader from 'components/Loader/Loader';
-import LoginButton from 'components/LoginButton/LoginButton';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-import { VALIDATION_MESSAGES } from '../../constants/auth.constants';
-import { ROUTES } from '../../constants/constants';
-import { AuthTypes } from '../../enums/signin.enum';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
+import Loader from '../../components/Loader/Loader';
+import LoginButton from '../../components/LoginButton/LoginButton';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { AuthProvider } from '../../generated/settings/settings';
 import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './login.style.less';
@@ -49,14 +49,14 @@ const SigninPage = () => {
   const { isAuthProviderBasic } = useMemo(() => {
     return {
       isAuthProviderBasic:
-        authConfig?.provider === AuthTypes.BASIC ||
-        authConfig?.provider === AuthTypes.LDAP,
+        authConfig?.provider === AuthProvider.Basic ||
+        authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);
 
   const { isAuthProviderLDAP } = useMemo(() => {
     return {
-      isAuthProviderLDAP: authConfig?.provider === AuthTypes.LDAP,
+      isAuthProviderLDAP: authConfig?.provider === AuthProvider.LDAP,
     };
   }, [authConfig]);
 
@@ -93,45 +93,58 @@ const SigninPage = () => {
     let ssoBrandLogo;
     let ssoBrandName;
     switch (authConfig?.provider) {
-      case AuthTypes.GOOGLE: {
+      case AuthProvider.Google: {
         ssoBrandLogo = Icons.GOOGLE_ICON;
         ssoBrandName = 'Google';
 
         break;
       }
-      case AuthTypes.CUSTOM_OIDC: {
+      case AuthProvider.CustomOidc: {
         ssoBrandName = authConfig?.providerName
           ? authConfig?.providerName
           : 'SSO';
 
         break;
       }
-      case AuthTypes.OKTA: {
+      case AuthProvider.Saml: {
+        ssoBrandName = authConfig?.providerName
+          ? authConfig?.providerName
+          : 'SAML SSO';
+
+        break;
+      }
+      case AuthProvider.Okta: {
         ssoBrandLogo = Icons.OKTA_ICON;
         ssoBrandName = 'Okta';
 
         break;
       }
-      case AuthTypes.AWS_COGNITO: {
+      case AuthProvider.AwsCognito: {
         ssoBrandLogo = Icons.COGNITO_ICON;
         ssoBrandName = 'AWS Cognito';
 
         break;
       }
-      case AuthTypes.AZURE: {
+      case AuthProvider.Azure: {
         ssoBrandLogo = Icons.AZURE_ICON;
         ssoBrandName = 'Azure';
 
         break;
       }
-      case AuthTypes.AUTH0: {
+      case AuthProvider.Auth0: {
         ssoBrandLogo = Icons.AUTH0_ICON;
         ssoBrandName = 'Auth0';
 
         break;
       }
       default: {
-        return <div>SSO Provider {authConfig?.provider} is not supported.</div>;
+        return (
+          <div>
+            {t('message.sso-provider-not-supported', {
+              provider: authConfig?.provider,
+            })}
+          </div>
+        );
       }
     }
 
@@ -181,14 +194,14 @@ const SigninPage = () => {
   const onClickForgotPassword = () => history.push(ROUTES.FORGOT_PASSWORD);
 
   return (
-    <div className="d-flex flex-col h-full">
-      <Row className="flex bg-body-main flex-grow" data-testid="signin-page">
-        <Col span={10}>
+    <div className="d-flex flex-col h-full bg-white">
+      <Row className="flex flex-grow" data-testid="signin-page">
+        <Col span={8}>
           <div
             className={classNames('mt-24 text-center flex-center flex-col', {
               'sso-container': !isAuthProviderBasic,
             })}>
-            <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} width="152" />
+            <BrandImage height="auto" width={152} />
             <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
               {t('message.om-description')}{' '}
             </Typography.Text>
@@ -225,7 +238,10 @@ const SigninPage = () => {
                     name="password"
                     requiredMark={false}
                     rules={[{ required: true }]}>
-                    <Input.Password placeholder={t('label.password')} />
+                    <Input.Password
+                      autoComplete="off"
+                      placeholder={t('label.password')}
+                    />
                   </Form.Item>
 
                   <Button
@@ -242,7 +258,7 @@ const SigninPage = () => {
                   <div
                     className="d-flex flex-col m-y-md"
                     data-testid="login-error-container">
-                    <div className="flex border-1 border-main rounded-4 p-sm error-alert ">
+                    <div className="flex global-border rounded-4 p-sm error-alert ">
                       <div className="m-r-xs">
                         <SVGIcons
                           alt="failed"
@@ -292,7 +308,7 @@ const SigninPage = () => {
             )}
           </div>
         </Col>
-        <Col className="relative" span={14}>
+        <Col className="relative" span={16}>
           <div className="absolute inset-0">
             <img
               alt="bg-image"
@@ -301,11 +317,8 @@ const SigninPage = () => {
               src={loginBG}
             />
           </div>
-          <div className="relative">
-            <div className="flex justify-center mt-44 mb-10">
-              <LoginCarousel />
-            </div>
-          </div>
+
+          <LoginCarousel />
         </Col>
       </Row>
     </div>

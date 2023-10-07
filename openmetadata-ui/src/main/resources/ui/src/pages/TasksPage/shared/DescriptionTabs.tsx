@@ -12,46 +12,51 @@
  */
 
 import { Tabs } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import React, { useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../../components/common/rich-text-editor/RichTextEditor.interface';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
 
 interface Props {
-  description: string;
+  value: string;
   suggestion: string;
-  markdownRef: React.MutableRefObject<EditorContentRef | undefined>;
   placeHolder?: string;
   onChange?: (value: string) => void;
 }
 
 export const DescriptionTabs = ({
-  description,
+  value = '',
   suggestion,
-  markdownRef,
   placeHolder,
   onChange,
 }: Props) => {
+  const { t } = useTranslation();
   const { TabPane } = Tabs;
-
+  const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
+  const markdownRef = useRef<EditorContentRef>();
 
-  const onTabChange = (key: string) => {
-    setActiveTab(key);
-    if (isEqual(key, '2')) {
-      const newDescription = markdownRef.current?.getEditorContent();
-      if (newDescription) {
-        setDiffs(getDescriptionDiff(description, newDescription));
+  const onTabChange = useCallback(
+    (key: string) => {
+      setActiveTab(key);
+      if (isEqual(key, '2')) {
+        const newDescription = markdownRef.current?.getEditorContent();
+        if (newDescription) {
+          const diff = getDescriptionDiff(description, newDescription);
+          setDiffs(diff);
+        }
+      } else {
+        setDiffs([]);
       }
-    } else {
-      setDiffs([]);
-    }
-  };
+    },
+    [markdownRef]
+  );
 
   return (
     <Tabs
@@ -62,30 +67,31 @@ export const DescriptionTabs = ({
       type="card"
       onChange={onTabChange}>
       <TabPane data-testid="current-tab" key="1" tab="Current">
-        <div className="tw-flex tw-border tw-border-main tw-rounded tw-mb-4 tw-mt-4">
+        <div className="border border-main rounded-4 p-sm m-t-sm">
           {description.trim() ? (
             <RichTextEditorPreviewer
-              className="tw-p-2"
               enableSeeMoreVariant={false}
               markdown={description}
             />
           ) : (
-            <span className="tw-no-description tw-p-2">No description </span>
+            <span className="text-grey-muted">
+              {t('label.no-entity', { entity: t('label.description') })}
+            </span>
           )}
         </div>
       </TabPane>
       <TabPane data-testid="diff-tab" key="2" tab="Diff">
         <DiffView
-          className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-3"
+          className="border border-main rounded-4 p-sm m-t-sm"
           diffArr={diffs}
         />
       </TabPane>
       <TabPane data-testid="new-tab" key="3" tab="New">
         <RichTextEditor
-          className="tw-my-0"
+          className="m-t-sm"
           height="208px"
           initialValue={suggestion}
-          placeHolder={placeHolder ?? 'Update description'}
+          placeHolder={placeHolder ?? t('label.update-description')}
           ref={markdownRef}
           onTextChange={onChange}
         />

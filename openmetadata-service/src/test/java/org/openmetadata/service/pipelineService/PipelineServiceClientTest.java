@@ -4,12 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
-import org.openmetadata.service.exception.PipelineServiceVersionException;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.sdk.exception.PipelineServiceVersionException;
 
 public class PipelineServiceClientTest {
 
   final MockPipelineServiceClient mockPipelineServiceClient =
-      new MockPipelineServiceClient("user", "password", "https://endpoint.com", "111.11.11.1", 10);
+      new MockPipelineServiceClient(
+          new PipelineServiceClientConfiguration()
+              .withClassName("")
+              .withMetadataApiEndpoint("http://openmetadata-server:8585/api")
+              .withApiEndpoint("http://ingestion:8080"));
 
   @Test
   public void testGetVersionFromString() {
@@ -27,5 +32,18 @@ public class PipelineServiceClientTest {
     String actualMessage = exception.getMessage();
 
     assertEquals(expectedMessage, actualMessage);
+  }
+
+  @Test
+  public void testBuildVersionMismatchErrorMessage() {
+    String res = mockPipelineServiceClient.buildVersionMismatchErrorMessage("1.1.0.dev0", "1.0.0");
+    assertEquals(
+        res,
+        "Server version [1.0.0] is older than Ingestion Version [1.1.0.dev0]. Please upgrade your server or downgrade the ingestion client.");
+
+    res = mockPipelineServiceClient.buildVersionMismatchErrorMessage("1.0.0.dev0", "1.0.1");
+    assertEquals(
+        res,
+        "Ingestion version [1.0.0.dev0] is older than Server Version [1.0.1]. Please upgrade your ingestion client.");
   }
 }

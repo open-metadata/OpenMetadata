@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button, Divider } from 'antd';
 import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,31 +31,30 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
   const repliesCount = isUndefined(replies) ? 0 : replies;
 
   return (
-    <div className={className}>
+    <Divider className={className} orientation="left">
       {!isUndefined(repliedUsers) &&
       !isUndefined(replies) &&
       isFooterVisible ? (
-        <div className="tw-flex tw-group tw-items-center">
+        <Button
+          className="d-flex  p-0 items-center"
+          data-testid="reply-count"
+          size="small"
+          type="link"
+          onClick={() => onThreadSelect?.(threadId as string)}>
           {repliedUsers?.map((u, i) => (
             <ProfilePicture
-              className="tw-mt-0.5 tw-mx-0.5"
+              className="m-r-xss"
               data-testid="replied-user"
               id=""
               key={i}
               name={u}
-              profileImgClasses="tw-align-baseline"
               width="18"
             />
           ))}
-          <span
-            className="tw-ml-1 tw-text-info tw-text-xs tw-underline tw-self-center"
-            data-testid="reply-count"
-            onClick={() => onThreadSelect?.(threadId as string)}>
-            {`${t('label.view')} ${getReplyText(repliesCount)}`}
-          </span>
-        </div>
+          {`${t('label.view')} ${getReplyText(repliesCount)}`}
+        </Button>
       ) : null}
-    </div>
+    </Divider>
   );
 };
 

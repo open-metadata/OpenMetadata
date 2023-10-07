@@ -16,10 +16,9 @@ Validate workflow e2e
 import os
 import unittest
 from datetime import datetime, timedelta
-from unittest.mock import patch
 
 import sqlalchemy as sqa
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Session, declarative_base
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -46,40 +45,36 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.interfaces.profiler_protocol import ProfilerInterfaceArgs
-from metadata.interfaces.sqalchemy.sqa_profiler_interface import SQAProfilerInterface
-from metadata.test_suite.api.workflow import TestSuiteWorkflow
+from metadata.workflow.data_quality import TestSuiteWorkflow
 
 test_suite_config = {
     "source": {
-        "type": "TestSuite",
-        "serviceName": "TestSuiteWorkflow",
-        "sourceConfig": {"config": {"type": "TestSuite"}},
+        "type": "custom-database",
+        "serviceName": "test_suite_service_test",
+        "sourceConfig": {
+            "config": {
+                "type": "TestSuite",
+                "entityFullyQualifiedName": "test_suite_service_test.test_suite_database.test_suite_database_schema.users",
+            }
+        },
     },
     "processor": {
         "type": "orm-test-runner",
         "config": {
-            "testSuites": [
+            "testCases": [
                 {
-                    "name": "my_test_suite",
-                    "testCases": [
-                        {
-                            "name": "my_test_case",
-                            "testDefinitionName": "TableColumnCountToBeBetween",
-                            "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
-                            "parameterValues": [
-                                {"name": "minColValue", "value": 1},
-                                {"name": "maxColValue", "value": 5},
-                            ],
-                        },
-                        {
-                            "name": "table_column_name_to_exists",
-                            "testDefinitionName": "TableColumnNameToExist",
-                            "entityLink": "<#E::table::test_suite_service_test.test_suite_database.test_suite_database_schema.users>",
-                            "parameterValues": [{"name": "columnName", "value": "id"}],
-                        },
+                    "name": "my_test_case",
+                    "testDefinitionName": "tableColumnCountToBeBetween",
+                    "parameterValues": [
+                        {"name": "minColValue", "value": 1},
+                        {"name": "maxColValue", "value": 5},
                     ],
-                }
+                },
+                {
+                    "name": "table_column_name_to_exists",
+                    "testDefinitionName": "tableColumnNameToExist",
+                    "parameterValues": [{"name": "columnName", "value": "id"}],
+                },
             ],
         },
     },
@@ -140,22 +135,18 @@ class TestE2EWorkflow(unittest.TestCase):
         database: Database = cls.metadata.create_or_update(
             CreateDatabaseRequest(
                 name="test_suite_database",
-                service=cls.metadata.get_entity_reference(
-                    entity=DatabaseService, fqn=service.fullyQualifiedName
-                ),
+                service=service.fullyQualifiedName,
             )
         )
 
         database_schema: DatabaseSchema = cls.metadata.create_or_update(
             CreateDatabaseSchemaRequest(
                 name="test_suite_database_schema",
-                database=cls.metadata.get_entity_reference(
-                    entity=Database, fqn=database.fullyQualifiedName
-                ),
+                database=database.fullyQualifiedName,
             )
         )
 
-        table = cls.metadata.create_or_update(
+        cls.metadata.create_or_update(
             CreateTableRequest(
                 name="users",
                 columns=[
@@ -165,23 +156,12 @@ class TestE2EWorkflow(unittest.TestCase):
                     Column(name="nickname", dataType=DataType.STRING),
                     Column(name="age", dataType=DataType.INT),
                 ],
-                databaseSchema=cls.metadata.get_entity_reference(
-                    entity=DatabaseSchema, fqn=database_schema.fullyQualifiedName
-                ),
+                databaseSchema=database_schema.fullyQualifiedName,
             )
         )
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                profiler_interface_args=ProfilerInterfaceArgs(
-                    service_connection_config=cls.sqlite_conn.config,
-                    table_entity=table,
-                    ometa_client=None,
-                )
-            )
-        engine = sqa_profiler_interface.session.get_bind()
-        session = sqa_profiler_interface.session
+
+        engine = sqa.create_engine(f"sqlite:///{cls.sqlite_conn.config.databaseMode}")
+        session = Session(bind=engine)
 
         User.__table__.create(bind=engine)
 
@@ -209,8 +189,6 @@ class TestE2EWorkflow(unittest.TestCase):
             session.add_all(data)
             session.commit()
 
-        del sqa_profiler_interface
-
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -236,6 +214,7 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         workflow = TestSuiteWorkflow.create(test_suite_config)
         workflow.execute()
+        workflow.raise_from_status()
 
         test_case_1 = self.metadata.get_by_name(
             entity=TestCase,
@@ -252,14 +231,14 @@ class TestE2EWorkflow(unittest.TestCase):
         assert test_case_2
 
         test_case_result_1 = self.metadata.client.get(
-            "/testCase/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
+            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.my_test_case/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),
             },
         )
         test_case_result_2 = self.metadata.client.get(
-            "/testCase/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
+            "/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users.table_column_name_to_exists/testCaseResult",
             data={
                 "startTs": int((datetime.now() - timedelta(days=3)).timestamp()),
                 "endTs": int((datetime.now() + timedelta(days=3)).timestamp()),

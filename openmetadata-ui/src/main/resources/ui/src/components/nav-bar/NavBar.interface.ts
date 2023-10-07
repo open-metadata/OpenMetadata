@@ -11,11 +11,22 @@
  *  limitations under the License.
  */
 
-import { DropDownListItem } from '../dropdown/types';
+import { MenuProps } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactNode } from 'react';
+
+export interface DropdownOption {
+  name: ReactNode;
+  to: string;
+  disabled: boolean;
+  icon?: ReactNode;
+  isText?: boolean;
+  method?: () => void;
+}
 
 export interface NavBarProps {
-  supportDropdown: DropDownListItem[];
-  profileDropdown: DropDownListItem[];
+  supportDropdown: MenuProps['items'];
+  profileDropdown: ItemType[];
   searchValue: string;
   isTourRoute?: boolean;
   isFeatureModalOpen: boolean;
@@ -26,5 +37,6 @@ export interface NavBarProps {
   handleFeatureModal: (value: boolean) => void;
   handleSearchChange: (value: string) => void;
   handleOnClick: () => void;
+  handleClear: () => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }

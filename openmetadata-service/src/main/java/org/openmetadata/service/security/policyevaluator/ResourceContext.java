@@ -1,11 +1,9 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
-import java.io.IOException;
+import com.google.common.annotations.VisibleForTesting;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
@@ -13,8 +11,10 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
  * Builds ResourceContext lazily. ResourceContext includes all the attributes of a resource a user is trying to access
@@ -22,35 +22,59 @@ import org.openmetadata.service.util.EntityUtil;
  *
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
-@Builder
-public class ResourceContext implements ResourceContextInterface {
-  @NonNull @Getter private String resource;
-  @NonNull private EntityRepository<? extends EntityInterface> entityRepository;
-  private UUID id;
-  private String name;
-  private EntityInterface entity; // Will be lazily initialized
+public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+  @NonNull @Getter private final String resource;
+  private final EntityRepository<T> entityRepository;
+  private final UUID id;
+  private final String name;
+  private T entity; // Will be lazily initialized
 
-  // Builder class added for getting around javadoc errors. This class will be filled in by lombok.
-  public static class ResourceContextBuilder {}
+  public ResourceContext(@NonNull String resource) {
+    this.resource = resource;
+    this.id = null;
+    this.name = null;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
 
-  @Override
-  public EntityReference getOwner() throws IOException {
-    resolveEntity();
-    return entity == null ? null : entity.getOwner();
+  public ResourceContext(@NonNull String resource, UUID id, String name) {
+    this.resource = resource;
+    this.id = id;
+    this.name = name;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
+
+  @VisibleForTesting
+  public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
+    this.resource = resource;
+    this.id = null;
+    this.name = null;
+    this.entity = entity;
+    this.entityRepository = repository;
   }
 
   @Override
-  public List<TagLabel> getTags() throws IOException {
+  public EntityReference getOwner() {
     resolveEntity();
-    return entity == null ? null : listOrEmpty(entity.getTags());
+    if (entity == null) {
+      return null;
+    } else if (Entity.USER.equals(entityRepository.getEntityType())) {
+      return entity.getEntityReference(); // Owner for a user is same as the user
+    }
+    return entity.getOwner();
   }
 
   @Override
-  public EntityInterface getEntity() throws IOException {
+  public List<TagLabel> getTags() {
+    resolveEntity();
+    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
+  }
+
+  @Override
+  public EntityInterface getEntity() {
     return resolveEntity();
   }
 
-  private EntityInterface resolveEntity() throws IOException {
+  private EntityInterface resolveEntity() {
     if (entity == null) {
       String fields = "";
       if (entityRepository.isSupportsOwner()) {
@@ -59,10 +83,21 @@ public class ResourceContext implements ResourceContextInterface {
       if (entityRepository.isSupportsTags()) {
         fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
       }
-      if (id != null) {
-        entity = entityRepository.findOrNull(id, fields, Include.NON_DELETED);
-      } else if (name != null) {
-        entity = entityRepository.findByNameOrNull(name, fields, Include.NON_DELETED);
+      if (entityRepository.isSupportsDomain()) {
+        fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+      }
+      if (entityRepository.isSupportsReviewers()) {
+        fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+      }
+      Fields fieldList = entityRepository.getFields(fields);
+      try {
+        if (id != null) {
+          entity = entityRepository.get(null, id, fieldList, Include.ALL, true);
+        } else if (name != null) {
+          entity = entityRepository.getByName(null, name, fieldList, Include.ALL, true);
+        }
+      } catch (EntityNotFoundException e) {
+        entity = null;
       }
     }
     return entity;

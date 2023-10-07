@@ -25,7 +25,8 @@
         "Nifi",
         "DomoPipeline",
         "CustomPipeline",
-        "DatabricksPipeline"
+        "DatabricksPipeline",
+        "Spline"
       ],
       "javaEnums": [
         {
@@ -54,6 +55,9 @@
         },
         {
           "name": "DatabricksPipeline"
+        },
+        {
+          "name": "Spline"
         }
       ]
     },
@@ -94,6 +98,9 @@
             },
             {
               "$ref": "./connections/pipeline/databricksPipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/splineConnection.json"
             }
           ]
         }
@@ -138,6 +145,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
+    },
     "tags": {
       "description": "Tags for this Pipeline Service.",
       "type": "array",
@@ -148,7 +159,7 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "connection": {
       "$ref": "#/definitions/pipelineConnection"
@@ -169,6 +180,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Pipeline service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": [

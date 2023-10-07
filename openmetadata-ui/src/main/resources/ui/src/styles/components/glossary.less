@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 .glossary-card {
-  box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
   .ant-card-body {
     padding: 8px 14px;
   }
@@ -35,10 +36,6 @@
   padding-right: 0.75rem;
 }
 .left-panel-card {
-  border: 1px rgb(221, 227, 234) solid;
-  border-radius: 4px;
-  box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
-  height: 100%;
   .header {
     padding: 0.5rem 0.75rem;
   }
@@ -66,5 +63,123 @@
 .reference-edit-form {
   .ant-form-item {
     margin-bottom: 8px;
+  }
+}
+
+.glossary-synonym-tag {
+  border: 1px solid @border-color !important;
+}
+
+.term-reference-tag {
+  height: 24px;
+  .ant-tag-close-icon {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    color: @primary-color;
+  }
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-tabs {
+  .glossary-overview-tab,
+  .glossary-term-table-container,
+  .assets-tab-container {
+    height: @glossary-term-page-height;
+    overflow-y: scroll;
+  }
+  .description-heading {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .activity-feed-tab {
+    .center-container,
+    .right-container {
+      overflow-x: hidden;
+      overflow-y: auto;
+      height: @glossary-page-tab-height;
+    }
+  }
+}
+
+.tag-button-container {
+  height: 24px;
+  span {
+    white-space: nowrap;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.glossary-select {
+  width: calc(100% - 64px);
+}
+
+.tags-input-container {
+  .tags-item {
+    margin-top: 8px;
+    margin-right: 8px;
+  }
+  .tags-component-container {
+    margin-top: 8px;
+  }
+}
+
+.glossary-form-label {
+  width: 125px;
+  height: 32px;
+  line-height: 32px !important;
+}
+
+.glossary-form-antd-label label {
+  width: 125px;
+  margin-right: 12px;
+}
+
+.glossary-form .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.edit-glossary-modal .ant-form-item {
+  margin-bottom: 12px;
+}
+
+.glossary-overview-tab .schema-heading,
+.glossary-details .schema-heading {
+  font-size: 14px;
+  font-weight: 500;
+  color: @text-grey-muted;
+}
+
+.glossary-page-layout {
+  .page-layout-rightpanel {
+    padding-right: 0;
+    background-color: @white;
+    border: 1px solid @border-color;
+    border-radius: 0;
+    padding-left: 0;
+    border-top: 0;
+
+    .summary-panel-container {
+      height: @page-height;
+    }
+  }
+}
+
+.glossary-content-container {
+  height: @glossary-page-height;
+  overflow-y: auto;
+}
+
+.glossary-richtext-editor .toastui-editor,
+.edit-glossary-modal .toastui-editor {
+  min-height: 150px !important; // overriding inline style
+  .ProseMirror {
+    min-height: 150px;
   }
 }

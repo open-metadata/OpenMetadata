@@ -63,6 +63,6 @@ describe('Test Breadcrumb Component', () => {
 
     expect(lastLink).not.toHaveAttribute('href');
 
-    expect(lastLink).toHaveClass('tw-cursor-text');
+    expect(lastLink).toHaveClass('cursor-text');
   });
 });

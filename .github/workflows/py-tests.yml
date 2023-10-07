@@ -17,8 +17,15 @@ on:
       - '0.[0-9]+.[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
+      - 'openmetadata-docs-v1/**'
   pull_request_target:
     types: [labeled, opened, synchronize, reopened]
+    paths:
+      - "ingestion/**"
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "pom.xml"
+      - "Makefile"
 
 permissions:
   contents: read
@@ -28,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py-version: ['3.7', '3.8', '3.9']
+        py-version: ['3.8', '3.9', '3.10']
     steps:
 
     - name: Wait for the labeler
@@ -38,7 +45,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         check-name: Team Label
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 30
+        wait-interval: 90
 
     - name: Verify PR labels
       uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -55,11 +62,11 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
 
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
 
     - name: Set up Python ${{ matrix.py-version }}
       uses: actions/setup-python@v4
@@ -68,8 +75,8 @@ jobs:
 
     - name: Install Ubuntu dependencies
       run: |
-        sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev
+        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        unixodbc-dev libevent-dev python3-dev libkrb5-dev
 
     - name: Generate models
       run: |
@@ -110,27 +117,47 @@ jobs:
 
     - name: Clean Up
       run: |
-        cd ./docker/local-metadata
+        cd ./docker/development
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
 
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
     - name: Push Results in PR to Sonar
-      uses: Wandalen/wretry.action@v1.0.36
+      id: push-to-sonar
       if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
+      continue-on-error: true
+      uses: sonarsource/sonarcloud-github-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
       with:
-        attempt_limit: 3
-        attempt_delay: 10000
-        action: sonarsource/sonarcloud-github-action@master
-        with: |
-          args: >
-            -Dproject.settings=ingestion/sonar-project.properties
-            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-            -Dsonar.pullrequest.branch=${{ github.head_ref }}
-            -Dsonar.pullrequest.github.repository=OpenMetadata
-            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-            -Dsonar.pullrequest.provider=github
-          projectBaseDir: ingestion/
+        projectBaseDir: ingestion/
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.github.repository=OpenMetadata
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github
+
+    # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
+    - name: Wait to retry 'Push Results in PR to Sonar'
+      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+      run: sleep 20s
+      shell: bash
+
+    - name: Retry 'Push Results in PR to Sonar'
+      uses: sonarsource/sonarcloud-github-action@master
+      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+      with:
+        projectBaseDir: ingestion/
+        args: >
+          -Dproject.settings=ingestion/sonar-project.properties
+          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+          -Dsonar.pullrequest.branch=${{ github.head_ref }}
+          -Dsonar.pullrequest.github.repository=OpenMetadata
+          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
+          -Dsonar.pullrequest.provider=github

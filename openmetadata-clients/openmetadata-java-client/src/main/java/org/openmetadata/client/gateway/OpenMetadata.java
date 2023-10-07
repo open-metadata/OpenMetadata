@@ -22,7 +22,7 @@ import feign.okhttp.OkHttpClient;
 import feign.slf4j.Slf4jLogger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.ApiClient;
-import org.openmetadata.client.api.CatalogApi;
+import org.openmetadata.client.api.SystemApi;
 import org.openmetadata.client.interceptors.CustomRequestInterceptor;
 import org.openmetadata.client.security.factory.AuthenticationProviderFactory;
 import org.openmetadata.schema.api.OpenMetadataServerVersion;
@@ -97,7 +97,7 @@ public class OpenMetadata {
   }
 
   public String[] getServerVersion() {
-    CatalogApi api = apiClient.buildClient(CatalogApi.class);
+    SystemApi api = apiClient.buildClient(SystemApi.class);
     org.openmetadata.client.model.OpenMetadataServerVersion serverVersion = api.getCatalogVersion();
     return VersionUtils.getVersionFromString(serverVersion.getVersion());
   }

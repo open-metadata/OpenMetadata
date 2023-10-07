@@ -13,12 +13,12 @@
 
 import { Button, Tooltip } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
@@ -113,6 +113,7 @@ const PoliciesDetailsList = ({
       columns={columns}
       dataSource={list}
       pagination={false}
+      rowKey="id"
       size="small"
     />
   );

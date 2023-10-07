@@ -3,14 +3,11 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GlossaryTerm",
   "description": "This schema defines te Glossary term entities.",
+  "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.GlossaryTerm",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "name": {
-      "description": "Name that identifies a glossary term.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
-    },
     "termReference": {
       "type": "object",
       "properties": {
@@ -28,8 +25,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Approved", "Deprecated"],
-      "default": "Draft"
+      "enum": ["Draft", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
@@ -39,7 +35,7 @@
     },
     "name": {
       "description": "Preferred name for the glossary term.",
-      "$ref": "#/definitions/name"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this glossary.",
@@ -49,6 +45,9 @@
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a glossary term. It captures name hierarchy of glossary of terms in the form of `glossaryName.parentTerm.childTerm`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -57,7 +56,7 @@
       "description": "Alternate names that are synonyms or near-synonyms for the glossary term.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/name"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       }
     },
     "glossary": {
@@ -70,11 +69,11 @@
     },
     "children": {
       "description": "Other glossary terms that are children of this glossary term.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "relatedTerms": {
       "description": "Other glossary terms that are related to this glossary term.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "references": {
       "description": "Link to a reference from an external glossary.",
@@ -101,7 +100,7 @@
     },
     "reviewers": {
       "description": "User names of the reviewers for this glossary.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "owner": {
       "description": "Owner of this glossary term.",
@@ -143,6 +142,17 @@
       "description" : "Glossary terms that are children of this term are mutually exclusive. When mutually exclusive is `true` only one term can be used to label an entity from this group. When mutually exclusive is `false`, multiple terms from this group can be used to label an entity.",
       "type" : "boolean",
       "default" : "false"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domain" : {
+      "description": "Domain the Glossary Term belongs to. When not set, the Glossary TErm inherits the domain from the Glossary it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": ["id", "name", "description", "glossary"],

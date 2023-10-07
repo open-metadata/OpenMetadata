@@ -11,25 +11,36 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
 import { Chart } from '../generated/entity/data/chart';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { Task } from '../generated/entity/data/pipeline';
-import { Column } from '../generated/entity/data/table';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { Column, TableConstraint } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
-import { getEntityName } from './CommonUtils';
-import SVGIcons from './SvgUtils';
+import { getEntityName } from './EntityUtils';
 
 const { Text } = Typography;
 
+export interface EntityNameProps {
+  name?: string;
+  displayName?: string;
+}
+
+const getTitleName = (data: EntityNameProps) =>
+  getEntityName(data) || NO_DATA_PLACEHOLDER;
+
 export const getFormattedEntityData = (
   entityType: SummaryEntityType,
-  entityInfo?: Column[] | Field[] | Chart[] | Task[] | MlFeature[]
+  entityInfo?: Array<Column | Field | Chart | Task | MlFeature>,
+  tableConstraints?: TableConstraint[]
 ): BasicEntityInfo[] => {
   if (isEmpty(entityInfo)) {
     return [];
@@ -38,14 +49,28 @@ export const getFormattedEntityData = (
     case SummaryEntityType.COLUMN: {
       return (entityInfo as Column[]).map((column) => ({
         name: column.name,
-        title: <Text className="entity-title">{column.name}</Text>,
+        title: <Text className="entity-title">{getTitleName(column)}</Text>,
         type: column.dataType,
         tags: column.tags,
         description: column.description,
-        constraint: column.constraint,
+        columnConstraint: column.constraint,
+        tableConstraints: tableConstraints,
         children: getFormattedEntityData(
           SummaryEntityType.COLUMN,
           column.children
+        ),
+      }));
+    }
+    case SummaryEntityType.FIELD: {
+      return (entityInfo as SearchIndexField[]).map((field) => ({
+        name: field.name,
+        title: <Text className="entity-title">{getTitleName(field)}</Text>,
+        type: field.dataType,
+        tags: field.tags,
+        description: field.description,
+        children: getFormattedEntityData(
+          SummaryEntityType.FIELD,
+          field.children
         ),
       }));
     }
@@ -53,11 +78,13 @@ export const getFormattedEntityData = (
       return (entityInfo as Chart[]).map((chart) => ({
         name: chart.name,
         title: (
-          <Link target="_blank" to={{ pathname: chart.chartUrl }}>
-            <Space className="m-b-xs">
-              <Text className="entity-title link">{getEntityName(chart)}</Text>
-              <SVGIcons alt="external-link" icon="external-link" width="12px" />
-            </Space>
+          <Link target="_blank" to={{ pathname: chart.sourceUrl }}>
+            <div className="d-flex">
+              <Text className="entity-title text-link-color font-medium m-r-xss">
+                {getTitleName(chart)}
+              </Text>
+              <IconExternalLink width={12} />
+            </div>
           </Link>
         ),
         type: chart.chartType,
@@ -69,11 +96,15 @@ export const getFormattedEntityData = (
       return (entityInfo as Task[]).map((task) => ({
         name: task.name,
         title: (
-          <Link target="_blank" to={{ pathname: task.taskUrl }}>
-            <Space className="m-b-xs">
-              <Text className="entity-title link">{task.name}</Text>
-              <SVGIcons alt="external-link" icon="external-link" width="12px" />
-            </Space>
+          <Link target="_blank" to={{ pathname: task.sourceUrl }}>
+            <div className="d-flex">
+              <Text
+                className="entity-title text-link-color font-medium m-r-xss"
+                ellipsis={{ tooltip: true }}>
+                {getTitleName(task)}
+              </Text>
+              <IconExternalLink width={12} />
+            </div>
           </Link>
         ),
         type: task.taskType,
@@ -85,7 +116,7 @@ export const getFormattedEntityData = (
       return (entityInfo as MlFeature[]).map((feature) => ({
         algorithm: feature.featureAlgorithm,
         name: feature.name || '--',
-        title: <Text className="entity-title">{feature.name}</Text>,
+        title: <Text className="entity-title">{getTitleName(feature)}</Text>,
         type: feature.dataType,
         tags: feature.tags,
         description: feature.description,
@@ -94,7 +125,7 @@ export const getFormattedEntityData = (
     case SummaryEntityType.SCHEMAFIELD: {
       return (entityInfo as Field[]).map((field) => ({
         name: field.name,
-        title: <Text className="entity-title">{field.name}</Text>,
+        title: <Text className="entity-title"> {getTitleName(field)}</Text>,
         type: field.dataType,
         description: field.description,
         tags: field.tags,

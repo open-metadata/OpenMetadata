@@ -11,108 +11,85 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import classNames from 'classnames';
 import React from 'react';
-import AddPlaceHolder from '../../../assets/img/add-placeholder.svg';
-import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.svg';
-import { SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 
-type Props = {
-  children?: React.ReactNode;
-  type?: string;
-  buttonLabel?: string;
-  buttonListener?: () => void;
-  heading?: string;
-  doc?: string;
-  buttons?: React.ReactNode;
-  buttonId?: string;
-  description?: React.ReactNode;
-  classes?: string;
-  size?: string;
-  dataTestId?: string;
-};
+import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
+import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
+import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
+import FilterErrorPlaceHolder from './FilterErrorPlaceHolder';
+import NoDataPlaceholder from './NoDataPlaceholder';
+import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
+import { ErrorPlaceholderProps } from './placeholder.interface';
 
 const ErrorPlaceHolder = ({
   doc,
+  onClick,
   type,
   children,
   heading,
-  buttons,
-  description,
-  classes,
+  className,
   size = SIZE.LARGE,
-  dataTestId,
-}: Props) => {
-  const { Paragraph, Link } = Typography;
+  button,
+  permission,
+  buttonId,
+  icon,
+}: ErrorPlaceholderProps) => {
+  const getErrorPlaceHolder = () => {
+    switch (type) {
+      case ERROR_PLACEHOLDER_TYPE.CREATE:
+        return (
+          <CreateErrorPlaceHolder
+            buttonId={buttonId}
+            className={className}
+            doc={doc}
+            heading={heading}
+            permission={permission}
+            size={size}
+            onClick={onClick}
+          />
+        );
 
-  return type === 'ADD_DATA' ? (
-    <div data-testid={dataTestId}>
-      <div className="flex-center flex-col tw-mt-24 " data-testid="error">
-        {' '}
-        <img data-testid="no-data-image" src={AddPlaceHolder} width={size} />
-      </div>
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-medium">
-        {description ? (
-          description
-        ) : (
-          <>
-            <Paragraph style={{ marginBottom: '4px' }}>
-              {' '}
-              Adding a new {heading} is easy, just give it a spin!
-            </Paragraph>
-            <Paragraph>
-              {' '}
-              Still need help? Refer to our{' '}
-              <Link href={doc} target="_blank">
-                docs
-              </Link>{' '}
-              for more information.
-            </Paragraph>
-          </>
-        )}
+      case ERROR_PLACEHOLDER_TYPE.ASSIGN:
+        return (
+          <AssignErrorPlaceHolder
+            button={button}
+            className={className}
+            heading={heading}
+            permission={permission}
+            size={size}>
+            {children}
+          </AssignErrorPlaceHolder>
+        );
 
-        <div className="tw-text-lg tw-text-center">{buttons}</div>
-      </div>
-    </div>
-  ) : (
-    <div
-      className={classNames(classes, 'flex-center flex-col w-full mt-24')}
-      data-testid={dataTestId}>
-      <div data-testid="error">
-        <img
-          data-testid="no-data-image"
-          src={NoDataFoundPlaceHolder}
-          width={size}
-        />
-      </div>
-      {children ? (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-5 tw-text-base tw-font-medium">
-          {children}
-        </div>
-      ) : (
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-8 tw-text-base tw-font-medium">
-          <Typography.Text className="tw-text-sm">
-            No Data Available
-          </Typography.Text>
-          <Typography.Text className="tw-text-sm">
-            Go ahead and add a new {heading}!
-          </Typography.Text>
-          {doc ? (
-            <Typography.Text className="tw-text-sm">
-              Still need help? Refer to our{' '}
-              <Typography.Link href={doc} target="_blank">
-                docs
-              </Typography.Link>{' '}
-              for more information.
-            </Typography.Text>
-          ) : (
-            ''
-          )}
-        </div>
-      )}
-    </div>
-  );
+      case ERROR_PLACEHOLDER_TYPE.FILTER:
+        return (
+          <FilterErrorPlaceHolder className={className} doc={doc} size={size} />
+        );
+
+      case ERROR_PLACEHOLDER_TYPE.PERMISSION:
+        return <PermissionErrorPlaceholder className={className} size={size} />;
+
+      case ERROR_PLACEHOLDER_TYPE.CUSTOM:
+        return (
+          <CustomNoDataPlaceHolder
+            className={className}
+            icon={icon}
+            size={size}>
+            {children}
+          </CustomNoDataPlaceHolder>
+        );
+
+      default:
+        return (
+          <NoDataPlaceholder className={className} size={size}>
+            {children}
+          </NoDataPlaceholder>
+        );
+    }
+  };
+
+  return getErrorPlaceHolder();
 };
 
 export default ErrorPlaceHolder;

@@ -45,13 +45,10 @@ MOCK_PIPELINE = Pipeline(
     name="do_it_all_with_default_config",
     fullyQualifiedName="local_domo_pipeline.1",
     displayName="do_it_all_with_default_config",
-    description="",
     tasks=[
         Task(
             name="a58b1856-729c-493b-bc87-6d2269b43ec0",
             displayName="do_it_all_with_default_config",
-            description="",
-            taskUrl="",
         )
     ],
     service=EntityReference(
@@ -70,7 +67,7 @@ mock_domopipeline_config = {
                 "secretToken": "abcdefg",
                 "accessToken": "accessTpokem",
                 "apiHost": "api.domo.com",
-                "sandboxDomain": "https://domain.domo.com",
+                "instanceDomain": "https://domain.domo.com",
             }
         },
         "sourceConfig": {
@@ -151,7 +148,7 @@ EXPECTED_PIPELINE = [
         name="1",
         displayName="Nihar Dataflows",
         description="THis is description for Nihar dataflow",
-        pipelineUrl=None,
+        sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
         startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),
@@ -161,7 +158,7 @@ EXPECTED_PIPELINE = [
                 displayName="Nihar Dataflows",
                 fullyQualifiedName=None,
                 description="THis is description for Nihar dataflow",
-                taskUrl=None,
+                sourceUrl=None,
                 downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,
@@ -172,16 +169,7 @@ EXPECTED_PIPELINE = [
         ],
         tags=None,
         owner=None,
-        service=EntityReference(
-            id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
-            type="pipelineService",
-            name=None,
-            fullyQualifiedName=None,
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=None,
-        ),
+        service="domopipeline_source_test",
         extension=None,
     )
 ]

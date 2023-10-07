@@ -12,8 +12,8 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -36,57 +36,61 @@ describe('BigQuery Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
     const connectionInput = () => {
       const clientEmail = Cypress.env('bigqueryClientEmail');
-      cy.get('.form-group > #root_type')
+      cy.get('.form-group > #root\\/credentials\\/gcpConfig\\/type')
         .scrollIntoView()
         .type('service_account');
-      cy.get(':nth-child(3) > .form-group > #root_projectId')
+      checkServiceFieldSectionHighlighting('type');
+      cy.get('#root\\/credentials\\/gcpConfig\\/projectId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryProjectId'));
-      cy.get('#root_privateKeyId')
+      checkServiceFieldSectionHighlighting('projectId');
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKeyId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKeyId'));
-      cy.get('#root_privateKey')
+      checkServiceFieldSectionHighlighting('privateKeyId');
+      cy.get('#root\\/credentials\\/gcpConfig\\/privateKey')
         .scrollIntoView()
         .type(Cypress.env('bigqueryPrivateKey'));
-      cy.get('#root_clientEmail').scrollIntoView().type(clientEmail);
-      cy.get('#root_clientId')
+      checkServiceFieldSectionHighlighting('privateKey');
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientEmail')
+        .scrollIntoView()
+        .type(clientEmail);
+      checkServiceFieldSectionHighlighting('clientEmail');
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientId')
         .scrollIntoView()
         .type(Cypress.env('bigqueryClientId'));
-      cy.get('#root_authUri')
-        .scrollIntoView()
-        .type('https://accounts.google.com/o/oauth2/auth');
-      cy.get('#root_tokenUri')
-        .scrollIntoView()
-        .type('https://oauth2.googleapis.com/token');
-      cy.get('#root_authProviderX509CertUrl')
-        .scrollIntoView()
-        .type('https://www.googleapis.com/oauth2/v1/certs');
-      cy.get('#root_clientX509CertUrl')
+      checkServiceFieldSectionHighlighting('clientId');
+      cy.get('#root\\/credentials\\/gcpConfig\\/clientX509CertUrl')
         .scrollIntoView()
         .type(
           `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
             clientEmail
           )}`
         );
+      checkServiceFieldSectionHighlighting('clientX509CertUrl');
+      cy.get('[data-testid="add-item-Taxonomy Project IDs"]')
+        .scrollIntoView()
+        .click();
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
+      cy.get('#root\\/taxonomyProjectID\\/0')
+        .scrollIntoView()
+        .type(Cypress.env('bigqueryProjectIdTaxonomy'));
+      checkServiceFieldSectionHighlighting('taxonomyProjectID');
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
-        .type(filterPattern);
+        .type(`${filterPattern}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
-      serviceName
-    );
+      serviceName,
+      serviceCategory: SERVICE_TYPE.Database,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -96,14 +100,6 @@ describe('BigQuery Ingestion', () => {
       description,
       SERVICE_TYPE.Database,
       'tables'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Database,
-      serviceName,
-      API_SERVICE.databaseServices
     );
   });
 

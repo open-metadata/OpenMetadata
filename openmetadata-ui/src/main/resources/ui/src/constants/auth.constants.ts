@@ -11,18 +11,11 @@
  *  limitations under the License.
  */
 
+import i18n from '../utils/i18next/LocalUtil';
+
 export const NO_AUTH = 'no-auth';
 
-export const VALIDATION_MESSAGES = {
-  required: '${label} is required',
-  types: {
-    email: '${label} is not valid',
-  },
-  whitespace: '${label} is required',
-};
-
-export const LOGIN_FAILED_ERROR =
-  'You have entered an invalid username or password.';
+export const LOGIN_FAILED_ERROR = i18n.t('server.invalid-username-or-password');
 
 export const HTTP_STATUS_CODE = {
   BAD_REQUEST: 400, // The request cannot be fulfilled due to bad syntax

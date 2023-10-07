@@ -15,6 +15,9 @@ Utils module for the metadata backup and restore process
 
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -36,7 +39,7 @@ def get_engine(common_args: BackupRestoreArgs):
     connection_dict = {
         "hostPort": f"{common_args.host}:{common_args.port}",
         "username": common_args.user,
-        "password": common_args.password,
+        "authType": BasicAuth(password=common_args.password),
         "connectionOptions": connection_options if connection_options else None,
         "connectionArguments": connection_arguments if connection_arguments else None,
     }

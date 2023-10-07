@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { getRoleByName } from 'rest/rolesAPIV1';
+import { getRoleByName } from '../../../rest/rolesAPIV1';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
 
@@ -25,24 +25,27 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
 }));
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../../rest/rolesAPIV1', () => ({
   getRoleByName: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));
 
-jest.mock('components/common/description/Description', () =>
+jest.mock('../../../components/common/description/Description', () =>
   jest.fn().mockReturnValue(<div data-testid="description">Description</div>)
 );
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+jest.mock(
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
+jest.mock(
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () =>
+    jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -60,20 +63,6 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
-}));
-
 describe('Test Roles Details Page', () => {
   it('Should render the detail component', async () => {
     render(<RolesDetailPage />);
@@ -87,7 +76,7 @@ describe('Test Roles Details Page', () => {
 
     const policiesTab = await screen.findByText('label.policy-plural');
     const teamsTab = await screen.findByText('label.team-plural');
-    const usersTab = await screen.findByText('label.users');
+    const usersTab = await screen.findByText('label.user-plural');
 
     expect(container).toBeInTheDocument();
 
@@ -107,7 +96,7 @@ describe('Test Roles Details Page', () => {
 
     const container = await screen.findByTestId('role-details-container');
 
-    const noData = await screen.findByTestId('no-data');
+    const noData = await screen.findByTestId('no-data-placeholder');
 
     expect(container).toBeInTheDocument();
 

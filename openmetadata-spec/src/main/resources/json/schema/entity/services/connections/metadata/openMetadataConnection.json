@@ -18,6 +18,25 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "authProvider": {
+      "javaType": "org.openmetadata.schema.services.connections.metadata.AuthProvider",
+      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
+      "type": "string",
+      "enum": [
+        "no-auth",
+        "basic",
+        "azure",
+        "google",
+        "okta",
+        "auth0",
+        "aws-cognito",
+        "custom-oidc",
+        "ldap",
+        "saml",
+        "openmetadata"
+      ],
+      "default": "basic"
     }
   },
   "properties": {
@@ -37,18 +56,7 @@
       "default": "http://localhost:8585/api"
     },
     "authProvider": {
-      "description": "OpenMetadata Server Authentication Provider. Make sure configure same auth providers as the one configured on OpenMetadata server.",
-      "type": "string",
-      "enum": [
-        "no-auth",
-        "azure",
-        "google",
-        "okta",
-        "auth0",
-        "custom-oidc",
-        "openmetadata"
-      ],
-      "default": "no-auth"
+     "$ref": "#/definitions/authProvider"
     },
     "verifySSL": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
@@ -85,13 +93,9 @@
       "$ref": "./../../../../security/secrets/secretsManagerProvider.json",
       "default": "noop"
     },
-    "secretsManagerCredentials": {
-      "description": "OpenMetadata Secrets Manager Client credentials",
-      "oneOf": [
-        {
-          "$ref": "../../../../security/credentials/awsCredentials.json"
-        }
-      ]
+    "secretsManagerLoader": {
+      "$ref": "./../../../../security/secrets/secretsManagerClientLoader.json",
+      "default": "noop"
     },
     "apiVersion": {
       "description": "OpenMetadata server API version to use.",
@@ -177,6 +181,11 @@
       "description": "Force the overwriting of any entity during the ingestion.",
       "type": "boolean",
       "default": false
+    },
+    "storeServiceConnection": {
+      "description": "If set to true, when creating a service during the ingestion we will store its Service Connection. Otherwise, the ingestion will create a bare service without connection details.",
+      "type": "boolean",
+      "default": true
     },
     "elasticsSearch": {
       "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",

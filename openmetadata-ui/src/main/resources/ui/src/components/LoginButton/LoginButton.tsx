@@ -11,31 +11,38 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
+import { t } from 'i18next';
 import React from 'react';
 import SVGIcons from '../../utils/SvgUtils';
+import './login-button.style.less';
 
-interface LoginButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface LoginButtonProps {
   ssoBrandName: string;
   ssoBrandLogo?: string;
+  onClick?: () => void;
 }
 
 const LoginButton = ({
   ssoBrandName,
   ssoBrandLogo,
-  ...props
+  onClick,
 }: LoginButtonProps) => {
   const svgIcon = ssoBrandLogo ? (
-    <SVGIcons alt={`${ssoBrandName} Logo`} icon={ssoBrandLogo} width="30" />
+    <SVGIcons
+      alt={`${ssoBrandName} Logo`}
+      height="30"
+      icon={ssoBrandLogo}
+      width="30"
+    />
   ) : null;
 
   return (
-    <button className="tw-signin-button tw-mx-auto" {...props}>
-      {svgIcon}
-      <span className="tw-ml-3 tw-font-medium tw-text-grey-muted tw-text-xl">
-        Sign in with {ssoBrandName}
+    <Button className="signin-button m-x-auto" icon={svgIcon} onClick={onClick}>
+      <span className="font-medium text-grey-muted text-xl">
+        {t('label.sign-in-with-sso', { sso: ssoBrandName })}
       </span>
-    </button>
+    </Button>
   );
 };
 

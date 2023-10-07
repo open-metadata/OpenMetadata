@@ -28,7 +28,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -47,13 +46,14 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource.RoleList;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   public RoleResourceTest() {
-    super(Entity.ROLE, Role.class, RoleList.class, "roles", null, DATA_CONSUMER_ROLE_NAME);
+    super(Entity.ROLE, Role.class, RoleList.class, "roles", RoleResource.FIELDS, DATA_CONSUMER_ROLE_NAME);
   }
 
   public void setupRoles(TestInfo test) throws HttpResponseException {
@@ -93,7 +93,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Test
-  void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException {
     Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(role);
@@ -180,7 +180,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String updatedBy = getPrincipalName(ADMIN_AUTH_HEADERS);
     role =
         byName
-            ? getEntityByName(role.getName(), null, null, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(role.getFullyQualifiedName(), null, null, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), null, ADMIN_AUTH_HEADERS);
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
     assertListNull(role.getPolicies(), role.getUsers());
@@ -188,7 +188,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
     String fields = "policies,teams,users";
     role =
         byName
-            ? getEntityByName(role.getName(), null, fields, ADMIN_AUTH_HEADERS)
+            ? getEntityByName(role.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(role.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(role.getPolicies(), role.getUsers());
     validateRole(role, role.getDescription(), role.getDisplayName(), updatedBy);
@@ -200,12 +200,12 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
   @Override
   public CreateRole createRequest(String name) {
-    return new CreateRole().withName(name).withPolicies(DATA_CONSUMER_ROLE.getPolicies());
+    return new CreateRole().withName(name).withPolicies(EntityUtil.getFqns(DATA_CONSUMER_ROLE.getPolicies()));
   }
 
   @Override
   public void validateCreatedEntity(Role role, CreateRole createRequest, Map<String, String> authHeaders) {
-    TestUtils.assertEntityReferences(role.getPolicies(), createRequest.getPolicies());
+    TestUtils.assertEntityReferenceNames(createRequest.getPolicies(), role.getPolicies());
   }
 
   @Override
@@ -214,7 +214,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

@@ -19,14 +19,11 @@ import FeedPanelHeader from './FeedPanelHeader';
 
 const mockFeedPanelHeaderProp = {
   onCancel: jest.fn(),
-  entityField: 'description',
   noun: 'Conversations',
   onShowNewConversation: jest.fn(),
+  entityLink:
+    '<#E::table::sample_data.ecommerce_db.shopify.dim_address::description>',
 };
-
-jest.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: jest.fn().mockReturnValue(<span>Icon</span>),
-}));
 
 describe('Test FeedPanelHeader Component', () => {
   it('Check if FeedPanelHeader has all child elements', async () => {
@@ -43,14 +40,13 @@ describe('Test FeedPanelHeader Component', () => {
       container,
       'add-new-conversation'
     );
+
     const drawerCloseButton = await findByTestId(container, 'closeDrawer');
-    const bottomSeparator = await findByTestId(container, 'bottom-separator');
 
     expect(title).toBeInTheDocument();
     expect(noun).toHaveTextContent('Conversations label.on-lowercase');
     expect(newConversationButton).toBeInTheDocument();
     expect(drawerCloseButton).toBeInTheDocument();
-    expect(bottomSeparator).toBeInTheDocument();
   });
 
   it('Check if FeedPanelHeader has onShowNewConversation as undefined', async () => {
@@ -91,8 +87,7 @@ describe('Test FeedPanelHeader Component', () => {
     const { container } = render(
       <FeedPanelHeader
         {...mockFeedPanelHeaderProp}
-        entityFQN="x.y.z"
-        entityField=""
+        entityLink="<#E::testCase::sample_data.ecommerce_db.shopify.dim_address.address_id.unique_column_test>"
       />,
       {
         wrapper: MemoryRouter,
@@ -101,15 +96,15 @@ describe('Test FeedPanelHeader Component', () => {
 
     const entityAttribute = await findByTestId(container, 'entity-attribute');
 
-    expect(entityAttribute).toHaveTextContent(/x.y.z/i);
+    expect(entityAttribute).toHaveTextContent(
+      'ecommerce_db.shopify.dim_address'
+    );
   });
 
-  it('Should render noun according to the threadtype', async () => {
+  it('Should render noun according to the thread type', async () => {
     const { container } = render(
       <FeedPanelHeader
         {...mockFeedPanelHeaderProp}
-        entityFQN="x.y.z"
-        entityField=""
         noun={undefined}
         threadType={ThreadType.Announcement}
       />,

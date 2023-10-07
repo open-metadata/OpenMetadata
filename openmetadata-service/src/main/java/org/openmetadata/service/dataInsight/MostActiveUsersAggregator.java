@@ -2,54 +2,58 @@ package org.openmetadata.service.dataInsight;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.metrics.Max;
-import org.elasticsearch.search.aggregations.metrics.Sum;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
 
-public class MostActiveUsersAggregator extends DataInsightAggregatorInterface {
+public abstract class MostActiveUsersAggregator<A, B, M, S, X> implements DataInsightAggregatorInterface {
+  private final A aggregations;
 
-  public MostActiveUsersAggregator(
-      Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    super(aggregations, dataInsightChartType);
+  public MostActiveUsersAggregator(A aggregations) {
+    this.aggregations = aggregations;
   }
 
   @Override
-  public DataInsightChartResult process() {
-    List<Object> data = this.aggregate();
-    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
-  }
-
-  @Override
-  List<Object> aggregate() {
-    MultiBucketsAggregation userNameBuckets = this.aggregations.get("userName");
+  public List<Object> aggregate() {
+    M userNameBuckets = getUserNameBuckets(this.aggregations);
     List<Object> data = new ArrayList<>();
-    for (MultiBucketsAggregation.Bucket userNameBucket : userNameBuckets.getBuckets()) {
-      String userName = userNameBucket.getKeyAsString();
-      Sum sumSession = userNameBucket.getAggregations().get("sessions");
-      Sum sumPageViews = userNameBucket.getAggregations().get("pageViews");
-      Sum sumSessionDuration = userNameBucket.getAggregations().get("sessionDuration");
-      Max lastSession = userNameBucket.getAggregations().get("lastSession");
-      MultiBucketsAggregation teamBucket = userNameBucket.getAggregations().get("team");
-
+    for (B userNameBucket : getBuckets(userNameBuckets)) {
+      String userName = getKeyAsString(userNameBucket);
+      S sumSession = getSumAggregations(userNameBucket, "sessions");
+      S sumPageViews = getSumAggregations(userNameBucket, "pageViews");
+      S sumSessionDuration = getSumAggregations(userNameBucket, "sessionDuration");
+      X lastSession = getMaxAggregations(userNameBucket, "lastSession");
+      M teamBucket = getTeamBuckets(userNameBucket);
       String team = null;
-      if (!teamBucket.getBuckets().isEmpty()) {
-        team = teamBucket.getBuckets().get(0).getKeyAsString();
+      if (!getBuckets(teamBucket).isEmpty()) {
+        // we'll assign the first team in the list if user belongs to multiple teams
+        team = getKeyAsString(getBuckets(teamBucket).get(0));
       }
-
       data.add(
           new MostActiveUsers()
               .withUserName(userName)
-              .withLastSession((long) lastSession.getValue())
-              .withPageViews(sumPageViews.getValue())
-              .withSessionDuration(sumSessionDuration.getValue())
-              .withSessions(sumSession.getValue())
+              .withLastSession(getMaxValue(lastSession))
+              .withPageViews(getSumValue(sumPageViews))
+              .withSessionDuration(getSumValue(sumSessionDuration))
+              .withSessions(getSumValue(sumSession))
               .withTeam(team)
-              .withAvgSessionDuration(sumSessionDuration.getValue() / sumSession.getValue()));
+              .withAvgSessionDuration(getSumValue(sumSessionDuration) / getSumValue(sumSession)));
     }
 
     return data;
   }
+
+  protected abstract Double getSumValue(S key);
+
+  protected abstract Long getMaxValue(X key);
+
+  protected abstract String getKeyAsString(B bucket);
+
+  protected abstract S getSumAggregations(B bucket, String key);
+
+  protected abstract X getMaxAggregations(B bucket, String key);
+
+  protected abstract List<? extends B> getBuckets(M buckets);
+
+  protected abstract M getUserNameBuckets(A aggregations);
+
+  protected abstract M getTeamBuckets(B bucket);
 }

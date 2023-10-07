@@ -1,0 +1,69 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../styles/variables.less');
+
+.constraint-columns {
+  border-radius: 5px;
+  background: @grey-1;
+  padding: 16px;
+  max-width: 300px;
+  min-width: 300px;
+
+  .constraint-icon-container {
+    margin-top: 12px;
+    margin-right: 8px;
+  }
+}
+.referred-column-name {
+  display: block;
+  max-width: 250px;
+}
+
+.constraint-primary-key {
+  position: relative;
+  display: flex;
+
+  .primary-key-section-line {
+    margin-top: -2px;
+  }
+  .primary-key-icon {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+    background: white;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: @global-border;
+    padding: 2px;
+    cursor: pointer;
+  }
+}
+
+.constraint-foreign-key {
+  position: relative;
+  .foreign-key-section-line {
+    margin-top: 20px;
+  }
+  .foreign-key-icon {
+    background: white;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: @global-border;
+    padding: 2px;
+    transform: translate(-7px, -31px);
+    cursor: pointer;
+  }
+}

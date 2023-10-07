@@ -11,93 +11,29 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
-import { FeedFilter } from '../../enums/mydata.enum';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
-import {
-  CleanupPolicy,
-  Topic,
-  TopicSampleData,
-} from '../../generated/entity/data/topic';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
-import { Paging } from '../../generated/type/paging';
+import { CleanupPolicy, Topic } from '../../generated/entity/data/topic';
 import { SchemaType } from '../../generated/type/schema';
-import { TagLabel } from '../../generated/type/tagLabel';
-import {
-  EntityFieldThreadCount,
-  ThreadUpdatedFunc,
-} from '../../interface/feed.interface';
-import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from '../EntityLineage/EntityLineage.interface';
 
 export interface TopicDetailsProps {
-  topicFQN: string;
-  version?: string;
-  partitions: number;
-  cleanupPolicies: Array<string>;
-  maximumMessageSize: number;
-  replicationFactor: number;
-  retentionSize: number;
+  updateTopicDetailsState?: (data: DataAssetWithDomains) => void;
   topicDetails: Topic;
-  entityName: string;
-  activeTab: number;
-  owner: EntityReference;
-  description: string;
-  tier: TagLabel;
-  followers: Array<EntityReference>;
-  topicTags: Array<EntityTags>;
-  slashedTopicName: TitleBreadcrumbProps['titleLinks'];
-  deleted?: boolean;
-  entityThread: Thread[];
-  isentityThreadLoading: boolean;
-  feedCount: number;
-  entityFieldThreadCount: EntityFieldThreadCount[];
-  entityFieldTaskCount: EntityFieldThreadCount[];
-  paging: Paging;
-  isSampleDataLoading?: boolean;
-  sampleData?: TopicSampleData;
-  fetchFeedHandler: (
-    after?: string,
-    feedFilter?: FeedFilter,
-    threadFilter?: ThreadType
-  ) => void;
+  topicPermissions: OperationPermission;
+  fetchTopic: () => void;
   createThread: (data: CreateThread) => void;
-  setActiveTabHandler: (value: number) => void;
-  followTopicHandler: () => void;
-  unfollowTopicHandler: () => void;
-  settingsUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  descriptionUpdateHandler: (updatedTopic: Topic) => Promise<void>;
-  tagUpdateHandler: (updatedTopic: Topic) => void;
+  followTopicHandler: () => Promise<void>;
+  unFollowTopicHandler: () => Promise<void>;
   versionHandler: () => void;
-  postFeedHandler: (value: string, id: string) => void;
-  deletePostHandler: (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => void;
-  updateThreadHandler: ThreadUpdatedFunc;
-  lineageTabData: {
-    loadNodeHandler: (node: EntityReference, pos: LineagePos) => void;
-    addLineageHandler: (edge: Edge) => Promise<void>;
-    removeLineageHandler: (data: EdgeData) => void;
-    entityLineageHandler: (lineage: EntityLineage) => void;
-    isLineageLoading?: boolean;
-    entityLineage: EntityLineage;
-    lineageLeafNodes: LeafNodes;
-    isNodeLoading: LoadingNodeState;
-  };
-  onExtensionUpdate: (updatedTopic: Topic) => Promise<void>;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
+  onTopicUpdate: (updatedData: Topic, key: keyof Topic) => Promise<void>;
+  handleToggleDelete: () => void;
 }
 
 export interface TopicConfigObjectInterface {
+  Owner?: Record<string, string | JSX.Element | undefined>;
   Partitions: number;
   'Replication Factor'?: number;
   'Retention Size'?: number;

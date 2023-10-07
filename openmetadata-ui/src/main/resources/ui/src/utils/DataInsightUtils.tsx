@@ -13,7 +13,6 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { t } from 'i18next';
 import {
   first,
@@ -26,12 +25,14 @@ import {
   omit,
   round,
   sortBy,
+  sumBy,
   toNumber,
 } from 'lodash';
 import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
@@ -39,8 +40,6 @@ import {
 } from '../constants/constants';
 import {
   ENTITIES_SUMMARY_LIST,
-  KPI_DATE_PICKER_FORMAT,
-  TIER_DATA,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -54,24 +53,21 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
-  KpiDates,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
-import {
-  getDateByTimeStamp,
-  getFormattedDateFromMilliSeconds,
-} from './TimeUtils';
+import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
     DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
     DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+    DataInsightChartType.PercentageOfServicesWithDescription,
+    DataInsightChartType.PercentageOfServicesWithOwner,
   ].includes(dataInsightChartType);
 
 export const renderLegend = (
   legendData: LegendProps,
-  activeKeys = [] as string[],
-  isTier = false
+  activeKeys = [] as string[]
 ) => {
   const { payload = [] } = legendData;
 
@@ -86,15 +82,15 @@ export const renderLegend = (
             className="recharts-legend-item custom-data-insight-legend-item"
             key={`item-${index}`}
             onClick={(e) =>
-              legendData.onClick && legendData.onClick({ ...entry, ...e })
+              legendData.onClick && legendData.onClick(entry, index, e)
             }
             onMouseEnter={(e) =>
               legendData.onMouseEnter &&
-              legendData.onMouseEnter({ ...entry, ...e })
+              legendData.onMouseEnter(entry, index, e)
             }
             onMouseLeave={(e) =>
               legendData.onMouseLeave &&
-              legendData.onMouseLeave({ ...entry, ...e })
+              legendData.onMouseLeave(entry, index, e)
             }>
             <Surface className="m-r-xss" height={14} version="1.1" width={14}>
               <rect
@@ -105,9 +101,7 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {isTier
-                ? TIER_DATA[entry.value as keyof typeof TIER_DATA]
-                : entry.value}
+              {entry.value}
             </span>
           </li>
         );
@@ -152,19 +146,10 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const {
-    active,
-    payload = [],
-    isPercentage,
-    kpiTooltipRecord,
-    isTier,
-  } = props;
+  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = getDateByTimeStamp(
-      payload[0].payload.timestampValue || 0,
-      'MMM dd, yyyy'
-    );
+    const timestamp = formatDate(payload[0].payload.timestampValue || 0);
 
     return (
       <Card
@@ -172,15 +157,13 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         title={<Typography.Title level={5}>{timestamp}</Typography.Title>}>
         {payload.map((entry, index) => (
           <li
-            className="d-flex items-center justify-between tw-gap-6 tw-pb-1.5 text-sm"
+            className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
             key={`item-${index}`}>
             <span className="flex items-center text-grey-muted">
               <Surface className="mr-2" height={12} version="1.1" width={12}>
                 <rect fill={entry.color} height="14" rx="2" width="14" />
               </Surface>
-              {isTier
-                ? TIER_DATA[entry.dataKey as keyof typeof TIER_DATA]
-                : entry.dataKey}
+              {entry.dataKey}
             </span>
             <span className="font-medium">
               {getEntryFormattedValue(
@@ -288,11 +271,13 @@ const getLatestPercentage = (
     });
     switch (dataInsightChartType) {
       case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+      case DataInsightChartType.PercentageOfServicesWithDescription:
         return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
           2
         );
 
       case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+      case DataInsightChartType.PercentageOfServicesWithOwner:
         return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
 
       default:
@@ -344,11 +329,13 @@ const getOldestPercentage = (
     });
     switch (dataInsightChartType) {
       case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+      case DataInsightChartType.PercentageOfServicesWithDescription:
         return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
           2
         );
 
       case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+      case DataInsightChartType.PercentageOfServicesWithOwner:
         return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
 
       default:
@@ -374,11 +361,11 @@ const getGraphFilteredData = (
 
   const filteredData = rawData
     .map((data) => {
-      if (data.timestamp && data.entityType) {
+      if (data.timestamp && (data.entityType || data.serviceName)) {
         let value;
-        const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
-        if (!entities.includes(data.entityType ?? '')) {
-          entities.push(data.entityType ?? '');
+        const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
+        if (!entities.includes(data.entityType ?? data.serviceName ?? '')) {
+          entities.push(data.entityType ?? data.serviceName ?? '');
         }
 
         if (!timestamps.includes(timestamp)) {
@@ -391,10 +378,12 @@ const getGraphFilteredData = (
 
             break;
           case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
+          case DataInsightChartType.PercentageOfServicesWithDescription:
             value = (data.completedDescriptionFraction ?? 0) * 100;
 
             break;
           case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
+          case DataInsightChartType.PercentageOfServicesWithOwner:
             value = (data.hasOwnerFraction ?? 0) * 100;
 
             break;
@@ -411,7 +400,7 @@ const getGraphFilteredData = (
         return {
           timestamp: timestamp,
           timestampValue: data.timestamp,
-          [data.entityType]: value,
+          [data.entityType ?? data.serviceName ?? '']: value,
         };
       }
 
@@ -481,7 +470,7 @@ export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
   const filteredData = rawData.map((data) => {
     if (data.timestamp && data.entityTier) {
       const tiering = data.entityTier;
-      const timestamp = getFormattedDateFromMilliSeconds(data.timestamp);
+      const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
       if (!tiers.includes(tiering)) {
         tiers.push(tiering);
       }
@@ -529,9 +518,7 @@ export const getFormattedActiveUsersData = (
   const formattedData = activeUsers.map((user) => ({
     ...user,
     timestampValue: user.timestamp,
-    timestamp: user.timestamp
-      ? getFormattedDateFromMilliSeconds(user.timestamp)
-      : '',
+    timestamp: customFormatDateTime(user.timestamp, 'MMM dd'),
   }));
 
   const latestCount = Number(last(formattedData)?.activeUsers);
@@ -580,29 +567,32 @@ export const getEntitiesChartSummary = (
 export const getWebChartSummary = (
   chartResults: (DataInsightChartResult | undefined)[]
 ) => {
-  const updatedSummary = WEB_SUMMARY_LIST.map((summary) => {
+  const updatedSummary = [];
+
+  for (const summary of WEB_SUMMARY_LIST) {
     // grab the current chart type
     const chartData = chartResults.find(
       (chart) => chart?.chartType === summary.id
     );
     // return default summary if chart data is undefined else calculate the latest count for chartType
     if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.DailyActiveUsers) {
-        const latestData = last(chartData.data);
+      updatedSummary.push(summary);
 
-        return { ...summary, latest: latestData?.activeUsers ?? 0 };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
-
-        return { ...summary, latest: total };
-      }
+      continue;
     }
-  });
+
+    const { chartType, data } = chartData;
+
+    updatedSummary.push({
+      ...summary,
+      latest: sumBy(
+        data,
+        chartType === DataInsightChartType.DailyActiveUsers
+          ? 'activeUsers'
+          : 'pageViews'
+      ),
+    });
+  }
 
   return updatedSummary;
 };
@@ -612,7 +602,7 @@ export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
   const timeStamps: string[] = [];
 
   const formattedData = kpiResults.map((kpiResult) => {
-    const timestamp = getFormattedDateFromMilliSeconds(kpiResult.timestamp);
+    const timestamp = customFormatDateTime(kpiResult.timestamp, 'MMM dd');
     const kpiFqn = kpiResult.kpiFqn ?? '';
     const currentKpi = kpiList.find((kpi) => kpi.fullyQualifiedName === kpiFqn);
     const kpiTarget = kpiResult.targetResult[0];
@@ -643,9 +633,6 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   return current && current.isBefore(moment().subtract(1, 'day'));
 };
 
-export const getKpiDateFormatByTimeStamp = (timestamp: number) =>
-  moment(timestamp).format(KPI_DATE_PICKER_FORMAT);
-
 export const getKpiTargetValueByMetricType = (
   metricType: KpiTargetType,
   metricValue: number
@@ -671,10 +658,3 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
 
 export const getDataInsightPathWithFqn = (fqn: string) =>
   ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
-
-export const getKPIFormattedDates = (kpiDates: KpiDates): KpiDates => {
-  return {
-    startDate: `${kpiDates.startDate} 00:00`,
-    endDate: `${kpiDates.endDate} 23:59`,
-  };
-};

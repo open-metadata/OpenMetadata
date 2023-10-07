@@ -22,47 +22,13 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
     }),
     step: 1,
   },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.dbt-lowercase'),
-    }),
-    step: 2,
-  },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.metadata-to-es-config-optional'),
-    }),
-    step: 3,
-  },
-  { name: i18next.t('label.schedule-interval'), step: 4 },
+  { name: i18next.t('label.schedule-interval'), step: 2 },
 ];
 
 export const INITIAL_FILTER_PATTERN: FilterPattern = {
   includes: [],
   excludes: [],
 };
-
-// Todo: Move this to service constant once we figure out issue related to localization in services constant
-export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
-  {
-    name: i18next.t('label.select-field', {
-      field: i18next.t('label.service-type'),
-    }),
-    step: 1,
-  },
-  {
-    name: i18next.t('label.configure-entity', {
-      entity: i18next.t('label.service'),
-    }),
-    step: 2,
-  },
-  {
-    name: i18next.t('label.connection-entity', {
-      entity: i18next.t('label.detail-plural'),
-    }),
-    step: 3,
-  },
-];
 
 export const INGESTION_ACTION_TYPE = {
   ADD: 'add',
@@ -71,7 +37,7 @@ export const INGESTION_ACTION_TYPE = {
 
 export const PIPELINE_TYPE_LOCALIZATION = {
   dataInsight: 'data-insight',
-  dbt: 'dbt',
+  dbt: 'dbt-lowercase',
   elasticSearchReindex: 'elastic-search-re-index',
   lineage: 'lineage',
   metadata: 'metadata',
@@ -81,3 +47,5 @@ export const PIPELINE_TYPE_LOCALIZATION = {
 };
 
 export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
+
+export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;

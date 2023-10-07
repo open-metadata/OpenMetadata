@@ -26,7 +26,7 @@ jest.mock('../../../AppState', () => ({
   getCurrentUserDetails: jest.fn(),
 }));
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
@@ -38,11 +38,6 @@ jest.mock('../../../utils/AnnouncementsUtils', () => ({
 
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityFeedLink: jest.fn(),
-}));
-
-jest.mock('../../../utils/TimeUtils', () => ({
-  getUTCDateTime: jest.fn(),
-  getTimeZone: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({

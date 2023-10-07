@@ -5,14 +5,6 @@ PY_SOURCE ?= ingestion/src
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[35m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: env38
-env38:
-	python3.8 -m venv env38
-
-.PHONY: clean_env37
-clean_env37:
-	rm -rf env38
-
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
 	python -m pip install ingestion/
@@ -24,6 +16,11 @@ install_apis:  ## Install the REST APIs module to the current environment
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
 	python -m pip install "ingestion[test]/"
+
+.PHONY: install_e2e_tests
+install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
+	python -m pip install "ingestion[e2e_test]/"
+	playwright install --with-deps
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
@@ -41,18 +38,18 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 
 .PHONY: lint
 lint: ## Run pylint on the Python sources to analyze the codebase
-	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --ignore-paths=$(PY_SOURCE)/metadata_server/
+	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint
 
 .PHONY: py_format
 py_format:  ## Run black and isort to format the Python codebase
-	pycln ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
+	pycln ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated --all
 	isort ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/env --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
 	black ingestion/ openmetadata-airflow-apis/ --extend-exclude $(PY_SOURCE)/metadata/generated
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated
-	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --profile black --multi-line 3
+	pycln ingestion/ openmetadata-airflow-apis/ --diff --extend-exclude $(PY_SOURCE)/metadata/generated --all
+	isort --check-only ingestion/ openmetadata-airflow-apis/ --skip $(PY_SOURCE)/metadata/generated --skip ingestion/build --skip openmetadata-airflow-apis/build --profile black --multi-line 3
 	black --check --diff ingestion/ openmetadata-airflow-apis/  --extend-exclude $(PY_SOURCE)/metadata/generated
 	PYTHONPATH="${PYTHONPATH}:./ingestion/plugins" pylint --fail-under=10 $(PY_SOURCE)/metadata --ignore-paths $(PY_SOURCE)/metadata/generated || (echo "PyLint error code $$?"; exit 1)
 
@@ -75,6 +72,10 @@ run_ometa_integration_tests:  ## Run Python integration tests
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
 	coverage run --rcfile ingestion/.coveragerc -a --branch -m pytest -c ingestion/setup.cfg --junitxml=ingestion/junit/test-results-unit.xml --ignore=ingestion/tests/unit/source ingestion/tests/unit
+
+.PHONY: run_e2e_tests
+run_e2e_tests: ## Run e2e tests
+	pytest --screenshot=only-on-failure --output="ingestion/tests/e2e/artifacts" $(ARGS) --junitxml=ingestion/junit/test-results-e2e.xml ingestion/tests/e2e
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
@@ -111,15 +112,6 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 	$(MAKE) run_apis_tests
 	coverage xml --rcfile openmetadata-airflow-apis/.coveragerc -o openmetadata-airflow-apis/coverage.xml
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" openmetadata-airflow-apis/coverage.xml >> openmetadata-airflow-apis/ci-coverage.xml
-
-## Ingestion publish
-.PHONY: publish
-publish:  ## Publish the ingestion module to PyPI
-	$(MAKE) install_dev generate
-	cd ingestion; \
-	  python setup.py install sdist bdist_wheel; \
-	  twine check dist/*; \
-	  twine upload dist/*
 
 ## Yarn
 .PHONY: yarn_install_cache
@@ -160,15 +152,6 @@ core_bump_version_dev:  ## Bump a `dev` version to the ingestion-core module. To
 		. venv/bin/activate; \
 		python -m incremental.update metadata --dev
 
-.PHONY: core_publish
-core_publish:  ## Install, generate and publish the ingestion-core module to Test PyPI
-	$(MAKE) core_clean core_generate
-	cd ingestion-core; \
-		. venv/bin/activate; \
-		python setup.py install sdist bdist_wheel; \
-		twine check dist/*; \
-		twine upload -r testpypi dist/*
-
 .PHONY: core_py_antlr
 core_py_antlr:  ## Generate the Python core code for parsing FQNs under ingestion-core
 	antlr4 -Dlanguage=Python3 -o ingestion-core/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
@@ -188,18 +171,19 @@ install_antlr_cli:  ## Install antlr CLI locally
 	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
 	chmod 755 /usr/local/bin/antlr4
 
+.PHONY: docker-docs-local
+docker-docs-local:  ## Runs the OM docs in docker with a local image
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local yarn dev
+
 .PHONY: docker-docs
-docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest
+docker-docs:  ## Runs the OM docs in docker passing openmetadata-docs-v1 as volume for content and images
+	docker pull openmetadata/docs:latest
+	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest yarn dev
 
 .PHONY: docker-docs-validate
 docker-docs-validate:  ## Runs the OM docs in docker passing openmetadata-docs as volume for content and images
-	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'npm run export'
-
-.PHONY: docker-docs-local
-docker-docs-local:  ## Runs the OM docs in docker with a local image
-	docker run --name openmetadata-docs -p 3000:3000 -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata-docs:local
-
+	docker pull openmetadata/docs-v1:latest
+	docker run --entrypoint '/bin/sh' -v ${PWD}/openmetadata-docs/content:/docs/content/ -v ${PWD}/openmetadata-docs/images:/docs/public/images openmetadata/docs:latest -c 'yarn build'
 
 ## SNYK
 SNYK_ARGS := --severity-threshold=high
@@ -224,8 +208,8 @@ snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. D
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution
 	@echo "Validating catalog container... Make sure the code is built and available under openmetadata-dist"
-	docker build -t openmetadata-server:scan -f docker/local-metadata/Dockerfile .
-	snyk container test openmetadata-server:scan --file=docker/local-metadata/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
+	docker build -t openmetadata-server:scan -f docker/development/Dockerfile .
+	snyk container test openmetadata-server:scan --file=docker/development/Dockerfile $(SNYK_ARGS) --json > security-report/server-docker-scan.json | true;
 	snyk test --all-projects $(SNYK_ARGS) --json > security-report/server-dep-scan.json | true;
 	snyk code test --all-projects --severity-threshold=high --json > security-report/server-code-scan.json | true;
 
@@ -249,16 +233,105 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 	$(MAKE) snyk-airflow-apis-report
 	$(MAKE) snyk-server-report
 	$(MAKE) snyk-ui-report
-	$(MAKE)	export-snyk-html-report
+	$(MAKE)	export-snyk-pdf-report
 
-.PHONY: export-snyk-html-report
-export-snyk-html-report:  ## export json file from security-report/ to HTML
+.PHONY: export-snyk-pdf-report
+export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
 	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+	pip install pdfkit
+	pip install PyPDF2
+	python scripts/html_to_pdf.py
 
 # Ingestion Operators
 .PHONY: build-ingestion-base-local
 build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with the local ingestion files
 	$(MAKE) install_dev generate
 	docker build -f ingestion/operators/docker/Dockerfile-dev . -t openmetadata/ingestion-base:local
+
+.PHONY: generate-schema-docs
+generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
+	@echo "Generating Schema docs"
+	python -m pip install "jsonschema2md"
+	python scripts/generate_docs_schemas.py
+
+#Upgrade release automation scripts below	
+.PHONY: update_all
+update_all: ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+	@echo "The release version is: $(RELEASE_VERSION)" ; \
+	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
+	$(MAKE) update_maven ; \
+	$(MAKE) update_github_action_paths ; \
+	$(MAKE) update_python_release_paths ; \
+	$(MAKE) update_dockerfile_version ; \
+	$(MAKE) update_ingestion_dockerfile_version ; \
+
+#remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
+#make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+
+.PHONY: update_maven
+update_maven: ## To update the common and pom.xml maven version
+	@echo "Updating Maven projects to version $(RELEASE_VERSION)..."; \
+	mvn versions:set -DnewVersion=$(RELEASE_VERSION)
+#remove comment and use the below section when want to use this sub module "update_maven" independently to update github actions
+#make update_maven RELEASE_VERSION=2.2.2
+
+
+.PHONY: update_github_action_paths
+update_github_action_paths: ## To update the github action ci docker files
+	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
+	file_paths="docker/docker-compose-quickstart/Dockerfile \
+	            .github/workflows/docker-openmetadata-db.yml \
+	            .github/workflows/docker-openmetadata-ingestion-base.yml \
+	            .github/workflows/docker-openmetadata-ingestion.yml \
+	            .github/workflows/docker-openmetadata-postgres.yml \
+	            .github/workflows/docker-openmetadata-server.yml"; \
+	for file_path in $$file_paths; do \
+	    python3 scripts/update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
+	done; \
+	file_paths1="docker/docker-compose-quickstart/Dockerfile"; \
+	for file_path in $$file_paths1; do \
+	    python3 scripts/update_version.py 4 $$file_path -s $(RELEASE_VERSION) ; \
+	done
+
+#remove comment and use the below section when want to use this sub module "update_github_action_paths" independently to update github actions
+#make update_github_action_paths RELEASE_VERSION=2.2.2
+
+.PHONY: update_python_release_paths
+update_python_release_paths: ## To update the setup.py files
+	file_paths="ingestion/setup.py \
+				openmetadata-airflow-apis/setup.py"; \
+	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
+	for file_path in $$file_paths; do \
+	    python3 scripts/update_version.py 2 $$file_path -s $(PY_RELEASE_VERSION) ; \
+	done
+# Commented section for independent usage of the module update_python_release_paths independently to update github actions
+#make update_python_release_paths PY_RELEASE_VERSION=2.2.2.2
+
+.PHONY: update_dockerfile_version
+update_dockerfile_version: ## To update the dockerfiles version
+	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion-postgres.yml \
+		     docker/docker-compose-ingestion/docker-compose-ingestion.yml \
+		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
+		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
+		     docker/docker-compose-quickstart/docker-compose.yml"; \
+	echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
+	for file_path in $$file_paths; do \
+	    python3 scripts/update_version.py 3 $$file_path -s $(RELEASE_VERSION) ; \
+	done
+#remove comment and use the below section when want to use this sub module "update_dockerfile_version" independently to update github actions
+#make update_dockerfile_version RELEASE_VERSION=2.2.2
+
+.PHONY: update_ingestion_dockerfile_version
+update_ingestion_dockerfile_version: ## To update the ingestion dockerfiles version
+	@file_paths="ingestion/Dockerfile \
+	             ingestion/operators/docker/Dockerfile"; \
+	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \
+	for file_path in $$file_paths; do \
+	    python3 scripts/update_version.py 4 $$file_path -s $(PY_RELEASE_VERSION) ; \
+	done
+#remove comment and use the below section when want to use this sub module "update_ingestion_dockerfile_version" independently to update github actions
+#make update_ingestion_dockerfile_version PY_RELEASE_VERSION=2.2.2.2
+
+#Upgrade release automation scripts above

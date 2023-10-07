@@ -1,7 +1,7 @@
 {
-    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetConnection.json",
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/supersetApiConnection.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "SupersetAPIConnection",
+    "title": "SupersetApiConnection",
     "description": "Superset API Connection Config",
     "type": "object",
     "definitions": {
@@ -30,6 +30,13 @@
             "description": "Password for Superset.",
             "type": "string",
             "format": "password"
+        },
+        "verifySSL": {
+            "$ref": "../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+            "default": "no-ssl"
+        },
+        "sslConfig": {
+            "$ref": "../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
         }
     },
     "additionalProperties": false,

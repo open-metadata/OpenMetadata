@@ -12,8 +12,8 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -35,34 +35,37 @@ describe('Kafka Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Messaging);
 
     // Select Dashboard services
-    cy.get('[data-testid="service-category"]').select('messagingServices');
+    cy.get('[data-testid="service-category"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Messaging Services')
+      .click();
 
     const connectionInput = () => {
-      cy.get('#root_bootstrapServers').type(
+      cy.get('#root\\/bootstrapServers').type(
         Cypress.env('kafkaBootstrapServers')
       );
-      cy.get('#root_schemaRegistryURL').type(
+      checkServiceFieldSectionHighlighting('bootstrapServers');
+      cy.get('#root\\/schemaRegistryURL').type(
         Cypress.env('kafkaSchemaRegistryUrl')
       );
+      checkServiceFieldSectionHighlighting('schemaRegistryURL');
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="topic-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-topic"]')
-        .should('be.visible')
-        .type(topicName);
+      cy.get('#root\\/topicFilterPattern\\/includes')
+        .scrollIntoView()
+
+        .type(`${topicName}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
-      'Kafka',
+    testServiceCreationAndIngestion({
+      serviceType: 'Kafka',
       connectionInput,
       addIngestionInput,
       serviceName,
-      'messaging'
-    );
+      type: 'messaging',
+      serviceCategory: SERVICE_TYPE.Messaging,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -72,14 +75,6 @@ describe('Kafka Ingestion', () => {
       description,
       SERVICE_TYPE.Messaging,
       'topics'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Messaging,
-      serviceName,
-      API_SERVICE.messagingServices
     );
   });
 

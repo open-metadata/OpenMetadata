@@ -44,9 +44,9 @@
         "type": "string",
         "format": "string"
       },
-      "sandboxDomain": {
-        "title": "Sandbox Domain",
-        "description": "Connect to Sandbox Domain",
+      "instanceDomain": {
+        "title": "Instance Domain",
+        "description": "URL of your Domo instance, e.g., https://openmetadata.domo.com",
         "type": "string",
         "format": "uri"
       },
@@ -61,6 +61,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["clientId", "secretToken", "sandboxDomain"]
+    "required": ["clientId", "secretToken", "instanceDomain"]
   }
   

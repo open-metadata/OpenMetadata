@@ -14,13 +14,10 @@
       "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
-      "enum": ["Kafka", "Pulsar", "Redpanda", "Kinesis", "CustomMessaging"],
+      "enum": ["Kafka", "Redpanda", "Kinesis", "CustomMessaging"],
       "javaEnums": [
         {
           "name": "Kafka"
-        },
-        {
-          "name": "Pulsar"
         },
         {
           "name": "Redpanda"
@@ -54,9 +51,6 @@
           "oneOf": [
             {
               "$ref": "./connections/messaging/kafkaConnection.json"
-            },
-            {
-              "$ref": "./connections/messaging/pulsarConnection.json"
             },
             {
               "$ref": "./connections/messaging/redpandaConnection.json"
@@ -103,7 +97,11 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this messaging service to extract topic configs and schemas.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
     },
     "tags": {
       "description": "Tags for this Message Service.",
@@ -141,6 +139,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Messaging service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

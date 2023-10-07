@@ -16,6 +16,8 @@ package org.openmetadata.service.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -24,6 +26,8 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -31,21 +35,23 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.services.CreateMlModelService;
 import org.openmetadata.schema.api.services.CreateMlModelService.MlModelServiceType;
 import org.openmetadata.schema.entity.services.MlModelService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource.MlModelServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
+public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelService, CreateMlModelService> {
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
+    supportsSearchIndex = true;
   }
 
   public void setupMlModelServices(TestInfo test) throws HttpResponseException {
@@ -69,12 +75,6 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create MlModel with mandatory MlModelUrl field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -87,6 +87,9 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
         new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000");
     createAndCheckEntity(
         createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -116,6 +119,31 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
     fieldAdded(change, "description", "description1");
     fieldUpdated(change, "connection", MlModelConnection, MlModelConnection1);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void put_testConnectionResult_200(TestInfo test) throws IOException {
+    MlModelService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    // By default, we have no result logged in
+    assertNull(service.getTestConnectionResult());
+    MlModelService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    // Validate that the data got properly stored
+    assertNotNull(updatedService.getTestConnectionResult());
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(updatedService.getConnection(), service.getConnection());
+    // Check that the stored data is also correct
+    MlModelService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(stored.getTestConnectionResult());
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(stored.getConnection(), service.getConnection());
+  }
+
+  public MlModelService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(serviceId).path("/testConnectionResult");
+    return TestUtils.put(target, testConnectionResult, MlModelService.class, OK, authHeaders);
   }
 
   @Override
@@ -165,7 +193,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

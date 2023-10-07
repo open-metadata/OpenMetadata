@@ -98,10 +98,14 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this pipeline service to extract metadata",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "connection": {
       "$ref": "#/definitions/mlModelConnection"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
     },
     "tags": {
       "description": "Tags for this MlModel Service.",
@@ -127,6 +131,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the MLModel service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

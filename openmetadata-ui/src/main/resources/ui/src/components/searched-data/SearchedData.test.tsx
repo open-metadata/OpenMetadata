@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { TAG_CONSTANT } from '../../constants/Tag.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
 import { SearchedDataProps } from './SearchedData.interface';
@@ -34,10 +35,19 @@ const mockData: SearchedDataProps['data'] = [
       owner: {
         name: 'Customer_Support',
       },
-      tags: ['tags1', 'tags2', 'tags3'],
+      tags: [
+        { ...TAG_CONSTANT, tagFQN: 'tags1' },
+        { ...TAG_CONSTANT, tagFQN: 'tags2' },
+        { ...TAG_CONSTANT, tagFQN: 'tags3' },
+      ],
       tier: {
+        ...TAG_CONSTANT,
         tagFQN: 'tier1',
       },
+    },
+    highlight: {
+      name: ['raw_<span class="text-highlighter">customer</span>'],
+      displayName: ['raw_<span class="text-highlighter">customer</span>'],
     },
   },
   {
@@ -48,8 +58,12 @@ const mockData: SearchedDataProps['data'] = [
       description: 'description2',
       fullyQualifiedName: 'fullyQualifiedName2',
       owner: { name: 'owner2' },
-      tags: ['tags1', 'tags2', 'tags3'],
-      tier: { tagFQN: 'tier2' },
+      tags: [
+        { ...TAG_CONSTANT, tagFQN: 'tags1' },
+        { ...TAG_CONSTANT, tagFQN: 'tags2' },
+        { ...TAG_CONSTANT, tagFQN: 'tags3' },
+      ],
+      tier: { ...TAG_CONSTANT, tagFQN: 'tier2' },
     },
   },
   {
@@ -60,8 +74,12 @@ const mockData: SearchedDataProps['data'] = [
       description: 'description3',
       fullyQualifiedName: 'fullyQualifiedName3',
       owner: { name: 'owner3' },
-      tags: ['tags1', 'tags2', 'tags3'],
-      tier: { tagFQN: 'tier3' },
+      tags: [
+        { ...TAG_CONSTANT, tagFQN: 'tags1' },
+        { ...TAG_CONSTANT, tagFQN: 'tags2' },
+        { ...TAG_CONSTANT, tagFQN: 'tags3' },
+      ],
+      tier: { ...TAG_CONSTANT, tagFQN: 'tier3' },
     },
   },
 ];
@@ -69,10 +87,8 @@ const mockData: SearchedDataProps['data'] = [
 const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
 
-jest.mock('../common/table-data-card/TableDataCard', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="table-data-card">TableDataCard</p>);
+jest.mock('../../components/TableDataCardBody/TableDataCardBody', () => {
+  return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 
 jest.mock('../common/next-previous/NextPrevious', () => {
@@ -87,23 +103,22 @@ jest.mock('../common/error-with-placeholder/ErrorPlaceHolderES', () => {
   return jest.fn().mockReturnValue(<p>ErrorPlaceHolderES</p>);
 });
 
+const MOCK_PROPS = {
+  isFilterSelected: false,
+  isSummaryPanelVisible: false,
+  currentPage: 0,
+  data: mockData,
+  handleSummaryPanelDisplay: mockHandleSummaryPanelDisplay,
+  onPaginationChange: mockPaginate,
+  selectedEntityId: 'name1',
+  totalValue: 10,
+};
+
 describe('Test SearchedData Component', () => {
   it('Component should render', () => {
-    const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={10}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
 
     const searchedDataContainer = getByTestId(container, 'search-container');
 
@@ -111,38 +126,37 @@ describe('Test SearchedData Component', () => {
   });
 
   it('Should display table card according to data provided in props', () => {
-    const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={10}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
 
     const searchedDataContainer = getAllByTestId(container, 'table-data-card');
 
     expect(searchedDataContainer).toHaveLength(3);
   });
 
+  it('Should display table card with name and display name highlighted', () => {
+    const { container } = render(<SearchedData {...MOCK_PROPS} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const searchedDataContainer = getAllByTestId(container, 'table-data-card');
+
+    expect(searchedDataContainer).toHaveLength(3);
+
+    const headerDisplayName = getAllByTestId(
+      container,
+      'entity-header-display-name'
+    );
+
+    expect(headerDisplayName[0].querySelector('span')).toHaveClass(
+      'text-highlighter'
+    );
+  });
+
   it('If children is provided it should display', () => {
     const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={10}>
+      <SearchedData {...MOCK_PROPS}>
         <p>hello world</p>
       </SearchedData>,
       {
@@ -153,38 +167,12 @@ describe('Test SearchedData Component', () => {
     expect(getByText(container, /hello world/i)).toBeInTheDocument();
   });
 
-  it('Pagination Should be there if data is more than 10 count', () => {
-    const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={mockData}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={11}>
-        <p>hello world</p>
-      </SearchedData>,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    expect(getByText(container, /Pagination/i)).toBeInTheDocument();
-  });
-
   it('Onboarding component should display if there is showOnboardingTemplate is true', () => {
     const { container } = render(
       <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
+        {...MOCK_PROPS}
         showOnboardingTemplate
-        currentPage={0}
         data={[]}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
         totalValue={0}
       />,
       {
@@ -197,16 +185,7 @@ describe('Test SearchedData Component', () => {
 
   it('ErrorPlaceHolderES component should display if there is no data', () => {
     const { container } = render(
-      <SearchedData
-        isFilterSelected
-        isSummaryPanelVisible
-        currentPage={0}
-        data={[]}
-        handleSummaryPanelDisplay={mockHandleSummaryPanelDisplay}
-        paginate={mockPaginate}
-        selectedEntityId="name1"
-        totalValue={0}
-      />,
+      <SearchedData {...MOCK_PROPS} data={[]} totalValue={0} />,
       {
         wrapper: MemoryRouter,
       }

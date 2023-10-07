@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { LoadingState } from 'Models';
+import { EntityDetailsObjectInterface } from '../../components/Explore/explore.interface';
+import { VotingDataProps } from '../../components/Voting/voting.interface';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 
@@ -20,12 +22,11 @@ export type GlossaryV1Props = {
   selectedData: Glossary | GlossaryTerm;
   isGlossaryActive: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
-  handleGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
+  onGlossaryTermUpdate: (value: GlossaryTerm) => Promise<void>;
   onGlossaryDelete: (id: string) => void;
   onGlossaryTermDelete: (id: string) => void;
+  isVersionsView: boolean;
+  onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
+  isSummaryPanelOpen: boolean;
+  updateVote?: (data: VotingDataProps) => Promise<void>;
 };
-
-export enum GlossaryAction {
-  EXPORT = 'export',
-  IMPORT = 'import',
-}

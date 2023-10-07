@@ -33,7 +33,7 @@ type Mode = {
 };
 
 const SchemaEditor = ({
-  value,
+  value = '',
   className = '',
   mode = {
     name: CSMode.JAVASCRIPT,
@@ -43,7 +43,7 @@ const SchemaEditor = ({
   editorClass,
   onChange,
 }: {
-  value: string;
+  value?: string;
   className?: string;
   mode?: Mode;
   readOnly?: boolean;
@@ -65,7 +65,7 @@ const SchemaEditor = ({
     foldGutter: true,
     gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
     mode,
-    readOnly: true,
+    readOnly: false,
     ...options,
   };
   const [internalValue, setInternalValue] = useState<string>(

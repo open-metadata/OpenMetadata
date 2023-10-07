@@ -20,7 +20,7 @@ POSTGRES_SQL_STATEMENT = textwrap.dedent(
         u.usename,
         d.datname database_name,
         s.query query_text,
-        s.total_exec_time/1000 duration
+        s.{time_column_name}/1000 duration
       FROM
         pg_stat_statements s
         JOIN pg_catalog.pg_database d ON s.dbid = d.oid
@@ -74,9 +74,9 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
 )
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
-SELECT oid, polname, table_catalog , table_schema ,table_name  
+SELECT object_id, polname, table_catalog , table_schema ,table_name  
 FROM information_schema.tables AS it
-JOIN (SELECT pc.relname, pp.*
+JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       FROM pg_policy AS pp
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
@@ -96,14 +96,93 @@ POSTGRES_TABLE_COMMENTS = """
     ORDER BY "schema", "table_name"
 """
 
-
+# Postgres views definitions only contains the select query
+# hence we are appending "create view <schema>.<table> as " to select query
+# to generate the column level lineage
 POSTGRES_VIEW_DEFINITIONS = """
 SELECT 
-	n.nspname schema,
+	n.nspname "schema",
 	c.relname view_name,
-	pg_get_viewdef(c.oid) view_def
+	'create view ' || n.nspname || '.' || c.relname || ' as ' || pg_get_viewdef(c.oid,true) view_def
 FROM pg_class c 
 JOIN pg_namespace n ON n.oid = c.relnamespace 
 WHERE c.relkind IN ('v', 'm')
 AND n.nspname not in ('pg_catalog','information_schema')
+"""
+
+POSTGRES_GET_DATABASE = """
+select datname from pg_catalog.pg_database
+"""
+
+POSTGRES_TEST_GET_TAGS = """
+SELECT object_id, polname, table_catalog , table_schema ,table_name  
+FROM information_schema.tables AS it
+JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
+      FROM pg_policy AS pp
+      JOIN pg_class AS pc ON pp.polrelid = pc.oid
+      JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
+      LIMIT 1
+"""
+
+POSTGRES_TEST_GET_QUERIES = """
+      SELECT
+        u.usename,
+        d.datname database_name,
+        s.query query_text,
+        s.{time_column_name}/1000 duration
+      FROM
+        pg_stat_statements s
+        JOIN pg_catalog.pg_database d ON s.dbid = d.oid
+        JOIN pg_catalog.pg_user u ON s.userid = u.usesysid
+        LIMIT 1
+    """
+
+
+POSTGRES_GET_DB_NAMES = """
+select datname from pg_catalog.pg_database
+"""
+
+POSTGRES_COL_IDENTITY = """\
+  (SELECT json_build_object(
+      'always', a.attidentity = 'a',
+      'start', s.seqstart,
+      'increment', s.seqincrement,
+      'minvalue', s.seqmin,
+      'maxvalue', s.seqmax,
+      'cache', s.seqcache,
+      'cycle', s.seqcycle)
+  FROM pg_catalog.pg_sequence s
+  JOIN pg_catalog.pg_class c on s.seqrelid = c."oid"
+  WHERE c.relkind = 'S'
+  AND a.attidentity != ''
+  AND s.seqrelid = pg_catalog.pg_get_serial_sequence(
+      a.attrelid::regclass::text, a.attname
+  )::regclass::oid
+  ) as identity_options\
+"""
+
+POSTGRES_SQL_COLUMNS = """
+        SELECT a.attname,
+            pg_catalog.format_type(a.atttypid, a.atttypmod),
+            (
+            SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+            FROM pg_catalog.pg_attrdef d
+            WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum
+            AND a.atthasdef
+            ) AS DEFAULT,
+            a.attnotnull,
+            a.attrelid as table_oid,
+            pgd.description as comment,
+            {generated},
+            {identity}
+        FROM pg_catalog.pg_attribute a
+        LEFT JOIN pg_catalog.pg_description pgd ON (
+            pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+        WHERE a.attrelid = :table_oid
+        AND a.attnum > 0 AND NOT a.attisdropped
+        ORDER BY a.attnum
+    """
+
+POSTGRES_GET_SERVER_VERSION = """
+show server_version
 """

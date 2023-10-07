@@ -17,7 +17,7 @@ import traceback
 from typing import TYPE_CHECKING, Dict
 
 from airflow_provider_openmetadata.lineage.config.loader import get_lineage_config
-from airflow_provider_openmetadata.lineage.utils import add_status
+from airflow_provider_openmetadata.lineage.status import add_status
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -77,7 +77,6 @@ def success_callback(context: Dict[str, str]) -> None:
     :param context: Airflow runtime context
     """
     try:
-
         config = get_lineage_config()
         metadata = OpenMetadata(config.metadata_config)
 

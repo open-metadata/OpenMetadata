@@ -17,8 +17,8 @@
       "type": "string"
     },
     "botUser" : {
-      "description": "Bot user created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
-      "$ref" : "../type/entityReference.json"
+      "description": "Bot user name created for this bot on behalf of which the bot performs all the operations, such as updating description, responding on the conversation threads, etc.",
+      "type" : "string"
     },
     "description": {
       "description": "Description of the bot.",

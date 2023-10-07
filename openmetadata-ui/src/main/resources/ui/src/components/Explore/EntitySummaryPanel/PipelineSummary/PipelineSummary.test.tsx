@@ -14,18 +14,9 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { mockPipelineEntityDetails } from '../mocks/PipelineSummary.mock';
 import PipelineSummary from './PipelineSummary.component';
-
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
 
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
@@ -33,37 +24,57 @@ jest.mock('../SummaryList/SummaryList.component', () =>
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
 );
 
+jest.mock('../CommonEntitySummaryInfo/CommonEntitySummaryInfo', () =>
+  jest.fn().mockImplementation(() => <div>testCommonEntitySummaryInfo</div>)
+);
+
 describe('PipelineSummary component tests', () => {
-  it('Component should render properly', () => {
+  it('Component should render properly,  when loaded in the Explore page.', () => {
     render(<PipelineSummary entityDetails={mockPipelineEntityDetails} />, {
       wrapper: MemoryRouter,
     });
 
-    const pipelineTitle = screen.getByTestId('TableDataCardTitle');
-    const pipelineUrlLabel = screen.getByTestId('pipeline-url-label');
-    const pipelineUrlValue = screen.getByTestId('pipeline-link-name');
+    const commonEntitySummaryInfo = screen.getByText(
+      'testCommonEntitySummaryInfo'
+    );
     const tasksHeader = screen.getByTestId('tasks-header');
     const summaryList = screen.getByTestId('SummaryList');
 
-    expect(pipelineTitle).toBeInTheDocument();
-    expect(pipelineUrlLabel).toBeInTheDocument();
-    expect(pipelineUrlValue).toContainHTML(mockPipelineEntityDetails.name);
+    expect(commonEntitySummaryInfo).toBeInTheDocument();
     expect(tasksHeader).toBeInTheDocument();
     expect(summaryList).toBeInTheDocument();
   });
 
-  it('If the pipeline url is not present in pipeline details, "-" should be displayed as pipeline url value', () => {
+  it('Component should render properly, when loaded in the Lineage page.', async () => {
     render(
       <PipelineSummary
-        entityDetails={{ ...mockPipelineEntityDetails, pipelineUrl: undefined }}
+        componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+        entityDetails={mockPipelineEntityDetails}
       />,
       {
         wrapper: MemoryRouter,
       }
     );
 
-    const pipelineUrlValue = screen.getByTestId('pipeline-url-value');
+    const descriptionHeader = screen.getAllByTestId('description-header');
+    const tags = screen.getByText('label.tag-plural');
+    const noTags = screen.getByText('label.no-tags-added');
+    const commonEntitySummaryInfo = screen.getByText(
+      'testCommonEntitySummaryInfo'
+    );
 
-    expect(pipelineUrlValue).toContainHTML('-');
+    const viewerContainer = screen.getByTestId('viewer-container');
+    const summaryList = screen.getByTestId('SummaryList');
+    const ownerLabel = screen.queryByTestId('label.owner-label');
+
+    expect(ownerLabel).not.toBeInTheDocument();
+
+    expect(descriptionHeader[0]).toBeInTheDocument();
+    expect(tags).toBeInTheDocument();
+    expect(commonEntitySummaryInfo).toBeInTheDocument();
+    expect(noTags).toBeInTheDocument();
+
+    expect(summaryList).toBeInTheDocument();
+    expect(viewerContainer).toBeInTheDocument();
   });
 });

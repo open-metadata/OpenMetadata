@@ -28,7 +28,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     WorkflowConfig,
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 
 def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -48,7 +49,7 @@ def profiler_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

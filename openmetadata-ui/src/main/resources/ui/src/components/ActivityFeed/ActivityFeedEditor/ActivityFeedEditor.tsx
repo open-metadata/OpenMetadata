@@ -19,13 +19,13 @@ import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
-  editorClass?: string;
-  buttonClass?: string;
   placeHolder?: string;
   defaultValue?: string;
+  editorClass?: string;
   editAction?: React.ReactNode;
   onSave?: (value: string) => void;
   onTextChange?: (message: string) => void;
+  focused?: boolean;
 }
 
 export type EditorContentRef = {
@@ -35,13 +35,13 @@ export type EditorContentRef = {
 
 const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
   className,
-  editorClass = '',
-  buttonClass = '',
+  editorClass,
   onSave,
   placeHolder,
   defaultValue,
   onTextChange,
   editAction,
+  focused = false,
 }) => {
   const editorRef = useRef<EditorContentRef>();
   const [editorValue, setEditorValue] = useState<string>('');
@@ -66,11 +66,12 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
 
   return (
     <div
-      className={classNames('tw-relative', className)}
+      className={classNames('relative', className)}
       onClick={(e) => e.stopPropagation()}>
       <FeedEditor
         defaultValue={defaultValue}
         editorClass={editorClass}
+        focused={focused}
         placeHolder={placeHolder}
         ref={editorRef}
         onChangeHandler={onChangeHandler}
@@ -80,12 +81,7 @@ const ActivityFeedEditor: FC<ActivityFeedEditorProp> = ({
         editAction
       ) : (
         <>
-          <SendButton
-            buttonClass={buttonClass}
-            editorValue={editorValue}
-            onSaveHandler={onSaveHandler}
-          />
-
+          <SendButton editorValue={editorValue} onSaveHandler={onSaveHandler} />
           <KeyHelp editorValue={editorValue} />
         </>
       )}

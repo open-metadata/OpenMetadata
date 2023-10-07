@@ -2,10 +2,20 @@
   "$id": "https://open-metadata.org/schema/entity/data/database.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database",
+  "$comment": "@om-entity-type",
   "description": "This schema defines the Database entity. A database also referred to as Database Catalog is a collection of schemas.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Database",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "entityName": {
+      "description": "Name of a table. Expected to be unique within a database.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier that identifies this database instance.",
@@ -13,7 +23,7 @@
     },
     "name": {
       "description": "Name that identifies the database.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
@@ -74,7 +84,7 @@
     },
     "databaseSchemas": {
       "description": "References to schemas in the database.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
@@ -89,6 +99,29 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "retentionPeriod" : {
+      "description": "Retention period of the data in the database. Period is expressed as duration in ISO 8601 format in UTC. Example - `P23DT23H`.",
+      "$ref": "../../type/basic.json#/definitions/duration"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of database.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service"],

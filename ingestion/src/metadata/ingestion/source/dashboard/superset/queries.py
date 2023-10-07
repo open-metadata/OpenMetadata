@@ -12,10 +12,14 @@
 Queries to fetch data from superset
 """
 
+
 FETCH_ALL_CHARTS = """
 select 
 	s.id,
 	s.slice_name,
+	s.description,
+    s.datasource_id,
+    s.viz_type,
 	t.table_name,
 	t.schema,
 	db.database_name,
@@ -40,4 +44,46 @@ LEFT JOIN
 	ab_user au
 ON
 	d.created_by_fk = au.id
+"""
+
+
+FETCH_ALL_CHARTS_TEST = """
+select 
+	s.id
+from 
+	slices s left join "tables" t 
+on	s.datasource_id  = t.id and s.datasource_type = 'table' 
+	left join "dbs" db 
+on  db.id = t.database_id
+LIMIT 1
+"""
+
+
+FETCH_DASHBOARDS_TEST = """
+select
+	d.id
+from 
+	dashboards d
+LEFT JOIN
+	ab_user au
+ON
+	d.created_by_fk = au.id
+LIMIT 1
+"""
+
+FETCH_COLUMN = """
+select 
+	tc.id, 
+    table_name ,
+    column_name, 
+    type,
+    tc.description 
+from 
+	table_columns  tc  
+inner join 
+	tables t 
+on 
+	t.id=tc.table_id  
+where 
+	table_name= '{table_name}'
 """

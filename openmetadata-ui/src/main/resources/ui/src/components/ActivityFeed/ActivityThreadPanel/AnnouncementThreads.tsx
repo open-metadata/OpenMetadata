@@ -15,22 +15,18 @@ import { Card, Divider, Typography } from 'antd';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ANNOUNCEMENT_BG,
-  ANNOUNCEMENT_BORDER,
-} from '../../../constants/Feeds.constants';
-import {
   Post,
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../../utils/AnnouncementsUtils';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
-import { leftPanelAntCardStyle } from '../../containers/PageLayout';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import AnnouncementBadge from '../Shared/AnnouncementBadge';
 import { ActivityThreadListProp } from './ActivityThreadPanel.interface';
+import './announcement.less';
 
 const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   threads,
@@ -41,6 +37,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
   onConfirmation,
   postFeed,
   updateThreadHandler,
+  editAnnouncementPermission,
 }) => {
   const { t } = useTranslation();
   const { updatedFeedList: updatedThreads } =
@@ -91,29 +88,25 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       );
       const lastPost = thread?.posts?.[postLength - 1];
 
+      //   ashish
+
       return (
         <Fragment key={index}>
           <Card
-            className="ant-card-feed"
+            className="ant-card-feed announcement-thread-card"
             data-testid="announcement-card"
-            key={`${index} - card`}
-            style={{
-              ...leftPanelAntCardStyle,
-              marginTop: '20px',
-              paddingTop: '8px',
-              border: `1px solid ${ANNOUNCEMENT_BORDER}`,
-              background: `${ANNOUNCEMENT_BG}`,
-            }}>
+            key={`${index} - card`}>
             <AnnouncementBadge />
             <div data-testid="main-message">
               <ActivityFeedCard
                 isEntityFeed
                 isThread
                 announcementDetails={thread.announcement}
+                editAnnouncementPermission={editAnnouncementPermission}
                 entityLink={thread.about}
                 feed={mainFeed}
                 feedType={thread.type || ThreadType.Conversation}
-                taskDetails={thread.task}
+                task={thread}
                 threadId={thread.id}
                 updateThreadHandler={updateThreadHandler}
                 onConfirmation={onConfirmation}
@@ -123,11 +116,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             {postLength > 0 ? (
               <div data-testid="replies-container">
                 {postLength > 1 ? (
-                  <div className="tw-ml-9 tw-my-2">
-                    {Boolean(lastPost) && (
-                      <div className="tw-filter-seperator" />
-                    )}
-                    <div className="tw-flex tw-my-4">
+                  <div>
+                    {Boolean(lastPost) && <div />}
+                    <div className="d-flex ">
                       <FeedCardFooter
                         isFooterVisible
                         lastReplyTimeStamp={lastPost?.postTs}
@@ -142,9 +133,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                 <div data-testid="latest-reply">
                   <ActivityFeedCard
                     isEntityFeed
-                    className="tw-ml-9"
                     feed={lastPost as Post}
                     feedType={thread.type || ThreadType.Conversation}
+                    task={thread}
                     threadId={thread.id}
                     updateThreadHandler={updateThreadHandler}
                     onConfirmation={onConfirmation}
@@ -155,11 +146,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             ) : null}
             {selectedThreadId === thread.id ? (
               <div data-testid="quick-reply-editor">
-                <ActivityFeedEditor
-                  buttonClass="tw-mr-4"
-                  className="tw-ml-5 tw-mr-2 tw-mb-6"
-                  onSave={postFeed}
-                />
+                <ActivityFeedEditor onSave={postFeed} />
               </div>
             ) : null}
           </Card>
@@ -173,12 +160,10 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       {getAnnouncements(activeAnnouncements)}
       {Boolean(inActiveAnnouncements.length) && (
         <>
-          <Typography.Text
-            className="tw-block tw-mt-4 tw-font-medium"
-            data-testid="inActive-announcements">
+          <Typography.Text data-testid="inActive-announcements">
             {t('label.inactive-announcement-plural')}
           </Typography.Text>
-          <Divider className="tw-mb-4 tw-mt-2" />
+          <Divider />
         </>
       )}
 

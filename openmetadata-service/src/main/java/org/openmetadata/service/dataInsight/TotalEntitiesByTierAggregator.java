@@ -3,53 +3,57 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
-import org.elasticsearch.search.aggregations.metrics.Sum;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 
-public class TotalEntitiesByTierAggregator extends DataInsightAggregatorInterface {
-  public TotalEntitiesByTierAggregator(
-      Aggregations aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    super(aggregations, dataInsightChartType);
+public abstract class TotalEntitiesByTierAggregator<A, B, M, S> implements DataInsightAggregatorInterface {
+  private final A aggregations;
+
+  public TotalEntitiesByTierAggregator(A aggregations) {
+    this.aggregations = aggregations;
   }
 
   @Override
-  public DataInsightChartResult process() throws ParseException {
-    List<Object> data = this.aggregate();
-    return new DataInsightChartResult().withData(data).withChartType(this.dataInsightChartType);
-  }
-
-  @Override
-  List<Object> aggregate() throws ParseException {
-    Histogram timestampBuckets = this.aggregations.get(TIMESTAMP);
+  public List<Object> aggregate() throws ParseException {
+    M timestampBuckets = getTimestampBuckets(this.aggregations);
     List<Object> data = new ArrayList<>();
-
-    for (Histogram.Bucket timestampBucket : timestampBuckets.getBuckets()) {
+    for (B timestampBucket : getBuckets(timestampBuckets)) {
       List<TotalEntitiesByTier> timestampData = new ArrayList<>();
       double totalEntityCount = 0.0;
+      String dateTimeString = getKeyAsString(timestampBucket);
+      Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
 
-      String dateTimeString = timestampBucket.getKeyAsString();
-      Long timestamp = this.convertDatTimeStringToTimestamp(dateTimeString);
-      MultiBucketsAggregation entityTypeBuckets = timestampBucket.getAggregations().get(ENTITY_TIER);
-      for (MultiBucketsAggregation.Bucket entityTierBucket : entityTypeBuckets.getBuckets()) {
-        String entityTier = entityTierBucket.getKeyAsString();
-        Sum sumEntityCount = entityTierBucket.getAggregations().get(ENTITY_COUNT);
+      M entityTierBuckets = getEntityTierBuckets(timestampBucket);
+      for (B entityTierBucket : getBuckets(entityTierBuckets)) {
+        String entityTier = getKeyAsString(entityTierBucket);
+        S sumEntityCount = getSumAggregations(entityTierBucket, ENTITY_COUNT);
         timestampData.add(
             new TotalEntitiesByTier()
                 .withTimestamp(timestamp)
                 .withEntityTier(entityTier)
-                .withEntityCount(sumEntityCount.getValue()));
-        totalEntityCount = totalEntityCount + sumEntityCount.getValue();
+                .withEntityCount(getValue(sumEntityCount)));
+        totalEntityCount = totalEntityCount + getValue(sumEntityCount);
       }
       for (TotalEntitiesByTier el : timestampData) {
-        el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
+        if (totalEntityCount != 0.0) {
+          el.withEntityCountFraction(el.getEntityCount() / totalEntityCount);
+        } else {
+          el.withEntityCountFraction(Double.NaN);
+        }
         data.add((el));
       }
     }
-
     return data;
   }
+
+  protected abstract Double getValue(S key);
+
+  protected abstract S getSumAggregations(B bucket, String key);
+
+  protected abstract M getEntityTierBuckets(B bucket);
+
+  protected abstract String getKeyAsString(B bucket);
+
+  protected abstract List<? extends B> getBuckets(M buckets);
+
+  protected abstract M getTimestampBuckets(A aggregations);
 }

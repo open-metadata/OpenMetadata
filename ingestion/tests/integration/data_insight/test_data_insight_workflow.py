@@ -15,17 +15,18 @@ Validate workflow configs and filters
 
 from __future__ import annotations
 
+import random
 import unittest
 import uuid
 from copy import deepcopy
 from datetime import datetime, time, timedelta
+from random import randint
 from time import sleep
 
 import pytest
 import requests
 
-from metadata.data_insight.api.workflow import DataInsightWorkflow
-from metadata.data_insight.helper.data_insight_es_index import DataInsightEsIndex
+from metadata.data_insight.processor.kpi.kpi_runner import KpiRunner
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
 from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
@@ -54,18 +55,21 @@ from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithDescript
 from metadata.generated.schema.dataInsight.type.percentageOfEntitiesWithOwnerByType import (
     PercentageOfEntitiesWithOwnerByType,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import ParsingConfigurationError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.data_insight import DataInsightWorkflow
 
 data_insight_config = {
     "source": {
         "type": "dataInsight",
         "serviceName": "dataInsightWorkflow",
-        "sourceConfig": {"config": {"type": "dataInsight"}},
+        "sourceConfig": {"config": {}},
     },
     "processor": {"type": "data-insight-processor", "config": {}},
     "sink": {
@@ -86,11 +90,10 @@ data_insight_config = {
 WEB_EVENT_DATA = [
     WebAnalyticEventData(
         eventId=None,
-        timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
-            fullUrl="http://localhost:8585/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
-            url="/table/sample_data.ecommerce_db.shopify.%22dim.shop%22",
+            fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
+            url='/table/sample_data.ecommerce_db.shopify."dim.shop"',
             hostname="localhost",
             language="en-US",
             screenSize="1280x720",
@@ -102,7 +105,6 @@ WEB_EVENT_DATA = [
     ),
     WebAnalyticEventData(
         eventId=None,
-        timestamp=int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
         eventType=WebAnalyticEventType.PageView,
         eventData=PageViewData(
             fullUrl="http://localhost:8585/table/mysql.default.airflow_db.dag_run/profiler",
@@ -124,42 +126,86 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        """Set up om client for the test class"""
-
         cls.metadata = OpenMetadata(
             OpenMetadataConnection.parse_obj(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
 
-        cls.start_ts = int(
+    def setUp(self) -> None:
+        """Set up om client for the test class"""
+        self.start_ts = int(
             datetime.combine(datetime.utcnow(), time.min).timestamp() * 1000
-        )
-        cls.end_ts = int(
+        ) - random.randint(1, 999)
+        self.end_ts = int(
             datetime.combine(datetime.utcnow(), time.max).timestamp() * 1000
-        )
+        ) - random.randint(1, 999)
 
-        completed_description_chart = cls.metadata.get_by_name(
+        completed_description_chart = self.metadata.get_by_name(
             DataInsightChart, "PercentageOfEntitiesWithDescriptionByType", fields="*"
         )
         create = CreateKpiRequest(
-            name="CompletedDescription",
-            dataInsightChart=EntityReference(
-                type="dataInsightChart", id=completed_description_chart.id
-            ),
+            name=f"CompletedDescription__{self.id().split('.')[-1]}",
+            dataInsightChart=completed_description_chart.fullyQualifiedName,
             description="foo",
-            startDate=cls.start_ts,
-            endDate=cls.end_ts,
+            startDate=self.start_ts,
+            endDate=self.end_ts,
             targetDefinition=[
                 KpiTarget(name="completedDescriptionFraction", value="0.63")
             ],
             metricType="PERCENTAGE",
         )
 
-        cls.metadata.create_kpi(create)
+        self.kpi = self.metadata.create_kpi(create)
+
+        table: Table = self.metadata.get_by_name(
+            Table, 'sample_data.ecommerce_db.shopify."dim.shop"'
+        )
+        user: User = self.metadata.get_by_name(User, "aaron_johnson0")
+        self.metadata.patch_owner(
+            entity=Table,
+            source=table,
+            owner=EntityReference(
+                id=user.id,
+                type="user",
+            ),
+            force=True,
+        )
 
         for event in WEB_EVENT_DATA:
-            cls.metadata.add_web_analytic_events(event)
+            event.timestamp = int(
+                (
+                    datetime.utcnow() - timedelta(days=1, milliseconds=randint(0, 999))
+                ).timestamp()
+                * 1000
+            )
+            self.metadata.add_web_analytic_events(event)
+
+        # we'll add the user ID
+        self.metadata.add_web_analytic_events(
+            WebAnalyticEventData(
+                eventId=None,
+                timestamp=int(
+                    (
+                        datetime.utcnow()
+                        - timedelta(days=1, milliseconds=randint(0, 999))
+                    ).timestamp()
+                    * 1000
+                ),
+                eventType=WebAnalyticEventType.PageView,
+                eventData=PageViewData(
+                    fullUrl='http://localhost:8585/table/sample_data.ecommerce_db.shopify."dim.shop"',
+                    url='/table/sample_data.ecommerce_db.shopify."dim.shop"',
+                    hostname="localhost",
+                    language="en-US",
+                    screenSize="1280x720",
+                    userId=user.id,
+                    sessionId=uuid.uuid4(),
+                    pageLoadTime=0.0,
+                    referrer="",
+                ),
+            ),
+        )
 
     def test_create_method(self):
         """Test validation of the workflow config is properly happening"""
@@ -171,7 +217,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             DataInsightWorkflow.create(insight)
 
     def test_execute_method(self):
-        """test method excution"""
+        """test method execution"""
         workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
@@ -231,7 +277,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithDescriptionByType.value,
-            data_report_index=DataInsightEsIndex.EntityReportData.value,
+            data_report_index="entity_report_data_index",
         )
 
         assert isinstance(resp, DataInsightChartResult)
@@ -242,7 +288,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PercentageOfEntitiesWithOwnerByType.value,
-            data_report_index=DataInsightEsIndex.EntityReportData.value,
+            data_report_index="entity_report_data_index",
         )
 
         assert resp.data
@@ -252,7 +298,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.DailyActiveUsers.value,
-            data_report_index=DataInsightEsIndex.WebAnalyticUserActivityReportData.value,
+            data_report_index="web_analytic_user_activity_report_data_index",
         )
 
         assert resp.data
@@ -262,30 +308,35 @@ class DataInsightWorkflowTests(unittest.TestCase):
             start_ts=self.start_ts,
             end_ts=self.end_ts,
             data_insight_chart_nane=DataInsightChartType.PageViewsByEntities.value,
-            data_report_index=DataInsightEsIndex.WebAnalyticEntityViewReportData.value,
+            data_report_index="web_analytic_entity_view_report_data_index",
         )
 
         assert resp.data
         assert isinstance(resp.data[0], PageViewsByEntities)
 
+        # test data insight KPIs have been computed and can be retrieved
+        # --------------------------------------------------------------
+        kpi_result = self.metadata.get_kpi_result(
+            "CompletedDescription__test_execute_method", self.start_ts, self.end_ts
+        )
+        assert kpi_result
+
     def test_get_kpis(self):
         """test Kpis are returned as expected"""
         # TO DO: Add KPI creation step and deletion (setUp + tearDown)
 
-        workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
-
-        kpis = workflow._get_kpis()
-
+        kpi_runner = KpiRunner(self.metadata)
+        kpis = kpi_runner.get_kpis()
         assert kpis
 
     def test_write_kpi_result(self):
         """test write kpi result"""
-        fqn = "CompletedDescription"
+        fqn = "CompletedDescription__test_write_kpi_result"
         self.metadata.add_kpi_result(
             fqn,
             KpiResult(
                 timestamp=int(datetime.utcnow().timestamp() * 1000),
-                kpiFqn="CompletedDescription",
+                kpiFqn="CompletedDescription__test_write_kpi_result",
                 targetResult=[
                     KpiTarget(
                         name="completedDescriptionFraction",
@@ -300,16 +351,37 @@ class DataInsightWorkflowTests(unittest.TestCase):
 
         assert kpi_result
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        kpis: list[Kpi] = cls.metadata.list_entities(
-            entity=Kpi, fields="*"  # type: ignore
-        ).entities
+    def test_multiple_execution(self) -> None:
+        """test multiple execution of the workflow is not yielding duplicate entries"""
+        data = {}
 
-        for kpi in kpis:
-            cls.metadata.delete(
-                entity=Kpi,
-                entity_id=kpi.id,
-                hard_delete=True,
-                recursive=True,
+        workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
+        workflow.execute()
+        workflow.stop()
+        sleep(2)  # we'll wait for 2 seconds
+        new_workflow: DataInsightWorkflow = DataInsightWorkflow.create(
+            data_insight_config
+        )
+        new_workflow.execute()
+        new_workflow.stop()
+
+        for report_data_type in ReportDataType:
+            data[report_data_type] = self.metadata.get_data_insight_report_data(
+                self.start_ts,
+                self.end_ts,
+                report_data_type.value,
             )
+
+        for _, values in data.items():
+            timestamp = [value.get("timestamp") for value in values.get("data")]
+            # we'll check we only have 1 execution timestamp
+            assert len(set(timestamp)) == 1
+
+    def tearDown(self) -> None:
+        """teardown class"""
+        self.metadata.delete(
+            entity=Kpi,
+            entity_id=str(self.kpi.id.__root__),
+            hard_delete=True,
+            recursive=True,
+        )

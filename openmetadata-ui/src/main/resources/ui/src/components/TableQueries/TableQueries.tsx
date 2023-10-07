@@ -11,69 +11,331 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
-import { getTableQueryByTableId } from 'rest/tableAPI';
-import { Table } from '../../generated/entity/data/table';
-import { withLoader } from '../../hoc/withLoader';
+import { compare } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
+import { PagingResponse } from 'Models';
+import Qs from 'qs';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  pagingObject,
+} from '../../constants/constants';
+import { USAGE_DOCS } from '../../constants/docs.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import {
+  QUERY_PAGE_ERROR_STATE,
+  QUERY_PAGE_LOADING_STATE,
+} from '../../constants/Query.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { Query } from '../../generated/entity/data/query';
+import {
+  getQueriesList,
+  getQueryById,
+  ListQueriesParams,
+  patchQueries,
+  updateQueryVote,
+} from '../../rest/queryAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  parseSearchParams,
+  stringifySearchParams,
+} from '../../utils/Query/QueryUtils';
+import { getAddQueryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import QueryCard from './QueryCard';
+import { QueryVote, TableQueriesProp } from './TableQueries.interface';
+import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
 
-interface TableQueriesProp {
-  tableId: string;
-}
+const TableQueries: FC<TableQueriesProp> = ({
+  isTableDeleted,
+  tableId,
+}: TableQueriesProp) => {
+  const { t } = useTranslation();
+  const location = useLocation();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
+  const history = useHistory();
 
-const TableQueries: FC<TableQueriesProp> = ({ tableId }: TableQueriesProp) => {
-  const [tableQueries, setTableQueries] = useState<Table['tableQueries']>([]);
-  const [isQueriesLoading, setIsQueriesLoading] = useState(true);
+  const searchParams = useMemo(() => {
+    const searchData = parseSearchParams(location.search);
 
-  const fetchTableQuery = async () => {
+    return searchData;
+  }, [location]);
+
+  const [tableQueries, setTableQueries] = useState<PagingResponse<Query[]>>({
+    data: [],
+    paging: pagingObject,
+  });
+  const [isLoading, setIsLoading] = useState(QUERY_PAGE_LOADING_STATE);
+  const [isError, setIsError] = useState(QUERY_PAGE_ERROR_STATE);
+  const [selectedQuery, setSelectedQuery] = useState<Query>();
+  const [queryPermissions, setQueryPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+  const [currentPage, setCurrentPage] = useState(
+    Number(searchParams.queryFrom) || INITIAL_PAGING_VALUE
+  );
+
+  const { getEntityPermission, permissions } = usePermissionProvider();
+
+  const fetchResourcePermission = async () => {
+    if (isUndefined(selectedQuery)) {
+      return;
+    }
+    setIsLoading((pre) => ({ ...pre, rightPanel: true }));
+
     try {
-      const queries = await getTableQueryByTableId(tableId);
-      setTableQueries(queries.tableQueries ?? []);
+      const permission = await getEntityPermission(
+        ResourceEntity.QUERY,
+        selectedQuery.id || ''
+      );
+      setQueryPermissions(permission);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
     } finally {
-      setIsQueriesLoading(false);
+      setIsLoading((pre) => ({ ...pre, rightPanel: false }));
     }
   };
 
   useEffect(() => {
-    setIsQueriesLoading(true);
-    if (tableId) {
-      fetchTableQuery();
+    if (selectedQuery?.id) {
+      fetchResourcePermission();
+    }
+  }, [selectedQuery]);
+
+  const handleQueryUpdate = async (updatedQuery: Query) => {
+    if (isUndefined(selectedQuery)) {
+      return;
+    }
+
+    const jsonPatch = compare(selectedQuery, updatedQuery);
+
+    try {
+      const res = await patchQueries(selectedQuery.id || '', jsonPatch);
+      setSelectedQuery((pre) => (pre ? { ...pre, ...res } : res));
+      setTableQueries((pre) => {
+        return {
+          ...pre,
+          data: pre.data.map((query) =>
+            query.id === updatedQuery.id ? { ...query, ...res } : query
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateVote = async (data: QueryVote, id?: string) => {
+    try {
+      await updateQueryVote(id || '', data);
+      const response = await getQueryById(id || '', {
+        fields: 'owner,votes,tags,queryUsedIn,users',
+      });
+      setSelectedQuery(response);
+      setTableQueries((pre) => {
+        return {
+          ...pre,
+          data: pre.data.map((query) =>
+            query.id === response.id ? response : query
+          ),
+        };
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+  const fetchTableQuery = async (
+    params?: ListQueriesParams,
+    activePage?: number
+  ) => {
+    setIsLoading((pre) => ({ ...pre, query: true }));
+    try {
+      const queries = await getQueriesList({
+        ...params,
+        limit: PAGE_SIZE,
+        entityId: tableId,
+        fields: 'owner,votes,tags,queryUsedIn,users',
+      });
+      if (queries.data.length === 0) {
+        setIsError((pre) => ({ ...pre, page: true }));
+      } else {
+        setTableQueries(queries);
+        const selectedQueryData = searchParams.query
+          ? queries.data.find((query) => query.id === searchParams.query) ||
+            queries.data[0]
+          : queries.data[0];
+        setSelectedQuery(selectedQueryData);
+
+        history.push({
+          search: stringifySearchParams({
+            tableId,
+            after: params?.after,
+            query: selectedQueryData.id,
+            queryFrom: activePage,
+          }),
+        });
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setIsError((pre) => ({ ...pre, page: true }));
+    } finally {
+      setIsLoading((pre) => ({ ...pre, query: false }));
+    }
+  };
+
+  const pagingHandler = ({ cursorType, currentPage }: PagingHandlerParams) => {
+    const { paging } = tableQueries;
+    if (cursorType) {
+      fetchTableQuery({ [cursorType]: paging[cursorType] }, currentPage);
+      setCurrentPage(currentPage);
+    }
+  };
+
+  const handleSelectedQuery = (query: Query) => {
+    if (query.id !== selectedQuery?.id) {
+      setIsLoading((pre) => ({ ...pre, rightPanel: true }));
+      setSelectedQuery(query);
+      history.push({
+        search: Qs.stringify({
+          ...searchParams,
+          query: query.id,
+        }),
+      });
+    }
+  };
+
+  useEffect(() => {
+    setIsLoading((pre) => ({ ...pre, page: true }));
+    if (tableId && !isTableDeleted) {
+      fetchTableQuery({ after: searchParams?.after }).finally(() => {
+        setIsLoading((pre) => ({ ...pre, page: false }));
+      });
     } else {
-      setIsQueriesLoading(false);
+      setIsLoading((pre) => ({ ...pre, page: false }));
     }
   }, [tableId]);
 
-  if (isQueriesLoading) {
+  const handleAddQueryClick = () => {
+    history.push(getAddQueryPath(datasetFQN));
+  };
+
+  const addButton = (
+    <Tooltip
+      placement="top"
+      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}>
+      <Button
+        data-testid="add-query-btn"
+        disabled={!permissions?.query.Create}
+        type="primary"
+        onClick={handleAddQueryClick}>
+        {t('label.add')}
+      </Button>
+    </Tooltip>
+  );
+
+  if (isLoading.page) {
     return <Loader />;
   }
+  if (isError.page) {
+    return (
+      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+        <ErrorPlaceHolder
+          buttonId="add-query-btn"
+          doc={USAGE_DOCS}
+          heading={t('label.query-lowercase-plural')}
+          permission={permissions?.query.Create}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddQueryClick}
+        />
+      </div>
+    );
+  }
+
+  const queryTabBody = isError.search ? (
+    <Col
+      className="flex-center font-medium mt-24"
+      data-testid="no-queries"
+      span={24}>
+      <ErrorPlaceHolder>
+        <Typography.Paragraph>
+          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+            entity: t('label.query-lowercase-plural'),
+          })}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    </Col>
+  ) : (
+    tableQueries.data.map((query) => (
+      <Col data-testid="query-card" key={query.id} span={24}>
+        <QueryCard
+          afterDeleteAction={fetchTableQuery}
+          isExpanded={false}
+          permission={queryPermissions}
+          query={query}
+          selectedId={selectedQuery?.id}
+          onQuerySelection={handleSelectedQuery}
+          onQueryUpdate={handleQueryUpdate}
+          onUpdateVote={updateVote}
+        />
+      </Col>
+    ))
+  );
 
   return (
-    <Row className="p-xs" gutter={32} id="tablequeries">
-      {tableQueries && !isEmpty(tableQueries) ? (
-        <Col offset={3} span={18}>
-          <div className="m-y-lg" data-testid="queries-container">
-            {tableQueries.map((query, index) => (
-              <QueryCard key={index} query={query} />
-            ))}
-          </div>
-        </Col>
-      ) : (
-        <Col className="flex-center font-medium" span={24}>
-          <div data-testid="no-queries">
-            <ErrorPlaceHolder heading="queries" />
-          </div>
-        </Col>
-      )}
+    <Row gutter={8} id="tablequeries" wrap={false}>
+      <Col flex="auto">
+        <Row
+          className="p-x-md m-t-md"
+          data-testid="queries-container"
+          gutter={[8, 16]}>
+          <Col span={24}>
+            <Space className="justify-end w-full">{addButton}</Space>
+          </Col>
+
+          {isLoading.query ? <Loader /> : queryTabBody}
+
+          <Col span={24}>
+            {tableQueries.paging.total > PAGE_SIZE && (
+              <NextPrevious
+                currentPage={currentPage}
+                pageSize={PAGE_SIZE}
+                paging={tableQueries.paging}
+                pagingHandler={pagingHandler}
+              />
+            )}
+          </Col>
+        </Row>
+      </Col>
+      <Col flex="400px">
+        {selectedQuery && (
+          <TableQueryRightPanel
+            isLoading={isLoading.rightPanel}
+            permission={queryPermissions}
+            query={selectedQuery}
+            onQueryUpdate={handleQueryUpdate}
+          />
+        )}
+      </Col>
     </Row>
   );
 };
 
-export default withLoader<TableQueriesProp>(TableQueries);
+export default TableQueries;

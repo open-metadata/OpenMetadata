@@ -20,130 +20,95 @@ import {
 import { BASE_URL } from '../../constants/constants';
 
 const roleName = `Role-test-${uuid()}`;
-const userName = `Usercttest${uuid()}`;
+const userName = `usercttest${uuid()}`;
 const userEmail = `${userName}@gmail.com`;
 
 describe('Test Add role and assign it to the user', () => {
   beforeEach(() => {
     cy.login();
-
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
-
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
-
-    cy.get('[data-menu-id*="roles"]').should('be.visible').click();
-
-    verifyResponseStatusCode('@getRoles', 200);
-
-    cy.url().should('eq', `${BASE_URL}/settings/access/roles`);
-  });
-
-  it('Create and Assign role to user', () => {
-    cy.get('[data-testid="add-role"]')
-      .contains('Add Role')
+    interceptURL('GET', '/api/v1/users?*', 'usersPage');
+    cy.get('[data-testid="app-bar-item-settings"]')
       .should('be.visible')
       .click();
+  });
+
+  it('Create role', () => {
+    cy.get('[data-menu-id*="roles"]').should('be.visible').click();
+    verifyResponseStatusCode('@getRoles', 200);
+
+    cy.get('[data-testid="add-role"]').contains('Add Role').click();
 
     // Asserting navigation
-    cy.get('[data-testid="inactive-link"]')
-      .should('contain', 'Add New Role')
-      .should('be.visible');
+    cy.get('[data-testid="inactive-link"]').should('contain', 'Add New Role');
+
     // Entering name
-    cy.get('#name').should('be.visible').type(roleName);
+    cy.get('#name').type(roleName);
     // Entering descrription
     cy.get(descriptionBox).type('description');
     // Select the policies
-    cy.get('[data-testid="policies"]').should('be.visible').click();
+    cy.get('[data-testid="policies"]').click();
 
-    cy.get('[title="Data Consumer Policy"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[title="Data Consumer Policy"]').scrollIntoView().click();
 
-    cy.get('[title="Data Steward Policy"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[title="Data Steward Policy"]').scrollIntoView().click();
     // Save the role
-    cy.get('[data-testid="submit-btn"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
 
     // Verify the role is added successfully
     cy.url().should('eq', `${BASE_URL}/settings/access/roles/${roleName}`);
     cy.get('[data-testid="inactive-link"]').should('contain', roleName);
 
     // Verify added description
-    cy.get('[data-testid="description"] > [data-testid="viewer-container"]')
-      .should('be.visible')
-      .should('contain', 'description');
+    cy.get(
+      '[data-testid="description"] > [data-testid="viewer-container"]'
+    ).should('contain', 'description');
+  });
 
+  it('Create new user and assign new role to him', () => {
     // Create user and assign newly created role to the user
     cy.get('[data-menu-id*="users"]').should('be.visible').click();
+    verifyResponseStatusCode('@usersPage', 200);
 
     cy.get('[data-testid="add-user"]').contains('Add User').click();
 
-    cy.get('[data-testid="email"]')
-      .scrollIntoView()
-      .should('exist')
-      .should('be.visible')
-      .type(userEmail);
+    cy.get('[data-testid="email"]').scrollIntoView().type(userEmail);
 
-    cy.get('[data-testid="displayName"]')
-      .should('exist')
-      .should('be.visible')
-      .type(userName);
+    cy.get('[data-testid="displayName"]').type(userName);
 
-    cy.get(descriptionBox)
-      .should('exist')
-      .should('be.visible')
-      .type('Adding user');
+    cy.get(descriptionBox).type('Adding user');
 
     interceptURL('GET', '/api/v1/users/generateRandomPwd', 'generatePassword');
-    cy.get('[data-testid="password-generator"]')
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.get('[data-testid="password-generator"]').scrollIntoView().click();
     verifyResponseStatusCode('@generatePassword', 200);
 
-    cy.get(`[id="menu-button-Roles"]`)
-      .should('exist')
-      .should('be.visible')
-      .click();
+    cy.get(`[data-testid="roles-dropdown"]`).type(roleName);
+    cy.get(`.ant-select-dropdown [title="${roleName}"]`).click();
 
-    cy.get(`[data-testid="${roleName}"]`)
-      .scrollIntoView()
-      .should('be.visible')
-      .click();
+    cy.clickOutside();
+    interceptURL('POST', '/api/v1/users', 'createUser');
+    cy.get('[data-testid="save-user"]').scrollIntoView().click();
+    verifyResponseStatusCode('@createUser', 201);
+  });
 
-    cy.get('[data-testid="roles-dropdown"]').click();
-
-    cy.wait(1000);
+  it('Verify assigned role to new user', () => {
+    cy.get('[data-menu-id*="users"]').should('be.visible').click();
+    verifyResponseStatusCode('@usersPage', 200);
 
     interceptURL(
       'GET',
-      '/api/v1/users?fields=profile,teams,roles&&isBot=false&limit=15',
-      'getUserPage'
+      '/api/v1/search/query?q=**&from=0&size=*&index=*',
+      'searchUser'
     );
-
-    cy.get('[data-testid="save-user"]').scrollIntoView().click();
-
-    verifyResponseStatusCode('@getUserPage', 200);
-
-    cy.get('[data-testid="searchbar"]')
-      .should('exist')
-      .should('be.visible')
-      .type(userName);
-
-    cy.get(`[data-testid="${userName}"]`).should('be.visible');
-
     interceptURL('GET', '/api/v1/users/*', 'userDetailsPage');
-    cy.get(`[data-testid="${userName}"]`).should('be.visible').click();
+    cy.get('[data-testid="searchbar"]').type(userName);
+    verifyResponseStatusCode('@searchUser', 200);
+
+    cy.get(`[data-testid="${userName}"]`).click();
     verifyResponseStatusCode('@userDetailsPage', 200);
 
-    cy.get('[data-testid="left-panel"]')
-      .should('be.visible')
-      .should('contain', roleName);
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-roles"]'
+    ).should('contain', roleName);
   });
 });

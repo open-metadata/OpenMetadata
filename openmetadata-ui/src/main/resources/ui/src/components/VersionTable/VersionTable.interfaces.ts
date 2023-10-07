@@ -11,10 +11,22 @@
  *  limitations under the License.
  */
 
-import { ColumnJoins, Table } from '../../generated/entity/data/table';
+import { SearchIndexField } from '../../generated/entity/data/searchIndex';
+import {
+  Column,
+  ColumnJoins,
+  FieldChange,
+  TableConstraint,
+} from '../../generated/entity/data/table';
 
-export interface VersionTableProps {
+export interface VersionTableProps<T extends Column | SearchIndexField> {
   columnName: string;
-  columns: Table['columns'];
+  columns: T[];
   joins: Array<ColumnJoins>;
+  addedColumnConstraintDiffs?: FieldChange[];
+  deletedColumnConstraintDiffs?: FieldChange[];
+  addedTableConstraintDiffs?: FieldChange[];
+  deletedTableConstraintDiffs?: FieldChange[];
+  constraintUpdatedColumns?: string[];
+  tableConstraints?: Array<TableConstraint>;
 }

@@ -15,40 +15,40 @@ MSSQL E2E tests
 
 from typing import List
 
-import pytest
-import yaml
+from metadata.generated.schema.entity.data.table import Histogram
 
-from metadata.utils.constants import UTF_8
-
+from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from .test_cli_db_base_common import CliCommonDB
 
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE e2e_cli_tests.dbo.persons (
-            person_id int,
-            full_name varchar(255),
-            birthdate date
-        )
+        IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG = 'e2e_cli_tests' AND TABLE_NAME = 'persons')
+            BEGIN
+                CREATE TABLE e2e_cli_tests.dbo.persons (
+                    person_id int,
+                    full_name varchar(255),
+                    birthdate date,
+                    is_meeting_scheduled bit,
+                )
+            END
     """
 
     create_view_query: str = """
-        CREATE VIEW view_persons AS
+        CREATE OR ALTER VIEW view_persons AS
             SELECT *
             FROM e2e_cli_tests.dbo.persons;
     """
 
     insert_data_queries: List[str] = [
         """
-    INSERT INTO persons (person_id, full_name, birthdate) VALUES
-        (1,'Peter Parker', '2004-08-10'),
-        (2,'Bruce Banner', '1988-12-18'),
-        (3,'Steve Rogers', '1988-07-04'),
-        (4,'Natasha Romanoff', '1997-12-03'),
-        (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17')
-        ;
+    INSERT INTO persons (person_id, full_name, birthdate, is_meeting_scheduled) VALUES
+        (1,'Peter Parker', '2004-08-10', 1),
+        (2,'Bruce Banner', '1988-12-18', 1),
+        (3,'Steve Rogers', '1988-07-04', 0),
+        (4,'Natasha Romanoff', '1997-12-03', 1),
+        (5,'Wanda Maximoff', '1998-02-10', 1),
+        (6,'Diana Prince', '1976-03-17', 0);
     """
     ]
 
@@ -76,58 +76,32 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def delete_table_and_view(self) -> None:
         SQACommonMethods.delete_table_and_view(self)
 
-    @pytest.mark.order(9999)
-    def test_profiler_with_partition(self) -> None:
-        processor_config = {
-            "processor": {
-                "type": "orm-profiler",
-                "config": {
-                    "tableConfig": [
-                        {
-                            "fullyQualifiedName": "mssql.e2e_cli_tests.dbo.persons",
-                            "partitionConfig": {
-                                "enablePartitioning": True,
-                                "partitionColumnName": "birthdate",
-                                "partitionIntervalType": "TIME-UNIT",
-                                "partitionInterval": 30,
-                                "partitionIntervalUnit": "YEAR",
-                            },
-                        }
-                    ]
-                },
-            }
-        }
-
-        with open(self.config_file_path, encoding=UTF_8) as config_file:
-            config_yaml = yaml.safe_load(config_file)
-
-        config_yaml["source"]["sourceConfig"] = {
-            "config": {
-                "type": "Profiler",
-                "generateSampleData": True,
-                "profileSample": 100,
-            }
-        }
-
-        config_yaml.update(processor_config)
-        with open(self.test_file_path, "w", encoding=UTF_8) as test_file:
-            yaml.dump(config_yaml, test_file)
-
-        result = self.run_command("profile")
-
-        sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-        assert len(sample_data.rows) == 3
-
     @staticmethod
     def expected_tables() -> int:
         return 1
 
     def inserted_rows_count(self) -> int:
-        return 3
+        return 6
+
+    def view_column_lineage_count(self) -> int:
+        return 4
 
     @staticmethod
     def fqn_created_table() -> str:
         return "mssql.e2e_cli_tests.dbo.persons"
+
+    @staticmethod
+    def get_profiler_time_partition() -> dict:
+        return {
+            "fullyQualifiedName": "mssql.e2e_cli_tests.dbo.persons",
+            "partitionConfig": {
+                "enablePartitioning": True,
+                "partitionColumnName": "birthdate",
+                "partitionIntervalType": "TIME-UNIT",
+                "partitionInterval": 30,
+                "partitionIntervalUnit": "YEAR",
+            },
+        }
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -160,3 +134,47 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     @staticmethod
     def expected_filtered_mix() -> int:
         return 14
+
+    @staticmethod
+    def get_profiler_time_partition_results() -> dict:
+        return {
+            "table_profile": {
+                "columnCount": 4.0,
+                "rowCount": 6.0,
+            },
+            "column_profile": [
+                {
+                    "person_id": {
+                        "distinctCount": 3.0,
+                        "distinctProportion": 1.0,
+                        "duplicateCount": None,
+                        "firstQuartile": 2.5,
+                        "histogram": Histogram(
+                            boundaries=["1.00 to 3.77", "3.77 and up"],
+                            frequencies=[1, 2],
+                        ),
+                        "interQuartileRange": 2.0,
+                        "max": 5.0,
+                        "maxLength": None,
+                        "mean": 3.333333,
+                        "median": 4.0,
+                        "min": 1.0,
+                        "minLength": None,
+                        "missingCount": None,
+                        "missingPercentage": None,
+                        "nonParametricSkew": -0.3922324663925032,
+                        "nullCount": 0.0,
+                        "nullProportion": 0.0,
+                        "stddev": 1.6996731711975948,
+                        "sum": 10.0,
+                        "thirdQuartile": 4.5,
+                        "uniqueCount": 3.0,
+                        "uniqueProportion": 1.0,
+                        "validCount": None,
+                        "valuesCount": 3.0,
+                        "valuesPercentage": None,
+                        "variance": None,
+                    }
+                }
+            ],
+        }

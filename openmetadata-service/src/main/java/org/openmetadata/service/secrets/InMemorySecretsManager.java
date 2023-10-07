@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -21,9 +21,7 @@ import org.openmetadata.service.exception.SecretsManagerException;
 
 /** Secret Manager used for testing */
 public class InMemorySecretsManager extends ExternalSecretsManager {
-
-  private static InMemorySecretsManager INSTANCE;
-
+  private static InMemorySecretsManager instance;
   @Getter private final Map<String, String> secretsMap = new HashMap<>();
 
   protected InMemorySecretsManager(String clusterPrefix) {
@@ -31,8 +29,10 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   }
 
   public static InMemorySecretsManager getInstance(String clusterPrefix) {
-    if (INSTANCE == null) INSTANCE = new InMemorySecretsManager(clusterPrefix);
-    return INSTANCE;
+    if (instance == null) {
+      instance = new InMemorySecretsManager(clusterPrefix);
+    }
+    return instance;
   }
 
   @Override
@@ -43,6 +43,11 @@ public class InMemorySecretsManager extends ExternalSecretsManager {
   @Override
   void updateSecret(String secretName, String secretValue) {
     storeSecret(secretName, secretValue);
+  }
+
+  @Override
+  protected void deleteSecretInternal(String secretName) {
+    secretsMap.remove(secretName);
   }
 
   @Override

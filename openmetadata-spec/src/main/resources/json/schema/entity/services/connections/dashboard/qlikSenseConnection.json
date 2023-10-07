@@ -1,0 +1,133 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/qlikSenseConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QlikSenseConnection",
+    "description": "Qlik Sense Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection",
+    "definitions": {
+        "qlikSenseType": {
+            "description": "Qlik sense service type",
+            "type": "string",
+            "enum": [
+                "QlikSense"
+            ],
+            "default": "QlikSense"
+        },
+        "qlikCertificatePath": {
+            "description": "Qlik Authentication Certificate File Path",
+            "title": "Qlik Certificates By File Path",
+            "type": "object",
+            "properties": {
+                "clientCertificate": {
+                    "title": "Client Certificate Path",
+                    "description": "Client Certificate",
+                    "type": "string"
+                },
+                "clientKeyCertificate": {
+                    "title": "Client Key Certificate",
+                    "description": "Client Key Certificate.",
+                    "type": "string"
+                },
+                "rootCertificate": {
+                    "title": "Root Certificate",
+                    "description": "Root Certificate.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "clientCertificate",
+                "clientKeyCertificate",
+                "rootCertificate"
+            ]
+        },
+        "qlikCertificateValues": {
+            "description": "Qlik Authentication Certificate By Values",
+            "title": "Qlik Certificates By Values",
+            "type": "object",
+            "properties": {
+                "clientCertificateData": {
+                    "title": "Client Certificate Value",
+                    "description": "Client Certificate",
+                    "type": "string",
+                    "format": "password"
+                },
+                "clientKeyCertificateData": {
+                    "title": "Client Key Certificate Value",
+                    "description": "Client Key Certificate.",
+                    "type": "string",
+                    "format": "password"
+                },
+                "rootCertificateData": {
+                    "title": "Root Certificate Value",
+                    "description": "Root Certificate.",
+                    "type": "string",
+                    "format": "password"
+                },
+                "stagingDir": {
+                    "title": "Staging Directory Path",
+                    "description": "Staging Directory Path",
+                    "type": "string",
+                    "default": "/tmp/openmetadata-qlik"
+                }
+            },
+            "required": [
+                "clientCertificateData",
+                "clientKeyCertificateData",
+                "rootCertificateData",
+                "stagingDir"
+            ]
+        }
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/qlikSenseType",
+            "default": "QlikSense"
+        },
+        "displayUrl": {
+            "expose": true,
+            "title": "Qlik Sense Base URL",
+            "description": "Qlik Sense Base URL, used for genrating dashboard & chat url",
+            "type": "string",
+            "format": "uri"
+        },
+        "hostPort": {
+            "expose": true,
+            "title": "Qlik Engine JSON API Websocket URL",
+            "description": "URL for the superset instance.",
+            "type": "string",
+            "format": "uri"
+        },
+        "certificates": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/qlikCertificateValues"
+                },
+                {
+                    "$ref": "#/definitions/qlikCertificatePath"
+                }
+            ]
+        },
+        "userDirectory": {
+            "title": "User Directory",
+            "description": "User Directory.",
+            "type": "string"
+        },
+        "userId": {
+            "title": "User ID",
+            "description": "User ID.",
+            "type": "string"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "hostPort",
+        "certificates"
+    ]
+}

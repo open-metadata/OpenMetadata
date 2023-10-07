@@ -15,10 +15,11 @@ import { Viewer } from '@toast-ui/react-editor';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
+import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
 import { PreviewerProp } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';
 
@@ -27,21 +28,68 @@ const RichTextEditorPreviewer = ({
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
+  showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
 }: PreviewerProp) => {
   const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
-  const [hideReadMoreText, setHideReadMoreText] = useState<boolean>(
-    markdown.length <= maxLength
+
+  // initially read more will be false
+  const [readMore, setReadMore] = useState<boolean>(false);
+
+  // read more toggle handler
+  const handleReadMoreToggle = () => setReadMore((pre) => !pre);
+
+  // whether has read more content or not
+  const hasReadMore = useMemo(
+    () => enableSeeMoreVariant && markdown.length > maxLength,
+    [enableSeeMoreVariant, markdown, maxLength]
   );
 
-  const displayMoreHandler = () => {
-    setHideReadMoreText((pre) => !pre);
-  };
+  /**
+   * if hasReadMore is true then value will be based on read more state
+   * else value will be content
+   */
+  const viewerValue = useMemo(() => {
+    if (hasReadMore) {
+      return readMore ? content : `${getTrimmedContent(content, maxLength)}...`;
+    }
+
+    return content;
+  }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
     setContent(markdown);
   }, [markdown]);
+
+  const handleMouseDownEvent = useCallback(async (e: MouseEvent) => {
+    const targetNode = e.target as HTMLElement;
+    const previousSibling = targetNode.previousElementSibling as HTMLElement;
+    const targetNodeDataTestId = targetNode.getAttribute('data-testid');
+
+    if (targetNodeDataTestId === 'code-block-copy-icon' && previousSibling) {
+      const content =
+        targetNode.parentElement?.getAttribute('data-content') ?? '';
+
+      try {
+        await navigator.clipboard.writeText(content);
+        previousSibling.setAttribute('data-copied', 'true');
+        targetNode.setAttribute('data-copied', 'true');
+        setTimeout(() => {
+          previousSibling.setAttribute('data-copied', 'false');
+          targetNode.setAttribute('data-copied', 'false');
+        }, 2000);
+      } catch (error) {
+        // handle error
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('mousedown', handleMouseDownEvent);
+
+    return () => window.removeEventListener('mousedown', handleMouseDownEvent);
+  }, [handleMouseDownEvent]);
 
   return (
     <div
@@ -52,27 +100,19 @@ const RichTextEditorPreviewer = ({
         data-testid="markdown-parser">
         <Viewer
           extendedAutolinks
-          initialValue={
-            hideReadMoreText
-              ? content
-              : `${getTrimmedContent(content, maxLength)}...`
-          }
+          customHTMLRenderer={customHTMLRenderer}
+          initialValue={viewerValue}
           key={uniqueId()}
+          linkAttributes={{ target: '_blank' }}
         />
       </div>
-      {enableSeeMoreVariant && markdown.length > maxLength && (
+      {hasReadMore && showReadMoreBtn && (
         <Button
-          className="leading-0"
-          data-testid="read-more-button"
+          className="text-xs text-right"
+          data-testid={`read-${readMore ? 'less' : 'more'}-button`}
           type="link"
-          onClick={displayMoreHandler}>
-          {hideReadMoreText
-            ? t('label.read-type-lowercase', {
-                type: t('label.less-lowercase'),
-              })
-            : t('label.read-type-lowercase', {
-                type: t('label.more-lowercase'),
-              })}
+          onClick={handleReadMoreToggle}>
+          {readMore ? t('label.less-lowercase') : t('label.more-lowercase')}
         </Button>
       )}
     </div>

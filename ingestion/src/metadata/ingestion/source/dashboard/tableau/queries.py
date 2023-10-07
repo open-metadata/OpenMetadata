@@ -13,23 +13,49 @@
 GraphQL queries used during ingestion
 """
 
-TABLEAU_LINEAGE_GRAPHQL_QUERY = """
-{
-  workbooks {
-    id
-    luid
-    name
-    upstreamTables{
+TABLEAU_DATASOURCES_QUERY = """
+{{
+  embeddedDatasourcesConnection(first: {first}, offset: {offset} ) {{
+    nodes {{
+      id
       name
-      schema
-      upstreamDatabases{
+      fields {{
+        id
         name
-      }
-      referencedByQueries{
+        upstreamColumns{{
+          id
+          name
+          remoteType
+        }}
+        description
+      }}
+      workbook {{
+        id
+        luid
         name
-        query
-      }
-    }
-  }
-}
+      }}
+      upstreamTables {{
+        id
+        luid
+        name
+        fullName
+        schema
+        referencedByQueries {{
+          id
+          name
+          query
+        }}
+        columns {{
+          id
+          name
+        }}
+        database {{
+          id
+          name
+        }}
+      }}
+    }}
+    totalCount
+  }}
+}}
 """

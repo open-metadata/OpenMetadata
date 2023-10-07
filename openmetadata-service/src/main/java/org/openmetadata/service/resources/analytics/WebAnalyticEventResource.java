@@ -1,8 +1,7 @@
 package org.openmetadata.service.resources.analytics;
 
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -45,60 +45,44 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.MicrometerBundleSingleton;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
-@Path("/v1/analytics/webAnalyticEvent")
-@Api(value = "webAnalyticEvent collection", tags = "webAnalyticEvent collection")
+@Path("/v1/analytics/web/events")
+@Tag(name = "Data Insights", description = "APIs related to Data Insights data and charts.")
+@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "webAnalyticEvent")
+@Collection(name = "analytics")
 public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
 
-  @Override
-  public WebAnalyticEvent addHref(UriInfo uriInfo, WebAnalyticEvent entity) {
-    entity.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, entity.getId()));
-    Entity.withHref(uriInfo, entity.getOwner());
-    return entity;
-  }
-
-  @Inject
-  public WebAnalyticEventResource(CollectionDAO dao, Authorizer authorizer) {
-    super(WebAnalyticEvent.class, new WebAnalyticEventRepository(dao), authorizer);
+  public WebAnalyticEventResource(Authorizer authorizer) {
+    super(Entity.WEB_ANALYTIC_EVENT, authorizer);
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {
-    @SuppressWarnings("unused")
-    public WebAnalyticEventList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   public static class WebAnalyticEventDataList extends ResultList<WebAnalyticEventData> {
-    @SuppressWarnings("unused")
-    public WebAnalyticEventDataList() {
-      // Empty constructor needed for deserialization
-    }
+    /* Required for serde */
   }
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Find the existing webAnalyticEventTypes and add them from json files
     List<WebAnalyticEvent> webAnalyticEvents =
-        dao.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");
     for (WebAnalyticEvent webAnalyticEvent : webAnalyticEvents) {
-      dao.initializeEntity(webAnalyticEvent);
+      repository.initializeEntity(webAnalyticEvent);
     }
   }
 
@@ -106,7 +90,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "listWebAnalyticEventTypes",
       summary = "List web analytic event types",
-      tags = "webAnalyticEvent",
       description =
           "Get a list of web analytics event types."
               + "Use field parameter to get only necessary fields. Use cursor-based pagination to limit the number "
@@ -149,8 +132,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -159,7 +141,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "createWebAnalyticEventType",
       summary = "Create a web analytic event type",
-      tags = "webAnalyticEvent",
       description = "Create a web analytic event type",
       responses = {
         @ApiResponse(
@@ -170,8 +151,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebAnalyticEvent create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent = getWebAnalyticEvent(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, webAnalyticEvent);
   }
@@ -180,7 +160,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "createOrUpdateWebAnalyticEventType",
       summary = "Update a web analytic event type",
-      tags = "webAnalyticEvent",
       description = "Update web analytic event type.",
       responses = {
         @ApiResponse(
@@ -190,8 +169,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
                 @Content(mediaType = "application/json", schema = @Schema(implementation = WebAnalyticEvent.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebAnalyticEvent create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateWebAnalyticEvent create) {
     WebAnalyticEvent webAnalyticEvent = getWebAnalyticEvent(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, webAnalyticEvent);
   }
@@ -200,9 +178,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{id}")
   @Operation(
       operationId = "getWebAnalyticEventTypeById",
-      summary = "Get a web analytic event type by id",
-      tags = "webAnalyticEvent",
-      description = "Get a web analytic event type by `ID`.",
+      summary = "Get a web analytic event type by Id",
+      description = "Get a web analytic event type by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -213,7 +190,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
       })
   public WebAnalyticEvent get(
       @Context UriInfo uriInfo,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -225,8 +203,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -234,15 +211,15 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{id}")
   @Operation(
       operationId = "patchWebAnalyticEventTypeById",
-      summary = "Update a web analytic event type",
-      tags = "webAnalyticEvent",
+      summary = "Update a web analytic event type by Id",
       description = "Update a web analytic event type.",
       externalDocs = @ExternalDocumentation(description = "JsonPatch RFC", url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response updateDescription(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
               content =
@@ -251,8 +228,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -260,9 +236,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Path("/{id}")
   @Operation(
       operationId = "deleteWebAnalyticEventTypeById",
-      summary = "delete a web analytic event type",
-      tags = "webAnalyticEvent",
-      description = "Delete a web analytic event type by id.",
+      summary = "Delete a web analytic event type by Id",
+      description = "Delete a web analytic event type by Id.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
         @ApiResponse(responseCode = "404", description = "Web Analytic event for instance {id} is not found")
@@ -274,21 +249,20 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Web Analytic event Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteWebAnalyticEventTypeByName",
-      summary = "delete a web analytic event type",
-      tags = "webAnalyticEvent",
-      description = "Delete a web analytic event type by `name`.",
+      summary = "Delete a web analytic event type by fully qualified name",
+      description = "Delete a web analytic event type by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Web Analytic event for instance {name} is not found")
+        @ApiResponse(responseCode = "404", description = "Web Analytic event for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -297,18 +271,18 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Web Analytic name", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
-    return deleteByName(uriInfo, securityContext, name, false, hardDelete);
+      @Parameter(description = "Fully qualified name of the web analytic event", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
   @PUT
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted WebAnalyticEvent.",
-      tags = "webAnalyticEvent",
-      description = "Restore a soft deleted WebAnalyticEvent.",
+      summary = "Restore a soft deleted web analytic event",
+      description = "Restore a soft deleted web analytic event.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -317,29 +291,29 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
                 @Content(mediaType = "application/json", schema = @Schema(implementation = WebAnalyticEvent.class)))
       })
   public Response restoreWebAnalyticEvent(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
   @GET
-  @Path("/name/{name}")
+  @Path("/name/{fqn}")
   @Operation(
       operationId = "getWebAnalyticEventTypeByName",
-      summary = "Get a web analytic event type by Name",
-      tags = "webAnalyticEvent",
-      description = "Get a web analytic event type by Name.",
+      summary = "Get a web analytic event type by fully qualified name",
+      description = "Get a web analytic event type by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "A web analytic event type",
             content =
                 @Content(mediaType = "application/json", schema = @Schema(implementation = WebAnalyticEvent.class))),
-        @ApiResponse(responseCode = "404", description = "Web Analytic event type for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Web Analytic event type for instance {fqn} is not found")
       })
   public WebAnalyticEvent getByName(
       @Context UriInfo uriInfo,
-      @PathParam("name") String name,
+      @Parameter(description = "Fully qualified name of the web analytic event", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
       @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -351,9 +325,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+          Include include) {
+    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
   @GET
@@ -361,8 +334,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "listAllWebAnalyticEventTypeVersion",
       summary = "List web analytic event type versions",
-      tags = "webAnalyticEvent",
-      description = "Get a list of all the version of a web analytic event type by `id`.",
+      description = "Get a list of all the version of a web analytic event type by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -372,9 +344,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Web Analytic event type Id", schema = @Schema(type = "string")) @PathParam("id")
-          UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -383,8 +354,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "getSpecificWebAnalyticEventTypeVersion",
       summary = "Get a version of the report definition",
-      tags = "webAnalyticEvent",
-      description = "Get a version of the web analytic event type by `id`",
+      description = "Get a version of the web analytic event type by `Id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -398,14 +368,13 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   public WebAnalyticEvent getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Web Analytic Event type Id", schema = @Schema(type = "string")) @PathParam("id")
+      @Parameter(description = "Id of the web analytic event", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "Web Analytic Event type version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -414,7 +383,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "addWebAnalyticEventData",
       summary = "Add web analytic event data",
-      tags = "webAnalyticEvent",
       description = "Add web analytic event data",
       responses = {
         @ApiResponse(
@@ -426,31 +394,22 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   public Response addReportResult(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid WebAnalyticEventData webAnalyticEventData)
-      throws Exception {
-    return MicrometerBundleSingleton.webAnalyticEvents.recordCallable(
-        () -> {
-          try {
-            return dao.addWebAnalyticEventData(webAnalyticEventData);
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+      @Valid WebAnalyticEventData webAnalyticEventData) {
+    return repository.addWebAnalyticEventData(webAnalyticEventData);
   }
 
   @DELETE
   @Path("/{name}/{timestamp}/collect")
   @Operation(
       operationId = "deleteWebAnalyticEventData",
-      summary = "delete web analytic event data before a timestamp",
-      tags = "webAnalyticEvent",
+      summary = "Delete web analytic event data before a timestamp",
       description = "Delete web analytic event data before a timestamp.",
       responses = {@ApiResponse(responseCode = "200", description = "Successfully deleted Web Analytic Event Data")})
   public Response deleteWebAnalyticEventData(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Web Analytic Event type Name",
+              description = "Name of the Web Analytic event",
               schema = @Schema(implementation = WebAnalyticEventType.class))
           @PathParam("name")
           WebAnalyticEventType name,
@@ -458,11 +417,10 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               description = "Timestamp of the event. Event before the timestamp will be deleted",
               schema = @Schema(type = "long"))
           @PathParam("timestamp")
-          Long timestamp)
-      throws IOException {
+          Long timestamp) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name.value()));
-    dao.deleteWebAnalyticEventData(name, timestamp);
+    repository.deleteWebAnalyticEventData(name, timestamp);
     return Response.ok().build();
   }
 
@@ -471,7 +429,6 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   @Operation(
       operationId = "getWebAnalyticEventData",
       summary = "Retrieve web analytic data",
-      tags = "webAnalyticEvent",
       description = "Retrieve web analytic data.",
       responses = {
         @ApiResponse(
@@ -480,7 +437,7 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = WebAnalyticEventResource.WebAnalyticEventDataList.class)))
+                    schema = @Schema(implementation = WebAnalyticEventDataList.class)))
       })
   public ResultList<WebAnalyticEventData> listWebAnalyticEventData(
       @Context SecurityContext securityContext,
@@ -501,12 +458,11 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
-          Long endTs)
-      throws IOException {
-    return dao.getWebAnalyticEventData(eventType, startTs, endTs);
+          Long endTs) {
+    return repository.getWebAnalyticEventData(eventType, startTs, endTs);
   }
 
-  private WebAnalyticEvent getWebAnalyticEvent(CreateWebAnalyticEvent create, String user) throws IOException {
+  private WebAnalyticEvent getWebAnalyticEvent(CreateWebAnalyticEvent create, String user) {
     return copy(new WebAnalyticEvent(), create, user)
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())

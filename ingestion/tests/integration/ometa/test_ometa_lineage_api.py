@@ -28,6 +28,9 @@ from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,
 )
 from metadata.generated.schema.entity.data.table import Column, DataType
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -53,7 +56,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -66,6 +69,7 @@ class OMetaLineageTest(TestCase):
 
     service_entity_id = None
 
+    # pylint: disable=line-too-long
     server_config = OpenMetadataConnection(
         hostPort="http://localhost:8585/api",
         authProvider="openmetadata",
@@ -83,7 +87,9 @@ class OMetaLineageTest(TestCase):
         connection=DatabaseConnection(
             config=MysqlConnection(
                 username="username",
-                password="password",
+                authType=BasicAuth(
+                    password="password",
+                ),
                 hostPort="http://localhost:1234",
             )
         ),
@@ -113,30 +119,21 @@ class OMetaLineageTest(TestCase):
 
         create_db = CreateDatabaseRequest(
             name="test-db",
-            service=EntityReference(
-                id=cls.db_service_entity.id, type="databaseService"
-            ),
+            service=cls.db_service_entity.fullyQualifiedName,
         )
 
         create_db_entity = cls.metadata.create_or_update(data=create_db)
 
-        db_reference = EntityReference(
-            id=create_db_entity.id, name="test-db", type="database"
-        )
-
         create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema", database=db_reference
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
         )
 
         create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
-        schema_reference = EntityReference(
-            id=create_schema_entity.id, name="test-schema", type="databaseSchema"
-        )
-
         cls.table = CreateTableRequest(
             name="test",
-            databaseSchema=schema_reference,
+            databaseSchema=create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -144,18 +141,16 @@ class OMetaLineageTest(TestCase):
 
         cls.pipeline = CreatePipelineRequest(
             name="test",
-            service=EntityReference(
-                id=cls.pipeline_service_entity.id, type="pipelineService"
-            ),
+            service=cls.pipeline_service_entity.fullyQualifiedName,
         )
 
         cls.pipeline_entity = cls.metadata.create_or_update(data=cls.pipeline)
 
         cls.create = AddLineageRequest(
-            description="test lineage",
             edge=EntitiesEdge(
                 fromEntity=EntityReference(id=cls.table_entity.id, type="table"),
                 toEntity=EntityReference(id=cls.pipeline_entity.id, type="pipeline"),
+                lineageDetails=LineageDetails(description="test lineage"),
             ),
         )
 

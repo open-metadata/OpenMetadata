@@ -11,63 +11,55 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { PropertyInput } from './PropertyInput';
+import { PropertyInput, PropertyInputProps } from './PropertyInput';
 
 const onCancel = jest.fn();
 const onSave = jest.fn();
 
-const mockProp = {
+const mockProp: PropertyInputProps = {
   value: 'yValue',
-  type: 'string',
+  type: 'text',
   propertyName: 'yNumber',
   onCancel,
   onSave,
 };
 
+jest.mock('../../../components/InlineEdit/InlineEdit.component', () => {
+  return jest.fn().mockImplementation(({ children, onSave }) => (
+    <div data-testid="inline-edit">
+      {children}
+      <button data-testid="save" onClick={onSave}>
+        save
+      </button>
+    </div>
+  ));
+});
+
 describe('Test PropertyInput Component', () => {
   it('Should render input component', async () => {
-    const { findByTestId } = render(<PropertyInput {...mockProp} />);
+    render(<PropertyInput {...mockProp} />);
 
-    const valueInput = await findByTestId('value-input');
-    const cancelButton = await findByTestId('cancel-value');
-    const saveButton = await findByTestId('save-value');
+    const valueInput = await screen.findByTestId('value-input');
+    const inlineEdit = await screen.findByTestId('inline-edit');
 
     expect(valueInput).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(saveButton).toBeInTheDocument();
+    expect(inlineEdit).toBeInTheDocument();
   });
 
-  it('Should call onCancel on click of cancel button', async () => {
-    const { findByTestId } = render(<PropertyInput {...mockProp} />);
-
-    const valueInput = await findByTestId('value-input');
-    const cancelButton = await findByTestId('cancel-value');
-    const saveButton = await findByTestId('save-value');
-
-    expect(valueInput).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(saveButton).toBeInTheDocument();
-
-    fireEvent.mouseDown(cancelButton);
-
-    expect(onCancel).toHaveBeenCalled();
-  });
-
-  it('Should call onSave on click of save button', async () => {
-    const { findByTestId } = render(<PropertyInput {...mockProp} />);
-
-    const valueInput = await findByTestId('value-input');
-    const cancelButton = await findByTestId('cancel-value');
-    const saveButton = await findByTestId('save-value');
+  it('onSave should be called with updated value', async () => {
+    const input = 'test';
+    render(<PropertyInput {...mockProp} />);
+    const valueInput = await screen.findByTestId('value-input');
+    const saveBtn = await screen.findByTestId('save');
 
     expect(valueInput).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(saveButton).toBeInTheDocument();
 
-    fireEvent.click(saveButton);
+    userEvent.type(valueInput, input);
+    userEvent.click(saveBtn);
 
-    expect(onSave).toHaveBeenCalled();
+    expect(mockProp.onSave).toHaveBeenCalledWith(input);
   });
 });

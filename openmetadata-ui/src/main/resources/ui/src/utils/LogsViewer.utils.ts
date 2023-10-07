@@ -12,8 +12,19 @@
  */
 
 import { isUndefined, startCase } from 'lodash';
+import { TableProfilerTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
+import { getTableTabPath } from '../constants/constants';
+import { OPEN_METADATA } from '../constants/service-guide.constant';
+import { EntityTabs } from '../enums/entity.enum';
+import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLogEntityPath } from './RouterUtils';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
+import { getNameFromFQN } from './CommonUtils';
+import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
+import { getSettingsPathFromPipelineType } from './IngestionUtils';
+import { getDataQualityPagePath, getLogEntityPath } from './RouterUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 /**
  * It takes in a service type, an ingestion name, and an ingestion details object, and returns an array
@@ -30,17 +41,58 @@ export const getLogBreadCrumbs = (
   ingestionName: string,
   ingestionDetails: IngestionPipeline | undefined
 ) => {
+  const updateIngestionName = Fqn.split(ingestionName);
+  if (updateIngestionName.includes(OPEN_METADATA) && ingestionDetails) {
+    return [
+      {
+        name: startCase(ingestionDetails.pipelineType),
+        url: getSettingsPathFromPipelineType(ingestionDetails.pipelineType),
+        activeTitle: true,
+      },
+      {
+        name: getNameFromFQN(ingestionName),
+        url: '',
+        activeTitle: true,
+      },
+    ];
+  }
   if (isUndefined(ingestionDetails)) {
     return [];
   }
 
-  const urlPath = [serviceType, ...ingestionName.split('.')];
+  if (serviceType === 'testSuite') {
+    return [
+      {
+        name: startCase(serviceType),
+        url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+      },
+      {
+        name: ingestionDetails.name,
+        url:
+          getTableTabPath(
+            getEncodedFqn(
+              (ingestionDetails.sourceConfig.config as Pipeline)
+                ?.entityFullyQualifiedName ?? ''
+            ),
+            EntityTabs.PROFILER
+          ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
+      },
+      {
+        name: i18n.t('label.log-plural'),
+        url: '',
+      },
+    ];
+  }
+
+  const urlPath = [serviceType, ...updateIngestionName];
 
   return urlPath.map((path, index) => {
     return {
       name: index === 0 ? startCase(path) : path,
       url:
-        index !== urlPath.length - 1 ? getLogEntityPath(path, serviceType) : '',
+        index !== urlPath.length - 1
+          ? getLogEntityPath(getEncodedFqn(path), serviceType)
+          : '',
     };
   });
 };

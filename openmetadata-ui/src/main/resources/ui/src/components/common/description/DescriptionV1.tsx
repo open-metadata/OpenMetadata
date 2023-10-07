@@ -11,17 +11,24 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
+import Icon from '@ant-design/icons';
+import { Card, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React, { Fragment } from 'react';
+import React, { useMemo } from 'react';
+import { useHistory } from 'react-router';
+import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityFieldThreads } from '../../../interface/feed.interface';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import {
+  getRequestDescriptionPath,
+  getUpdateDescriptionPath,
+  TASK_ENTITIES,
+} from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -34,15 +41,18 @@ interface Props {
   description?: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
-  entityType?: string;
+  entityType: EntityType;
   entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
   onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
+  wrapInCard?: boolean;
+  isVersionView?: boolean;
+  showCommentsIcon?: boolean;
+  reduceDescription?: boolean;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -54,137 +64,132 @@ const DescriptionV1 = ({
   isReadOnly = false,
   removeBlur = false,
   entityName,
-  entityFieldThreads,
+
   onThreadLinkSelect,
-  onEntityFieldSelect,
   entityType,
   entityFqn,
+  wrapInCard = false,
+  isVersionView,
+  showCommentsIcon = true,
+  reduceDescription,
 }: Props) => {
-  const descriptionThread = entityFieldThreads?.[0];
+  const history = useHistory();
 
-  const editButton = () => {
-    return !isReadOnly ? (
-      <Tooltip
-        title={hasEditAccess ? 'Edit Description' : NO_PERMISSION_FOR_ACTION}>
-        <button
-          className="focus:tw-outline-none tw-text-primary"
-          data-testid="edit-description"
-          disabled={!hasEditAccess}
-          onClick={onDescriptionEdit}>
-          <SVGIcons
-            alt="edit"
-            icon={Icons.IC_EDIT_PRIMARY}
-            title="Edit"
-            width="16px"
-          />
-        </button>
-      </Tooltip>
-    ) : (
-      <></>
+  const handleRequestDescription = () => {
+    history.push(
+      getRequestDescriptionPath(entityType as string, entityFqn as string)
     );
   };
 
-  return (
-    <Space className="schema-description tw-flex" direction="vertical">
-      <Space
-        style={{
-          display: 'flex',
-          width: '100%',
-          justifyContent: 'space-between',
-        }}>
-        <Text type="secondary">Description</Text>
-        <div>{editButton()}</div>
-      </Space>
-      <div>
-        {description?.trim() ? (
-          <RichTextEditorPreviewer
-            enableSeeMoreVariant={!removeBlur}
-            markdown={description}
-          />
-        ) : (
-          <span className="">No description </span>
-        )}
-        <ModalWithMarkdownEditor
-          header={t('label.edit-description-for', { entityName })}
-          placeholder={t('label.enter-entity', {
-            entity: t('label.description'),
-          })}
-          value={description}
-          visible={Boolean(isEdit)}
-          onCancel={onCancel}
-          onSave={onDescriptionUpdate}
-        />
-      </div>
-      {!isReadOnly ? (
-        <div
-          className={classNames(
-            'tw-w-5 tw-min-w-max tw-flex',
-            description?.trim() ? 'tw-pl-1' : ''
-          )}>
-          {isUndefined(descriptionThread) &&
-          onEntityFieldSelect &&
-          !description?.trim() ? (
-            <button
-              className="focus:tw-outline-none tw-ml-2 tw--mt-6"
-              data-testid="request-description"
-              onClick={() => onEntityFieldSelect?.(EntityField.DESCRIPTION)}>
-              <Tooltip
-                placement="top"
-                title="Request description"
-                trigger="hover">
-                <SVGIcons
-                  alt="request-description"
-                  className="tw-mt-2"
-                  icon={Icons.REQUEST}
-                />
-              </Tooltip>
-            </button>
-          ) : null}
-          {!isUndefined(descriptionThread) ? (
-            <p
-              className="link-text tw-ml-2 tw-w-8 tw-h-8 tw-flex-none"
-              data-testid="description-thread"
-              onClick={() =>
-                onThreadLinkSelect?.(descriptionThread.entityLink)
-              }>
-              <span className="tw-flex">
-                <SVGIcons alt="comments" icon={Icons.COMMENT} width="20px" />{' '}
-                <span
-                  className="tw-ml-1"
-                  data-testid="description-thread-count">
-                  {' '}
-                  {descriptionThread.count}
-                </span>
-              </span>
-            </p>
-          ) : (
-            <Fragment>
-              {description?.trim() && onThreadLinkSelect ? (
-                <p
-                  className="link-text tw-flex-none tw-ml-2"
-                  data-testid="start-description-thread"
-                  onClick={() =>
-                    onThreadLinkSelect?.(
-                      getEntityFeedLink(
-                        entityType,
-                        entityFqn,
-                        EntityField.DESCRIPTION
-                      )
-                    )
-                  }>
-                  <SVGIcons
-                    alt="comments"
-                    icon={Icons.COMMENT_PLUS}
-                    width="20px"
-                  />
-                </p>
-              ) : null}
-            </Fragment>
-          )}
-        </div>
-      ) : null}
-    </Space>
+  const handleUpdateDescription = () => {
+    history.push(
+      getUpdateDescriptionPath(entityType as string, entityFqn as string)
+    );
+  };
+
+  const entityLink = useMemo(
+    () => getEntityFeedLink(entityType, entityFqn, EntityField.DESCRIPTION),
+    [entityType, entityFqn]
   );
+
+  const editButton = () => {
+    const extraIcons = showCommentsIcon && (
+      <Icon
+        component={CommentIcon}
+        data-testid="description-thread"
+        style={{ color: DE_ACTIVE_COLOR }}
+        width={20}
+        onClick={() => {
+          onThreadLinkSelect?.(entityLink);
+        }}
+      />
+    );
+
+    const taskAction = () => {
+      const hasDescription = Boolean(description.trim());
+
+      const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
+
+      if (!isTaskEntity) {
+        return null;
+      }
+
+      return (
+        <Tooltip
+          title={
+            hasDescription
+              ? t('message.request-update-description')
+              : t('message.request-description')
+          }>
+          <Icon
+            component={RequestIcon}
+            data-testid="request-description"
+            style={{ color: DE_ACTIVE_COLOR }}
+            onClick={
+              hasDescription
+                ? handleUpdateDescription
+                : handleRequestDescription
+            }
+          />
+        </Tooltip>
+      );
+    };
+
+    return !isReadOnly && hasEditAccess ? (
+      <Space className="w-full" size={12}>
+        <Icon
+          component={EditIcon}
+          data-testid="edit-description"
+          style={{ color: DE_ACTIVE_COLOR }}
+          onClick={onDescriptionEdit}
+        />
+        {taskAction()}
+        {extraIcons}
+      </Space>
+    ) : (
+      <Space>
+        {taskAction()} {extraIcons}
+      </Space>
+    );
+  };
+
+  const content = (
+    <>
+      <Space
+        className="schema-description d-flex"
+        data-testid="asset-description-container"
+        direction="vertical"
+        size={16}>
+        <Space size="middle">
+          <Text className="right-panel-label">{t('label.description')}</Text>
+          {!isVersionView && editButton()}
+        </Space>
+        <div>
+          {description?.trim() ? (
+            <RichTextEditorPreviewer
+              className={reduceDescription ? 'max-two-lines' : ''}
+              enableSeeMoreVariant={!removeBlur}
+              markdown={description}
+            />
+          ) : (
+            <span>{t('label.no-description')}</span>
+          )}
+          <ModalWithMarkdownEditor
+            header={t('label.edit-description-for', { entityName })}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
+            value={description}
+            visible={Boolean(isEdit)}
+            onCancel={onCancel}
+            onSave={onDescriptionUpdate}
+          />
+        </div>
+      </Space>
+    </>
+  );
+
+  return wrapInCard ? <Card>{content}</Card> : content;
 };
 
 export default DescriptionV1;

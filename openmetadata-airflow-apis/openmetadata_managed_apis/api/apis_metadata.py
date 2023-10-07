@@ -41,14 +41,14 @@ APIS_METADATA = [
         ],
     },
     {
-        "name": "test_connection",
-        "description": "Test a connection",
+        "name": "run_automation",
+        "description": "Run an automation workflow",
         "http_method": "POST",
         "arguments": [],
         "post_arguments": [
             {
-                "name": "service_connection",
-                "description": "TestServiceConnectionRequest config to test",
+                "name": "automation_workflow",
+                "description": "AutomationWorkflow request",
                 "required": True,
             },
         ],

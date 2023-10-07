@@ -32,11 +32,9 @@ from pathlib import Path
 from typing import List
 
 import jsonschema2md
-from metadata.utils.ansi import print_ansi_encoded_string
 
-
-SOURCES_ROOT = "openmetadata-service/src/main/resources/json/schema"
-SINK_ROOT = "openmetadata-docs/content"
+SOURCES_ROOT = "openmetadata-spec/src/main/resources/json/schema"
+SINK_ROOT = "openmetadata-docs/content/v1.1.0"
 SCHEMAS_ROOT = SINK_ROOT + "/main-concepts/metadata-standard/schemas/"
 
 PARSER = jsonschema2md.Parser(
@@ -86,8 +84,8 @@ def prepare_menu(new_file: Path, is_file: bool) -> None:
         list(map(lambda x: x.capitalize(), category_suffix.split("/"))) + title
     )
     category = category_root + " / ".join(category_suffix_list)
-    print_ansi_encoded_string(message=category)
-    print_ansi_encoded_string(message=f"  url: {slug}")
+    print(category)
+    print(f"  url: {slug}")
 
 
 def generate_header(new_file: Path, is_file: bool) -> List[str]:

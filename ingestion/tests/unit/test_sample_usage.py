@@ -15,7 +15,7 @@ Query parser utils tests
 import json
 from unittest import TestCase
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.usage import UsageWorkflow
 
 config = """
 {
@@ -78,16 +78,17 @@ class QueryParserTest(TestCase):
             "shopify.fact_sale": 3,
             "shopify.raw_customer": 10,
         }
-        workflow = Workflow.create(json.loads(config))
+        workflow = UsageWorkflow.create(json.loads(config))
         workflow.execute()
         table_usage_map = {}
 
-        for key, value in workflow.stage.table_usage.items():
+        # UsageWorkflow has the steps (processor, stage, bulk_sink)
+        for key, value in workflow.steps[1].table_usage.items():
             table_usage_map[key[0]] = value.count
 
         for table_name, expected_count in expected_result.items():
             try:
                 self.assertEqual(table_usage_map[table_name], expected_count)
-            except KeyError as err:
+            except KeyError:
                 self.assertTrue(False)
         workflow.stop()

@@ -15,6 +15,7 @@ const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
 const fse = require('fs-extra');
+const process = require('process');
 
 const cwd = process.cwd();
 
@@ -34,13 +35,15 @@ const globalParserOptions = {
   },
 };
 
+const parser = new $RefParser(globalParserOptions);
+
 async function parseSchema(filePath, destPath) {
   try {
     const fileDir = `${cwd}/${path.dirname(filePath)}`;
     const fileName = path.basename(filePath);
     process.chdir(fileDir);
-    const parser = new $RefParser(globalParserOptions);
-    const schema = await parser.parse(fileName);
+    const parsedSchema = await parser.parse(fileName);
+    const schema = await parser.dereference(parsedSchema);
     const api = await parser.bundle(schema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
     if (!fs.existsSync(dirname)) {

@@ -1,4 +1,37 @@
 {
+  "settings": {
+   "analysis": {
+    "normalizer": {
+      "lowercase_normalizer": {
+        "type": "custom",
+        "char_filter": [],
+        "filter": [
+          "lowercase"
+        ]
+      }
+    },
+    "analyzer": {
+      "om_analyzer": {
+        "tokenizer": "letter",
+        "filter": [
+          "lowercase",
+          "om_stemmer"
+        ]
+      },
+      "om_ngram": {
+        "tokenizer": "ngram",
+        "min_gram": 3,
+        "max_gram": 10
+      }
+    },
+    "filter": {
+      "om_stemmer": {
+        "type": "stemmer",
+        "name": "english"
+      }
+    }
+  }
+},
   "mappings": {
     "properties": {
       "id": {
@@ -6,27 +39,42 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "fullyQualifiedName": {
         "type": "text"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
-        "type": "text"
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "index_options": "freqs"
       },
       "teamType": { 
         "type": "text"
@@ -43,6 +91,43 @@
       },
       "href": {
         "type": "text"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "users": {
         "properties": {

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { diffArrays } from 'diff';
-import React, { FC, Fragment } from 'react';
+import React, { FC, Fragment, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   TaskType,
   Thread,
@@ -27,32 +29,32 @@ interface TagsTaskProps {
   task: Thread['task'];
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
-  currentTags: TagLabel[];
-  suggestions: TagLabel[];
-  setSuggestion: (value: TagLabel[]) => void;
+  onChange: (newTags: TagLabel[]) => void;
 }
 
 const TagsTask: FC<TagsTaskProps> = ({
-  suggestions,
-  setSuggestion,
   isTaskActionEdit,
   hasEditAccess,
   task,
-  currentTags,
+  onChange,
 }) => {
+  const { t } = useTranslation();
+
+  const { oldValue, newValue, suggestion } = task || {};
+
   const isRequestTag = task?.type === TaskType.RequestTag;
 
   const isUpdateTag = task?.type === TaskType.UpdateTag;
 
   const isTaskClosed = task?.status === ThreadTaskStatus.Closed;
 
-  const getDiffView = () => {
-    const oldValue = task?.oldValue;
-    const newValue = task?.newValue;
+  const diffView = useMemo(() => {
     if (!oldValue && !newValue) {
       return (
-        <div className="tw-border tw-border-main tw-p-2 tw-rounded tw-my-1 tw-mb-3">
-          <span className="tw-p-2 tw-text-grey-muted">No Tags</span>
+        <div>
+          <Typography.Text className="text-grey-muted border border-main p-sm rounded-4 m-y-xss m-b-xs">
+            {t('label.no-entity', { entity: t('label.tag-plural') })}
+          </Typography.Text>
         </div>
       );
     } else {
@@ -65,45 +67,47 @@ const TagsTask: FC<TagsTaskProps> = ({
         />
       );
     }
-  };
+  }, [oldValue, newValue]);
 
   /**
    *
    * @returns Suggested tags diff
    */
-  const getSuggestedTagDiff = () => {
-    const newTags = task?.suggestion;
-    const oldTags = task?.oldValue;
-
-    return !newTags && !oldTags ? (
-      <span className="tw-p-2 tw-text-grey-muted">No Suggestion</span>
-    ) : (
-      <TagsDiffView
-        diffArr={diffArrays(
-          JSON.parse(oldTags ?? '[]'),
-          JSON.parse(newTags ?? '[]')
-        )}
-      />
-    );
-  };
+  const suggestedTagsDiff = useMemo(() => {
+    if (!suggestion && !oldValue) {
+      return (
+        <Typography.Text className="text-grey-muted p-xs">
+          {t('label.no-entity', { entity: t('label.suggestion') })}
+        </Typography.Text>
+      );
+    } else {
+      return (
+        <TagsDiffView
+          diffArr={diffArrays(
+            JSON.parse(oldValue ?? '[]'),
+            JSON.parse(suggestion ?? '[]')
+          )}
+        />
+      );
+    }
+  }, [suggestion, oldValue]);
 
   return (
     <div data-testid="task-tags-tabs">
-      <p className="tw-text-grey-muted">Tags:</p>{' '}
       <Fragment>
         {isTaskClosed ? (
-          getDiffView()
+          diffView
         ) : (
           <div data-testid="tags-task">
             {isRequestTag && (
               <div data-testid="request-tags">
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagSuggestion
-                    selectedTags={suggestions}
-                    onChange={setSuggestion}
+                    value={JSON.parse(suggestion ?? '[]')}
+                    onChange={onChange}
                   />
                 ) : (
-                  getSuggestedTagDiff()
+                  suggestedTagsDiff
                 )}
               </div>
             )}
@@ -111,12 +115,12 @@ const TagsTask: FC<TagsTaskProps> = ({
               <div data-testid="update-tags">
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagsTabs
-                    suggestedTags={suggestions}
-                    tags={currentTags}
-                    onChange={setSuggestion}
+                    tags={JSON.parse(oldValue ?? '[]')}
+                    value={JSON.parse(suggestion ?? '[]')}
+                    onChange={onChange}
                   />
                 ) : (
-                  getSuggestedTagDiff()
+                  suggestedTagsDiff
                 )}
               </div>
             )}

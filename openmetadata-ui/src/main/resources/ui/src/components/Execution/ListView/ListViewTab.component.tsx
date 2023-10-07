@@ -22,7 +22,7 @@ import {
   getTableViewData,
   StatusIndicator,
 } from '../../../utils/executionUtils';
-import Loader from '../../Loader/Loader';
+import FilterTablePlaceHolder from '../../common/error-with-placeholder/FilterTablePlaceHolder';
 
 interface ListViewProps {
   executions: Array<PipelineStatus> | undefined;
@@ -66,7 +66,10 @@ const ListView = ({ executions, status, loading }: ListViewProps) => {
       className="h-full"
       columns={columns}
       dataSource={tableData}
-      loading={{ spinning: loading, indicator: <Loader /> }}
+      loading={loading}
+      locale={{
+        emptyText: <FilterTablePlaceHolder />,
+      }}
       pagination={false}
       rowKey="name"
     />

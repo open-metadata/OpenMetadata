@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { isArray, isObject, transform } from 'lodash';
+import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
+import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { SearchResponse } from '../interface/search.interface';
@@ -25,6 +28,12 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.TABLE
   | SearchIndex.MLMODEL
   | SearchIndex.TOPIC
+  | SearchIndex.CONTAINER
+  | SearchIndex.STORED_PROCEDURE
+  | SearchIndex.DASHBOARD_DATA_MODEL
+  | SearchIndex.GLOSSARY
+  | SearchIndex.TAG
+  | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
 
 // if more value is added, also update its interface file at -> interface/types.d.ts
@@ -35,16 +44,16 @@ export const formatDataResponse = (
     const newData = {} as FormattedTableData;
     const source = hit._source;
     newData.index = hit._index;
-    newData.id = hit._source.id;
+    newData.id = hit._source.id ?? '';
     newData.name = hit._source.name;
     newData.displayName = hit._source.displayName ?? '';
     newData.description = hit._source.description ?? '';
     newData.fullyQualifiedName = hit._source.fullyQualifiedName ?? '';
-    newData.tags = hit._source.tags ?? [];
-    newData.service = hit._source.service?.name;
-    newData.serviceType = hit._source.serviceType;
+    newData.tags = get(hit, '_source.tags', []);
+    newData.service = get(hit, '_source.service.name');
+    newData.serviceType = get(hit, '_source.serviceType');
     newData.tier = hit._source.tier;
-    newData.owner = hit._source.owner;
+    newData.owner = get(hit, '_source.owner');
     newData.highlight = hit.highlight;
     newData.entityType = hit._source.entityType;
     newData.deleted = hit._source.deleted;
@@ -85,6 +94,7 @@ export const formatUsersResponse = (
     return {
       name: d._source.name,
       displayName: d._source.displayName,
+      fullyQualifiedName: d._source.fullyQualifiedName,
       email: d._source.email,
       type: d._source.entityType,
       id: d._source.id,
@@ -111,6 +121,45 @@ export const formatTeamsResponse = (
   });
 };
 
+export const formatDomainsResponse = (
+  hits: SearchResponse<SearchIndex.DOMAIN>['hits']['hits']
+): Domain[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName,
+      description: d._source.description,
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domainType: d._source.domainType,
+      experts: d._source.experts,
+      parent: d._source.parent,
+      owner: d._source.owner,
+    };
+  });
+};
+
+export const formatDataProductResponse = (
+  hits: SearchResponse<SearchIndex.DATA_PRODUCT>['hits']['hits']
+): DataProduct[] => {
+  return hits.map((d) => {
+    return {
+      name: d._source.name,
+      displayName: d._source.displayName ?? '',
+      description: d._source.description ?? '',
+      fullyQualifiedName: d._source.fullyQualifiedName,
+      type: d._source.entityType,
+      id: d._source.id,
+      href: d._source.href,
+      domain: d._source.domain,
+      experts: d._source.experts,
+      owner: d._source.owner,
+    };
+  });
+};
+
 export const formatSearchGlossaryTermResponse = (
   hits: SearchResponse<SearchIndex.GLOSSARY>['hits']['hits']
 ): GlossaryTerm[] => {
@@ -123,6 +172,21 @@ export const formatSearchGlossaryTermResponse = (
     fqdn: d._source.fullyQualifiedName,
     fullyQualifiedName: d._source.fullyQualifiedName,
     type: d._source.entityType || 'glossaryTerm',
+  }));
+};
+
+export const formatSearchTagsResponse = (
+  hits: SearchResponse<SearchIndex.TAG>['hits']['hits']
+): Tag[] => {
+  return hits.map((d) => ({
+    name: d._source.name,
+    description: d._source.description,
+    id: d._source.id,
+    classification: d._source.classification,
+    displayName: d._source.displayName,
+    fqdn: d._source.fullyQualifiedName,
+    fullyQualifiedName: d._source.fullyQualifiedName,
+    type: d._source.entityType,
   }));
 };
 

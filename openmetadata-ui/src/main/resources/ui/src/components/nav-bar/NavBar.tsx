@@ -11,24 +11,53 @@
  *  limitations under the License.
  */
 
-import { Badge, Dropdown, Image, Input, Select, Space, Tooltip } from 'antd';
+import {
+  Badge,
+  Button,
+  Col,
+  Dropdown,
+  Input,
+  InputRef,
+  Popover,
+  Row,
+  Select,
+  Space,
+} from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
-import { debounce, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { debounce, upperCase } from 'lodash';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
+import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import Logo from '../../assets/svg/logo-monogram.svg';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import SearchOptions from '../../components/AppBar/SearchOptions';
+import Suggestions from '../../components/AppBar/Suggestions';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
+import { useDomainProvider } from '../../components/Domain/DomainProvider/DomainProvider';
+import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
+import WhatsNewAlert from '../../components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import {
+  globalSearchOptions,
   NOTIFICATION_READ_TIMER,
-  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
+import { getEntityDetailLink, refreshPage } from '../../utils/CommonUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -38,22 +67,18 @@ import {
   languageSelectOptions,
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
+import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
-import { activeLink, normalLink } from '../../utils/styleconstant';
-import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { getTaskDetailPath } from '../../utils/TasksUtils';
-import SearchOptions from '../app-bar/SearchOptions';
-import Suggestions from '../app-bar/Suggestions';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import LegacyDropDown from '../dropdown/DropDown';
-import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
+import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
 
 const cookieStorage = new CookieStorage();
@@ -72,15 +97,25 @@ const NavBar = ({
   handleSearchChange,
   handleKeyDown,
   handleOnClick,
+  handleClear,
 }: NavBarProps) => {
+  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
+  const { domainOptions, activeDomain, updateActiveDomain } =
+    useDomainProvider();
   const { t } = useTranslation();
+  const { Option } = Select;
+  const searchRef = useRef<InputRef>(null);
   const [searchIcon, setSearchIcon] = useState<string>('icon-searchv1');
+  const [cancelIcon, setCancelIcon] = useState<string>(
+    Icons.CLOSE_CIRCLE_OUTLINED
+  );
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
@@ -89,24 +124,42 @@ const NavBar = ({
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
 
+  const entitiesSelect = useMemo(
+    () => (
+      <Select
+        defaultActiveFirstOption
+        className="global-search-select"
+        data-testid="global-search-selector"
+        listHeight={300}
+        popupClassName="global-search-select-menu"
+        value={searchCriteria}
+        onChange={updateSearchCriteria}>
+        {globalSearchOptions.map(({ value, label }) => (
+          <Option
+            data-testid={`global-search-select-option-${label}`}
+            key={value}
+            value={value}>
+            {label}
+          </Option>
+        ))}
+      </Select>
+    ),
+    [searchCriteria, globalSearchOptions]
+  );
+
   const profilePicture = useMemo(
     () => currentUser?.profile?.images?.image512,
     [currentUser]
   );
 
-  const [language, setLanguage] = useState(
-    cookieStorage.getItem('i18next') || SupportedLocales.English
+  const language = useMemo(
+    () =>
+      (cookieStorage.getItem('i18next') as SupportedLocales) ||
+      SupportedLocales.English,
+    []
   );
 
   const { socket } = useWebSocketConnector();
-
-  const navStyle = (value: boolean) => {
-    if (value) {
-      return { color: activeLink };
-    }
-
-    return { color: normalLink };
-  };
 
   const debouncedOnChange = useCallback(
     (text: string): void => {
@@ -159,24 +212,33 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    type: string,
-    id?: string
+    type: string
   ) => {
     if (!hasNotificationPermission()) {
       return;
     }
     const entityType = getEntityType(about);
-    const entityFQN = getEntityFQN(about);
+    const entityFQN = getEntityFQN(about) ?? '';
     let body;
     let path: string;
     switch (type) {
       case 'Task':
-        body = `${createdBy} assigned you a new task.`;
-        path = getTaskDetailPath(toString(id)).pathname;
+        body = t('message.user-assign-new-task', {
+          user: createdBy,
+        });
+
+        path = getEntityDetailLink(
+          entityType as EntityType,
+          entityFQN,
+          EntityTabs.ACTIVITY_FEED,
+          ActivityFeedTabs.TASKS
+        );
 
         break;
       case 'Conversation':
-        body = `${createdBy} mentioned you in a comment.`;
+        body = t('message.user-mentioned-in-comment', {
+          user: createdBy,
+        });
         path = prepareFeedLink(entityType as string, entityFQN as string);
     }
     const notification = new Notification('Notification From OpenMetadata', {
@@ -195,36 +257,12 @@ const NavBar = ({
     };
   };
 
-  const governanceMenu = [
-    {
-      key: 'glossary',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-glossary"
-          style={navStyle(pathname.startsWith('/glossary'))}
-          to={{
-            pathname: ROUTES.GLOSSARY,
-          }}>
-          {t('label.glossary')}
-        </NavLink>
-      ),
-    },
-    {
-      key: 'tags',
-      label: (
-        <NavLink
-          className="focus:no-underline"
-          data-testid="appbar-item-tags"
-          style={navStyle(pathname.startsWith('/tags'))}
-          to={{
-            pathname: ROUTES.TAGS,
-          }}>
-          {t('label.tag-plural')}
-        </NavLink>
-      ),
-    },
-  ];
+  const handleKeyPress = useCallback((event) => {
+    if (isCommandKeyPress(event) && event.key === Keys.K) {
+      searchRef.current?.focus();
+      event.preventDefault();
+    }
+  }, []);
 
   useEffect(() => {
     if (shouldRequestPermission()) {
@@ -241,8 +279,7 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.type,
-            activity.task?.id
+            activity.type
           );
         }
       });
@@ -254,8 +291,7 @@ const NavBar = ({
           showBrowserNotification(
             activity.about,
             activity.createdBy,
-            activity.type,
-            activity.task?.id
+            activity.type
           );
         }
       });
@@ -268,14 +304,26 @@ const NavBar = ({
   }, [socket]);
 
   useEffect(() => {
+    const targetNode = document.body;
+    targetNode.addEventListener('keydown', handleKeyPress);
+
+    return () => targetNode.removeEventListener('keydown', handleKeyPress);
+  }, [handleKeyPress]);
+
+  useEffect(() => {
     if (profilePicture) {
       setIsImgUrlValid(true);
     }
   }, [profilePicture]);
 
-  const handleLanguageChange = useCallback((langCode: string) => {
-    setLanguage(langCode);
-    i18next.changeLanguage(langCode);
+  const handleDomainChange = useCallback(({ key }) => {
+    updateActiveDomain(key);
+    refreshPage();
+  }, []);
+
+  const handleLanguageChange = useCallback(({ key }) => {
+    i18next.changeLanguage(key);
+    refreshPage();
   }, []);
 
   const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
@@ -293,96 +341,24 @@ const NavBar = ({
 
   return (
     <>
-      <div className="tw-h-16 tw-py-3 tw-border-b-2 tw-border-separator tw-bg-white">
-        <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-px-6">
-          <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
-            <NavLink className="tw-flex-shrink-0" id="openmetadata_logo" to="/">
-              <SVGIcons
-                alt="OpenMetadata Logo"
-                height={30}
-                icon={Icons.LOGO_SMALL}
-                width={25}
-              />
-            </NavLink>
-            <Space className="tw-ml-5 flex-none" size={16}>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-explore"
-                style={navStyle(pathname.startsWith('/explore'))}
-                to={{
-                  pathname: '/explore/tables',
-                }}>
-                {t('label.explore')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-quality"
-                style={navStyle(pathname.includes(ROUTES.TEST_SUITES))}
-                to={{
-                  pathname: ROUTES.TEST_SUITES,
-                }}>
-                {t('label.quality')}
-              </NavLink>
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-data-insight"
-                style={navStyle(pathname.includes(ROUTES.DATA_INSIGHT))}
-                to={{
-                  pathname: ROUTES.DATA_INSIGHT,
-                }}>
-                {t('label.insight-plural')}
-              </NavLink>
-              <Dropdown
-                className="cursor-pointer"
-                menu={{ items: governanceMenu }}
-                trigger={['click']}>
-                <Space data-testid="governance" size={2}>
-                  {t('label.govern')}
-                  <DropDownIcon style={{ marginLeft: 0, marginTop: '8px' }} />
-                </Space>
-              </Dropdown>
-            </Space>
-          </div>
-          <div
-            className="tw-flex-none tw-relative tw-justify-items-center tw-ml-16"
-            data-testid="appbar-item">
-            <Input
-              autoComplete="off"
-              className="tw-relative search-grey hover:tw-outline-none focus:tw-outline-none tw-pl-2 tw-pt-2 tw-pb-1.5 tw-ml-4 tw-z-41"
-              data-testid="searchBox"
-              id="searchBox"
-              placeholder={t('message.search-for-entity-types')}
-              style={{
-                borderRadius: '0.24rem',
-                boxShadow: 'none',
-                height: '37px',
-              }}
-              suffix={
-                <span
-                  className="tw-flex tw-items-center"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOnClick();
-                  }}>
-                  <CmdKIcon />
-                  <span className="tw-cursor-pointer tw-mb-2 tw-ml-3 tw-w-4 tw-h-4 tw-text-center">
-                    <SVGIcons alt="icon-search" icon={searchIcon} />
-                  </span>
-                </span>
-              }
-              type="text"
-              value={searchValue}
-              onBlur={() => setSearchIcon('icon-searchv1')}
-              onChange={(e) => {
-                const { value } = e.target;
-                debounceOnSearch(value);
-                handleSearchChange(value);
-              }}
-              onFocus={() => setSearchIcon('icon-searchv1color')}
-              onKeyDown={handleKeyDown}
-            />
-            {!isTourRoute &&
+      <div className="navbar-container bg-white flex-nowrap w-full">
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            isMonoGram
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={30}
+            width={30}
+          />
+        </Link>
+        <div
+          className="m-auto relative"
+          data-testid="navbar-search-container"
+          ref={searchContainerRef}>
+          <Popover
+            content={
+              !isTourRoute &&
               searchValue &&
               (isInPageSearchAllowed(pathname) ? (
                 <SearchOptions
@@ -395,109 +371,194 @@ const NavBar = ({
               ) : (
                 <Suggestions
                   isOpen={isSearchBoxOpen}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
                   searchText={suggestionSearch}
                   setIsOpen={handleSearchBoxOpen}
                 />
-              ))}
-          </div>
-          <Space className="tw-ml-auto">
-            <Space size={16}>
-              <Select
-                bordered={false}
-                options={languageSelectOptions}
-                value={language}
-                onChange={handleLanguageChange}
-              />
-              <NavLink
-                className="focus:tw-no-underline"
-                data-testid="appbar-item-settings"
-                style={navStyle(pathname.startsWith('/settings'))}
-                to={{
-                  pathname: ROUTES.SETTINGS,
-                }}>
-                {t('label.setting-plural')}
-              </NavLink>
-              <button className="focus:tw-no-underline hover:tw-underline tw-flex-shrink-0 ">
-                <Dropdown
-                  destroyPopupOnHide
-                  dropdownRender={() => (
-                    <NotificationBox
-                      hasMentionNotification={hasMentionNotification}
-                      hasTaskNotification={hasTaskNotification}
-                      onMarkMentionsNotificationRead={
-                        handleMentionsNotificationRead
-                      }
-                      onMarkTaskNotificationRead={handleTaskNotificationRead}
-                      onTabChange={handleActiveTab}
-                    />
-                  )}
-                  overlayStyle={{
-                    zIndex: 9999,
-                    width: '425px',
-                    minHeight: '375px',
-                  }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={handleBellClick}>
-                  <Badge dot={hasTaskNotification || hasMentionNotification}>
-                    <SVGIcons
-                      alt="Alert bell icon"
-                      icon={Icons.ALERT_BELL}
-                      width="18"
-                    />
-                  </Badge>
-                </Dropdown>
-              </button>
-              <div className="tw-flex tw-flex-shrink-0 tw--ml-2 tw-items-center ">
-                <LegacyDropDown
-                  dropDownList={supportDropdown}
-                  icon={
-                    <SVGIcons
-                      alt="Doc icon"
-                      className="tw-align-middle tw-mt-0.5 tw-mr-1"
-                      icon={Icons.HELP_CIRCLE}
-                      width="18"
-                    />
-                  }
-                  isDropDownIconVisible={false}
-                  isLableVisible={false}
-                  label="Need Help"
-                  type="link"
-                />
-              </div>
-            </Space>
-            <div data-testid="dropdown-profile">
-              <LegacyDropDown
-                dropDownList={profileDropdown}
-                icon={
-                  <Tooltip placement="bottom" title="Profile" trigger="hover">
-                    {isImgUrlValid ? (
-                      <div className="profile-image square tw--mr-2">
-                        <Image
-                          alt="user"
-                          preview={false}
-                          referrerPolicy="no-referrer"
-                          src={profilePicture || ''}
-                          onError={handleOnImageError}
-                        />
-                      </div>
+              ))
+            }
+            getPopupContainer={() =>
+              searchContainerRef.current || document.body
+            }
+            open={isSearchBoxOpen}
+            overlayClassName="global-search-overlay"
+            overlayStyle={{ width: '100%', paddingTop: 0 }}
+            placement="bottomRight"
+            showArrow={false}
+            trigger={['click']}
+            onOpenChange={handleSearchBoxOpen}>
+            <Input
+              addonBefore={entitiesSelect}
+              autoComplete="off"
+              className="rounded-4  appbar-search"
+              data-testid="searchBox"
+              id="searchBox"
+              placeholder={t('message.search-for-entity-types')}
+              ref={searchRef}
+              style={{
+                height: '37px',
+              }}
+              suffix={
+                <span className="d-flex items-center">
+                  <CmdKIcon />
+                  <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
+                    {searchValue ? (
+                      <SVGIcons
+                        alt="icon-cancel"
+                        icon={cancelIcon}
+                        onClick={handleClear}
+                      />
                     ) : (
-                      <Avatar name={username} width="30" />
+                      <SVGIcons
+                        alt="icon-search"
+                        icon={searchIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOnClick();
+                        }}
+                      />
                     )}
-                  </Tooltip>
-                }
-                isDropDownIconVisible={false}
-                type="link"
-              />
-            </div>
-          </Space>
+                  </span>
+                </span>
+              }
+              type="text"
+              value={searchValue}
+              onBlur={() => {
+                setSearchIcon('icon-searchv1');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+              }}
+              onChange={(e) => {
+                const { value } = e.target;
+                debounceOnSearch(value);
+                handleSearchChange(value);
+              }}
+              onFocus={() => {
+                setSearchIcon('icon-searchv1color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+              }}
+              onKeyDown={handleKeyDown}
+            />
+          </Popover>
         </div>
-        <WhatsNewModal
-          header={`${t('label.whats-new')}!`}
-          visible={isFeatureModalOpen}
-          onCancel={handleModalCancel}
-        />
+
+        <Space align="center" size={24}>
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: domainOptions,
+              onClick: handleDomainChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={6}>
+              <Col className="flex-center">
+                <DomainIcon
+                  className="d-flex text-base-color"
+                  height={18}
+                  name="folder"
+                  width={18}
+                />
+              </Col>
+              <Col>{activeDomain}</Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
+
+          <Dropdown
+            destroyPopupOnHide
+            className="cursor-pointer"
+            dropdownRender={() => (
+              <NotificationBox
+                hasMentionNotification={hasMentionNotification}
+                hasTaskNotification={hasTaskNotification}
+                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
+                onMarkTaskNotificationRead={handleTaskNotificationRead}
+                onTabChange={handleActiveTab}
+              />
+            )}
+            overlayStyle={{
+              zIndex: 9999,
+              width: '425px',
+              minHeight: '375px',
+            }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={handleBellClick}>
+            <Badge dot={hasTaskNotification || hasMentionNotification}>
+              <SVGIcons
+                alt="Alert bell icon"
+                icon={Icons.ALERT_BELL}
+                width="18"
+              />
+            </Badge>
+          </Dropdown>
+
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: languageSelectOptions,
+              onClick: handleLanguageChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={2}>
+              <Col>
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}
+              </Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
+
+          <Dropdown
+            className="cursor-pointer m-t-xss"
+            menu={{ items: supportDropdown }}
+            overlayStyle={{ width: 175 }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Help height={20} width={20} />
+          </Dropdown>
+          <div className="profile-dropdown" data-testid="dropdown-profile">
+            <Dropdown
+              menu={{
+                items: profileDropdown,
+              }}
+              trigger={['click']}>
+              <Button
+                icon={
+                  isImgUrlValid ? (
+                    <img
+                      alt="user"
+                      className="profile-image circle"
+                      referrerPolicy="no-referrer"
+                      src={profilePicture || ''}
+                      width={24}
+                      onError={handleOnImageError}
+                    />
+                  ) : (
+                    <Avatar name={username} type="circle" width="24" />
+                  )
+                }
+                type="text"
+              />
+            </Dropdown>
+          </div>
+        </Space>
       </div>
+      <WhatsNewModal
+        header={`${t('label.whats-new')}!`}
+        visible={isFeatureModalOpen}
+        onCancel={handleModalCancel}
+      />
+      <WhatsNewAlert />
     </>
   );
 };

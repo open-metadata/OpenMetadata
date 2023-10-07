@@ -14,16 +14,37 @@
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { Transi18next } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 
 export const EmptyGraphPlaceholder = () => {
   const { t } = useTranslation();
 
   return (
-    <ErrorPlaceHolder>
-      <Typography.Text type="secondary">
-        {t('message.no-data-available')}
-      </Typography.Text>
+    <ErrorPlaceHolder size={SIZE.MEDIUM} type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <Typography.Paragraph style={{ marginBottom: '0' }}>
+        {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+          entity: t('label.data-insight'),
+        })}
+      </Typography.Paragraph>
+      <Typography.Paragraph>
+        <Transi18next
+          i18nKey="message.refer-to-our-doc"
+          renderElement={
+            <a
+              href={DATA_INSIGHT_DOCS}
+              rel="noreferrer"
+              style={{ color: '#1890ff' }}
+              target="_blank"
+            />
+          }
+          values={{
+            doc: t('label.doc-plural-lowercase'),
+          }}
+        />
+      </Typography.Paragraph>
     </ErrorPlaceHolder>
   );
 };

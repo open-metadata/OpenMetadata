@@ -25,7 +25,7 @@
   background: #7147e840;
   color: #37352f;
   padding: 7px 10px;
-  border-left: 3px solid #7147e8;
+  border-left: 3px solid #0968da;
 }
 .cron-badge-option-container {
   display: inline-block;
@@ -53,7 +53,7 @@
   background: #f5f5f5;
 }
 .cron-badge-option.active {
-  background: #7147e8;
+  background: #0968da;
   color: white;
 }
 .month-opt-container .cron-badge-option {

@@ -11,64 +11,180 @@
  *  limitations under the License.
  */
 
-import { Button as ButtonAntd, Card, Col, Row, Space, Tooltip } from 'antd';
-import { isEmpty } from 'lodash';
-import React, { Fragment, useCallback, useMemo } from 'react';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import Card from 'antd/lib/card/Card';
+import { ColumnsType, TableProps } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import { isEmpty, map, startCase } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import {
-  getServiceDetailsPath,
-  SERVICE_VIEW_CAP,
-} from '../../constants/constants';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import { ListView } from '../../components/ListView/ListView.component';
+import { ColumnFilter } from '../../components/Table/ColumnFilter/ColumnFilter.component';
+import { getServiceDetailsPath, pagingObject } from '../../constants/constants';
 import { CONNECTORS_DOCS } from '../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { servicesDisplayName } from '../../constants/Services.constant';
+import {
+  OPEN_METADATA,
+  servicesDisplayName,
+} from '../../constants/Services.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Operation } from '../../generated/entity/policies/policy';
-import { Paging } from '../../generated/type/paging';
+import { EntityReference } from '../../generated/entity/type';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { DatabaseServiceSearchSource } from '../../interface/search.interface';
 import { ServicesType } from '../../interface/service.interface';
-import {
-  getEntityName,
-  getServiceLogo,
-  showPagination,
-} from '../../utils/CommonUtils';
+import { getServices, searchService } from '../../rest/serviceAPI';
+import { getServiceLogo, showPagination } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getAddServicePath } from '../../utils/RouterUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
+  getServiceTypesFromServiceCategory,
 } from '../../utils/ServiceUtils';
+import { FilterIcon } from '../../utils/TableUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
-import { Button } from '../buttons/Button/Button';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from '../common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
-import { leftPanelAntCardStyle } from '../containers/PageLayout';
 import PageHeader from '../header/PageHeader.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 
 interface ServicesProps {
-  serviceData: ServicesType[];
   serviceName: ServiceCategory;
-  paging: Paging;
-  currentPage: number;
-  onPageChange: (cursorType: string | number, activePage?: number) => void;
 }
 
-const Services = ({
-  serviceData,
-  serviceName,
-  paging,
-  currentPage,
-  onPageChange,
-}: ServicesProps) => {
+const Services = ({ serviceName }: ServicesProps) => {
+  const { t } = useTranslation();
   const { isAuthDisabled } = useAuthContext();
   const history = useHistory();
   const handleAddServiceClick = () => {
     history.push(getAddServicePath(serviceName));
   };
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [serviceTypeFilter, setServiceTypeFilter] =
+    useState<Array<ServicesType['serviceType']>>();
+  const {
+    paging,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+    pageSize,
+    handlePageSizeChange,
+  } = usePaging();
   const { permissions } = usePermissionProvider();
+
+  const searchIndex = useMemo(() => {
+    setSearchTerm('');
+    setServiceTypeFilter([]);
+
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return SearchIndex.DATABASE_SERVICE;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return SearchIndex.DASHBOARD_SERVICE;
+      case ServiceCategory.MESSAGING_SERVICES:
+        return SearchIndex.MESSAGING_SERVICE;
+      case ServiceCategory.PIPELINE_SERVICES:
+        return SearchIndex.PIPELINE_SERVICE;
+      case ServiceCategory.ML_MODEL_SERVICES:
+        return SearchIndex.ML_MODEL_SERVICE;
+      case ServiceCategory.STORAGE_SERVICES:
+        return SearchIndex.STORAGE_SERVICE;
+      case ServiceCategory.SEARCH_SERVICES:
+        return SearchIndex.SEARCH_SERVICE;
+    }
+
+    return SearchIndex.DATABASE_SERVICE;
+  }, [serviceName]);
+
+  const getServiceDetails = useCallback(
+    async ({
+      search,
+      currentPage,
+      after,
+      before,
+      filters,
+      limit,
+    }: {
+      search?: string;
+      limit?: number;
+      currentPage?: number;
+      after?: string;
+      before?: string;
+      filters?: string;
+    }) => {
+      setIsLoading(true);
+      try {
+        let services = [];
+        if (search || !isEmpty(filters)) {
+          const {
+            hits: { hits, total },
+          } = await searchService({
+            search,
+            searchIndex,
+            limit: limit ?? pageSize,
+            currentPage,
+            filters,
+          });
+
+          services = hits.map(
+            ({ _source }) => _source as DatabaseServiceSearchSource
+          );
+          handlePagingChange({ total: total.value });
+        } else {
+          const { data, paging } = await getServices({
+            serviceName,
+            limit: limit ?? pageSize,
+            after,
+            before,
+          });
+
+          services = data;
+          handlePagingChange(paging);
+        }
+
+        setServiceDetails(
+          serviceName === ServiceCategory.METADATA_SERVICES
+            ? services.filter(
+                (service) => service.fullyQualifiedName !== OPEN_METADATA
+              )
+            : services
+        );
+      } catch (error) {
+        setServiceDetails([]);
+        handlePagingChange(pagingObject);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', { entity: t('label.service-plural') })
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [searchIndex, serviceName]
+  );
+
+  const handleServicePageChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      getServiceDetails({ [cursorType]: paging[cursorType] });
+    }
+    handlePageChange(currentPage);
+  };
 
   const addServicePermission = useMemo(
     () =>
@@ -95,143 +211,269 @@ const Services = ({
         return PAGE_HEADERS.ML_MODELS_SERVICES;
       case ServiceCategory.PIPELINE_SERVICES:
         return PAGE_HEADERS.PIPELINES_SERVICES;
+      case ServiceCategory.STORAGE_SERVICES:
+        return PAGE_HEADERS.STORAGE_SERVICES;
+      case ServiceCategory.SEARCH_SERVICES:
+        return PAGE_HEADERS.SEARCH_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
   }, [serviceName]);
 
-  return (
-    <Row className="tw-justify-center" data-testid="services-container">
-      {serviceData.length ? (
-        <Fragment>
-          <Col span={24}>
-            <Space
-              className="w-full justify-between m-b-lg"
-              data-testid="header">
-              <PageHeader data={getServicePageHeader()} />
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? 'Add Service'
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className="tw-h-8 tw-rounded tw-mb-2"
-                  data-testid="add-service-button"
-                  disabled={!addServicePermission && !isAuthDisabled}
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={handleAddServiceClick}>
-                  Add New Service
-                </Button>
-              </Tooltip>
-            </Space>
-          </Col>
-          <Col span={24}>
-            <Row data-testid="data-container" gutter={[16, 16]}>
-              {serviceData.map((service, index) => (
-                <Col key={index} lg={8} xl={6}>
-                  <Card
-                    size="small"
-                    style={{ ...leftPanelAntCardStyle, height: '100%' }}>
-                    <div
-                      className="tw-flex tw-justify-between tw-text-grey-muted"
-                      data-testid="service-card">
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-truncate">
-                        <div>
-                          <Link
-                            to={getServiceDetailsPath(
-                              service.name,
-                              serviceName
-                            )}>
-                            <button>
-                              <h6
-                                className="tw-text-base tw-text-grey-body tw-font-medium tw-text-left tw-truncate tw-w-48"
-                                data-testid={`service-name-${getEntityName(
-                                  service
-                                )}`}
-                                title={getEntityName(service)}>
-                                {getEntityName(service)}
-                              </h6>
-                            </button>
-                          </Link>
-                          <div
-                            className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
-                            data-testid="service-description">
-                            {service.description ? (
-                              <RichTextEditorPreviewer
-                                enableSeeMoreVariant={false}
-                                markdown={service.description}
-                              />
-                            ) : (
-                              <span className="tw-no-description">
-                                No description
-                              </span>
-                            )}
-                          </div>
-                          {getOptionalFields(service, serviceName)}
-                        </div>
-                        <div className="" data-testid="service-type">
-                          <label className="tw-mb-0">Type:</label>
-                          <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                            {service.serviceType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
-                        <div
-                          className="tw-flex tw-justify-end"
-                          data-testid="service-icon">
-                          {getServiceLogo(service.serviceType || '', 'h-7')}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          </Col>
+  const noDataPlaceholder = useMemo(() => {
+    if (
+      addServicePermission &&
+      isEmpty(searchTerm) &&
+      isEmpty(serviceTypeFilter)
+    ) {
+      return (
+        <ErrorPlaceHolder
+          className="mt-24"
+          doc={CONNECTORS_DOCS}
+          heading={servicesDisplayName[serviceName]}
+          permission={addServicePermission}
+          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+          onClick={handleAddServiceClick}
+        />
+      );
+    }
 
-          {showPagination(paging) && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={SERVICE_VIEW_CAP}
-              paging={paging}
-              pagingHandler={onPageChange}
-              totalCount={paging.total}
-            />
-          )}
-        </Fragment>
-      ) : (
-        <Col span={24}>
-          <ErrorPlaceHolder
-            buttons={
-              <Tooltip
-                placement="left"
-                title={
-                  addServicePermission
-                    ? 'Add Service'
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <ButtonAntd
-                  ghost
-                  data-testid="add-service-button"
-                  disabled={!addServicePermission}
-                  size="small"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  Add new {servicesDisplayName[serviceName]}
-                </ButtonAntd>
-              </Tooltip>
-            }
-            doc={CONNECTORS_DOCS}
-            heading={servicesDisplayName[serviceName]}
-            type="ADD_DATA"
+    return (
+      <ErrorPlaceHolder
+        className="mt-24"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
+  }, [
+    addServicePermission,
+    servicesDisplayName,
+    serviceName,
+    searchTerm,
+    serviceTypeFilter,
+    addServicePermission,
+    handleAddServiceClick,
+  ]);
+
+  const serviceTypeFilters = useMemo(() => {
+    return map(getServiceTypesFromServiceCategory(serviceName), (value) => ({
+      text: startCase(value),
+      value,
+    }));
+  }, [serviceName]);
+
+  const columns: ColumnsType<ServicesType> = [
+    {
+      title: t('label.name'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+      render: (name, record) => (
+        <div className="d-flex gap-2 items-center">
+          {getServiceLogo(record.serviceType || '', 'w-4')}
+          <Link
+            className="max-two-lines"
+            data-testid={`service-name-${name}`}
+            to={getServiceDetailsPath(
+              encodeURIComponent(record.fullyQualifiedName ?? record.name),
+              serviceName
+            )}>
+            {getEntityName(record)}
+          </Link>
+        </div>
+      ),
+    },
+    {
+      title: t('label.description'),
+      dataIndex: 'description',
+      key: 'description',
+      width: 200,
+      render: (description) =>
+        description ? (
+          <RichTextEditorPreviewer
+            className="max-two-lines"
+            enableSeeMoreVariant={false}
+            markdown={description}
           />
-        </Col>
-      )}
+        ) : (
+          <span className="text-grey-muted">{t('label.no-description')}</span>
+        ),
+    },
+    {
+      title: t('label.type'),
+      dataIndex: 'serviceType',
+      key: 'serviceType',
+      width: 200,
+      filterDropdown: ColumnFilter,
+      filterIcon: FilterIcon,
+      filtered: !isEmpty(serviceTypeFilter),
+      filteredValue: serviceTypeFilter,
+      filters: serviceTypeFilters,
+      render: (serviceType) => (
+        <span className="font-normal text-grey-body">{serviceType}</span>
+      ),
+    },
+    {
+      title: t('label.owner'),
+      dataIndex: 'owner',
+      key: 'owner',
+      width: 200,
+      render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+    },
+  ];
+
+  const serviceCardRenderer = (service: ServicesType) => {
+    return (
+      <Col key={service.name} lg={8} xl={6}>
+        <Card className="w-full" size="small">
+          <div
+            className="d-flex justify-between text-grey-muted"
+            data-testid="service-card">
+            <Row gutter={[0, 6]}>
+              <Col span={24}>
+                <Link
+                  className="no-underline"
+                  to={getServiceDetailsPath(
+                    encodeURIComponent(
+                      service.fullyQualifiedName ?? service.name
+                    ),
+                    serviceName
+                  )}>
+                  <Typography.Text
+                    className="text-base text-grey-body font-medium truncate w-48"
+                    data-testid={`service-name-${service.name}`}
+                    title={getEntityName(service)}>
+                    {getEntityName(service)}
+                  </Typography.Text>
+                </Link>
+                <div
+                  className="p-t-xs text-grey-body break-all description-text"
+                  data-testid="service-description">
+                  {service.description ? (
+                    <RichTextEditorPreviewer
+                      className="max-two-lines"
+                      enableSeeMoreVariant={false}
+                      markdown={service.description}
+                    />
+                  ) : (
+                    <span className="text-grey-muted">
+                      {t('label.no-description')}
+                    </span>
+                  )}
+                </div>
+                {getOptionalFields(service, serviceName)}
+              </Col>
+              <Col span={24}>
+                <div className="m-b-xss" data-testid="service-type">
+                  <label className="m-b-0">{`${t('label.type')}:`}</label>
+                  <span className="font-normal m-l-xss text-grey-body">
+                    {service.serviceType}
+                  </span>
+                </div>
+              </Col>
+            </Row>
+
+            <div className="d-flex flex-col justify-between flex-none">
+              <div className="d-flex justify-end" data-testid="service-icon">
+                {getServiceLogo(service.serviceType || '', 'h-7')}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </Col>
+    );
+  };
+
+  const handleServiceSearch = useCallback(
+    async (search: string) => {
+      setSearchTerm(search);
+    },
+    [getServiceDetails]
+  );
+
+  useEffect(() => {
+    getServiceDetails({
+      search: searchTerm,
+      limit: pageSize,
+      filters: serviceTypeFilter?.length
+        ? `(${serviceTypeFilter
+            .map((type) => `serviceType:${type}`)
+            .join(' ')})`
+        : undefined,
+    });
+  }, [searchIndex, pageSize, serviceName, searchTerm, serviceTypeFilter]);
+
+  const handleTableChange: TableProps<ServicesType>['onChange'] = (
+    _pagination,
+    filters
+  ) => {
+    setServiceTypeFilter(filters.serviceType as ServicesType['serviceType'][]);
+  };
+
+  return (
+    <Row
+      className="justify-center m-b-md"
+      data-testid="services-container"
+      gutter={[16, 16]}>
+      <Col span={24}>
+        <Space className="w-full justify-between m-b-lg" data-testid="header">
+          <PageHeader data={getServicePageHeader()} />
+          <Tooltip
+            placement="left"
+            title={
+              addServicePermission
+                ? t('label.add-entity', {
+                    entity: t('label.service'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
+            }>
+            {(addServicePermission || isAuthDisabled) && (
+              <Button
+                className="m-b-xs"
+                data-testid="add-service-button"
+                size="middle"
+                type="primary"
+                onClick={handleAddServiceClick}>
+                {t('label.add-new-entity', {
+                  entity: t('label.service'),
+                })}
+              </Button>
+            )}
+          </Tooltip>
+        </Space>
+      </Col>
+      <Col span={24}>
+        <ListView<ServicesType>
+          cardRenderer={serviceCardRenderer}
+          searchProps={{
+            onSearch: handleServiceSearch,
+            search: searchTerm,
+          }}
+          tableprops={{
+            bordered: true,
+            columns,
+            dataSource: serviceDetails,
+            rowKey: 'fullyQualifiedName',
+            loading: isLoading,
+            locale: {
+              emptyText: noDataPlaceholder,
+            },
+            pagination: false,
+            size: 'small',
+            onChange: handleTableChange,
+          }}
+        />
+      </Col>
+      <Col span={24}>
+        {showPagination(paging) && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleServicePageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
     </Row>
   );
 };

@@ -2,13 +2,13 @@
   "$id": "https://open-metadata.org/schema/entity/teams/team.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Team",
-  "description": "This schema defines the Team entity. A Team is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
+  "description": "This schema defines the Team entity. A `Team` is a group of zero or more users and/or other teams. Teams can own zero or more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.teams.Team",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "teamType" : {
-      "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has a only Users",
+      "description" : "Organization is the highest level entity. An Organization has one of more Business Units, Division, Departments, Group, or Users. A Business Unit has one or more Divisions, Departments, Group, or Users. A Division has one or more Divisions, Departments, Group, or Users. A Department has one or more Departments, Group, or Users. A Group has only Users",
       "type" : "string",
       "enum": [
         "Group",
@@ -31,6 +31,10 @@
     "name": {
       "description": "A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.",
       "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "email": {
+      "description": "Email address of the team.",
+      "$ref": "../../type/basic.json#/definitions/email"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
@@ -66,15 +70,15 @@
     },
     "parents" : {
       "description" : "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
-      "$ref" : "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "children" : {
-      "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have can have `Department` as children.",
-      "$ref" : "../../type/entityReference.json#/definitions/entityReferenceList"
+      "description" : "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "users": {
       "description": "Users that are part of the team.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "childrenCount": {
@@ -87,7 +91,7 @@
     },
     "owns": {
       "description": "List of entities owned by the team.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "owner": {
       "description": "Owner of this team. ",
@@ -110,17 +114,21 @@
     },
     "defaultRoles": {
       "description": "Default roles of a team. These roles will be inherited by all the users that are part of this team.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "inheritedRoles": {
       "description": "Roles that a team is inheriting through membership in teams that have set team default roles.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "policies": {
       "description": "Policies that is attached to this team.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domain" : {
+      "description": "Domain the Team belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "href"],
+  "required": ["id", "name"],
   "additionalProperties": false
 }

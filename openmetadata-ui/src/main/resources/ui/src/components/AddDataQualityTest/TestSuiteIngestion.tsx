@@ -14,13 +14,9 @@
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { camelCase, isEmpty } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  addIngestionPipeline,
-  deployIngestionPipelineById,
-  updateIngestionPipeline as putIngestionPipeline,
-} from 'rest/ingestionPipelineAPI';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -33,12 +29,18 @@ import {
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import jsonData from '../../jsons/en';
+import {
+  addIngestionPipeline,
+  deployIngestionPipelineById,
+  updateIngestionPipeline,
+} from '../../rest/ingestionPipelineAPI';
 import {
   getIngestionFrequency,
-  replaceSpaceWith_,
+  getNameFromFQN,
+  replaceAllSpacialCharWith_,
+  Transi18next,
 } from '../../utils/CommonUtils';
-import { getTestSuitePath } from '../../utils/RouterUtils';
+import { getIngestionName } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -50,8 +52,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   testSuite,
   onCancel,
 }) => {
-  const { ingestionFQN } = useParams<Record<string, string>>();
+  const { ingestionFQN } = useParams<{ ingestionFQN: string }>();
   const history = useHistory();
+  const { t } = useTranslation();
   const [ingestionData, setIngestionData] = useState<
     IngestionPipeline | undefined
   >(ingestionPipeline);
@@ -66,19 +69,21 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const [isIngestionCreated, setIsIngestionCreated] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
   const getSuccessMessage = useMemo(() => {
-    const createMessage = showDeployButton
-      ? `has been ${ingestionFQN ? 'updated' : 'created'}, but failed to deploy`
-      : `has been ${
-          ingestionFQN ? 'updated' : 'created'
-        } and deployed successfully`;
-
     return (
-      <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          &quot;{ingestionData?.name ?? 'Test Suite'}&quot;
-        </span>
-        <span>{createMessage}</span>
-      </span>
+      <Transi18next
+        i18nKey={
+          showDeployButton
+            ? 'message.failed-status-for-entity-deploy'
+            : 'message.success-status-for-entity-deploy'
+        }
+        renderElement={<strong />}
+        values={{
+          entity: `"${ingestionData?.name ?? t('label.test-suite')}"`,
+          entityStatus: ingestionFQN
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        }}
+      />
     );
   }, [ingestionData, showDeployButton]);
 
@@ -100,14 +105,22 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         setShowDeployButton(true);
         setIngestionAction(IngestionActionMessage.DEPLOYING_ERROR);
         showErrorToast(
-          err || jsonData['api-error-messages']['deploy-ingestion-error']
+          err,
+          t('server.deploy-entity-error', {
+            entity: t('label.ingestion-workflow-lowercase'),
+          })
         );
       })
       .finally(() => setTimeout(() => setShowDeployModal(false), 500));
   };
 
   const createIngestionPipeline = async (repeatFrequency: string) => {
-    const updatedName = replaceSpaceWith_(testSuite.name);
+    const tableName = replaceAllSpacialCharWith_(
+      getNameFromFQN(
+        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+      )
+    );
+    const updatedName = getIngestionName(tableName, PipelineType.TestSuite);
 
     const ingestionPayload: CreateIngestionPipeline = {
       airflowConfig: {
@@ -115,15 +128,17 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
           ? undefined
           : repeatFrequency,
       },
-      name: `${updatedName}_${PipelineType.TestSuite}`,
+      name: updatedName,
       pipelineType: PipelineType.TestSuite,
       service: {
-        id: testSuite.id || '',
+        id: testSuite.id ?? '',
         type: camelCase(PipelineType.TestSuite),
       },
       sourceConfig: {
         config: {
           type: ConfigType.TestSuite,
+          entityFullyQualifiedName:
+            testSuite.executableEntityReference?.fullyQualifiedName,
         },
       },
     };
@@ -134,7 +149,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     handleIngestionDeploy(ingestion.id);
   };
 
-  const updateIngestionPipeline = async (repeatFrequency: string) => {
+  const onUpdateIngestionPipeline = async (repeatFrequency: string) => {
     const {
       airflowConfig,
       description,
@@ -165,29 +180,39 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
     };
 
     try {
-      const response = await putIngestionPipeline(
+      const response = await updateIngestionPipeline(
         updatedPipelineData as CreateIngestionPipeline
       );
       handleIngestionDeploy(response.id);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-ingestion-error']
+        t('server.entity-updating-error', {
+          entity: t('label.ingestion-workflow-lowercase'),
+        })
       );
     }
   };
 
-  const handleIngestionSubmit = (repeatFrequency: string) => {
-    if (ingestionFQN) {
-      updateIngestionPipeline(repeatFrequency);
-    } else {
-      createIngestionPipeline(repeatFrequency);
-    }
-  };
+  const handleIngestionSubmit = useCallback(
+    (repeatFrequency: string) => {
+      if (ingestionFQN) {
+        onUpdateIngestionPipeline(repeatFrequency);
+      } else {
+        createIngestionPipeline(repeatFrequency);
+      }
+    },
+    [
+      ingestionFQN,
+      onUpdateIngestionPipeline,
+      createIngestionPipeline,
+      ingestionPipeline,
+    ]
+  );
 
-  const handleViewTestSuiteClick = () => {
-    history.push(getTestSuitePath(testSuite?.fullyQualifiedName || ''));
-  };
+  const handleViewTestSuiteClick = useCallback(() => {
+    history.goBack();
+  }, [history]);
 
   const handleDeployClick = () => {
     setShowDeployModal(true);
@@ -195,13 +220,11 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   return (
-    <Row className="tw-form-container" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Typography.Paragraph
-          className="tw-heading tw-text-base"
-          data-testid="header">
-          Schedule for Ingestion
-        </Typography.Paragraph>
+        <Typography.Text className="font-medium" data-testid="header">
+          {t('label.schedule-for-ingestion')}
+        </Typography.Text>
       </Col>
 
       <Col span={24}>
@@ -214,7 +237,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             showIngestionButton={false}
             state={FormSubmitType.ADD}
             successMessage={getSuccessMessage}
-            viewServiceText="View Test Suite"
+            viewServiceText={t('label.view-entity', {
+              entity: t('label.test-suite'),
+            })}
           />
         ) : (
           <TestSuiteScheduler

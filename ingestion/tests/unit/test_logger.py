@@ -14,9 +14,9 @@ Test logging utilities
 """
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.utils.logger import get_add_lineage_log_str
+from metadata.utils.logger import get_log_name
 
 
 def test_add_lineage_log_info() -> None:
@@ -24,7 +24,6 @@ def test_add_lineage_log_info() -> None:
     We can extract lineage information properly
     """
     add_lineage = AddLineageRequest(
-        description="something",
         edge=EntitiesEdge(
             fromEntity=EntityReference(
                 id="2aaa012e-099a-11ed-861d-0242ac120002",
@@ -36,16 +35,16 @@ def test_add_lineage_log_info() -> None:
                 type="...",
                 name="...",
             ),
+            lineageDetails=LineageDetails(description="something"),
         ),
     )
 
     assert (
-        get_add_lineage_log_str(add_lineage)
+        get_log_name(add_lineage)
         == "table [name: random, id: 2aaa012e-099a-11ed-861d-0242ac120002]"
     )
 
     add_lineage = AddLineageRequest(
-        description="something",
         edge=EntitiesEdge(
             fromEntity=EntityReference(
                 id="2aaa012e-099a-11ed-861d-0242ac120002",
@@ -55,10 +54,10 @@ def test_add_lineage_log_info() -> None:
                 id="1aaa012e-099a-11ed-861d-0242ac120002",
                 type="...",
             ),
+            lineageDetails=LineageDetails(description="something"),
         ),
     )
 
     assert (
-        get_add_lineage_log_str(add_lineage)
-        == "table [id: 2aaa012e-099a-11ed-861d-0242ac120002]"
+        get_log_name(add_lineage) == "table [id: 2aaa012e-099a-11ed-861d-0242ac120002]"
     )

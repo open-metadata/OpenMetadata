@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/api/services/ingestionPipelines/createIngestionPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateIngestionPipelineRequest",
-  "description": "Ingestion Pipeline Config is used to setup a Airflow DAG.",
+  "description": "Ingestion Pipeline Config is used to set up an Airflow DAG.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
@@ -33,13 +33,12 @@
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
     },
     "service": {
-      "description": "Link to the database service where this database is hosted in.",
+      "description": "Link to the service for which ingestion pipeline is ingesting the metadata.",
       "$ref": "../../../type/entityReference.json"
     },
     "owner": {
       "description": "Owner of this Pipeline.",
-      "$ref": "../../../type/entityReference.json",
-      "default": null
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": [

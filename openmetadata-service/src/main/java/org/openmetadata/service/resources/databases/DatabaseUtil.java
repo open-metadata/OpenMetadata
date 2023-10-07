@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -88,9 +87,9 @@ public final class DatabaseUtil {
     }
   }
 
-  public static void validateColumns(Table table) {
-    validateColumnNames(table.getColumns());
-    for (Column c : table.getColumns()) {
+  public static void validateColumns(List<Column> columns) {
+    validateColumnNames(columns);
+    for (Column c : columns) {
       validateColumnDataTypeDisplay(c);
       validateColumnDataLength(c);
       validateArrayColumn(c);
@@ -130,7 +129,7 @@ public final class DatabaseUtil {
             || dataType == ColumnDataType.VARBINARY)
         && column.getDataLength() == null) {
       throw new IllegalArgumentException(
-          "For column data types char, varchar, binary, varbinary dataLength " + "must not be null");
+          "For column data types char, varchar, binary, varbinary dataLength must not be null");
     }
   }
 
@@ -141,15 +140,8 @@ public final class DatabaseUtil {
       column.setArrayDataType(null);
     }
 
-    if (dataType == ColumnDataType.ARRAY) {
-      if (column.getArrayDataType() == null) {
-        throw new IllegalArgumentException("For column data type array, arrayDataType " + "must not be null");
-      }
-
-      if (!column.getDataTypeDisplay().startsWith("array<")) {
-        throw new IllegalArgumentException(
-            "For column data type array, dataTypeDisplay must be of type " + "array<arrayDataType>");
-      }
+    if (dataType == ColumnDataType.ARRAY && (column.getArrayDataType() == null)) {
+      throw new IllegalArgumentException("For column data type array, arrayDataType must not be null");
     }
   }
 
@@ -161,10 +153,6 @@ public final class DatabaseUtil {
       }
 
       validateColumnNames(column.getChildren());
-      if (!column.getDataTypeDisplay().startsWith("struct<")) {
-        throw new IllegalArgumentException(
-            "For column data type struct, dataTypeDisplay must be of type " + "struct<member fields>");
-      }
     }
   }
 

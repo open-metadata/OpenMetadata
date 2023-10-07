@@ -11,7 +11,7 @@
       "type": "string"
     },
     "password": {
-      "description": "Login Password",
+      "description": "Login Password in base64 format",
       "type": "string"
     }
   },

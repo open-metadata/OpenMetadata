@@ -12,50 +12,61 @@
 Abstract Processor definition to build a Workflow
 """
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
-from typing import Any, Generic, List
+from dataclasses import dataclass
+from typing import Any, Generic, List, Optional
+
+from pydantic import Field
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-# pylint: disable=duplicate-code
-@dataclass
 class ProcessorStatus(Status):
-    records: List[str] = field(default_factory=list)
-    warnings: List[Any] = field(default_factory=list)
-    failures: List[Any] = field(default_factory=list)
+    records: List[str] = Field(default_factory=list)
 
     def processed(self, record: Any):
         self.records.append(record)
 
-    def warning(self, info: Any) -> None:
+    # disabling pylint until we remove this
+    def warning(self, info: Any) -> None:  # pylint: disable=W0221
         self.warnings.append(info)
 
-    def failure(self, info: Any) -> None:
-        self.failures.append(info)
 
+class ProfilerProcessorStatus(Status):
+    entity: Optional[str] = None
 
-@dataclass
-class ProfilerProcessorStatus(ProcessorStatus):
-    entity: str = None
+    def scanned(self, record: Any) -> None:
+        self.records.append(record)
 
-    # Disabling linting here until we find a better way to handling workflow statuses
-    def failure(  # pylint: disable=arguments-differ
-        self, column: str, metric: str, reason: str
-    ) -> None:
-        self.failures.append({self.entity: {column: {metric: {reason}}}})
+    def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
+        self.failed(
+            StackTraceError(
+                name=self.entity if self.entity else "",
+                error=error,
+                stack_trace=stack_trace,
+            )
+        )
 
 
 @dataclass
 class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
+    """
+    Processor class
+    """
+
+    status: ProcessorStatus
+
+    def __init__(self):
+        self.status = ProcessorStatus()
+
     @classmethod
     @abstractmethod
     def create(
@@ -67,9 +78,8 @@ class Processor(Closeable, Generic[Entity], metaclass=ABCMeta):
     def process(self, *args, **kwargs) -> Entity:
         pass
 
-    @abstractmethod
     def get_status(self) -> ProcessorStatus:
-        pass
+        return self.status
 
     @abstractmethod
     def close(self) -> None:

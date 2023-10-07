@@ -11,28 +11,41 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { ChartType } from 'pages/DashboardDetailsPage/DashboardDetailsPage.component';
+import { Col, Divider, Row, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
-import { Dashboard } from '../../../../generated/entity/data/dashboard';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import {
+  Dashboard,
+  TagLabel,
+} from '../../../../generated/entity/data/dashboard';
 import { fetchCharts } from '../../../../utils/DashboardDetailsUtils';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import SVGIcons from '../../../../utils/SvgUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import TableDataCardTitle from '../../../common/table-data-card-v2/TableDataCardTitle.component';
+import {
+  DRAWER_NAVIGATION_OPTIONS,
+  getEntityOverview,
+} from '../../../../utils/EntityUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { ChartType } from '../../../DashboardDetails/DashboardDetails.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface DashboardSummaryProps {
   entityDetails: Dashboard;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
 
-function DashboardSummary({ entityDetails }: DashboardSummaryProps) {
+function DashboardSummary({
+  entityDetails,
+  componentType = DRAWER_NAVIGATION_OPTIONS.explore,
+  tags,
+  isLoading,
+}: DashboardSummaryProps) {
   const { t } = useTranslation();
   const [charts, setCharts] = useState<ChartType[]>();
 
@@ -42,19 +55,19 @@ function DashboardSummary({ entityDetails }: DashboardSummaryProps) {
 
       const updatedCharts = chartDetails.map((chartItem) => ({
         ...chartItem,
-        chartUrl: chartItem.chartUrl,
+        sourceUrl: chartItem.sourceUrl,
       }));
 
       setCharts(updatedCharts);
     } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.dashboard-detail-plural-lowercase'),
-        })
-      );
+      // Error
     }
   };
+
+  const entityInfo = useMemo(
+    () => getEntityOverview(ExplorePageTabs.DASHBOARDS, entityDetails),
+    [entityDetails]
+  );
 
   useEffect(() => {
     fetchChartsDetails();
@@ -65,63 +78,63 @@ function DashboardSummary({ entityDetails }: DashboardSummaryProps) {
     [charts]
   );
 
+  const formattedDataModelData: BasicEntityInfo[] = useMemo(
+    () =>
+      getFormattedEntityData(
+        SummaryEntityType.COLUMN,
+        entityDetails.dataModels
+      ),
+    [charts]
+  );
+
   return (
-    <>
-      <Row className="m-md" gutter={[0, 4]}>
-        <Col span={24}>
-          <TableDataCardTitle
-            dataTestId="summary-panel-title"
-            searchIndex={SearchIndex.DASHBOARD}
-            source={entityDetails}
-          />
-        </Col>
-        <Col span={24}>
-          <Row gutter={16}>
-            <Col
-              className="text-gray"
-              data-testid="dashboard-url-label"
-              span={10}>
-              {`${t('label.dashboard')} ${t('label.url-uppercase')}`}
-            </Col>
-            <Col data-testid="dashboard-url-value" span={12}>
-              {entityDetails.dashboardUrl ? (
-                <Link
-                  target="_blank"
-                  to={{ pathname: entityDetails.dashboardUrl }}>
-                  <Space align="start">
-                    <Typography.Text
-                      className="link"
-                      data-testid="dashboard-link-name">
-                      {entityDetails.name}
-                    </Typography.Text>
-                    <SVGIcons
-                      alt="external-link"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </Space>
-                </Link>
-              ) : (
-                '-'
-              )}
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-      <Divider className="m-0" />
-      <Row className="m-md" gutter={[0, 16]}>
-        <Col span={24}>
-          <Typography.Text
-            className="section-header"
-            data-testid="charts-header">
-            {t('label.chart-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          <SummaryList formattedEntityData={formattedChartsData} />
-        </Col>
-      </Row>
-    </>
+    <SummaryPanelSkeleton loading={Boolean(isLoading)}>
+      <>
+        <Row className="m-md m-t-0" gutter={[0, 4]}>
+          <Col span={24}>
+            <CommonEntitySummaryInfo
+              componentType={componentType}
+              entityInfo={entityInfo}
+            />
+          </Col>
+        </Row>
+        <Divider className="m-y-xs" />
+
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ?? entityDetails.tags ?? []}
+        />
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="charts-header">
+              {t('label.chart-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedChartsData} />
+          </Col>
+        </Row>
+
+        <Divider className="m-y-xs" />
+
+        <Row className="m-md" gutter={[0, 8]}>
+          <Col span={24}>
+            <Typography.Text
+              className="summary-panel-section-title"
+              data-testid="data-model-header">
+              {t('label.data-model-plural')}
+            </Typography.Text>
+          </Col>
+          <Col span={24}>
+            <SummaryList formattedEntityData={formattedDataModelData} />
+          </Col>
+        </Row>
+      </>
+    </SummaryPanelSkeleton>
   );
 }
 

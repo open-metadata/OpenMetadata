@@ -13,25 +13,29 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/service';
+import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
+const BASE_URL = '/topics';
+
 export const getTopicVersions = async (id: string) => {
-  const url = `/topics/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
 export const getTopicVersion = async (id: string, version: string) => {
-  const url = `/topics/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Topic>(url);
 
@@ -39,19 +43,22 @@ export const getTopicVersion = async (id: string, version: string) => {
 };
 
 export const getTopics = async (
-  serviceName: string,
-  arrQueryFields: string | string[],
-  paging?: string
+  service: string,
+  fields: string,
+  paging?: PagingWithoutTotal,
+  include: Include = Include.NonDeleted
 ) => {
-  const url = `${getURLWithQueryFields(
-    `/topics`,
-    arrQueryFields
-  )}&service=${serviceName}${paging ? paging : ''}`;
-
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(url);
+  }>(`${BASE_URL}`, {
+    params: {
+      service,
+      fields,
+      ...paging,
+      include,
+    },
+  });
 
   return response.data;
 };
@@ -60,17 +67,17 @@ export const getTopicDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/topics/${id}`, arrQueryFields);
+  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
 
   return APIClient.get(url);
 };
 
 export const getTopicByFqn = async (
   fqn: string,
-  arrQueryFields: string | TabSpecificField[]
+  arrQueryFields: string[] | string | TabSpecificField[]
 ) => {
   const url = getURLWithQueryFields(
-    `/topics/name/${fqn}`,
+    `${BASE_URL}/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
@@ -90,7 +97,7 @@ export const addFollower = async (topicId: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/topics/${topicId}/followers`, userId, configOptions);
+  >(`${BASE_URL}/${topicId}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -107,7 +114,7 @@ export const removeFollower = async (topicId: string, userId: string) => {
         fieldsDeleted: { oldValue: EntityReference[] }[];
       };
     }>
-  >(`/topics/${topicId}/followers/${userId}`, configOptions);
+  >(`${BASE_URL}/${topicId}/followers/${userId}`, configOptions);
 
   return response.data;
 };
@@ -118,7 +125,7 @@ export const patchTopicDetails = async (id: string, data: Operation[]) => {
   };
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Topic>>(
-    `/topics/${id}`,
+    `${BASE_URL}/${id}`,
     data,
     configOptions
   );
@@ -130,7 +137,22 @@ export const restoreTopic = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Topic>
-  >('/topics/restore', { id });
+  >(`${BASE_URL}/restore`, { id });
+
+  return response.data;
+};
+
+export const getSampleDataByTopicId = async (id: string) => {
+  const response = await APIClient.get<Topic>(`${BASE_URL}/${id}/sampleData`);
+
+  return response.data;
+};
+
+export const updateTopicVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Topic>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

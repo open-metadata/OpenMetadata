@@ -13,59 +13,82 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import { FormattedSuggestResponseObject } from 'components/Explore/ExploreQuickFilters.interface';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
-import { isArray, isUndefined } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
-  ALL_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
+  CONTAINER_DROPDOWN_ITEMS,
+  DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
+  GLOSSARY_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
+  SEARCH_INDEX_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
+  TAG_DROPDOWN_ITEMS,
+  TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
-
-import { AdvancedFields, EntityFields } from '../enums/AdvancedSearch.enum';
+import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Dashboard } from '../generated/entity/data/dashboard';
-import { Pipeline } from '../generated/entity/data/pipeline';
+import {
+  Bucket,
+  ContainerSearchSource,
+  DashboardSearchSource,
+  ExploreSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
+  SuggestOption,
+  TableSearchSource,
+  TopicSearchSource,
+} from '../interface/search.interface';
+import { getCountBadge } from '../utils/CommonUtils';
+import { getEntityName } from './EntityUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
   switch (index) {
     case SearchIndex.TABLE:
-      return [...TABLE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...TABLE_DROPDOWN_ITEMS];
 
     case SearchIndex.TOPIC:
-      return [...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS];
 
     case SearchIndex.DASHBOARD:
-      return [...DASHBOARD_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
 
     case SearchIndex.PIPELINE:
-      return [...PIPELINE_DROPDOWN_ITEMS, ...COMMON_DROPDOWN_ITEMS];
+      return [...COMMON_DROPDOWN_ITEMS, ...PIPELINE_DROPDOWN_ITEMS];
+
+    case SearchIndex.SEARCH_INDEX:
+      return [...COMMON_DROPDOWN_ITEMS, ...SEARCH_INDEX_DROPDOWN_ITEMS];
 
     case SearchIndex.MLMODEL:
       return [
         ...COMMON_DROPDOWN_ITEMS.filter((item) => item.key !== 'service_type'),
       ];
+    case SearchIndex.CONTAINER:
+      return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
+    case SearchIndex.STORED_PROCEDURE:
+      return [...COMMON_DROPDOWN_ITEMS];
+    case SearchIndex.DASHBOARD_DATA_MODEL:
+      return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
+    case SearchIndex.GLOSSARY:
+      return [...GLOSSARY_DROPDOWN_ITEMS];
+    case SearchIndex.TAG:
+      return [...TAG_DROPDOWN_ITEMS];
 
     default:
       return [];
   }
 };
 
-export const getItemLabel = (key: string) => {
-  const item = ALL_DROPDOWN_ITEMS.find((dItem) => dItem.key === key);
-
-  return !isUndefined(item) ? item.label : 'label';
-};
-
 export const getAdvancedField = (field: string) => {
   switch (field) {
     case 'columns.name':
+    case 'dataModel.columns.name':
       return AdvancedFields.COLUMN;
 
     case 'databaseSchema.name':
@@ -74,11 +97,17 @@ export const getAdvancedField = (field: string) => {
     case 'database.name':
       return AdvancedFields.DATABASE;
 
-    case 'charts.name':
+    case 'charts.displayName.keyword':
       return AdvancedFields.CHART;
 
-    case 'tasks.name':
+    case 'dataModels.displayName.keyword':
+      return AdvancedFields.DATA_MODEL;
+
+    case 'tasks.displayName.keyword':
       return AdvancedFields.TASK;
+
+    case 'messageSchema.schemaFields.name':
+      return AdvancedFields.FIELD;
 
     case 'service.name':
       return AdvancedFields.SERVICE;
@@ -154,28 +183,63 @@ export const getSearchLabel = (itemLabel: string, searchKey: string) => {
   }
 };
 
+export const generateSearchDropdownLabel = (
+  option: SearchDropdownOption,
+  checked: boolean,
+  searchKey: string,
+  showProfilePicture: boolean
+) => {
+  return (
+    <div className="d-flex justify-between">
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
+        <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
+        {showProfilePicture && (
+          <ProfilePicture
+            displayName={option.label}
+            id={option.key || ''}
+            name={option.label || ''}
+            textClass="text-xs"
+            width="18"
+          />
+        )}
+        <Typography.Text
+          ellipsis
+          className="dropdown-option-label"
+          title={option.label}>
+          <span
+            dangerouslySetInnerHTML={{
+              __html: getSearchLabel(option.label, searchKey),
+            }}
+          />
+        </Typography.Text>
+      </Space>
+      {getCountBadge(option.count, 'm-r-sm', false)}
+    </div>
+  );
+};
+
 export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
-  searchKey = ''
+  searchKey = '',
+  showProfilePicture = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
-    return optionsArray.map((option) => ({
+    const sortedOptions = optionsArray.sort(
+      (a, b) => (b.count ?? 0) - (a.count ?? 0)
+    );
+
+    return sortedOptions.map((option) => ({
       key: option.key,
-      label: (
-        <Space className="m-x-sm" data-testid={option.key} size={6}>
-          <Checkbox checked={checked} data-testid={`${option.key}-checkbox`} />
-          <Typography.Text
-            ellipsis
-            className="dropdown-option-label"
-            title={option.label}>
-            <span
-              dangerouslySetInnerHTML={{
-                __html: getSearchLabel(option.label, searchKey),
-              }}
-            />
-          </Typography.Text>
-        </Space>
+      label: generateSearchDropdownLabel(
+        option,
+        checked,
+        searchKey,
+        showProfilePicture
       ),
     }));
   } else {
@@ -199,72 +263,158 @@ export const getSelectedOptionLabelString = (
   }
 };
 
-export const getOptionFromDashboardSource = (
-  uniqueOption: FormattedSuggestResponseObject
-): SearchDropdownOption => {
-  const charts = (uniqueOption.source as Dashboard).charts;
-  const option: SearchDropdownOption = { key: '', label: '' };
+export const getChartsOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const chartRef = (
+    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
+  )._source.charts?.find(
+    (chart) => chart.displayName === option.text || chart.name === option.text
+  );
 
-  if (charts) {
-    // As of now, the value sent by suggest API in uniqueOption.text is uncertain
-    // It is either from name or sometimes from displayName,
-    // we are checking both for now to figure out which 'Dashboard' has desired chart
-    const chart = charts.find(
-      (chart) =>
-        chart.displayName === uniqueOption.text ||
-        chart.name === uniqueOption.text
-    );
+  const entityName = getEntityName(chartRef);
 
-    if (chart) {
-      option.key = chart.name ?? '';
-      option.label = chart.displayName ?? chart.name ?? '';
-    }
-  }
-
-  return option;
+  return isEmpty(entityName) ? option.text : entityName;
 };
 
-export const getOptionFromPipelineSource = (
-  uniqueOption: FormattedSuggestResponseObject
-): SearchDropdownOption => {
-  const tasks = (uniqueOption.source as Pipeline).tasks;
-  const option: SearchDropdownOption = { key: '', label: '' };
+export const getDataModelOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const chartRef = (
+    option as SuggestOption<SearchIndex.DASHBOARD, DashboardSearchSource>
+  )._source.dataModels?.find(
+    (dataModel) =>
+      dataModel.displayName === option.text || dataModel.name === option.text
+  );
 
-  if (tasks) {
-    // As of now, the value sent by suggest API in uniqueOption.text is uncertain
-    // It is either from name or sometimes from displayName,
-    // we are checking both for now to figure out which 'Pipeline' has desired task
-    const task = tasks.find(
-      (task) =>
-        task.name === uniqueOption.text ||
-        task.displayName === uniqueOption.text
-    );
+  const entityName = getEntityName(chartRef);
 
-    if (task) {
-      option.key = task.name;
-      option.label = task.displayName ?? task.name;
-    }
-  }
-
-  return option;
+  return isEmpty(entityName) ? option.text : entityName;
 };
 
-export const getOptionsObject = (
-  key: string,
-  uniqueOptions: FormattedSuggestResponseObject[]
-): SearchDropdownOption[] => {
+export const getTasksOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const taskRef = (
+    option as SuggestOption<SearchIndex.PIPELINE, PipelineSearchSource>
+  )._source.tasks?.find(
+    (task) => task.displayName === option.text || task.name === option.text
+  );
+
+  const entityName = getEntityName(taskRef);
+
+  return isEmpty(entityName) ? option.text : entityName;
+};
+
+export const getColumnsOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>,
+  index: SearchIndex
+) => {
+  if (index === SearchIndex.TABLE) {
+    const columnRef = (
+      option as SuggestOption<SearchIndex.TABLE, TableSearchSource>
+    )._source.columns.find(
+      (column) =>
+        column.displayName === option.text || column.name === option.text
+    );
+
+    const entityName = getEntityName(columnRef);
+
+    return isEmpty(entityName) ? option.text : entityName;
+  } else {
+    const dataModel = (
+      option as SuggestOption<SearchIndex.CONTAINER, ContainerSearchSource>
+    )._source.dataModel;
+    const columnRef = dataModel
+      ? dataModel.columns.find(
+          (column) =>
+            column.displayName === option.text || column.name === option.text
+        )
+      : undefined;
+
+    const entityName = getEntityName(columnRef);
+
+    return isEmpty(entityName) ? option.text : entityName;
+  }
+};
+
+export const getSchemaFieldOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const schemaFields = (
+    option as SuggestOption<SearchIndex.TOPIC, TopicSearchSource>
+  )._source.messageSchema?.schemaFields;
+
+  const schemaRef = schemaFields
+    ? schemaFields.find(
+        (field) =>
+          field.displayName === option.text || field.name === option.text
+      )
+    : undefined;
+
+  const entityName = getEntityName(schemaRef);
+
+  return isEmpty(entityName) ? option.text : entityName;
+};
+
+export const getServiceOptions = (
+  option: SuggestOption<SearchIndex, ExploreSearchSource>
+) => {
+  const service = (
+    option as SuggestOption<
+      SearchIndex,
+      | TableSearchSource
+      | DashboardSearchSource
+      | PipelineSearchSource
+      | MlmodelSearchSource
+      | TopicSearchSource
+    >
+  )._source.service;
+
+  return service
+    ? service.displayName ?? service.name ?? option.text
+    : option.text;
+};
+
+// Function to get the display name to show in the options for search Dropdowns
+export const getOptionTextFromKey = (
+  index: SearchIndex,
+  option: SuggestOption<SearchIndex, ExploreSearchSource>,
+  key: string
+) => {
   switch (key) {
-    case EntityFields.CHART: {
-      return uniqueOptions.map((op) => getOptionFromDashboardSource(op));
+    case 'charts.displayName.keyword': {
+      return getChartsOptions(option);
     }
-    case EntityFields.TASK: {
-      return uniqueOptions.map((op) => getOptionFromPipelineSource(op));
+    case 'dataModels.displayName.keyword': {
+      return getDataModelOptions(option);
+    }
+    case 'tasks.displayName.keyword': {
+      return getTasksOptions(option);
+    }
+    case 'columns.name': {
+      return getColumnsOptions(option, index);
+    }
+    case 'service.name': {
+      return getServiceOptions(option);
+    }
+    case 'messageSchema.schemaFields.name': {
+      return getSchemaFieldOptions(option);
     }
     default: {
-      return uniqueOptions.map((op) => ({
-        key: op.text,
-        label: op.text,
-      }));
+      return option.text;
     }
   }
+};
+
+export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+  if (!buckets) {
+    return [];
+  }
+
+  return buckets.map((option) => ({
+    key: option.key,
+    label: option.key,
+    count: option.doc_count ?? 0,
+  }));
 };

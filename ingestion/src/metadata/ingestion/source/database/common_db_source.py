@@ -14,7 +14,7 @@ Generic source to build SQL connectors.
 import traceback
 from abc import ABC
 from copy import deepcopy
-from typing import Iterable, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -26,11 +26,18 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table, TablePartition, TableType
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
+from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
+    Table,
+    TableConstraint,
+    TablePartition,
+    TableType,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -38,24 +45,20 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import (
-    get_lineage_by_query,
-    get_lineage_via_table_entity,
-)
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceSource,
-    SQLSourceStatus,
+    QueryByProcedure,
 )
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import calculate_execution_time_generator
 from metadata.utils.logger import ingestion_logger
@@ -84,27 +87,29 @@ class CommonDbSourceService(
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
 
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
 
         # It will be one of the Unions. We don't know the specific type here.
         self.service_connection = self.config.serviceConnection.__root__.config
-        self.status = SQLSourceStatus()
 
         self.engine: Engine = get_connection(self.service_connection)
+
+        # Flag the connection for the test connection
+        self.connection_obj = self.engine
         self.test_connection()
 
         self._connection = None  # Lazy init as well
         self.table_constraints = None
         self.database_source_state = set()
         self.context.table_views = []
+        self.context.table_constrains = []
         super().__init__()
 
     def set_inspector(self, database_name: str) -> None:
@@ -135,22 +140,38 @@ class CommonDbSourceService(
         database_name = self.service_connection.__dict__.get(
             "database", custom_database_name or "default"
         )
+
         # By default, set the inspector on the created engine
         self.inspector = inspect(self.engine)
         yield database_name
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        by default there will be no database description
+        """
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        by default there will be no schema description
+        """
+
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
 
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=EntityReference(
-                id=self.context.database_service.id,
-                type="databaseService",
-            ),
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName,
+                description=self.get_database_description(database_name),
+                sourceUrl=self.get_source_url(database_name=database_name),
+            )
         )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
@@ -168,15 +189,22 @@ class CommonDbSourceService(
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
 
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=EntityReference(id=self.context.database.id, type="database"),
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName,
+                description=self.get_schema_description(schema_name),
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                ),
+            )
         )
 
     @staticmethod
@@ -222,8 +250,8 @@ class CommonDbSourceService(
 
         :return: tables or views, depending on config
         """
+        schema_name = self.context.database_schema.name.__root__
         try:
-            schema_name = self.context.database_schema.name.__root__
             if self.source_config.includeTables:
                 for table_and_type in self.query_table_names_and_types(schema_name):
                     table_name = self.standardize_table_name(
@@ -284,7 +312,6 @@ class CommonDbSourceService(
     def get_view_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-
         if table_type == TableType.View:
             try:
                 view_definition = inspector.get_view_definition(table_name, schema_name)
@@ -323,26 +350,55 @@ class CommonDbSourceService(
         """
         return False, None  # By default the table will be a Regular Table
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        We don't have a generic source implementation for handling tags.
+
+        Each source should implement its own when needed
+        """
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
 
     @calculate_execution_time_generator
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
-        db_name = self.context.database.name.__root__
         try:
-
-            columns, table_constraints = self.get_columns_and_constraints(
+            (
+                columns,
+                table_constraints,
+                foreign_columns,
+            ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
                 table_name=table_name,
-                db_name=db_name,
+                db_name=self.context.database.name.__root__,
                 inspector=self.inspector,
             )
 
@@ -352,7 +408,9 @@ class CommonDbSourceService(
                 schema_name=schema_name,
                 inspector=self.inspector,
             )
-
+            table_constraints = self.update_table_constraints(
+                table_constraints, foreign_columns
+            )
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
@@ -362,16 +420,20 @@ class CommonDbSourceService(
                     inspector=self.inspector,
                 ),
                 columns=columns,
+                tableConstraints=table_constraints,
                 viewDefinition=view_definition,
-                tableConstraints=table_constraints if table_constraints else None,
-                databaseSchema=EntityReference(
-                    id=self.context.database_schema.id,
-                    type="databaseSchema",
-                ),
+                databaseSchema=self.context.database_schema.fullyQualifiedName,
                 tags=self.get_tag_labels(
                     table_name=table_name
                 ),  # Pick tags from context info, if any
+                sourceUrl=self.get_source_url(
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    database_name=self.context.database.name.__root__,
+                    table_type=table_type,
+                ),
             )
+
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
@@ -379,84 +441,94 @@ class CommonDbSourceService(
                 table_request.tableType = TableType.Partitioned.value
                 table_request.tablePartition = partition_details
 
+            yield Either(right=table_request)
+
+            # Register the request that we'll handle during the deletion checks
+            self.register_record(table_request=table_request)
+
+            # Flag view as visited
             if table_type == TableType.View or view_definition:
                 table_view = TableView.parse_obj(
                     {
                         "table_name": table_name,
                         "schema_name": schema_name,
-                        "db_name": db_name,
+                        "db_name": self.context.database.name.__root__,
                         "view_definition": view_definition,
                     }
                 )
                 self.context.table_views.append(table_view)
 
-            yield table_request
-            self.register_record(table_request=table_request)
-
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception to yield table [{table_name}]: {exc}")
-            self.status.failures.append(f"{self.config.serviceName}.{table_name}")
+            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=table_name, error=error, stack_trace=traceback.format_exc()
+                )
+            )
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.table_views if v.view_definition is not None
         ]:
-            table_name = view.table_name
-            schema_name = view.schema_name
-            db_name = view.db_name
-            view_definition = view.view_definition
-            table_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
+            yield from get_view_lineage(
+                view=view,
+                metadata=self.metadata,
                 service_name=self.context.database_service.name.__root__,
-                database_name=db_name,
-                schema_name=schema_name,
-                table_name=table_name,
-            )
-            table_entity = self.metadata.get_by_name(
-                entity=Table,
-                fqn=table_fqn,
+                connection_type=self.service_connection.type.value,
+                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
             )
 
-            try:
-                connection_type = str(self.service_connection.type.value)
-                dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-                lineage_parser = LineageParser(view_definition, dialect)
-                if lineage_parser.source_tables and lineage_parser.target_tables:
-                    yield from get_lineage_by_query(
-                        self.metadata,
-                        query=view_definition,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                        dialect=dialect,
-                    ) or []
+    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
+        """
+        Search the referred table for foreign constraints
+        and get referred column fqn
+        """
 
-                else:
-                    yield from get_lineage_via_table_entity(
-                        self.metadata,
-                        table_entity=table_entity,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=db_name,
-                        schema_name=schema_name,
-                        query=view_definition,
-                        dialect=dialect,
-                    ) or []
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Could not parse query [{view_definition}] ingesting lineage failed: {exc}"
+        foreign_constraints = []
+        for column in foreign_columns:
+            referred_column_fqns = []
+            referred_table = fqn.search_table_from_es(
+                metadata=self.metadata,
+                table_name=column.get("referred_table"),
+                schema_name=column.get("referred_schema"),
+                database_name=None,
+                service_name=self.context.database_service.name.__root__,
+            )
+            if referred_table:
+                for referred_column in column.get("referred_columns"):
+                    col_fqn = get_column_fqn(
+                        table_entity=referred_table, column=referred_column
+                    )
+                    if col_fqn:
+                        referred_column_fqns.append(col_fqn)
+            else:
+                # do not build partial foreign constraint. It will updated in next run.
+                continue
+            foreign_constraints.append(
+                TableConstraint(
+                    constraintType=ConstraintType.FOREIGN_KEY,
+                    columns=column.get("constrained_columns"),
+                    referredColumns=referred_column_fqns,
                 )
+            )
 
-    def test_connection(self) -> None:
+        return foreign_constraints
+
+    def update_table_constraints(
+        self, table_constraints, foreign_columns
+    ) -> List[TableConstraint]:
         """
-        Used a timed-bound function to test that the engine
-        can properly reach the source
+        From topology.
+        process the table constraints of all tables
         """
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.engine)
+        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        if foreign_table_constraints:
+            if table_constraints:
+                table_constraints.extend(foreign_table_constraints)
+            else:
+                table_constraints = foreign_table_constraints
+        return table_constraints
 
     @property
     def connection(self) -> Connection:
@@ -493,5 +565,13 @@ class CommonDbSourceService(
         """
         return table
 
-    def yield_table_tag(self) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        """
+        By default the source url is not supported for
+        """

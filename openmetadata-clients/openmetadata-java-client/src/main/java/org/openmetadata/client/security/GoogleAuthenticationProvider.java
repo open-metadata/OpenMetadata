@@ -22,6 +22,7 @@ import java.util.Arrays;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.client.security.interfaces.AuthenticationProvider;
 import org.openmetadata.schema.security.client.GoogleSSOClientConfig;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 
 @Slf4j
@@ -34,7 +35,7 @@ public class GoogleAuthenticationProvider implements AuthenticationProvider {
   private static final String EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email";
 
   public GoogleAuthenticationProvider(OpenMetadataConnection iConfig) {
-    if (!iConfig.getAuthProvider().equals(OpenMetadataConnection.AuthProvider.GOOGLE)) {
+    if (!iConfig.getAuthProvider().equals(AuthProvider.GOOGLE)) {
       LOG.error("Required type to invoke is Google for GoogleAuthentication Provider");
       throw new RuntimeException("Required type to invoke is Google for GoogleAuthentication Provider");
     }

@@ -19,8 +19,10 @@ import './PageHeader.style.less';
 const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
   return (
     <div className="page-header-container">
-      <Typography.Title className="heading">{header}</Typography.Title>
-      <Typography.Paragraph className="sub-heading">
+      <Typography.Title className="heading" data-testid="heading" level={5}>
+        {header}
+      </Typography.Title>
+      <Typography.Paragraph className="sub-heading" data-testid="sub-heading">
         {subHeader}
       </Typography.Paragraph>
     </div>

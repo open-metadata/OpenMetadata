@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -36,7 +36,7 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  ENTITIES_BAR_COLO_MAP,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
@@ -45,6 +45,7 @@ import {
 } from '../../generated/dataInsight/dataInsightChartResult';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
   axisTickFormatter,
   updateActiveChartFilter,
@@ -58,14 +59,23 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
   kpi: Kpi | undefined;
   selectedDays: number;
+  dataInsightChartName: DataInsightChartType;
+  header?: string;
 }
 
-const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
+const OwnerInsight: FC<Props> = ({
+  chartFilter,
+  kpi,
+  selectedDays,
+  dataInsightChartName,
+  header,
+}) => {
   const [totalEntitiesOwnerByType, setTotalEntitiesOwnerByType] =
     useState<DataInsightChartResult>();
 
@@ -83,7 +93,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
   } = useMemo(() => {
     return getGraphDataByEntityType(
       totalEntitiesOwnerByType?.data ?? [],
-      DataInsightChartType.PercentageOfEntitiesWithOwnerByType
+      dataInsightChartName
     );
   }, [totalEntitiesOwnerByType]);
 
@@ -102,8 +112,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
     try {
       const params = {
         ...chartFilter,
-        dataInsightChartName:
-          DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+        dataInsightChartName,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
@@ -136,22 +145,25 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
-      id={DataInsightChartType.PercentageOfEntitiesWithOwnerByType}
+      id={dataInsightChartName}
       loading={isLoading}
       title={
-        <>
-          <Typography.Title level={5}>
-            {t('label.data-insight-owner-summary')}
-          </Typography.Title>
-          <Typography.Text className="data-insight-label-text">
-            {t('message.field-insight', { field: 'owner' })}
-          </Typography.Text>
-        </>
+        <PageHeader
+          data={{
+            header,
+            subHeader: t('message.field-insight', {
+              field: t('label.owner'),
+            }),
+          }}
+        />
       }>
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
+            <ResponsiveContainer
+              debounce={1}
+              id={`${dataInsightChartName}-graph`}
+              minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
                   stroke={GRAPH_BACKGROUND_COLOR}
@@ -176,7 +188,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {entities.map((entity) => (
+                {entities.map((entity, i) => (
                   <Line
                     dataKey={entity}
                     hide={
@@ -185,7 +197,7 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
                         : false
                     }
                     key={entity}
-                    stroke={ENTITIES_BAR_COLO_MAP[entity]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       entity === activeMouseHoverKey
@@ -201,34 +213,30 @@ const OwnerInsight: FC<Props> = ({ chartFilter, kpi, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {t('label.assigned-entity', {
-                    entity: t('label.owner'),
-                  })}
-                  {isPercentageGraph ? ' %' : ''}
-                </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
+                  label={`${t('label.assigned-entity', {
+                    entity: t('label.owner'),
+                  })}
+                  ${isPercentageGraph ? ' %' : ''}`}
                   progress={Number(total)}
-                  showLabel={false}
                   suffix={isPercentageGraph ? '%' : ''}
                   target={targetValue}
                 />
               </Col>
-              {entities.map((entity) => {
+              {entities.map((entity, i) => {
                 return (
-                  <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                  <Col key={entity} span={24}>
+                    <EntitySummaryProgressBar
+                      entity={entity}
+                      label={`${round(latestData[entity] || 0, 2)}${
+                        isPercentageGraph ? '%' : ''
+                      }`}
+                      latestData={latestData}
                       progress={latestData[entity]}
-                      showLabel={false}
-                      startValue={latestData[entity].toFixed(2)}
-                      successValue={entity}
-                      suffix={isPercentageGraph ? '%' : ''}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   </Col>
                 );

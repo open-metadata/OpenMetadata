@@ -13,9 +13,14 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 11;
+import entitySpclCharImg from '../../../assets/img/EntitySplChar.png';
+import sqlLineageImg from '../../../assets/img/ImprovedSQLLineage.png';
+import ingestionFramework from '../../../assets/img/IngestionFramework.png';
+import tagCategoryImg from '../../../assets/img/TagCategory.png';
 
-export const COOKIE_VERSION = 'VERSION_0_13_1'; // To be changed with each release.
+export const LATEST_VERSION_ID = 18;
+
+export const COOKIE_VERSION = 'VERSION_1_1_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -133,7 +138,7 @@ export const WHATS_NEW = [
       'New Connectors': `- AWS Glue\n- DBT\n- Maria DB`,
       'User Interface': `- UI displays all the metadata changes of an entity over time as Version History. Clicking on the Version button, users can view the change log of an entity from the very beginning.\n- The UI supports setting up metadata ingestion workflows.\n- Improvements have been made in drawing the entity node details for lineage.\n- Entity link is supported for each tab on the details page.\n- Guided steps have been added for setting up ElasticSearch.\n- The entity details, search results page (Explore), landing pages, and components have been redesigned for better project structure and code maintenance.`,
       'OpenMetadata Quickstart':
-        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="tw-bg-grey-muted-lite tw-text-grey-body tw-font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
+        '- Shipped a Python package to simplify OpenMetadata docker installation.\n<code class="bg-grey-muted-lite text-grey-body font-medium">pip install openmetadata-ingestion[docker]\n\nmetadata docker --run</code>',
       'Helm Charts': `- Installing OpenMetadata in your cloud provider or on-premise got easier.\n- We worked on Helm charts to get the OpenMetadata and dependencies up and running on Kubernetes.`,
       'Other Features':
         '- Upgraded from JDBI 2 to JDBI 3, which will support newer versions.',
@@ -632,6 +637,358 @@ export const WHATS_NEW = [
       'Advanced Search': `- **Advanced Search** improvements have been made. When a filter is applied, the details of the filter selected are displayed for clarity.`,
       'Explore Page UI': `- **Side Preview** on the **Explore** page UI is now available for all data assets. Previously it was only displayed for tables.`,
       'Airflow Lineage': `- **Airflow Lineage Operator** and the **OpenMetadata Hook** are now part of the ingestion package. Send Airflow metadata from your DAGs and safely store the OpenMetadata server connection directly in Airflow.`,
+    },
+  },
+  {
+    id: 12,
+    version: 'v0.13.2',
+    description: 'Released on 30 January 2023.',
+    shortSummary:
+      'Checkout Glossary Import & Export with new UI and many more!', // max words limit 15
+    features: [
+      {
+        title: 'Glossary Import & Export',
+        description:
+          'You can now export your Glossary data as a CSV file. you can now bulk upload terms to a Glossary by adding their details in a CSV file.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/LSJBJCaj01g',
+      },
+      {
+        title: 'New Glossary UI',
+        description:
+          'Moved from a tree view in the left panel to an easy to navigate list of the terms sorted alphabetically. The term list shows the tags and descriptions in the cards.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Y0MLZgG-Ibs',
+      },
+      {
+        title: 'Improved SQL Lineage',
+        description:
+          'We’ve collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities to improve the parsing capabilities of `sqllineage`.',
+        isImage: true,
+        path: sqlLineageImg,
+      },
+      {
+        title: 'Unified Tag Category API',
+        description:
+          'Renamed Tag Categories to Classification, a more widely used term. Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).',
+        isImage: true,
+        path: tagCategoryImg,
+      },
+      {
+        title: 'Ingestion Framework improvements',
+        description: `Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
+          - The Oracle connector now ships with the Thick mode enabled.
+          - AWS QuickSight fixes
+          - DB2 constraints and profiler improvements
+          - Added support for Postgres Foreign Tables
+          - Added support for Datalake profiler row-based sampling
+          `,
+        isImage: true,
+        path: ingestionFramework,
+      },
+      {
+        title: 'Entity Name',
+        description: `To better manage and harmonize \`entityName\` value and allow users to form better expectations around these values the team introduced an enforcement of the \`entityName\` format using regex pattern. You can find more information about this in the [docs](https://docs.open-metadata.org/deployment/upgrade).`,
+        isImage: true,
+        path: entitySpclCharImg,
+      },
+      {
+        title: 'Chrome Extension',
+        description: `Announcing the beta version of OpenMetadata Chrome extension.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/5kfWbbfVEzU',
+      },
+      {
+        title: 'Mutually Exclusive Tags',
+        description: `When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive. If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/_AsfZctGYJU',
+      },
+    ],
+    changeLogs: {
+      'Improved SQL Lineage': `- We have collaborated with the [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://www.sqlfluff.com/) communities
+    to improve the parsing capabilities of *sqllineage*. We'll continue to collaborate to ship further improvements in new releases.`,
+      'New Glossary UI': `- Moved from a tree view in the left panel to an easy to navigate list of the terms sorted alphabetically.
+- The term list shows the tags and descriptions in the cards.`,
+      'Glossary Import & Export': `- You can now export your Glossary data as a CSV file.
+- In the same way, you can now bulk upload terms to a Glossary by adding their details in a CSV file.
+- The import utility will validate the file and show you a preview of the elements that are going to be imported to OpenMetadata.`,
+      'Unified Tag Category API': `- Renamed Tag Categories to Classification, a more widely used term.
+- Updated the API to conform with the rest of the specification. More info [here](https://github.com/open-metadata/OpenMetadata/issues/9259).`,
+      'Mutually Exclusive Tags': `- When creating a Classification or a Glossary term, you can now make the tags to be mutually exclusive.
+- If tags are set to be mutually exclusive, you won't be able to set multiple tags from the same category in the same asset.`,
+      EntityName: `- To better manage and harmonize entityName value and allow users to form better expectations around these values, the team introduced enforcement of the entityName format using a regex pattern. You can find more information about this in the [docs](https://docs.open-metadata.org/deployment/upgrade).`,
+      'Ingestion Framework': `- Performance Improvements: We are now getting descriptions in batch, making connectors such as Redshift or Snowflake way faster!
+- The Oracle connector now ships with the Thick mode enabled.
+- AWS QuickSight fixes
+- DB2 constraints and profiler improvements
+- Added support for Postgres Foreign Tables
+- Added support for Datalake profiler row-based sampling
+
+`,
+    },
+  },
+  {
+    id: 13,
+    version: 'v1.0.0',
+    description: 'Released on 25th April 2023.',
+    features: [
+      {
+        title: 'Dashboard Data Models',
+        description:
+          'Dashboard Services now support the concept of Data Models: data that can be directly defined and managed in the Dashboard tooling itself, e.g., LookML models in Looker. Data Models will help us close the gap between Engineering and Business by providing all the necessary metadata from sources typically used and managed by analysts or business users. The first implementation of dashboard data models has been done in OpenMetadata for Tableau and Looker.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/ous8gOfiAHE',
+      },
+      {
+        title: 'Ingestion UI',
+        description:
+          'Connecting to your data sources has never been easier. With OpenMetadata 1.0, find all the necessary permissions and connection details directly in the UI.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/xN2DtI7517M',
+      },
+      {
+        title: 'Localization',
+        description:
+          'With more and more users from across the globe using OpenMetadata, we’ve added Localization Support in the UI. Now you can use OpenMetadata in English (US), French, Chinese, Japanese, Portuguese, and Spanish.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/V9EaXEJ_Dxk',
+      },
+      {
+        title: 'Query as an Entity',
+        description:
+          'The queries were already being ingested in the Usage Workflows in OpenMetadata.Now their presentation and overall user interaction has been improved. In the 1.0 release, users can manually enter the queries that they would like to share with the rest of their peers. They can also discuss and react to the other queries in each table.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/tb5hEmzL1rY',
+      },
+      {
+        title: 'Storage Services',
+        description:
+          'Previously, the Data Lake connector ingested one table per file, which covered only some of the use cases in a Data Platform. With the new Storage Services, you now have complete control over how you want to present your data lakes in OpenMetadata. The first implementation has been done on Amazon S3, wherein you can specify your tables and partitions and see them reflected with the rest of your metadata.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/DDjbUCjm00c',
+      },
+      {
+        title: 'Global Search',
+        description:
+          'Global search has been enabled for Glossary terms and Tags, making it easier to discover data.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/mykm49U-QBk',
+      },
+      {
+        title: 'Glossary',
+        description:
+          'OpenMetadata, glossary, glossary UI, open source, glossary term, tags, classification, team hierarchy, metadata management.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/yeX3YY8IvLU',
+      },
+    ],
+    changeLogs: {
+      'APIs & Schema': `- Stabilized and improved the Schemas and APIs.
+- The APIs are backward compatible.`,
+      Ingestion: `- Connecting to your data sources has never been easier. Find all the necessary permissions and connection details directly in the UI.
+- When testing the connection, we now have a comprehensive list of validations to let you know which pieces of metadata can be extracted with the provided configuration.
+- Performance improvements when extracting metadata from sources such as Snowflake, Redshift, Postgres, and dbt.
+- New Apache Impala connector.`,
+      'Storage Services': `- Based on your [feedback](https://github.com/open-metadata/OpenMetadata/discussions/8124), we created a new service to extract metadata from your cloud storage.
+- The Data Lake connector ingested one table per file, which covered only some of the use cases in a Data Platform. With Storage Services, you can now present accurate metadata from your tables, even when partitioned.
+- The first implementation has been done on S3, and we will keep adding support for other sources in the upcoming releases.`,
+      'Dashboard Data Models': `- Dashboard Services now support the concept of Data Models: data that can be directly defined and managed in the Dashboard tooling itself, e.g., LookML models in Looker.
+- Data Models will help us close the gap between engineering and business by providing all the necessary metadata from sources typically used and managed by analysts or business users.
+- The first implementation has been done for Tableau and Looker.`,
+      Queries: `- Improved UI for SQL Queries, with faster loading times and allowing users to vote for popular queries!
+- Users can now create and share a Query directly from the UI, linking it to multiple tables if needed.`,
+      Localization: `- In 1.0, we have added Localization support for OpenMetadata.
+- Now you can use OpenMetadata  in English, French, Chinese, Japanese, Portuguese,  and Spanish.`,
+      Glossary: `- New and Improved Glossary UI
+- Easily search for Glossaries and any Glossary Term directly in the global search.
+- Instead of searching and tagging their assets individually, users can add Glossary Terms to multiple assets from the Glossary UI.
+`,
+      'Auto PII Classification': `- Implemented an automated way to tag PII data.
+- The auto-classification is an optional step of the Profiler workflow. We will analyze the column names, and if sample data is being ingested, we will run NLP models on top of it.`,
+      Search: `- Improved Relevancy, with added support for partial matches.
+- Improved Ranking, with most used or higher Tier assets at the top of the search.
+- Support for Classifications and Glossaries in the global search.`,
+      Security: `- SAML support has been added.
+- Deprecation Notice: SSO Service accounts for Bots will be deprecated. JWT authentication will be the preferred method for creating Bots.`,
+      Lineage: `- Enhanced Lineage UI to display a large number of nodes (1000+).
+- Improved UI for better navigation.
+- Improved SQL parser to extract lineage in the Lineage Workflows.`,
+      'Chrome Browser Extension': `- All the metadata is at your fingertips while browsing Looker, Superset, etc., with the OpenMetadata Chrome Browser Extension.
+- Chrome extension supports Google SSO, Azure SSO, Okta, and AWS Cognito authentication.
+- You can Install the Chrome extension from Chrome Web Store.`,
+      'Other Changes': `- The Explore page cards will now display a maximum of ten tags.
+- Entity names support apostrophes.
+- The Summary panel has been improved to be consistent across the UI.`,
+    },
+  },
+  {
+    id: 14,
+    version: 'v1.0.1',
+    description: 'Released on 10th May 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- Improved search experience while editing manual lineage.
+- Improved security with masked API token for Looker connection.
+- The tier component has been revamped.
+- Added Pagination support on the Data Model page.
+- Added startDate to create ingestion flow.
+- Search improvements have been made on the Explore page.
+- Multiple UI tweaks have been made for better user experience, such as image placeholder improvements, text alignment and custom connectors icons.`,
+      Notifications: `- Alert notifications have been added for Data Insights Report.`,
+      Glossary: `- Earlier, we only supported changing or updating the Glossary Owner. Now, we even support the removal of Owner from Glossary as well as Glossary Terms.`,
+      Ingestion: `- Fixed CVE vulnerability for ingestion docker image.
+- Now, we fetch views and view definitions from Hive and Impala.
+- Added a test connection step for verifying the Owner details in Tableau.
+- Profiler logs have been improved.
+- Fixed the issues reported around ingestion`,
+    },
+  },
+  {
+    id: 15,
+    version: 'v1.0.2',
+    description: 'Released on 24th May 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- Supports a separate column for Classification and Glossary in the following entities: Topic, Dashboard, Pipeline, ML Model, Container, and Data Model.
+- Improved Sample Data tab UX for Tables.
+- **Email** is now displayed on the Teams page. Users can edit their Email.
+- The **custom logo** can be configured from the UI. The logo will be displayed on the Login page and app bar.
+- UI supports updating the displayName for service, database, schema, and all other assets.
+`,
+      Ingestion: `- Supports custom database name for Glue.
+- Fixed Postgres lineage ingestion for version 11.6.
+- Added **api_version** and **domain** fields to Salesforce connector.
+- Kerberos libraries have been added to ingestion image.
+- PII flags have been further restricted for column names.
+- Fixed GitHub reader for LookML.
+- Restructured the Tableau data models ingestion.
+- Fixed the basic auth for Kafka.
+      `,
+      Backend: `- Fixed vulnerabilities for dependencies.
+- Supports custom logo from backend.
+- Fixed a bug related to random password.
+- By default, service connection details will be masked for users, and unmasked for bots. Users will be able to view based on their view permissions.
+- Fixed Elasticsearch indexing issues for a large number of objects.
+
+      `,
+    },
+  },
+  {
+    id: 16,
+    version: 'v1.1.0',
+    description: 'Released on 29th Jun 2023.',
+    features: [
+      {
+        title: 'OpenMetadata UI Makeover',
+        description:
+          'Experience the revamped OpenMetadata UI, designed to enhance user experience with  a simplified Landing Page to make the adoption easier for new users. The simplified Explore view has an improved asset details section. The filtering left panel is now part of the filtering selection at the top. The Lineage View now supports column pagination and filtering',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/fMSRi6Azj5I',
+      },
+      {
+        title: 'Data Quality Redesigned',
+        description:
+          'OpenMetadata has redesigned Data Quality Tests to improve the end-user experience and prevent unnecessary duplication of tests. Data Quality Tests now have a Resolution Field. Users can acknowledge any errors, and once failures are resolved, they can document the resolution directly in the OpenMetadata UI.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/J-v2ySfOgEI',
+      },
+      {
+        title: 'PII Masking',
+        description:
+          'PII Masking capabilities have been introduced in OpenMetadata in the 1.1 Release. Admins and Asset Owners can view PII data, but other users cannot. PII sensitive sample data for Tables, Topics, Profiler Metrics, Test Cases, and Queries will be masked. This feature goes perfectly with the Auto-Tagging capability in OpenMetadata.',
+        isImage: false,
+        path: 'https://www.youtube.com/embed/Lomg5G_-JQE',
+      },
+    ],
+    changeLogs: {
+      'UI Improvements': `- Simplified Landing Page to make the adoption easier for new users. We'll keep iterating on improving the UX for first-time users.
+- Simplified Explore view with improved asset details section. The filtering left panel is now part of the filtering selection at the top.
+- Lineage View now supports column pagination and filtering.
+- Views show their DDL on the Table details page.
+`,
+      'Data Quality': `- Redesigned [Data Quality Tests](https://github.com/open-metadata/OpenMetadata/issues/11592) to improve the end-user experience and prevent unnecessary duplication of tests.
+- Data Quality Tests now have a Resolution Field. Users can acknowledge any errors, and once failures are resolved, they can document the resolution directly in the OpenMetadata UI.
+- Fixed a large number of connections being opened by the profiler workflow.
+- Improved Customer SQL test to allow users to set a threshold for the expected number of rows to be returned.
+- Added multi-project support for the BigQuery Profiler.
+- Fetch table metrics from system tables when information is available.
+- Improved Snowflake Profiling performance of System Metrics.`,
+      Ingestion: `- Improved [SQL Lineage Parsing](https://github.com/open-metadata/OpenMetadata/issues/7427). We continue to share the OSS love by contributing to [sqllineage](https://github.com/reata/sqllineage) and [sqlfluff](https://sqlfluff.com/), the base libraries for our lineage features.
+- Improved LookML metadata ingestion, with added support for projects based on Bitbucket.
+- dbt bug fixes, added support for database, schema and table filtering and lineage management for ephemeral models.
+- PowerBI metadata ingestion now supports Reports and Dataset lineage from multiple workspaces.
+- Improved Tableau Data Models ingestion now ingests Data Sources.
+- AWS Glue support for Partition Column Details.
+- New Oracle lineage and usage workflows based on the query history.
+- IAM role-based authentication for MySQL and Postgres RDS databases.
+- Fixed dashboard description wrongly reported description as completed in the Data Insight.
+      `,
+      Connectors: `- New [Spline](https://absaoss.github.io/spline/) Connector to extract metadata and lineage from Spark jobs. Regardless of where the Spark execution happens, if you have configured the Spline Agent, we can send Spark metadata to OpenMetadata.
+- New [SAP Hana](https://www.sap.com/products/technology-platform/hana/what-is-sap-hana.html) Connector, our first integration to the SAP ecosystem.
+- New [MongoDB](https://www.mongodb.com/) Connector, extracting Collections as Tables.
+- Added support for [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog) for metadata and lineage extraction. If your Databricks instance supports the Unity Catalog, you can enable it in the Connection Details section to use this metadata extraction method instead of getting metadata out of the metastore and history APIs.`,
+      Backend: `- PII masking of Sample data for Tables and Topics, Profiler Metrics, Test Cases, and Queries for users that are not admins or owners of the assets. In 1.2, we'll iterate on this logic to add Roles & Policies support for masking PII data.
+- Name and FQN hashing of data in the database. This reduces the length of the data being stored and indexed, allowing us for longer FQNs in the Metadata Standard.
+- Improved monitoring of the Pipeline Service Client health. Any status errors between the OpenMetadata server and the Pipeline Service Client are now surfaced in a Prometheus metric *pipelineServiceClientStatus_counter_total*
+- Added AWS OpenSearch client-specific support. This allows us to update the Elasticsearch version support up to 7.16.
+      `,
+    },
+  },
+  {
+    id: 17,
+    version: 'v1.1.1',
+    description: 'Released on 4th Aug 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- User profile page UI / UX improvements
+- Superset Connection fixes for Basic and IAM auth type
+- Fix task flow bugs
+- UI / UX improvements for Service, Database, and Schema pages
+- Support custom cron for schedule ingestion
+`,
+      'Data Quality': `- Fix BigQuery, MSSQL, and Clickhouse profiling errors`,
+      Ingestion: `- Fixed Airflow lineage extraction
+- Added support for Databricks complex columns comments
+- Fixed Athena lineage and usage parameter validation
+- Airflow Managed APIs now support Airflow 2.6`,
+      Connectors: `- New Qliksense Connector
+- Hive supports extracting metadata directly from the metastore to speed up the execution. Users whose metastore is not exposed can still run the extraction pointing to Hive
+- Added Usage & Lineage connector for Trino
+- Impala scheme has been deprecated from Hive connector. Users can use the Impala connector instead
+- Snowflake can now ingest TRANSIENT tables
+- Added support for JSON fields in SingleStore`,
+      Backend: `- Bumped table and column names length
+- Aggregation Improvements for Search
+- Test Suite Improvements
+      `,
+    },
+  },
+  {
+    id: 18,
+    version: 'v1.1.2',
+    description: 'Released on 22nd Aug 2023.',
+    features: [],
+    changeLogs: {
+      'UI Improvements': `- Added Russian language support.
+- Supports Delete functionality for sample data.
+- Improved Schema page UX.
+- Table mentions now show Service, Schema and Database information.
+- Fixed the version history list.
+`,
+      'Data Quality': `- Added support for Postgres version 11.19.
+- Fixed MariaDB time column issues.`,
+      Ingestion: `- Improved performance when ingesting table constraints.`,
+      Connectors: `- Added JWT authentication support for Trino
+- Fixed Snowflake connection test.
+- Fixed SageMaker ingestion.
+- Added external table support for BigQuery.`,
+      Backend: `- Improved Glossary import validations.
+- Fixed Test Suite migrations and naming.
+- Fixed Classification migration.
+- Deprecated Flyway and using native migrations.
+- Improved Test Suite UI performance.
+      `,
     },
   },
 ];

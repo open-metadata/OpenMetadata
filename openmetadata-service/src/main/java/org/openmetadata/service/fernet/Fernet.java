@@ -33,7 +33,7 @@ import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class Fernet {
-  private static Fernet instance;
+  private static final Fernet instance = new Fernet();
   private String fernetKey;
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
@@ -45,12 +45,11 @@ public class Fernet {
         }
       };
 
-  private Fernet() {}
+  private Fernet() {
+    /* Private constructor for singleton */
+  }
 
   public static Fernet getInstance() {
-    if (instance == null) {
-      instance = new Fernet();
-    }
     return instance;
   }
 
@@ -101,5 +100,15 @@ public class Fernet {
       return token.validateAndDecrypt(keys, validator);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
+  }
+
+  /** Decrypts value without throwing an Exception in case it is not a Fernet encrypted value */
+  public String decryptIfApplies(String value) {
+    return Fernet.isTokenized(value) ? decrypt(value) : value;
+  }
+
+  /** Encrypt value without throwing an Exception in case it is not encrypted */
+  public String encryptIfApplies(@NonNull String secret) {
+    return isTokenized(secret) ? secret : encrypt(secret);
   }
 }

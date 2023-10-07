@@ -13,13 +13,12 @@
 
 package org.openmetadata.service.resources.permissions;
 
-import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import java.io.IOException;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.GET;
@@ -30,16 +29,11 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.SecurityContext;
-import lombok.NonNull;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -48,14 +42,14 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/permissions")
-@Api(value = "Get permissions")
+@Tag(name = "Permissions", description = "APIs related to getting access permission for a User.")
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "permissions")
 public class PermissionsResource {
   private final Authorizer authorizer;
 
   @SuppressWarnings("unused")
-  public PermissionsResource(CollectionDAO dao, @NonNull Authorizer authorizer) {
+  public PermissionsResource(Authorizer authorizer) {
     this.authorizer = authorizer;
   }
 
@@ -63,7 +57,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourcePermissions",
       summary = "Get permissions for logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -82,7 +75,7 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user) {
-    return new ResourcePermissionList(authorizer.listPermissions(securityContext, user));
+    return new ResultList<>(authorizer.listPermissions(securityContext, user));
   }
 
   @GET
@@ -90,7 +83,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourceTypePermission",
       summary = "Get permissions a given resource/entity type for logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -109,7 +101,7 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user,
-      @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource")
+      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource) {
     return authorizer.getPermission(securityContext, user, resource);
   }
@@ -119,7 +111,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourcePermission",
       summary = "Get permissions for a given entity for a logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -138,12 +129,10 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user,
-      @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource")
+      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Entity Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
-    EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(resource);
-    ResourceContext resourceContext =
-        ResourceContext.builder().resource(resource).id(id).entityRepository(entityRepository).build();
+      @Parameter(description = "Id of the entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
+    ResourceContext resourceContext = new ResourceContext(resource, id, null);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -152,7 +141,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getResourcePermissionByName",
       summary = "Get permissions for a given entity name for a logged in user",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -171,12 +159,11 @@ public class PermissionsResource {
               schema = @Schema(type = "string", example = "john"))
           @QueryParam("user")
           String user,
-      @Parameter(description = "Resource type", schema = @Schema(type = "String")) @PathParam("resource")
+      @Parameter(description = "Type of the resource", schema = @Schema(type = "String")) @PathParam("resource")
           String resource,
-      @Parameter(description = "Entity Name", schema = @Schema(type = "String")) @PathParam("name") String name) {
-    EntityRepository<EntityInterface> entityRepository = Entity.getEntityRepository(resource);
-    ResourceContext resourceContext =
-        ResourceContext.builder().resource(resource).name(name).entityRepository(entityRepository).build();
+      @Parameter(description = "Name of the entity", schema = @Schema(type = "String")) @PathParam("name")
+          String name) {
+    ResourceContext resourceContext = new ResourceContext(resource, null, name);
     return authorizer.getPermission(securityContext, user, resourceContext);
   }
 
@@ -185,7 +172,6 @@ public class PermissionsResource {
   @Operation(
       operationId = "getPermissionsForPolicies",
       summary = "Get permissions for a set of policies",
-      tags = "permission",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -198,25 +184,18 @@ public class PermissionsResource {
   public ResultList<ResourcePermission> getPermissionForPolicies(
       @Context SecurityContext securityContext,
       @Parameter(description = "List of policy of ids", schema = @Schema(type = "UUID")) @QueryParam("ids")
-          List<UUID> ids)
-      throws IOException {
+          List<UUID> ids) {
     // User must have read access to policies
     OperationContext operationContext = new OperationContext(Entity.POLICY, MetadataOperation.VIEW_ALL);
-    EntityRepository<EntityInterface> dao = Entity.getEntityRepository(Entity.POLICY);
     for (UUID id : ids) {
-      ResourceContext resourceContext = EntityResource.getResourceContext(Entity.POLICY, dao).id(id).build();
+      ResourceContext resourceContext = new ResourceContext(Entity.POLICY, id, null);
       authorizer.authorize(securityContext, operationContext, resourceContext);
     }
     List<EntityReference> policies = EntityUtil.populateEntityReferencesById(ids, Entity.POLICY);
-    return new ResourcePermissionList(PolicyEvaluator.listPermission(policies));
+    return new ResultList<>(PolicyEvaluator.listPermission(policies));
   }
 
   static class ResourcePermissionList extends ResultList<ResourcePermission> {
-    @SuppressWarnings("unused")
-    public ResourcePermissionList() {}
-
-    public ResourcePermissionList(List<ResourcePermission> data) {
-      super(data, null, null, data.size());
-    }
+    /* Required for serde */
   }
 }

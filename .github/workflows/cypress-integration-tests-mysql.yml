@@ -15,10 +15,12 @@
 name: MySQL Cypress Integration Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main 
       - '0.[0-9]+.[0-9]+'
+      - '1.[0-9]+[0-9]+'
     paths-ignore:
       - 'openmetadata-docs/**'
   pull_request_target:
@@ -34,14 +36,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  install:
+  cypress-ci-mysql:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        job: [0, 1]
+        job: [0]
     environment: test
     steps:
-
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+            tool-cache: false
+            android: true
+            dotnet: true
+            haskell: true
+            large-packages: false
+            swap-storage: true
+            docker-images: false
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -49,7 +61,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
+          wait-interval: 90
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -65,14 +77,39 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Set up JDK 11
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Get yarn cache directory path
+        if: steps.cache-output.outputs.exit-code == 0
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        if: steps.yarn-cache-dir-path.outputs.exit-code == 0
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Set up JDK 17
+        if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v3
         with:
-          java-version: '11'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Generating Data Models
         run: |
+          pip install --upgrade pip
           sudo make install_antlr_cli
           make install_dev generate
 
@@ -80,19 +117,21 @@ jobs:
         env:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d mysql
-        timeout-minutes: 30
+        timeout-minutes: 60
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
+        timeout-minutes: 120
         with:
           install: false
           record: true
-          parallel: true
+          parallel: false
           working-directory: openmetadata-ui/src/main/resources/ui/
           wait-on: 'http://localhost:8585'
           group: Tests with database mysql
           browser: chrome
         env:
+          CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ secrets.TEST_RECORD_KEY }}
           CYPRESS_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           CYPRESS_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
@@ -101,6 +140,7 @@ jobs:
           CYPRESS_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
           CYPRESS_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           CYPRESS_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          CYPRESS_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           CYPRESS_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
           CYPRESS_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
           CYPRESS_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
@@ -130,6 +170,12 @@ jobs:
           CYPRESS_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
           CYPRESS_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
           CYPRESS_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
+          CYPRESS_AIRFLOW_HOST_PORT: ${{ secrets.TEST_AIRFLOW_HOST_PORT }}
+          CYPRESS_ML_MODEL_TRACKING_URI: ${{ secrets.TEST_ML_MODEL_TRACKING_URI }}
+          CYPRESS_ML_MODEL_REGISTRY_URI: ${{ secrets.TEST_ML_MODEL_REGISTRY_URI }}
+          CYPRESS_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
+          CYPRESS_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
+          CYPRESS_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
 
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
@@ -137,6 +183,6 @@ jobs:
       
       - name: Clean Up
         run: |
-          cd ./docker/local-metadata
+          cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume

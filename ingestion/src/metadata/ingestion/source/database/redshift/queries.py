@@ -24,19 +24,28 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
      WHERE userid > 1
           {filters}
           -- Filter out all automated & cursor queries
+          AND label NOT IN ('maintenance', 'metrics', 'health')
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND userid <> 1
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
           LIMIT {result_limit}
+  ),
+  deduped_querytext AS (
+    -- Sometimes rows are duplicated, causing LISTAGG to fail in the full_queries CTE.
+    SELECT DISTINCT qt.*
+    FROM pg_catalog.stl_querytext AS qt
+        INNER JOIN queries AS q
+            ON qt.query = q.query
   ),
   full_queries AS (
     SELECT
           query,
           LISTAGG(CASE WHEN LEN(RTRIM(text)) = 0 THEN text ELSE RTRIM(text) END, '')
             WITHIN GROUP (ORDER BY sequence) AS query_text
-      FROM pg_catalog.stl_querytext
+      FROM deduped_querytext
       WHERE sequence < 327	-- each chunk contains up to 200, RS has a maximum str length of 65535.
     GROUP BY query
   ),
@@ -65,15 +74,13 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
         q.endtime AS end_time,
         datediff(second,q.starttime,q.endtime) AS duration,
         q.aborted AS aborted
-    FROM scans AS s
-        INNER JOIN queries AS q
+    FROM queries AS q
+        LEFT JOIN scans AS s
           ON s.query = q.query
         INNER JOIN full_queries AS fq
-          ON s.query = fq.query
+          ON q.query = fq.query
         INNER JOIN pg_catalog.pg_user AS u
           ON q.userid = u.usesysid
-    WHERE
-        {db_filters}
     ORDER BY q.endtime DESC
 """
 )
@@ -209,3 +216,140 @@ REDSHIFT_TABLE_COMMENTS = """
       AND n.nspname <> 'pg_catalog'
     ORDER BY "schema", "table_name";
 """
+
+REDSHIFT_GET_DATABASE_NAMES = """
+SELECT datname FROM pg_database
+"""
+
+REDSHIFT_TEST_GET_QUERIES = """
+(select 1 from pg_catalog.svv_table_info limit 1)
+UNION
+(select 1 from pg_catalog.stl_querytext limit 1)
+UNION
+(select 1 from pg_catalog.stl_query limit 1)
+"""
+
+
+REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
+
+
+# Redshift views definitions only contains the select query
+# hence we are appending "create view <schema>.<table> as " to select query
+# to generate the column level lineage
+REDSHIFT_GET_ALL_RELATIONS = """
+    SELECT
+        c.relkind,
+        n.oid as "schema_oid",
+        n.nspname as "schema",
+        c.oid as "rel_oid",
+        c.relname,
+        CASE c.reldiststyle
+        WHEN 0 THEN 'EVEN' WHEN 1 THEN 'KEY' WHEN 8 THEN 'ALL' END
+        AS "diststyle",
+        c.relowner AS "owner_id",
+        u.usename AS "owner_name",
+        TRIM(TRAILING ';' FROM 
+        'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
+        AS "view_definition",
+        pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
+    FROM pg_catalog.pg_class c
+            LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+    WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
+        AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
+    UNION
+    SELECT
+        'r' AS "relkind",
+        s.esoid AS "schema_oid",
+        s.schemaname AS "schema",
+        null AS "rel_oid",
+        t.tablename AS "relname",
+        null AS "diststyle",
+        s.esowner AS "owner_id",
+        u.usename AS "owner_name",
+        null AS "view_definition",
+        null AS "privileges"
+    FROM
+        svv_external_tables t
+        JOIN svv_external_schemas s ON s.schemaname = t.schemaname
+        JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
+    where 1 {schema_clause} {table_clause}
+    ORDER BY "relkind", "schema_oid", "schema";
+    """
+
+
+REDSHIFT_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT
+    p.proname as name,
+    b.usename as owner,
+    p.prosrc as definition
+FROM
+    pg_catalog.pg_namespace n
+JOIN pg_catalog.pg_proc_info p ON
+    pronamespace = n.oid
+join pg_catalog.pg_user b on
+    b.usesysid = p.proowner
+where nspname = '{schema_name}'
+    and p.proowner <> 1;
+    """
+)
+
+
+REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+with SP_HISTORY as (
+    select
+        query as procedure_id,
+        querytxt as procedure_text,
+        starttime as procedure_start_time,
+        endtime as procedure_end_time,
+        pid as procedure_session_id
+    from SVL_STORED_PROC_CALL
+    where database = '{database_name}'
+      and aborted = 0
+      and starttime >= '{start_date}'
+),
+Q_HISTORY as (
+    select
+        query as query_id,
+        querytxt as query_text,
+        case
+            when querytxt ilike '%%MERGE%%' then 'MERGE'
+            when querytxt ilike '%%UPDATE%%' then 'UPDATE'
+            when querytxt ilike '%%CREATE%%AS%%' then 'CREATE_TABLE_AS_SELECT'
+            when querytxt ilike '%%INSERT%%' then 'INSERT'
+        else 'UNKNOWN' end query_type,
+        pid as query_session_id,
+        starttime as query_start_time,
+        endtime as query_end_time,
+        userid as query_user_name
+    from STL_QUERY q
+    join pg_catalog.pg_user b
+      on b.usesysid = q.userid
+    where label not in ('maintenance', 'metrics', 'health')
+      and querytxt not like '/* {{"app": "OpenMetadata", %%}} */%%'
+      and querytxt not like '/* {{"app": "dbt", %%}} */%%'
+      and database = '{database_name}'
+      and starttime >= '{start_date}'
+      and userid <> 1
+)
+select
+    sp.procedure_id,
+    sp.procedure_text,
+    sp.procedure_start_time,
+    sp.procedure_end_time,
+    q.query_id,
+    q.query_text,
+    q.query_type,
+    q.query_start_time,
+    q.query_end_time,
+    q.query_user_name
+from SP_HISTORY sp
+  join Q_HISTORY q
+    on sp.procedure_session_id = q.query_session_id
+   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time 
+   and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
+order by procedure_start_time DESC
+    """
+)

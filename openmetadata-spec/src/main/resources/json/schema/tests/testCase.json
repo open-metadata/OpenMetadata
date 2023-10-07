@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/tests/testCase.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TestCase",
-  "description": "Test is a test definition to capture data quality tests against tables and columns.",
+  "description": "Test case is a test definition to capture data quality tests against tables, columns, and other data assets.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.TestCase",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -17,7 +17,7 @@
           "type": "string"
         },
         "value": {
-          "description": "value to be passed for the Parameters. These are input from Users. We capture this in in string and convert during the runtime.",
+          "description": "value to be passed for the Parameters. These are input from Users. We capture this in string and convert during the runtime.",
           "type": "string"
         }
       }
@@ -55,6 +55,12 @@
     },
     "testSuite": {
       "$ref": "../type/entityReference.json"
+    },
+    "testSuites": {
+      "type": "array",
+      "items": {
+        "$ref": "./testSuite.json"
+      }
     },
     "parameterValues": {
       "type": "array",

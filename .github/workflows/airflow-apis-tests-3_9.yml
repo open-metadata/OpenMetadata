@@ -33,7 +33,16 @@ jobs:
   airflow-apis-tests:
     runs-on: ubuntu-latest
     steps:
-
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          docker-images: false
+          swap-storage: true
     - name: Wait for the labeler
       uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
       if: ${{ github.event_name == 'pull_request_target' }}
@@ -41,7 +50,7 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         check-name: Team Label
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        wait-interval: 30
+        wait-interval: 90
 
     - name: Verify PR labels
       uses: jesusvasquez333/verify-pr-label-action@v1.4.0
@@ -58,11 +67,11 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
 
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -74,7 +83,7 @@ jobs:
         # stop relying on apt cache of GitHub runners
         sudo apt-get update
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        librdkafka-dev unixodbc-dev libevent-dev
+        librdkafka-dev unixodbc-dev libevent-dev libkrb5-dev
 
     - name: Generate models
       run: |
@@ -89,10 +98,14 @@ jobs:
         make install_all install_test
 
     - name: Start Server and Ingest Sample Data
+      uses: nick-fields/retry@v2.8.3
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
-      run: ./docker/run_local_docker.sh
-      timeout-minutes: 30
+      with:
+        timeout_minutes: 30
+        max_attempts: 2
+        retry_on: error
+        command: ./docker/run_local_docker.sh -m no-ui
 
     - name: Run Python Tests & Record Coverage
       run: |
@@ -118,6 +131,7 @@ jobs:
           -Dsonar.pullrequest.github.repository=OpenMetadata
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
           -Dsonar.pullrequest.provider=github
+
     - name: Push Results to Sonar
       uses: sonarsource/sonarcloud-github-action@master
       if: ${{ github.event_name == 'push' }}

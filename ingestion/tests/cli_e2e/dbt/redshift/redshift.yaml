@@ -12,11 +12,12 @@ source:
     config:
       schemaFilterPattern:
         includes:
-        - dbt_jaffle
+        - dbt_cli_e2e
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+  loggerLevel: DEBUG
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

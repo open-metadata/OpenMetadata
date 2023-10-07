@@ -15,12 +15,10 @@ import csv
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta
-from typing import Iterable, Optional
-
-from sqlalchemy.engine import Engine
+from typing import Iterable
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -34,12 +32,11 @@ class UsageSource(QueryParserSource, ABC):
     Parse a query log to extract a `TableQuery` object
     """
 
-    def get_table_query(self) -> Optional[Iterable[TableQuery]]:
+    def yield_table_queries_from_logs(self) -> Iterable[TableQuery]:
         """
-        If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data
+        Method to handle the usage from query logs
         """
-        if self.config.sourceConfig.config.queryLogFilePath:
+        try:
             query_list = []
             with open(
                 self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
@@ -68,12 +65,24 @@ class UsageSource(QueryParserSource, ABC):
                         )
                     )
             yield TableQueries(queries=query_list)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to read queries form log file due to: {err}")
 
+    def get_table_query(self) -> Iterable[TableQuery]:
+        """
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data
+        """
+        if self.config.sourceConfig.config.queryLogFilePath:
+            yield from self.yield_table_queries_from_logs()
         else:
-            engine = get_connection(self.service_connection)
-            yield from self.yield_table_queries(engine)
+            yield from self.yield_table_queries()
 
-    def yield_table_queries(self, engine: Engine):
+    def format_query(self, query: str) -> str:
+        return query.replace("\\n", "\n")
+
+    def yield_table_queries(self) -> Iterable[TableQuery]:
         """
         Given an Engine, iterate over the day range and
         query the results
@@ -85,42 +94,48 @@ class UsageSource(QueryParserSource, ABC):
                 f"{(self.start + timedelta(days=days + 1)).date()}"
             )
             try:
-                with engine.connect() as conn:
-                    rows = conn.execute(
-                        self.get_sql_statement(
-                            start_time=self.start + timedelta(days=days),
-                            end_time=self.start + timedelta(days=days + 1),
+                for engine in self.get_engine():
+                    with engine.connect() as conn:
+                        rows = conn.execute(
+                            self.get_sql_statement(
+                                start_time=self.start + timedelta(days=days),
+                                end_time=self.start + timedelta(days=days + 1),
+                            )
                         )
-                    )
-                    queries = []
-                    for row in rows:
-                        row = dict(row)
-                        try:
-                            queries.append(
-                                TableQuery(
-                                    query=row["query_text"],
-                                    userName=row["user_name"],
-                                    startTime=str(row["start_time"]),
-                                    endTime=str(row["end_time"]),
-                                    analysisDate=row["start_time"],
-                                    aborted=self.get_aborted_status(row),
-                                    databaseName=self.get_database_name(row),
-                                    duration=row.get("duration"),
-                                    serviceName=self.config.serviceName,
-                                    databaseSchema=self.get_schema_name(row),
+                        queries = []
+                        for row in rows:
+                            row = dict(row)
+                            try:
+                                query_type = row.get("query_type")
+                                queries.append(
+                                    TableQuery(
+                                        query=self.format_query(row["query_text"]),
+                                        query_type=query_type,
+                                        exclude_usage=self.check_life_cycle_query(
+                                            query_type=query_type
+                                        ),
+                                        userName=row["user_name"],
+                                        startTime=str(row["start_time"]),
+                                        endTime=str(row["end_time"]),
+                                        analysisDate=row["start_time"],
+                                        aborted=self.get_aborted_status(row),
+                                        databaseName=self.get_database_name(row),
+                                        duration=row.get("duration"),
+                                        serviceName=self.config.serviceName,
+                                        databaseSchema=self.get_schema_name(row),
+                                    )
                                 )
-                            )
-                        except Exception as exc:
-                            logger.debug(traceback.format_exc())
-                            logger.warning(
-                                f"Unexpected exception processing row [{row}]: {exc}"
-                            )
-                yield TableQueries(queries=queries)
+                            except Exception as exc:
+                                logger.debug(traceback.format_exc())
+                                logger.warning(
+                                    f"Unexpected exception processing row [{row}]: {exc}"
+                                )
+                    yield TableQueries(queries=queries)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")
 
-    def next_record(self) -> Iterable[TableQuery]:
+    def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
         for table_queries in self.get_table_query():
             if table_queries:
-                yield table_queries
+                yield Either(right=table_queries)

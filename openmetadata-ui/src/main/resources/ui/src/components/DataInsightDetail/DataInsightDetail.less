@@ -17,13 +17,14 @@
 @summary-card-bg-hover: #f0f1f3;
 
 .data-insight-card {
+  border-radius: 10px;
   .ant-card-head {
     border-bottom: none;
     padding: 8px 16px 0px;
   }
   .custom-data-insight-tooltip {
     .ant-card-head {
-      border-bottom: 1px solid @border-gray-color;
+      border-bottom: 1px solid @border-color;
     }
   }
   .ant-card-body {
@@ -32,12 +33,20 @@
 }
 
 .ant-typography.data-insight-label-text {
+  margin-bottom: 4px;
   color: @label-color;
+}
+.ant-typography.summary-card-description {
+  font-weight: 500;
+  font-size: 18px;
+  margin-bottom: 0;
 }
 
 .summary-card-item {
   cursor: pointer;
-  padding: 8px;
+  border: @global-border;
+  border-radius: 10px;
+  padding: 16px;
   &:hover {
     background-color: @summary-card-bg-hover;
     border-radius: 6px;

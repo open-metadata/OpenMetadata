@@ -27,16 +27,18 @@
       "type": "string",
       "format": "uri"
     },
-    "username": {
-      "title": "Username",
-      "description": "Username for Tableau.",
-      "type": "string"
-    },
-    "password": {
-      "title": "Password",
-      "description": "Password for Tableau.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "mask": true,
+      "title": "Authentication type for Tableau",
+      "description": "Types of methods used to authenticate to the tableau instance",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/credentials/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/accessTokenAuth.json"
+        }
+      ]
     },
     "apiVersion": {
       "title": "API Version",
@@ -53,22 +55,17 @@
       "description": "Tableau Site Url.",
       "type": "string"
     },
-    "personalAccessTokenName": {
-      "title": "Personal Access Token",
-      "description": "Personal Access Token Name.",
-      "type": "string"
-    },
-    "personalAccessTokenSecret": {
-      "title": "Personal Access Token Secret",
-      "description": "Personal Access Token Secret.",
-      "type": "string",
-      "format": "password"
-    },
     "env": {
       "title": "Tableau Environment",
       "description": "Tableau Environment Name.",
       "type": "string",
       "default": "tableau_prod"
+    },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Pagination limit used while querying the tableau metadata API for getting data sources",
+      "type": "integer",
+      "default": 10
     },
     "verifySSL": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
@@ -83,5 +80,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["apiVersion", "env"]
+  "required": ["apiVersion", "env", "hostPort"]
 }

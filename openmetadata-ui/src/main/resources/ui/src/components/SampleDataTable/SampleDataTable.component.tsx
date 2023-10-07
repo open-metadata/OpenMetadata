@@ -12,95 +12,118 @@
  */
 
 import {
-  faChevronLeft,
-  faChevronRight,
-} from '@fortawesome/free-solid-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Space, Typography } from 'antd';
+  Button,
+  Dropdown,
+  Space,
+  Table as AntdTable,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ROUTES } from 'constants/constants';
-import { lowerCase } from 'lodash';
-import React, {
-  FunctionComponent,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { getSampleDataByTableId } from 'rest/tableAPI';
+import { t } from 'i18next';
+import { isEmpty, lowerCase } from 'lodash';
+import { observer } from 'mobx-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AppState from '../../AppState';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
+import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
-import { Table, TableData } from '../../generated/entity/data/table';
+import { DROPDOWN_ICON_SIZE_PROPS } from '../../constants/ManageButton.constants';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { LOADING_STATE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import { isEven } from '../../utils/CommonUtils';
+import {
+  deleteSampleDataByTableId,
+  getSampleDataByTableId,
+} from '../../rest/tableAPI';
+import { getEntityDeleteMessage, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
 import { RowData } from './RowData';
+import {
+  SampleData,
+  SampleDataProps,
+  SampleDataType,
+} from './sample.interface';
 import './SampleDataTable.style.less';
 
-export interface SampleColumns {
-  name: string;
-  dataType: string;
-}
+const SampleDataTable = ({
+  isTableDeleted,
+  tableId,
+  ownerId,
+  permissions,
+}: SampleDataProps) => {
+  const { isTourPage } = useTourProvider();
 
-type SampleData = {
-  columns?: Array<SampleColumns>;
-  rows?: TableData['rows'];
-};
-
-interface Props {
-  tableId: string;
-}
-
-const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
-  const tableRef = useRef<HTMLDivElement>(null);
-  const location = useLocation();
   const [sampleData, setSampleData] = useState<SampleData>();
-  const [scrollOffset, setScrollOffSet] = useState<number>(0);
-  const [containerWidth, setContainerWidth] = useState<number>(0);
-  const [scrollHandle, setScrollHandle] = useState<{
-    left: boolean;
-    right: boolean;
-  }>({ left: true, right: true });
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [deleteState, setDeleteState] = useState(LOADING_STATE.INITIAL);
+  const [showActions, setShowActions] = useState(false);
 
-  const scrollHandler = (scrollOffset: number) => {
-    if (tableRef.current) {
-      tableRef.current.scrollLeft += scrollOffset;
-      setScrollOffSet(tableRef.current.scrollLeft);
-    }
-  };
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails]
+  );
 
-  useLayoutEffect(() => {
-    setContainerWidth(
-      (tableRef.current?.scrollWidth ?? 0) -
-        (tableRef.current?.clientWidth ?? 0)
-    );
-  }, []);
+  const hasPermission = useMemo(
+    () =>
+      permissions.EditAll ||
+      permissions.EditSampleData ||
+      currentUser?.id === ownerId,
+    [ownerId, permissions, currentUser]
+  );
+
+  const handleDeleteModal = useCallback(
+    () => setIsDeleteModalOpen((prev) => !prev),
+    []
+  );
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
     const updatedColumns = sampleData?.columns?.map((column) => {
       const matchedColumn = columns.find((col) => col.name === column);
 
-      if (matchedColumn) {
-        return {
-          name: matchedColumn.name,
-          dataType: matchedColumn.dataType,
-        };
-      } else {
-        return {
-          name: column,
-          dataType: '',
-        };
-      }
+      return {
+        name: column,
+        dataType: matchedColumn?.dataType ?? '',
+        title: (
+          <Space direction="vertical" size={0}>
+            <Typography.Text> {column}</Typography.Text>
+            {matchedColumn?.dataType && (
+              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+                matchedColumn?.dataType ?? ''
+              )})`}</Typography.Text>
+            )}
+          </Space>
+        ),
+        dataIndex: column,
+        key: column,
+        accessor: column,
+        render: (data: SampleDataType) => <RowData data={data} />,
+      };
+    });
+
+    const data = (sampleData?.rows ?? []).map((item) => {
+      const dataObject: Record<string, SampleDataType> = {};
+      (sampleData?.columns ?? []).forEach((col, index) => {
+        dataObject[col] = item[index];
+      });
+
+      return dataObject;
     });
 
     return {
-      columns: updatedColumns as SampleColumns[] | undefined,
-      rows: sampleData?.rows,
+      columns: updatedColumns,
+      rows: data,
     };
   };
 
@@ -115,18 +138,66 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
     }
   };
 
-  useEffect(() => {
-    const rFlag = scrollOffset !== containerWidth;
-    const lFlag = scrollOffset > 0;
-    setScrollHandle((pre) => ({ ...pre, right: rFlag, left: lFlag }));
-  }, [scrollOffset, containerWidth]);
+  const handleDeleteSampleData = async () => {
+    setDeleteState(LOADING_STATE.WAITING);
+
+    try {
+      await deleteSampleDataByTableId(tableId);
+      handleDeleteModal();
+      fetchSampleData();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.sample-data'),
+        })
+      );
+    } finally {
+      setDeleteState(LOADING_STATE.SUCCESS);
+    }
+  };
+
+  const manageButtonContent: ItemType[] = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.delete-entity-type-action-description', {
+            entityType: t('label.sample-data'),
+          })}
+          icon={
+            <IconDelete
+              className="m-t-xss"
+              {...DROPDOWN_ICON_SIZE_PROPS}
+              name="Delete"
+            />
+          }
+          id="delete-button"
+          name={t('label.delete')}
+        />
+      ),
+      key: 'delete-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        handleDeleteModal();
+      },
+    },
+  ];
 
   useEffect(() => {
     setIsLoading(true);
-    if (tableId && !location.pathname.includes(ROUTES.TOUR)) {
+    if (!isTableDeleted && tableId && !isTourPage) {
       fetchSampleData();
     } else {
       setIsLoading(false);
+    }
+    if (isTourPage) {
+      setSampleData(
+        getSampleDataWithType({
+          columns: mockDatasetData.tableDetails.columns,
+          sampleData: mockDatasetData.sampleData,
+        } as unknown as Table)
+      );
     }
   }, [tableId]);
 
@@ -134,114 +205,84 @@ const SampleDataTable: FunctionComponent<Props> = ({ tableId }: Props) => {
     return <Loader />;
   }
 
+  if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
+    return (
+      <ErrorPlaceHolder className="error-placeholder">
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.view-sample-data-entity"
+            renderElement={
+              <a
+                href={WORKFLOWS_PROFILER_DOCS}
+                rel="noreferrer"
+                style={{ color: '#1890ff' }}
+                target="_blank"
+              />
+            }
+            values={{
+              entity: t('label.profiler-ingestion'),
+            }}
+          />
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
+
   return (
     <div
-      className="tw-relative tw-flex tw-justify-between"
+      className={classNames('m-md', {
+        'h-70vh overflow-hidden': isTourPage,
+      })}
       data-testid="sample-data"
-      onScrollCapture={() => {
-        setScrollOffSet(tableRef.current?.scrollLeft ?? 0);
-      }}>
-      {scrollHandle.left ? (
-        <button
-          className="tw-border tw-border-main tw-fixed tw-left-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
-          onClick={() => scrollHandler(-50)}>
-          <FontAwesomeIcon
-            className="tw-text-grey-muted"
-            icon={faChevronLeft}
-          />
-        </button>
-      ) : null}
-      {scrollHandle.right ? (
-        <button
-          className="tw-border tw-border-main tw-fixed tw-right-7 tw-top-2/3 tw-rounded-full tw-shadow-md tw-z-50 tw-bg-body-main tw-w-8 tw-h-8"
-          onClick={() => scrollHandler(50)}>
-          <FontAwesomeIcon
-            className="tw-text-grey-muted"
-            icon={faChevronRight}
-          />
-        </button>
-      ) : null}
+      id="sampleDataDetails">
+      <Space className="m-b-md justify-end w-full">
+        {hasPermission && (
+          <Dropdown
+            menu={{
+              items: manageButtonContent,
+            }}
+            open={showActions}
+            overlayClassName="manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip placement="right">
+              <Button
+                className="flex-center px-1.5"
+                data-testid="sample-data-manage-button"
+                onClick={() => setShowActions(true)}>
+                <IconDropdown className="anticon self-center " />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        )}
+      </Space>
 
-      {sampleData?.rows?.length && sampleData?.columns?.length ? (
-        <div
-          className="tw-table-responsive tw-overflow-x-auto tw-table-container"
-          ref={tableRef}>
-          <table
-            className="tw-min-w-max tw-w-full tw-table-auto"
-            data-testid="sample-data-table">
-            <thead>
-              <tr className="tableHead-row">
-                {sampleData.columns.map((column) => {
-                  return (
-                    <th
-                      className="tableHead-cell"
-                      data-testid="column-name"
-                      key={column.name}>
-                      <Space direction="vertical" size={0}>
-                        <span>{column.name}</span>
-                        <span className="tw-text-grey-muted">
-                          ({lowerCase(column.dataType)})
-                        </span>
-                      </Space>
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="tw-text-gray-600 tw-text-sm">
-              {sampleData?.rows?.map((row, rowIndex) => {
-                return (
-                  <tr
-                    className={classNames(
-                      'tableBody-row',
-                      !isEven(rowIndex + 1) ? 'odd-row' : null
-                    )}
-                    data-testid="row"
-                    key={rowIndex}>
-                    {row.map((data, index) => {
-                      return (
-                        <td
-                          className="tableBody-cell"
-                          data-testid="cell"
-                          key={index}>
-                          <RowData data={data} />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <Space align="center" className="w-full" direction="vertical">
-          <ErrorPlaceHolder>
-            {' '}
-            <div className="tw-max-w-x tw-text-center">
-              <Typography.Paragraph style={{ marginBottom: '4px' }}>
-                {' '}
-                No sample data available
-              </Typography.Paragraph>
-              <Typography.Paragraph>
-                {' '}
-                To view Sample Data, run the Profiler Ingestion. Please refer to
-                this doc to schedule the{' '}
-                <Link
-                  className="tw-ml-1"
-                  target="_blank"
-                  to={{
-                    pathname: WORKFLOWS_PROFILER_DOCS,
-                  }}>
-                  Profiler Ingestion
-                </Link>
-              </Typography.Paragraph>
-            </div>
-          </ErrorPlaceHolder>
-        </Space>
+      <AntdTable
+        bordered
+        columns={sampleData?.columns}
+        data-testid="sample-data-table"
+        dataSource={sampleData?.rows}
+        pagination={false}
+        rowKey="name"
+        scroll={{ x: true }}
+        size="small"
+      />
+
+      {isDeleteModalOpen && (
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
+          entityName={t('label.sample-data')}
+          entityType={EntityType.SAMPLE_DATA}
+          loadingState={deleteState}
+          visible={isDeleteModalOpen}
+          onCancel={handleDeleteModal}
+          onConfirm={handleDeleteSampleData}
+        />
       )}
     </div>
   );
 };
 
-export default withLoader<Props>(SampleDataTable);
+export default withLoader<SampleDataProps>(observer(SampleDataTable));

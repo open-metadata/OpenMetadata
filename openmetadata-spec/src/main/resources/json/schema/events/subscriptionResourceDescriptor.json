@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/events/subscriptionResourceDescriptor.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SubscriptionResourceDescriptor",
+  "description": "Subscription descriptor",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.SubscriptionResourceDescriptor",
+  "definitions": {
+    "operation": {
+      "javaType": "org.openmetadata.schema.type.SubscriptionFilterOperation",
+      "description": "This schema defines all possible filter operations on metadata of entities in OpenMetadata.",
+      "type": "string",
+      "enum": [
+        "matchAnySource",
+        "matchAnyOwnerName",
+        "matchAnyEntityFqn",
+        "matchAnyEntityId",
+        "matchAnyEventType",
+        "matchTestResult",
+        "matchUpdatedBy",
+        "matchIngestionPipelineState",
+        "matchAnyFieldChange"
+      ],
+      "javaEnums": [
+        {
+          "name": "matchAnySource"
+        },
+        {
+          "name": "matchAnyOwnerName"
+        },
+        {
+          "name": "matchAnyEntityFqn"
+        },
+        {
+          "name": "matchAnyEntityId"
+        },
+        {
+          "name": "matchAnyEventType"
+        },
+        {
+          "name": "matchTestResult"
+        },
+        {
+          "name": "matchUpdatedBy"
+        },
+        {
+          "name": "matchIngestionPipelineState"
+        },
+        {
+          "name": "matchAnyFieldChange"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the resource. For entity related resources, resource name is same as the entity name. Some resources such as lineage are not entities but are resources.",
+      "type": "string"
+    },
+    "supportedFilters": {
+      "description": "List of operations supported filters by the resource.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/operation"
+      }
+    }
+  },
+  "additionalProperties": false
+}

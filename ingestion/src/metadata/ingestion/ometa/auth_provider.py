@@ -11,7 +11,6 @@
 """
 Interface definition for an Auth provider
 """
-import http.client
 import json
 import os.path
 import sys
@@ -298,17 +297,20 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         return cls(config)
 
     def auth_token(self) -> None:
-        conn = http.client.HTTPSConnection(self.security_config.domain)
+
         payload = (
             f"grant_type=client_credentials&client_id={self.security_config.clientId}"
             f"&client_secret={self.security_config.secretKey.get_secret_value()}"
             f"&audience=https://{self.security_config.domain}/api/v2/"
         )
         headers = {"content-type": "application/x-www-form-urlencoded"}
-        conn.request(
-            "POST", f"/{self.security_config.domain}/oauth/token", payload, headers
+        res = requests.post(
+            url=f"https://{self.security_config.domain}/oauth/token",
+            data=payload,
+            headers=headers,
+            timeout=60 * 5,
         )
-        res = conn.getresponse()
+
         data = json.loads(res.read().decode("utf-8"))
 
         token = data.get(ACCESS_TOKEN)

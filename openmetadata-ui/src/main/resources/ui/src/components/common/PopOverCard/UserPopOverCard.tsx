@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Button, Popover, Space } from 'antd';
+import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, {
   FC,
@@ -21,13 +22,15 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
 import AppState from '../../../AppState';
+import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
+import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName, getNonDeletedTeams } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { getUserByName } from '../../../rest/userAPI';
+import { getNonDeletedTeams } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
@@ -42,9 +45,9 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const getData = () => {
-    const userdetails = AppState.userDataProfiles[userName];
-    if (userdetails) {
-      setUserData(userdetails);
+    const userDetails = AppState.userDataProfiles[userName];
+    if (userDetails) {
+      setUserData(userDetails);
       setIsLoading(false);
     } else {
       if (type === 'user') {
@@ -66,21 +69,24 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const teams = getNonDeletedTeams(userData.teams ?? []);
 
     return teams?.length ? (
-      <p className="tw-mt-2">
-        <SVGIcons alt="icon" className="tw-w-4" icon={Icons.TEAMS_GREY} />
-        <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
-          Teams
-        </span>
-        <span className="tw-flex tw-flex-wrap tw-mt-1">
-          {teams.map((team, i) => (
+      <div className="m-t-xs">
+        <p className="d-flex items-center">
+          <IconTeams height={16} width={16} />
+          <span className="m-r-xs m-l-xss align-middle font-medium">
+            {t('label.team-plural')}
+          </span>
+        </p>
+
+        <p className="d-flex flex-wrap m-t-xss">
+          {teams.map((team) => (
             <span
-              className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
-              key={i}>
+              className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss"
+              key={team.id}>
               {team?.displayName ?? team?.name}
             </span>
           ))}
-        </span>
-      </p>
+        </p>
+      </div>
     ) : null;
   };
 
@@ -89,26 +95,29 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const isAdmin = userData?.isAdmin;
 
     return roles?.length ? (
-      <p className="tw-mt-2">
-        <SVGIcons alt="icon" className="tw-w-4" icon={Icons.USERS} />
-        <span className="tw-mr-2 tw-ml-1 tw-align-middle tw-font-medium">
-          Roles
-        </span>
-        <span className="tw-flex tw-flex-wrap tw-mt-1">
+      <div className="m-t-xs">
+        <p className="d-flex items-center">
+          <IconUsers height={16} width={16} />
+          <span className="m-r-xs m-l-xss align-middle font-medium">
+            {t('label.role-plural')}
+          </span>
+        </p>
+
+        <span className="d-flex flex-wrap m-t-xss">
           {isAdmin && (
-            <span className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs">
+            <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss">
               {TERM_ADMIN}
             </span>
           )}
-          {roles.map((role, i) => (
+          {roles.map((role) => (
             <span
-              className="tw-bg-gray-200 tw-rounded tw-px-1 tw-text-grey-body tw-m-0.5 tw-text-xs"
-              key={i}>
+              className="bg-grey rounded-4 p-x-xs text-xs m-b-xss"
+              key={role.id}>
               {role?.displayName ?? role?.name}
             </span>
           ))}
         </span>
-      </p>
+      </div>
     ) : null;
   };
 
@@ -117,25 +126,24 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const displayName = getEntityName(userData as unknown as EntityReference);
 
     return (
-      <div className="tw-flex">
-        <div className="tw-mr-2">
-          <ProfilePicture id="" name={userName} width="24" />
-        </div>
-        <div className="tw-self-center">
-          <button
-            className="tw-text-info"
+      <Space align="center">
+        <ProfilePicture id="" name={userName} width="24" />
+        <div className="self-center">
+          <Button
+            className="text-info p-0"
+            type="link"
             onClick={(e) => {
               e.stopPropagation();
               onTitleClickHandler(getUserPath(name));
             }}>
-            <span className="tw-font-medium tw-mr-2">{displayName}</span>
-          </button>
+            <span className="font-medium m-r-xs">{displayName}</span>
+          </Button>
           {displayName !== name ? (
-            <span className="tw-text-grey-muted">{name}</span>
+            <span className="text-grey-muted">{name}</span>
           ) : null}
           {isEmpty(userData) && <span>{userName}</span>}
         </div>
-      </div>
+      </Space>
     );
   };
 
@@ -149,9 +157,9 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
         {isLoading ? (
           <Loader size="small" />
         ) : (
-          <div className="tw-w-80">
+          <div className="w-40">
             {isEmpty(userData) ? (
-              <span>No data available</span>
+              <span>{t('message.no-data-available')}</span>
             ) : (
               <Fragment>
                 <UserTeams />
@@ -166,7 +174,6 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
 
   return (
     <Popover
-      destroyTooltipOnHide
       align={{ targetOffset: [0, -10] }}
       content={<PopoverContent />}
       overlayClassName="ant-popover-card"

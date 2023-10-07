@@ -25,7 +25,7 @@ import boto3
 import botocore
 from moto import mock_s3
 
-from metadata.generated.schema.entity.data.table import ColumnProfile
+from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -33,13 +33,14 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 BUCKET_NAME = "MyBucket"
 INGESTION_CONFIG = {
@@ -97,7 +98,7 @@ class DatalakeProfilerTestE2E(TestCase):
             region_name="us-weat-1",
         )
 
-        # check that we are not running our test againsta real bucket
+        # check that we are not running our test against a real bucket
         try:
             s3 = boto3.resource(
                 "s3",
@@ -132,10 +133,10 @@ class DatalakeProfilerTestE2E(TestCase):
             self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
 
         # Ingest our S3 data
-        ingestion_workflow = Workflow.create(INGESTION_CONFIG)
+        ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
+        print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
     def test_datalake_profiler_workflow(self):
@@ -172,6 +173,141 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert table_profile.entities
         assert column_profile.entities
+
+    def test_values_partitioned_datalake_profiler_workflow(self):
+        """Test partitioned datalake profiler workflow"""
+        workflow_config = deepcopy(INGESTION_CONFIG)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "first_name",
+                            "partitionIntervalType": "COLUMN-VALUE",
+                            "partitionValues": ["John"],
+                        },
+                    }
+                ]
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 1.0
+
+    def test_datetime_partitioned_datalake_profiler_workflow(self):
+        """Test partitioned datalake profiler workflow"""
+        workflow_config = deepcopy(INGESTION_CONFIG)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "birthdate",
+                            "partitionIntervalType": "TIME-UNIT",
+                            "partitionIntervalUnit": "YEAR",
+                            "partitionInterval": 35,
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 2.0
+
+    def test_integer_range_partitioned_datalake_profiler_workflow(self):
+        """Test partitioned datalake profiler workflow"""
+        workflow_config = deepcopy(INGESTION_CONFIG)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "profileSample": 100,
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "age",
+                            "partitionIntervalType": "INTEGER-RANGE",
+                            "partitionIntegerRangeStart": 35,
+                            "partitionIntegerRangeEnd": 44,
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 2.0
 
     def tearDown(self):
         s3 = boto3.resource(

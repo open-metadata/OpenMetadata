@@ -37,8 +37,21 @@
     "owner": {
       "description": "Owner of this pipeline service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Pipeline Service belongs to.",
+      "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
-  "required": ["name", "serviceType", "connection"],
+  "required": ["name", "serviceType"],
   "additionalProperties": false
 }

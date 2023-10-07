@@ -21,8 +21,8 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "service": {
-      "description": "Link to the messaging service where this topic is hosted in",
-      "$ref": "../../type/entityReference.json"
+      "description": "Fully qualified name of the messaging service where this topic is hosted in",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "messageSchema": {
       "$ref": "../../type/schema.json"
@@ -38,11 +38,6 @@
       "items": {
         "$ref": "../../entity/data/topic.json#/definitions/cleanupPolicy"
       }
-    },
-    "sampleData": {
-      "description": "Sample data for a topic.",
-      "$ref": "../../entity/data/topic.json#/definitions/topicSampleData",
-      "default": null
     },
     "replicationFactor": {
       "description": "Replication Factor in integer (more than 1).",
@@ -84,6 +79,26 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of topic.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Topic belongs to.",
+      "type": "string",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service", "partitions"],

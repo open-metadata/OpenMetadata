@@ -15,8 +15,14 @@ Helper module for test suite functions
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from datetime import datetime
+from typing import Callable, List, Optional
 
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
+)
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 
 
@@ -49,3 +55,30 @@ def get_test_case_param_value(
 
     pre_processed_value = pre_processor(value)
     return type_(pre_processed_value)
+
+
+def build_test_case_result(
+    execution_datetime: datetime,
+    status: TestCaseStatus,
+    result: str,
+    test_result_value: List[TestResultValue],
+    sample_data: Optional[str] = None,
+) -> TestCaseResult:
+    """create a test case result object
+
+    Args:
+        execution_datetime (datetime): execution datetime of the test
+        status (TestCaseStatus): failed, succeed, aborted
+        result (str): message to display
+        testResultValue (List[TestResultValue]): values for the test result
+
+    Returns:
+        TestCaseResult:
+    """
+    return TestCaseResult(
+        timestamp=execution_datetime,
+        testCaseStatus=status,
+        result=result,
+        testResultValue=test_result_value,
+        sampleData=sample_data,
+    )

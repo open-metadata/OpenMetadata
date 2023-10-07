@@ -12,31 +12,31 @@
  */
 
 import { AxiosError } from 'axios';
-import { OidcUser } from 'components/authentication/auth-provider/AuthProvider.interface';
 import { isEqual, isUndefined } from 'lodash';
 import { SearchedUsersAndTeams } from 'Models';
+import AppState from '../AppState';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { SettledStatus } from '../enums/axios.enum';
+import { SearchIndex } from '../enums/search.enum';
+import {
+  RawSuggestResponse,
+  SearchResponse,
+} from '../interface/search.interface';
 import {
   getSearchedTeams,
   getSearchedUsers,
   getSuggestedTeams,
   getSuggestedUsers,
-} from 'rest/miscAPI';
-import { getUserById, getUserByName, getUsers } from 'rest/userAPI';
-import AppState from '../AppState';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { SettledStatus } from '../enums/axios.enum';
-import { SearchIndex } from '../enums/search.enum';
-import { User } from '../generated/entity/teams/user';
-import {
-  RawSuggestResponse,
-  SearchResponse,
-} from '../interface/search.interface';
+} from '../rest/miscAPI';
+import { getUserById, getUserByName, getUsers } from '../rest/userAPI';
+import { OidcUser } from './../components/authentication/auth-provider/AuthProvider.interface';
+import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
 
 // Moving this code here from App.tsx
 export const getAllUsersList = (arrQueryFields = ''): void => {
-  getUsers(arrQueryFields, 1)
+  getUsers({ fields: arrQueryFields, limit: 1 })
     .then((res) => {
       AppState.updateUsers(res.data);
     })
@@ -110,7 +110,12 @@ export const fetchUserProfilePic = (userId?: string, username?: string) => {
       const userData = res as User;
       const profile = userData.profile?.images?.image512 || '';
 
-      AppState.updateUserProfilePic(userData.id, userData.name, profile);
+      AppState.updateUserProfilePic(
+        userData.id,
+        userData.name,
+        profile,
+        userData.displayName
+      );
     })
     .catch((err: AxiosError) => {
       // ignore exception
@@ -146,46 +151,43 @@ export const getUserProfilePic = (
   return profile;
 };
 
-export const searchFormattedUsersAndTeams = (
+export const searchFormattedUsersAndTeams = async (
   searchQuery = WILD_CARD_CHAR,
   from = 1
-): Promise<SearchedUsersAndTeams> => {
-  return new Promise<SearchedUsersAndTeams>((resolve, reject) => {
-    const teamQuery = `${searchQuery} AND teamType:Group`;
+) => {
+  try {
     const promises = [
       getSearchedUsers(searchQuery, from),
-      getSearchedTeams(teamQuery, from),
+      getSearchedTeams(searchQuery, from, 'teamType:Group'),
     ];
-    Promise.allSettled(promises)
-      .then(([resUsers, resTeams]) => {
-        const users =
-          resUsers.status === SettledStatus.FULFILLED
-            ? formatUsersResponse(
-                (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits
-                  .hits
-              )
-            : [];
-        const teams =
-          resTeams.status === SettledStatus.FULFILLED
-            ? formatTeamsResponse(
-                (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits
-                  .hits
-              )
-            : [];
-        const usersTotal =
-          resUsers.status === SettledStatus.FULFILLED
-            ? resUsers.value.data.hits.total.value
-            : 0;
-        const teamsTotal =
-          resTeams.status === SettledStatus.FULFILLED
-            ? resTeams.value.data.hits.total.value
-            : 0;
-        resolve({ users, teams, usersTotal, teamsTotal });
-      })
-      .catch((err: AxiosError) => {
-        reject(err);
-      });
-  });
+
+    const [resUsers, resTeams] = await Promise.allSettled(promises);
+
+    const users =
+      resUsers.status === SettledStatus.FULFILLED
+        ? formatUsersResponse(
+            (resUsers.value.data as SearchResponse<SearchIndex.USER>).hits.hits
+          )
+        : [];
+    const teams =
+      resTeams.status === SettledStatus.FULFILLED
+        ? formatTeamsResponse(
+            (resTeams.value.data as SearchResponse<SearchIndex.TEAM>).hits.hits
+          )
+        : [];
+    const usersTotal =
+      resUsers.status === SettledStatus.FULFILLED
+        ? resUsers.value.data.hits.total.value
+        : 0;
+    const teamsTotal =
+      resTeams.status === SettledStatus.FULFILLED
+        ? resTeams.value.data.hits.total.value
+        : 0;
+
+    return { users, teams, usersTotal, teamsTotal };
+  } catch (error) {
+    return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
+  }
 };
 
 export const suggestFormattedUsersAndTeams = (

@@ -9,13 +9,13 @@
     {
       "name": "minValue",
       "displayName": "Min",
-      "description": "Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum number of column",
+      "description": "Expected number of columns should be greater than or equal to {minValue}. If minValue is not included, maxValue is treated as upperBound and there will be no minimum",
       "dataType": "INT"
     },
     {
       "name": "maxValue",
       "displayName": "Max",
-      "description": "Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum number of column",
+      "description": "Expected number of columns should be less than or equal to {maxValue}. If maxValue is not included, minValue is treated as lowerBound and there will be no maximum",
       "dataType": "INT"
     }
   ]

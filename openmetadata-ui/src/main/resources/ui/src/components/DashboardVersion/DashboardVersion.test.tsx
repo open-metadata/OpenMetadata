@@ -11,197 +11,223 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import DashboardVersion from './DashboardVersion.component';
-import { DashboardVersionProp } from './DashboardVersion.interface';
 import {
   dashboardVersionProps,
   mockNoChartData,
   mockTagChangeVersion,
-} from './dashboardVersion.mock';
+} from '../../mocks/dashboardVersion.mock';
+import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
+import DashboardVersion from './DashboardVersion.component';
+import { DashboardVersionProp } from './DashboardVersion.interface';
 
-jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
-});
+const mockPush = jest.fn();
 
-jest.mock('../common/description/Description', () => {
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
+  }
+);
+
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
-jest.mock('../common/TabsPane/TabsPane', () => {
-  return jest.fn().mockImplementation(() => <div>TabsPane.component</div>);
-});
+jest.mock(
+  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
+  }
+);
 
-jest.mock('../EntityVersionTimeLine/EntityVersionTimeLine', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>EntityVersionTimeLine.component</div>);
-});
-
-jest.mock('../common/entityPageInfo/EntityPageInfo', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>EntityPageInfo.component</div>);
-});
-
-jest.mock('../Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 
-jest.mock('../../utils/EntityVersionUtils', () => ({
-  getDescriptionDiff: jest.fn(),
-  getDiffByFieldName: jest.fn().mockImplementation(() => ({
-    updated: {
-      name: 'description',
-      oldValue: '',
-      newValue: 'test description',
-    },
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
+  }
+);
+
+jest.mock(
+  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
+);
+
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+  jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
+);
+
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
+  jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
+);
+
+jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
+  jest.fn().mockImplementation(() => <div>TagsViewer</div>)
+);
+
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: jest
+      .fn()
+      .mockImplementation(() => <div>CustomPropertyTable</div>),
+  })
+);
+
+jest.mock('react-router-dom', () => ({
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
   })),
-  getDiffValue: jest.fn(),
-  getTagsDiff: jest.fn(),
+  useParams: jest.fn().mockReturnValue({
+    tab: 'dashboard',
+  }),
+  Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 
 JSON.parse = jest.fn().mockReturnValue([]);
 
-describe('Test DashboardVersion page', () => {
-  it('Checks if the page has all the proper components rendered', async () => {
-    const { container } = render(
-      <DashboardVersion {...dashboardVersionProps} />,
-      {
+describe('DashboardVersion tests', () => {
+  it('Should render component properly if not loading', async () => {
+    await act(async () => {
+      render(<DashboardVersion {...dashboardVersionProps} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
-    );
-    const versionData = await findByTestId(container, 'version-data');
-    const schemaTable = await findByTestId(container, 'schema-table');
-    const entityPageInfo = await findByText(
-      container,
-      'EntityPageInfo.component'
-    );
-    const entityVersionTimeLine = await findByText(
-      container,
+    const versionData = await screen.findByTestId('version-data');
+    const schemaTable = await screen.findByTestId('schema-table');
+
+    const entityVersionTimeLine = await screen.findByText(
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
-    const description = await findByText(container, 'Description.component');
-    const richTextEditorPreviewer = await findByText(
-      container,
+    const tabs = await screen.findByTestId('tabs');
+    const description = await screen.findByText('Description.component');
+    const richTextEditorPreviewer = await screen.findByText(
       'RichTextEditorPreviewer.component'
     );
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
-    expect(entityPageInfo).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(richTextEditorPreviewer).toBeInTheDocument();
   });
 
-  it('Checks if the page has all the proper components rendered, if change version is related to tags', async () => {
-    const { container } = render(
-      <DashboardVersion
-        {...dashboardVersionProps}
-        currentVersionData={
-          mockTagChangeVersion as DashboardVersionProp['currentVersionData']
+  it('Should render components properly if version changes are related to tags', async () => {
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          currentVersionData={
+            mockTagChangeVersion as DashboardVersionProp['currentVersionData']
+          }
+        />,
+        {
+          wrapper: MemoryRouter,
         }
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+      );
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
-    );
-    const versionData = await findByTestId(container, 'version-data');
-    const schemaTable = await findByTestId(container, 'schema-table');
-    const entityPageInfo = await findByText(
-      container,
-      'EntityPageInfo.component'
-    );
-    const entityVersionTimeLine = await findByText(
-      container,
+    const versionData = await screen.findByTestId('version-data');
+    const schemaTable = await screen.findByTestId('schema-table');
+
+    const entityVersionTimeLine = await screen.findByText(
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
-    const description = await findByText(container, 'Description.component');
-    const richTextEditorPreviewer = await findByText(
-      container,
+    const tabs = await screen.findByTestId('tabs');
+    const description = await screen.findByText('Description.component');
+    const richTextEditorPreviewer = await screen.findByText(
       'RichTextEditorPreviewer.component'
     );
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
     expect(schemaTable).toBeInTheDocument();
-    expect(entityPageInfo).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(richTextEditorPreviewer).toBeInTheDocument();
   });
 
-  it('Checks if the page has all the proper components rendered, if the dashboard deleted is undefined', async () => {
-    const { container } = render(
-      <DashboardVersion
-        {...dashboardVersionProps}
-        currentVersionData={mockNoChartData}
-        deleted={undefined}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+  it('Should render component properly if "deleted" field for dashboard is undefined', async () => {
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          currentVersionData={mockNoChartData}
+          deleted={undefined}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
-    );
-    const versionData = await findByTestId(container, 'version-data');
-    const entityPageInfo = await findByText(
-      container,
-      'EntityPageInfo.component'
-    );
-    const entityVersionTimeLine = await findByText(
-      container,
+    const versionData = await screen.findByTestId('version-data');
+    const entityVersionTimeLine = await screen.findByText(
       'EntityVersionTimeLine.component'
     );
-    const tabs = await findByText(container, 'TabsPane.component');
-    const description = await findByText(container, 'Description.component');
+    const tabs = await screen.findByTestId('tabs');
+    const description = await screen.findByText('Description.component');
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
     expect(versionData).toBeInTheDocument();
-    expect(entityPageInfo).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();
     expect(tabs).toBeInTheDocument();
     expect(description).toBeInTheDocument();
   });
 
-  it('If version is loading it should show loading component', async () => {
-    const { container } = render(
-      <DashboardVersion {...dashboardVersionProps} isVersionLoading />,
-      {
+  it('Should display Loader if isVersionLoading is true', async () => {
+    await act(async () => {
+      render(<DashboardVersion {...dashboardVersionProps} isVersionLoading />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const dashboardVersionContainer = await findByTestId(
-      container,
-      'dashboard-version-container'
+    const entityVersionTimeLine = await screen.findByText(
+      'EntityVersionTimeLine.component'
     );
-    const loader = await findByText(container, 'Loader.component');
+    const loader = await screen.findByText('Loader.component');
 
-    expect(dashboardVersionContainer).toBeInTheDocument();
+    expect(entityVersionTimeLine).toBeInTheDocument();
     expect(loader).toBeInTheDocument();
+  });
+
+  it('Should update url on click of tab', async () => {
+    await act(async () => {
+      render(
+        <DashboardVersion
+          {...dashboardVersionProps}
+          entityPermissions={ENTITY_PERMISSIONS}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const customPropertyTabLabel = screen.getByText(
+      'label.custom-property-plural'
+    );
+
+    expect(customPropertyTabLabel).toBeInTheDocument();
+
+    await act(async () => {
+      userEvent.click(customPropertyTabLabel);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(
+      '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
+    );
   });
 });

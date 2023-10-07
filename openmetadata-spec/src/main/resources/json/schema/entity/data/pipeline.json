@@ -8,6 +8,13 @@
   "javaType": "org.openmetadata.schema.entity.data.Pipeline",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
+    "entityName": {
+      "description": "Name of a pipeline. Expected to be unique within a pipeline service.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^((?!::).)*$"
+    },
     "statusType": {
       "javaType": "org.openmetadata.schema.type.StatusType",
       "description": "Enum defining the possible Status.",
@@ -75,9 +82,9 @@
           "description": "Description of this Task.",
           "$ref": "../../type/basic.json#/definitions/markdown"
         },
-        "taskUrl": {
+        "sourceUrl": {
           "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
-          "type": "string"
+          "$ref": "../../type/basic.json#/definitions/sourceUrl"
         },
         "downstreamTasks": {
           "description": "All the tasks that are downstream of this task.",
@@ -136,7 +143,8 @@
           "default": null
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["timestamp", "executionStatus"]
     }
   },
   "properties": {
@@ -146,7 +154,7 @@
     },
     "name": {
       "description": "Name that identifies this pipeline instance uniquely.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
@@ -172,9 +180,9 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "pipelineUrl": {
+    "sourceUrl": {
       "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
-      "type": "string"
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "concurrency": {
       "description": "Concurrency of the Pipeline.",
@@ -203,7 +211,7 @@
     },
     "followers": {
       "description": "Followers of this Pipeline.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {
       "description": "Tags for this Pipeline.",
@@ -241,6 +249,22 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the pipeline in cron format.",
+      "type": "string",
+      "default": null
+    },
+    "domain" : {
+      "description": "Domain the Pipeline belongs to. When not set, the pipeline inherits the domain from the Pipeline service it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["id", "name", "service"],

@@ -18,9 +18,10 @@ No sample data is required beforehand
 """
 import logging
 from copy import deepcopy
+from datetime import datetime, timedelta
 from unittest import TestCase
 
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, Table
@@ -31,10 +32,11 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.orm_profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -76,6 +78,7 @@ class User(Base):
     fullname = Column(String(256))
     nickname = Column(String(256))
     age = Column(Integer)
+    signedup = Column(DateTime)
 
 
 class NewUser(Base):
@@ -85,6 +88,7 @@ class NewUser(Base):
     fullname = Column(String(256))
     nickname = Column(String(256))
     age = Column(Integer)
+    signedup = Column(DateTime)
 
 
 class ProfilerWorkflowTest(TestCase):
@@ -118,27 +122,61 @@ class ProfilerWorkflowTest(TestCase):
             logger.warning("Table Already exists")
 
         data = [
-            User(name="John", fullname="John Doe", nickname="johnny b goode", age=30),
-            User(name="Jane", fullname="Jone Doe", nickname=None, age=31),
-            User(name="Joh", fullname="Joh Doe", nickname=None, age=37),
-            User(name="Jae", fullname="Jae Doe", nickname=None, age=38),
+            User(
+                name="John",
+                fullname="John Doe",
+                nickname="johnny b goode",
+                age=30,
+                signedup=datetime.now() - timedelta(days=10),
+            ),
+            User(
+                name="Jane",
+                fullname="Jone Doe",
+                nickname=None,
+                age=31,
+                signedup=datetime.now() - timedelta(days=2),
+            ),
+            User(
+                name="Joh",
+                fullname="Joh Doe",
+                nickname=None,
+                age=37,
+                signedup=datetime.now() - timedelta(days=1),
+            ),
+            User(
+                name="Jae",
+                fullname="Jae Doe",
+                nickname=None,
+                age=38,
+                signedup=datetime.now() - timedelta(days=1),
+            ),
         ]
         cls.session.add_all(data)
         cls.session.commit()
 
         new_user = [
             NewUser(
-                name="John", fullname="John Doe", nickname="johnny b goode", age=30
+                name="John",
+                fullname="John Doe",
+                nickname="johnny b goode",
+                age=30,
+                signedup=datetime.now() - timedelta(days=10),
             ),
-            NewUser(name="Jane", fullname="Jone Doe", nickname=None, age=31),
+            NewUser(
+                name="Jane",
+                fullname="Jone Doe",
+                nickname=None,
+                age=31,
+                signedup=datetime.now() - timedelta(days=2),
+            ),
         ]
         cls.session.add_all(new_user)
         cls.session.commit()
 
-        ingestion_workflow = Workflow.create(ingestion_config)
+        ingestion_workflow = MetadataWorkflow.create(ingestion_config)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        ingestion_workflow.print_status()
+        print_status(ingestion_workflow)
         ingestion_workflow.stop()
 
     @classmethod
@@ -247,11 +285,11 @@ class ProfilerWorkflowTest(TestCase):
 
         assert not table.tableProfilerConfig
         assert profile.profileSample == 3.0
-        assert profile.rowCount == 3.0
+        assert profile.rowCount == 4.0
         assert profile.profileSampleType == ProfileSampleType.ROWS
 
-    def test_worflow_sample_profile(self):
-        """Test the worflow sample profile gets propagated down to the table profileSample"""
+    def test_workflow_sample_profile(self):
+        """Test the workflow sample profile gets propagated down to the table profileSample"""
         workflow_config = deepcopy(ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
             {
@@ -264,7 +302,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        profiler_workflow.print_status()
+        print_status(profiler_workflow)
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -275,3 +313,266 @@ class ProfilerWorkflowTest(TestCase):
         # setting sampleProfile from config has been temporarly removed
         # up until we split tests and profiling
         assert table.tableProfilerConfig is None
+
+    def test_workflow_datetime_partition(self):
+        """test workflow with partition"""
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "tableFilterPattern": {"includes": ["users"]},
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "profileSample": 100,
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "signedup",
+                            "partitionIntervalType": "TIME-UNIT",
+                            "partitionIntervalUnit": "DAY",
+                            "partitionInterval": 2,
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        print_status(profiler_workflow)
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 4.0
+
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "signedup",
+                            "partitionIntervalType": "TIME-UNIT",
+                            "partitionIntervalUnit": "DAY",
+                            "partitionInterval": 2,
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        print_status(profiler_workflow)
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 4.0
+
+    def test_workflow_integer_range_partition(self):
+        """test workflow with partition"""
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "tableFilterPattern": {"includes": ["users"]},
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "age",
+                            "partitionIntervalType": "INTEGER-RANGE",
+                            "partitionIntegerRangeStart": 37,
+                            "partitionIntegerRangeEnd": 38,
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        print_status(profiler_workflow)
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 4.0
+
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "profileSample": 100,
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "age",
+                            "partitionIntervalType": "INTEGER-RANGE",
+                            "partitionIntegerRangeStart": 37,
+                            "partitionIntegerRangeEnd": 38,
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        print_status(profiler_workflow)
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 4.0
+
+    def test_workflow_values_partition(self):
+        """test workflow with partition"""
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "tableFilterPattern": {"includes": ["users"]},
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "name",
+                            "partitionIntervalType": "COLUMN-VALUE",
+                            "partitionValues": ["John"],
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        print_status(profiler_workflow)
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 4.0
+        assert profile.profileSample is None
+
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                        "profileSample": 100,
+                        "partitionConfig": {
+                            "enablePartitioning": "true",
+                            "partitionColumnName": "name",
+                            "partitionIntervalType": "COLUMN-VALUE",
+                            "partitionValues": ["John"],
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        print_status(profiler_workflow)
+        profiler_workflow.stop()
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+            fields=["tableProfilerConfig"],
+        )
+
+        profile = self.metadata.get_latest_table_profile(
+            table.fullyQualifiedName
+        ).profile
+
+        assert profile.rowCount == 4.0

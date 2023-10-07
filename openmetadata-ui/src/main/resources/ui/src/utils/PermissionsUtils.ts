@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import AppState from '../AppState';
 import {
   OperationPermission,
   ResourceEntity,
   UIPermission,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import AppState from '../AppState';
+} from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   Access,
   Permission,
@@ -124,3 +124,5 @@ export const DEFAULT_ENTITY_PERMISSION = {
 } as OperationPermission;
 
 export const LIST_CAP = 1;
+
+export const ALL_TYPE_RESOURCE_LIST = ['all', 'All'];

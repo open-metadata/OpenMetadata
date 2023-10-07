@@ -21,13 +21,11 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.common_db_source import (
@@ -35,6 +33,7 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.sqlalchemy_utils import is_complex_type
 
 logger = ingestion_logger()
 
@@ -104,15 +103,6 @@ def _get_column_type(self, type_):
     return col_type(*args)
 
 
-def is_complex(type_: str):
-    return (
-        type_.startswith("array")
-        or type_.startswith("map")
-        or type_.startswith("struct")
-        or type_.startswith("row")
-    )
-
-
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
@@ -129,7 +119,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
-            "raw_data_type": c.type if is_complex(c.type) else None,
+            "system_data_type": c.type,
+            "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": None},
         }
         for c in metadata.columns
@@ -142,7 +133,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "default": None,
             "autoincrement": False,
             "comment": c.comment,
-            "raw_data_type": c.type if is_complex(c.type) else None,
+            "system_data_type": c.type,
+            "is_complex": is_complex_type(c.type),
             "dialect_options": {"awsathena_partition": True},
         }
         for c in metadata.partition_keys
@@ -150,8 +142,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
+# pylint: disable=unused-argument
+@reflection.cache
+def get_view_definition(self, connection, view_name, schema=None, **kw):
+    """
+    Gets the view definition
+    """
+    full_view_name = f'"{view_name}"' if not schema else f'"{schema}"."{view_name}"'
+    res = connection.execute(f"SHOW CREATE VIEW {full_view_name}").fetchall()
+    if res:
+        return "\n".join(i[0] for i in res)
+    return None
+
+
 AthenaDialect._get_column_type = _get_column_type  # pylint: disable=protected-access
 AthenaDialect.get_columns = get_columns
+AthenaDialect.get_view_definition = get_view_definition
 
 
 class AthenaSource(CommonDbSourceService):
@@ -161,14 +167,14 @@ class AthenaSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AthenaConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AthenaConnection):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def query_table_names_and_types(
         self, schema_name: str

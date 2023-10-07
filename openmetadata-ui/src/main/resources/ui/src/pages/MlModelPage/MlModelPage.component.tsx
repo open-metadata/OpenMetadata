@@ -12,104 +12,52 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import {
-  Edge,
-  EdgeData,
-  LeafNodes,
-  LineagePos,
-  LoadingNodeState,
-} from 'components/EntityLineage/EntityLineage.interface';
-import Loader from 'components/Loader/Loader';
-import MlModelDetailComponent from 'components/MlModelDetail/MlModelDetail.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isNil, isUndefined, omitBy } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isNil, isUndefined, omitBy, toString } from 'lodash';
 import { observer } from 'mobx-react';
-import { getAllFeeds, postFeedById, postThread } from 'rest/feedsAPI';
-import { getLineageByFQN } from 'rest/lineageAPI';
-import { addLineage, deleteLineageEdge } from 'rest/miscAPI';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import MlModelDetailComponent from '../../components/MlModelDetail/MlModelDetail.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getMlModelByFQN,
   patchMlModelDetails,
   removeFollower,
-} from 'rest/mlModelAPI';
-
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { getMlModelPath, getVersionPath } from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Post, Thread, ThreadType } from '../../generated/entity/feed/thread';
+  updateMlModelVotes,
+} from '../../rest/mlModelAPI';
 import {
-  EntityLineage,
-  EntityReference,
-} from '../../generated/type/entityLineage';
-import { Paging } from '../../generated/type/paging';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import jsonData from '../../jsons/en';
-import {
+  addToRecentViewed,
   getCurrentUserId,
   getEntityMissingError,
-  getFeedCounts,
+  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import { getEntityFeedLink, getEntityLineage } from '../../utils/EntityUtils';
-import { deletePost, updateThreadData } from '../../utils/FeedUtils';
-import {
-  defaultFields,
-  getCurrentMlModelTab,
-  mlModelTabs,
-} from '../../utils/MlModelDetailsUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MlModelPage = () => {
+  const { t } = useTranslation();
   const history = useHistory();
-  const { mlModelFqn, tab } = useParams<{ [key: string]: string }>();
+  const { fqn: mlModelFqn } = useParams<{ fqn: string }>();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);
   const [isDetailLoading, setIsDetailLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentMlModelTab(tab));
   const USERId = getCurrentUserId();
-
-  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
-    {} as EntityLineage
-  );
-  const [leafNodes, setLeafNodes] = useState<LeafNodes>({} as LeafNodes);
-  const [isNodeLoading, setNodeLoading] = useState<LoadingNodeState>({
-    id: undefined,
-    state: false,
-  });
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
-  );
-
-  const [entityThread, setEntityThread] = useState<Thread[]>([]);
-  const [isEntityThreadLoading, setIsEntityThreadLoading] =
-    useState<boolean>(false);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-  const [entityFieldTaskCount, setEntityFieldTaskCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
-
-  const [currentVersion, setCurrentVersion] = useState<string>();
-
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -124,207 +72,49 @@ const MlModelPage = () => {
       setPipelinePermissions(entityPermission);
     } catch (error) {
       showErrorToast(
-        jsonData['api-error-messages']['fetch-entity-permissions-error']
+        t('server.fetch-entity-permissions-error', {
+          entity: entityFqn,
+        })
       );
     } finally {
       setIsDetailLoading(false);
     }
   };
 
-  const getLineageData = () => {
-    setIsLineageLoading(true);
-    getLineageByFQN(mlModelFqn, EntityType.MLMODEL)
-      .then((res) => {
-        if (res) {
-          setEntityLineage(res);
-        } else {
-          showErrorToast(jsonData['api-error-messages']['fetch-lineage-error']);
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-error']
-        );
-      })
-      .finally(() => {
-        setIsLineageLoading(false);
-      });
-  };
+  const viewUsagePermission = useMemo(
+    () => mlModelPermissions.ViewAll || mlModelPermissions.ViewUsage,
+    [mlModelPermissions]
+  );
 
-  const setLeafNode = (val: EntityLineage, pos: LineagePos) => {
-    if (pos === 'to' && val.downstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        downStreamNode: [...(prev.downStreamNode ?? []), val.entity.id],
-      }));
-    }
-    if (pos === 'from' && val.upstreamEdges?.length === 0) {
-      setLeafNodes((prev) => ({
-        ...prev,
-        upStreamNode: [...(prev.upStreamNode ?? []), val.entity.id],
-      }));
-    }
-  };
-
-  const entityLineageHandler = (lineage: EntityLineage) => {
-    setEntityLineage(lineage);
-  };
-
-  const loadNodeHandler = (node: EntityReference, pos: LineagePos) => {
-    setNodeLoading({ id: node.id, state: true });
-    getLineageByFQN(node.fullyQualifiedName ?? '', node.type)
-      .then((res) => {
-        if (res) {
-          setLeafNode(res, pos);
-          setEntityLineage(getEntityLineage(entityLineage, res, pos));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['fetch-lineage-node-error']
-          );
-        }
-        setTimeout(() => {
-          setNodeLoading((prev) => ({ ...prev, state: false }));
-        }, 500);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['fetch-lineage-node-error']
-        );
-      });
-  };
-
-  const addLineageHandler = (edge: Edge): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      addLineage(edge)
-        .then(() => {
-          resolve();
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['add-lineage-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const removeLineageHandler = (data: EdgeData) => {
-    deleteLineageEdge(
-      data.fromEntity,
-      data.fromId,
-      data.toEntity,
-      data.toId
-    ).catch((err: AxiosError) => {
-      showErrorToast(
-        err,
-        jsonData['api-error-messages']['delete-lineage-error']
-      );
-    });
-  };
-
-  const activeTabHandler = (tabValue: number) => {
-    const currentTabIndex = tabValue - 1;
-    if (mlModelTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentMlModelTab(mlModelTabs[currentTabIndex].path));
-      history.push({
-        pathname: getMlModelPath(mlModelFqn, mlModelTabs[currentTabIndex].path),
-      });
-    }
-  };
-
-  const fetchEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.MLMODEL,
-      mlModelFqn,
-      setEntityFieldThreadCount,
-      setEntityFieldTaskCount,
-      setFeedCount
-    );
-  };
-
-  const fetchFeedData = async (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    try {
-      setIsEntityThreadLoading(true);
-      const response = await getAllFeeds(
-        getEntityFeedLink(EntityType.MLMODEL, mlModelFqn),
-        after,
-        threadType,
-        feedType,
-        undefined,
-        USERId
-      );
-      const { data, paging: pagingObj } = response;
-      setPaging(pagingObj);
-      setEntityThread((prevData) => [...prevData, ...data]);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['fetch-entity-feed-error']
-      );
-    } finally {
-      setIsEntityThreadLoading(false);
-    }
-  };
-
-  const handleFeedFetchFromFeedList = (
-    after?: string,
-    feedType?: FeedFilter,
-    threadType?: ThreadType
-  ) => {
-    !after && setEntityThread([]);
-    fetchFeedData(after, feedType, threadType);
-  };
-
-  const fetchTabSpecificData = (tabField = '') => {
-    switch (tabField) {
-      case TabSpecificField.LINEAGE: {
-        if (!mlModelDetail.deleted) {
-          if (isEmpty(entityLineage)) {
-            getLineageData();
-          }
-
-          break;
-        }
-
-        break;
-      }
-      case TabSpecificField.ACTIVITY_FEED: {
-        fetchFeedData();
-
-        break;
-      }
-
-      default:
-        break;
-    }
-  };
-
-  const fetchMlModelDetails = (name: string) => {
+  const fetchMlModelDetails = async (name: string) => {
     setIsDetailLoading(true);
-    getMlModelByFQN(name, defaultFields)
-      .then((response) => {
-        const mlModelData = response;
-        if (mlModelData) {
-          setMlModelDetail(mlModelData);
-          setCurrentVersion(mlModelData.version?.toString());
-        } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      })
-      .finally(() => {
-        setIsDetailLoading(false);
+    try {
+      let fields = defaultFields;
+      if (viewUsagePermission) {
+        fields += `,${TabSpecificField.USAGE_SUMMARY}`;
+      }
+      const res = await getMlModelByFQN(name, fields);
+      setMlModelDetail(res);
+      addToRecentViewed({
+        displayName: getEntityName(res),
+        entityType: EntityType.MLMODEL,
+        fqn: res.fullyQualifiedName ?? '',
+        serviceType: res.serviceType,
+        timestamp: 0,
+        id: res.id,
       });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDetailLoading(false);
+    }
   };
+
+  useEffect(() => {
+    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
+      fetchMlModelDetails(mlModelFqn);
+    }
+  }, [mlModelPermissions, mlModelFqn]);
 
   const saveUpdatedMlModelData = (updatedData: Mlmodel) => {
     const jsonPatch = compare(omitBy(mlModelDetail, isUndefined), updatedData);
@@ -335,296 +125,214 @@ const MlModelPage = () => {
   const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
     try {
       const response = await saveUpdatedMlModelData(updatedMlModel);
-      if (response) {
-        const { description, version } = response;
-        setCurrentVersion(version?.toString());
-        setMlModelDetail((preVDetail) => ({
-          ...preVDetail,
-          description: description,
-        }));
-      } else {
-        throw jsonData['api-error-messages']['update-description-error'];
-      }
+      const { description, version } = response;
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        description,
+        version,
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const followMlModel = () => {
-    addFollower(mlModelDetail.id, USERId)
-      .then((res) => {
-        if (res) {
-          const { newValue } = res.changeDescription.fieldsAdded[0];
-
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            followers: [...(mlModelDetail.followers || []), ...newValue],
-          }));
-        } else {
-          throw jsonData['api-error-messages']['update-entity-follow-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-follow-error']
-        );
-      });
-  };
-
-  const unfollowMlModel = () => {
-    removeFollower(mlModelDetail.id, USERId)
-      .then((res) => {
-        if (res) {
-          const { oldValue } = res.changeDescription.fieldsDeleted[0];
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            followers: (mlModelDetail.followers || []).filter(
-              (follower) => follower.id !== oldValue[0].id
-            ),
-          }));
-        } else {
-          showErrorToast(
-            jsonData['api-error-messages']['update-entity-unfollow-error']
-          );
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-entity-unfollow-error']
-        );
-      });
-  };
-
-  const onTagUpdate = (updatedMlModel: Mlmodel) => {
-    saveUpdatedMlModelData(updatedMlModel)
-      .then((res) => {
-        if (res) {
-          setMlModelDetail((preVDetail) => ({
-            ...preVDetail,
-            tags: res.tags,
-          }));
-          setCurrentVersion(res.version?.toString());
-        } else {
-          throw jsonData['api-error-messages']['update-tags-error'];
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          jsonData['api-error-messages']['update-tags-error']
-        );
-      });
-  };
-
-  const settingsUpdateHandler = (updatedMlModel: Mlmodel): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      saveUpdatedMlModelData(updatedMlModel)
-        .then((res) => {
-          if (res) {
-            setMlModelDetail((preVDetail) => ({
-              ...preVDetail,
-              owner: res.owner,
-              tags: res.tags,
-            }));
-            setCurrentVersion(res.version?.toString());
-            resolve();
-          } else {
-            showErrorToast(
-              jsonData['api-error-messages']['update-entity-error']
-            );
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            jsonData['api-error-messages']['update-entity-error']
-          );
-          reject();
-        });
-    });
-  };
-
-  const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
+  const followMlModel = async () => {
     try {
-      const response = await saveUpdatedMlModelData(updatedMlModel);
-
-      if (response) {
-        setMlModelDetail((preVDetail) => ({
-          ...preVDetail,
-          mlFeatures: response.mlFeatures,
-        }));
-        setCurrentVersion(response.version?.toString());
-      } else {
-        throw jsonData['api-error-messages']['unexpected-error'];
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleExtentionUpdate = async (updatedMlModel: Mlmodel) => {
-    try {
-      const data = await saveUpdatedMlModelData(updatedMlModel);
-
-      if (data) {
-        setMlModelDetail(data);
-        setCurrentVersion(data.version?.toString());
-      } else {
-        throw jsonData['api-error-messages']['update-entity-error'];
-      }
+      const res = await addFollower(mlModelDetail.id, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        followers: [...(mlModelDetail.followers || []), ...newValue],
+      }));
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['update-entity-error']
+        t('server.entity-follow-error', {
+          entity: getEntityName(mlModelDetail),
+        })
       );
     }
   };
 
-  const postFeedHandler = async (value: string, threadId: string) => {
-    const data = {
-      message: value,
-      from: currentUser?.name,
-    } as Post;
+  const unFollowMlModel = async () => {
     try {
-      const response = await postFeedById(threadId, data);
-      const { id, posts } = response;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === id) {
-            return { ...response, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
-      fetchEntityFeedCount();
+      const res = await removeFollower(mlModelDetail.id, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        followers: (mlModelDetail.followers ?? []).filter(
+          (follower) => follower.id !== oldValue[0].id
+        ),
+      }));
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['add-feed-error']
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(mlModelDetail),
+        })
+      );
+    }
+  };
+
+  const onTagUpdate = async (updatedMlModel: Mlmodel) => {
+    try {
+      const { tags, version } = await saveUpdatedMlModelData(updatedMlModel);
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        tags: sortTagsCaseInsensitive(tags ?? []),
+        version: version,
+      }));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.tag-plural'),
+        })
+      );
+    }
+  };
+
+  const settingsUpdateHandler = async (
+    updatedMlModel: Mlmodel
+  ): Promise<void> => {
+    try {
+      const { displayName, owner, tags, version } =
+        await saveUpdatedMlModelData(updatedMlModel);
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        displayName,
+        owner,
+        tags,
+        version,
+      }));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: getEntityName(mlModelDetail),
+        })
+      );
+    }
+  };
+
+  const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
+    try {
+      const { mlFeatures, version } = await saveUpdatedMlModelData(
+        updatedMlModel
+      );
+      setMlModelDetail((preVDetail) => ({
+        ...preVDetail,
+        mlFeatures,
+        version,
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const handleExtensionUpdate = async (updatedMlModel: Mlmodel) => {
+    try {
+      const data = await saveUpdatedMlModelData(updatedMlModel);
+      setMlModelDetail(data);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: getEntityName(mlModelDetail),
+        })
       );
     }
   };
 
   const createThread = async (data: CreateThread) => {
     try {
-      const response = await postThread(data);
-      setEntityThread((pre) => [...pre, response]);
-      fetchEntityFeedCount();
+      await postThread(data);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['create-conversation-error']
+        t('server.create-entity-error', {
+          entity: t('label.conversation'),
+        })
       );
     }
   };
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.MLMODEL, mlModelFqn, currentVersion as string)
+      getVersionPath(
+        EntityType.MLMODEL,
+        mlModelFqn,
+        toString(mlModelDetail.version)
+      )
     );
   };
 
-  const deletePostHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread, setEntityThread);
+  const handleToggleDelete = () => {
+    setMlModelDetail((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
   };
 
-  const updateThreadHandler = (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
-    data: Operation[]
-  ) => {
-    updateThreadData(threadId, postId, isThread, data, setEntityThread);
-  };
-
-  const getMlModelDetail = () => {
-    if (!isNil(mlModelDetail) && !isEmpty(mlModelDetail)) {
-      return (
-        <MlModelDetailComponent
-          activeTab={activeTab}
-          createThread={createThread}
-          deletePostHandler={deletePostHandler}
-          descriptionUpdateHandler={descriptionUpdateHandler}
-          entityFieldTaskCount={entityFieldTaskCount}
-          entityFieldThreadCount={entityFieldThreadCount}
-          entityThread={entityThread}
-          feedCount={feedCount}
-          fetchFeedHandler={handleFeedFetchFromFeedList}
-          followMlModelHandler={followMlModel}
-          isEntityThreadLoading={isEntityThreadLoading}
-          lineageTabData={{
-            loadNodeHandler,
-            addLineageHandler,
-            removeLineageHandler,
-            entityLineageHandler,
-            isLineageLoading,
-            entityLineage,
-            lineageLeafNodes: leafNodes,
-            isNodeLoading,
-          }}
-          mlModelDetail={mlModelDetail}
-          paging={paging}
-          postFeedHandler={postFeedHandler}
-          setActiveTabHandler={activeTabHandler}
-          settingsUpdateHandler={settingsUpdateHandler}
-          tagUpdateHandler={onTagUpdate}
-          unfollowMlModelHandler={unfollowMlModel}
-          updateMlModelFeatures={updateMlModelFeatures}
-          updateThreadHandler={updateThreadHandler}
-          version={currentVersion}
-          versionHandler={versionHandler}
-          onExtensionUpdate={handleExtentionUpdate}
-        />
-      );
-    } else {
-      return (
-        <ErrorPlaceHolder>
-          {getEntityMissingError('mlModel', mlModelFqn)}
-        </ErrorPlaceHolder>
-      );
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateMlModelVotes(id, data);
+      const details = await getMlModelByFQN(mlModelFqn, defaultFields);
+      setMlModelDetail(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
-  useEffect(() => {
-    setEntityThread([]);
-  }, [tab]);
+  const updateMlModelDetailsState = useCallback((data) => {
+    const updatedData = data as Mlmodel;
 
-  useEffect(() => {
-    fetchTabSpecificData(mlModelTabs[activeTab - 1].field);
-  }, [activeTab]);
-
-  useEffect(() => {
-    if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
-      fetchMlModelDetails(mlModelFqn);
-      fetchEntityFeedCount();
-    }
-  }, [mlModelPermissions, mlModelFqn]);
+    setMlModelDetail((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
 
+  if (isDetailLoading) {
+    return <Loader />;
+  }
+
+  if (isNil(mlModelDetail) || isEmpty(mlModelDetail)) {
+    return (
+      <ErrorPlaceHolder className="mt-0-important">
+        {getEntityMissingError('mlModel', mlModelFqn)}
+      </ErrorPlaceHolder>
+    );
+  }
+
+  if (!mlModelPermissions.ViewAll && !mlModelPermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <Fragment>
-      {isDetailLoading ? (
-        <Loader />
-      ) : (
-        <>
-          {mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic ? (
-            getMlModelDetail()
-          ) : (
-            <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
-          )}
-        </>
-      )}
-    </Fragment>
+    <MlModelDetailComponent
+      createThread={createThread}
+      descriptionUpdateHandler={descriptionUpdateHandler}
+      fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
+      followMlModelHandler={followMlModel}
+      handleToggleDelete={handleToggleDelete}
+      mlModelDetail={mlModelDetail}
+      settingsUpdateHandler={settingsUpdateHandler}
+      tagUpdateHandler={onTagUpdate}
+      unFollowMlModelHandler={unFollowMlModel}
+      updateMlModelDetailsState={updateMlModelDetailsState}
+      updateMlModelFeatures={updateMlModelFeatures}
+      versionHandler={versionHandler}
+      onExtensionUpdate={handleExtensionUpdate}
+      onUpdateVote={updateVote}
+    />
   );
 };
 

@@ -31,12 +31,12 @@ public final class MessageParser {
 
   private static final String ENTITY_LINK_SEPARATOR = "::";
   // Pattern to match the following markdown entity links:
-  // <#E::{entityType}::{entityFQN}>  -- <#E::table::bigquery_gcp.shopify.raw_product_catalog>
-  // <#E::{entityType}::{entityFQN}::{fieldName}> -- <#E::table::bigquery_gcp.shopify.raw_product_catalog::description>
+  // <#E::{entityType}::{entityFQN}>  -- <#E::table::bigquery_gcp.shopify.product>
+  // <#E::{entityType}::{entityFQN}::{fieldName}> -- <#E::table::bigquery_gcp.shopify.product::description>
   // <#E::{entityType}::{entityFQN}::{fieldName}::{arrayFieldName}>
-  // -- <#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comment>
+  // -- <#E::table::bigquery_gcp.shopify.product::columns::product_id>
   // <#E::{entityType}::{entityFQN}::{fieldName}::{arrayFieldName}::{arrayFieldValue}>
-  // -- <#E::table::bigquery_gcp.shopify.raw_product_catalog::columns::comment::description>
+  // -- <#E::table::bigquery_gcp.shopify.product::columns::product_id::description>
   private static final Pattern ENTITY_LINK_PATTERN =
       Pattern.compile(
           "<#E"
@@ -77,6 +77,10 @@ public final class MessageParser {
       ENTITY_ARRAY_FIELD
     }
 
+    public EntityLink(String entityType, String entityFqn) {
+      this(entityType, entityFqn, null, null, null);
+    }
+
     public EntityLink(
         String entityType, String entityFqn, String fieldName, String arrayFieldName, String arrayFieldValue) {
       if (entityType == null || entityFqn == null) {
@@ -92,18 +96,30 @@ public final class MessageParser {
         if (arrayFieldName == null) {
           throw new IllegalArgumentException(INVALID_ENTITY_LINK);
         }
+        // Entity link example: <#E::table::bigquery_gcp.shopify.product::columns::product_id::description>
+        // FullyQualifiedFieldType: table.columns.member
+        // FullyQualifiedFieldValue: bigQuery_gcp.shopify.product.product_id.description
         this.linkType = LinkType.ENTITY_ARRAY_FIELD;
         this.fullyQualifiedFieldType = String.format("%s.%s.member", entityType, fieldName);
         this.fullyQualifiedFieldValue = String.format("%s.%s.%s", entityFqn, arrayFieldName, arrayFieldValue);
       } else if (arrayFieldName != null) {
+        // Entity link example: <#E::table::bigquery_gcp.shopify.product::columns::product_id>
+        // FullyQualifiedFieldType: table.columns.member
+        // FullyQualifiedFieldValue: bigQuery_gcp.shopify.product.product_id
         this.linkType = LinkType.ENTITY_ARRAY_FIELD;
         this.fullyQualifiedFieldType = String.format("%s.%s.member", entityType, fieldName);
         this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, arrayFieldName);
       } else if (fieldName != null) {
-        this.fullyQualifiedFieldType = String.format("%s.%s", entityType, fieldName);
+        // Entity link example: <#E::table::bigquery_gcp.shopify.product::description>
+        // FullyQualifiedFieldType: table.description
+        // FullyQualifiedFieldValue: bigQuery_gcp.shopify.product.description
         this.linkType = LinkType.ENTITY_REGULAR_FIELD;
+        this.fullyQualifiedFieldType = String.format("%s.%s", entityType, fieldName);
         this.fullyQualifiedFieldValue = String.format("%s.%s", entityFqn, fieldName);
       } else {
+        // Entity link example: <#E::table::bigquery_gcp.shopify.product>
+        // FullyQualifiedFieldType: table
+        // FullyQualifiedFieldValue: bigQuery_gcp.shopify.product
         this.linkType = LinkType.ENTITY;
         this.fullyQualifiedFieldType = entityType;
         this.fullyQualifiedFieldValue = entityFqn;
@@ -111,13 +127,8 @@ public final class MessageParser {
     }
 
     public String getLinkString() {
-      StringBuilder builder = new StringBuilder();
-      builder
-          .append("<#E")
-          .append(ENTITY_LINK_SEPARATOR)
-          .append(entityType)
-          .append(ENTITY_LINK_SEPARATOR)
-          .append(entityFQN);
+      StringBuilder builder = new StringBuilder("<#E");
+      builder.append(ENTITY_LINK_SEPARATOR).append(entityType).append(ENTITY_LINK_SEPARATOR).append(entityFQN);
       if (linkType == LinkType.ENTITY_REGULAR_FIELD || linkType == LinkType.ENTITY_ARRAY_FIELD) {
         builder.append(ENTITY_LINK_SEPARATOR).append(fieldName);
       }

@@ -14,6 +14,7 @@
 import { Tag } from 'antd';
 import classNames from 'classnames';
 import { ArrayChange } from 'diff';
+import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
@@ -29,7 +30,7 @@ export const TagsDiffView = ({
     if (diff.added) {
       return (
         <div
-          className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+          className="d-flex flex-wrap m-y-xs"
           data-testid="diff-added"
           key={uniqueId()}>
           {diff.value.map((tag) => (
@@ -48,7 +49,7 @@ export const TagsDiffView = ({
     if (diff.removed) {
       return (
         <div
-          className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+          className="d-flex flex-wrap m-y-xs"
           data-testid="diff-removed"
           key={uniqueId()}>
           {diff.value.map((tag) => (
@@ -64,16 +65,16 @@ export const TagsDiffView = ({
 
     return (
       <div
-        className="tw-my-2 tw-flex tw-flex-wrap tw-gap-y-1"
+        className="d-flex flex-wrap m-y-xs"
         data-testid="diff-normal"
         key={uniqueId()}>
         {diff.value.length ? (
           diff.value.map((tag) => <Tag key={uniqueId()}>{tag.tagFQN}</Tag>)
         ) : (
           <div
-            className="tw-text-grey-muted tw-text-center"
+            className="text-grey-muted text-center"
             data-testid="noDiff-placeholder">
-            No diff available
+            {t('label.no-diff-available')}
           </div>
         )}
       </div>
@@ -82,7 +83,7 @@ export const TagsDiffView = ({
 
   return (
     <div
-      className={classNames('tw-w-full', className)}
+      className={classNames('w-full', className)}
       data-testid="diff-container">
       {elements}
     </div>

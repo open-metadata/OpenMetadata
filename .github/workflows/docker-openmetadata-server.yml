@@ -29,14 +29,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
         with:
-          java-version: 11
+          java-version: 17
+          distribution: 'temurin'
       
       - name: Install antlr cli
         run: |
           sudo make install_antlr_cli
+
+      - name: Setup jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install jq
 
       - name: Build OpenMetadata Server Application
         env:
@@ -58,7 +64,7 @@ jobs:
     steps:
       - name: Check trigger type
         id: check_trigger
-        run: echo "DOCKER_RELEASE_TAG=0.13.1" >> $GITHUB_OUTPUT
+        run: echo "DOCKER_RELEASE_TAG=1.2.0" >> $GITHUB_OUTPUT
         
       - name: Download application from Artifiact
         uses: actions/download-artifact@v2
@@ -113,14 +119,17 @@ jobs:
   push_to_docker_hub:
     runs-on: ubuntu-latest
     env:
-      DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
+        DOCKER_RELEASE_TAG: ${{ github.event.inputs.DOCKER_RELEASE_TAG }}
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
     needs: [release-project-event-workflow_dispatch, release-project-event-release]  
     steps:
+      - name: Set build arguments
+        run: |
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_ENV
       - name: Check trigger type
         id: check_trigger
         if: ${{ env.DOCKER_RELEASE_TAG == '' }} 
-        run: echo "DOCKER_RELEASE_TAG=0.13.1" >> $GITHUB_ENV
+        run: echo "DOCKER_RELEASE_TAG=1.2.0" >> $GITHUB_ENV
 
       - name: Check out the Repo
         uses: actions/checkout@v3
@@ -143,9 +152,9 @@ jobs:
             if ${{ github.event_name == 'release' }}; then
                 echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
             elif ${{ github.event_name == 'workflow_dispatch' && inputs.push_latest_tag_to_release }}; then
-                echo "tags=openmetadata/server:${{inputs.tag}},openmetadata/server:latest" >> $GITHUB_OUTPUT
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }},openmetadata/server:latest" >> $GITHUB_OUTPUT
             else
-                echo "tags=openmetadata/server:${{ inputs.tag }}" >> $GITHUB_OUTPUT
+                echo "tags=openmetadata/server:${{ env.DOCKER_RELEASE_TAG }}" >> $GITHUB_OUTPUT
             fi
 
       - name: Build and push if event is workflow_dispatch and input is checked
@@ -155,4 +164,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
           tags: ${{ steps.input_check.outputs.tags }}
-          file: ./docker/metadata/Dockerfile
+          file: ./docker/docker-compose-quickstart/Dockerfile
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            COMMIT_ID=${{ env.github.sha }}

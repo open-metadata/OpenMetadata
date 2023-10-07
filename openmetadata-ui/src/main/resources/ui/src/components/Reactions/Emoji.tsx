@@ -82,14 +82,12 @@ const Emoji: FC<EmojiProps> = ({
     const moreList = reactedUserList.slice(8);
 
     return (
-      <p
-        className="tw-w-44 tw-break-normal tw-m-0 tw-p-0"
-        data-testid="popover-content">
+      <p className="w-44 m-0 p-0" data-testid="popover-content">
         {`${visibleList.join(', ')}`}
         {hasMore
           ? `, +${moreList.length} ${t('label.more-lowercase')}`
           : ''}{' '}
-        <span className="tw-font-semibold">
+        <span className="font-semibold">
           {t('message.reacted-with-emoji', { type: reactionType })}
         </span>
       </p>
@@ -101,6 +99,17 @@ const Emoji: FC<EmojiProps> = ({
     setIsClicked(false);
   }, [reaction]);
 
+  const element = React.createElement(
+    'g-emoji',
+    {
+      alias: reactionObject?.alias,
+      className: 'd-flex',
+      'data-testid': 'emoji',
+      'fallback-src': image,
+    },
+    reactionObject?.emoji
+  );
+
   return (
     <Popover
       content={popoverContent}
@@ -110,28 +119,16 @@ const Emoji: FC<EmojiProps> = ({
       zIndex={9999}
       onOpenChange={setVisible}>
       <Button
-        className={classNames('ant-btn-reaction tw-mr-1 d-flex', {
+        className={classNames('ant-btn-reaction m-r-xss flex-center', {
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
         shape="round"
+        size="small"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
-        <div
-          dangerouslySetInnerHTML={{
-            __html: `<g-emoji
-          alias={${reactionObject?.alias}}
-          className="d-flex"
-          data-testid="emoji"
-          fallback-src={${image}}>
-          ${reactionObject?.emoji}
-        </g-emoji>`,
-          }}
-        />
-
-        <span
-          className="tw-text-sm tw-ml-1 self-center"
-          data-testid="emoji-count">
+        {element}
+        <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
           {reactionList.length}
         </span>
       </Button>

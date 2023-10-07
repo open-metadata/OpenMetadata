@@ -11,58 +11,65 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Button, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TabsPane from 'components/common/TabsPane/TabsPane';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainerV1 from 'components/containers/PageContainerV1';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { compare } from 'fast-json-patch';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import Description from '../../components/common/description/Description';
+import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TestCasesTab from 'components/TestCasesTab/TestCasesTab.component';
-import TestSuiteDetails from 'components/TestSuiteDetails/TestSuiteDetails.component';
-import TestSuitePipelineTab from 'components/TestSuitePipelineTab/TestSuitePipelineTab.component';
-import { compare } from 'fast-json-patch';
-import { camelCase, startCase } from 'lodash';
-import { ExtraInfo } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  getListTestCase,
-  getTestSuiteByName,
-  ListTestCaseParams,
-  updateTestSuiteById,
-} from 'rest/testAPI';
-import {
-  getTeamAndUserDetailsPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  pagingObject,
-  ROUTES,
-} from '../../constants/constants';
-import { NO_PERMISSION_TO_VIEW } from '../../constants/HelperTextUtil';
-import { ACTION_TYPE } from '../../enums/common.enum';
-import { OwnerType } from '../../enums/user.enum';
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import DataQualityTab from '../../components/ProfilerDashboard/component/DataQualityTab';
+import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
+import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import jsonData from '../../jsons/en';
-import { getEntityName, getEntityPlaceHolder } from '../../utils/CommonUtils';
+import { useAuth } from '../../hooks/authHooks';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  addTestCaseToLogicalTestSuite,
+  getListTestCase,
+  getTestSuiteByName,
+  ListTestCaseParams,
+  updateTestSuiteById,
+} from '../../rest/testAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
+  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { testSuiteFQN } = useParams<Record<string, string>>();
+  const { fqn: testSuiteFQN } = useParams<{ fqn: string }>();
+  const { isAdminUser } = useAuth();
+  const history = useHistory();
+  const { isAuthDisabled } = useAuthContext();
+
+  const hasAccess = isAdminUser || isAuthDisabled;
+
+  const afterDeleteAction = () => {
+    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+  };
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [isDescriptionEditable, setIsDescriptionEditable] = useState(false);
-  const [isDeleteWidgetVisible, setIsDeleteWidgetVisible] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [testCaseResult, setTestCaseResult] = useState<Array<TestCase>>([]);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
@@ -70,25 +77,12 @@ const TestSuiteDetailsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [testSuitePermissions, setTestSuitePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
+    useState<boolean>(false);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
-  const [activeTab, setActiveTab] = useState<number>(1);
-
-  const tabs = [
-    {
-      name: 'Test Cases',
-      isProtected: false,
-      position: 1,
-    },
-    {
-      name: 'Pipeline',
-      isProtected: false,
-      position: 2,
-    },
-  ];
 
   const { testSuiteDescription, testSuiteId, testOwner } = useMemo(() => {
     return {
@@ -123,15 +117,13 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const fetchTestCases = async (param?: ListTestCaseParams, limit?: number) => {
+  const fetchTestCases = async (param?: ListTestCaseParams) => {
     setIsTestCaseLoading(true);
     try {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
         testSuiteId: testSuiteId,
-        limit: limit || PAGE_SIZE,
-        before: param && param.before,
-        after: param && param.after,
+        orderByLastExecutionDate: true,
         ...param,
       });
 
@@ -139,32 +131,42 @@ const TestSuiteDetailsPage = () => {
       setTestCasesPaging(response.paging);
     } catch {
       setTestCaseResult([]);
-      showErrorToast(jsonData['api-error-messages']['fetch-test-cases-error']);
+      showErrorToast(
+        t('server.entity-fetch-error', {
+          entity: t('label.test-case-plural'),
+        })
+      );
     } finally {
       setIsTestCaseLoading(false);
     }
   };
 
-  const afterSubmitAction = (deletedTest = false) => {
-    fetchTestCases({
-      include: deletedTest ? Include.Deleted : Include.NonDeleted,
-    });
+  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+    try {
+      await addTestCaseToLogicalTestSuite({
+        testCaseIds,
+        testSuiteId: testSuite?.id ?? '',
+      });
+      setIsTestCaseModalOpen(false);
+      fetchTestCases();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: 'owner',
+        fields: 'owner,tests',
+        include: Include.All,
       });
       setSlashedBreadCrumb([
         {
-          name: 'Test Suites',
-          url: ROUTES.TEST_SUITES,
+          name: t('label.test-suite-plural'),
+          url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
         },
         {
-          name: startCase(
-            camelCase(response?.fullyQualifiedName || response?.name)
-          ),
+          name: getEntityName(response),
           url: '',
         },
       ]);
@@ -174,7 +176,9 @@ const TestSuiteDetailsPage = () => {
       setTestSuite(undefined);
       showErrorToast(
         error as AxiosError,
-        jsonData['api-error-messages']['fetch-test-suite-error']
+        t('server.entity-fetch-error', {
+          entity: t('label.test-suite'),
+        })
       );
     }
   };
@@ -185,47 +189,40 @@ const TestSuiteDetailsPage = () => {
         if (res) {
           setTestSuite(res);
         } else {
-          showErrorToast(
-            jsonData['api-error-messages']['unexpected-server-response']
-          );
+          showErrorToast(t('server.unexpected-response'));
         }
       })
       .catch((err: AxiosError) => {
         showErrorToast(
           err,
-          jsonData['api-error-messages'][
-            type === ACTION_TYPE.UPDATE
-              ? 'update-owner-error'
-              : 'remove-owner-error'
-          ]
+          t(
+            `server.entity-${
+              type === ACTION_TYPE.UPDATE ? 'updating' : 'removing'
+            }-error`,
+            {
+              entity: t('label.owner'),
+            }
+          )
         );
       });
   };
 
-  const onUpdateOwner = (updatedOwner: TestSuite['owner']) => {
-    if (updatedOwner) {
+  const onUpdateOwner = useCallback(
+    (updatedOwner: TestSuite['owner']) => {
       const updatedTestSuite = {
         ...testSuite,
-        owner: {
-          ...testSuite?.owner,
-          ...updatedOwner,
-        },
+        owner: updatedOwner
+          ? {
+              ...testOwner,
+              ...updatedOwner,
+            }
+          : undefined,
       } as TestSuite;
 
       updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
-    }
-  };
-
-  const onRemoveOwner = () => {
-    if (testSuite) {
-      const updatedTestSuite = {
-        ...testSuite,
-        owner: undefined,
-      } as TestSuite;
-
-      updateTestSuiteData(updatedTestSuite, ACTION_TYPE.REMOVE);
-    }
-  };
+    },
+    [testOwner, testSuite]
+  );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (testSuite?.description !== updatedHTML) {
@@ -237,7 +234,7 @@ const TestSuiteDetailsPage = () => {
         if (response) {
           setTestSuite(response);
         } else {
-          throw jsonData['api-error-messages']['unexpected-server-response'];
+          throw t('server.unexpected-response');
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -249,45 +246,27 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const onSetActiveValue = (tabValue: number) => {
-    setActiveTab(tabValue);
+  const handleTestCasePaging = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setCurrentPage(currentPage);
+      fetchTestCases({
+        [cursorType]: testCasesPaging[cursorType],
+      });
+    }
   };
 
-  const handleDeleteWidgetVisible = (isVisible: boolean) => {
-    setIsDeleteWidgetVisible(isVisible);
+  const handleTestSuiteUpdate = (testCase?: TestCase) => {
+    if (testCase) {
+      setTestCaseResult((prev) =>
+        prev.map((test) =>
+          test.id === testCase.id ? { ...test, ...testCase } : test
+        )
+      );
+    }
   };
-
-  const handleTestCasePaging = (
-    cursorValue: string | number,
-    activePage?: number | undefined
-  ) => {
-    setCurrentPage(activePage as number);
-    fetchTestCases({
-      [cursorValue]: testCasesPaging[cursorValue as keyof Paging] as string,
-    });
-  };
-
-  const extraInfo: Array<ExtraInfo> = useMemo(
-    () => [
-      {
-        key: 'Owner',
-        value:
-          testOwner?.type === 'team'
-            ? getTeamAndUserDetailsPath(testOwner?.name || '')
-            : getEntityName(testOwner) || '',
-        placeholderText:
-          getEntityPlaceHolder(
-            (testOwner?.displayName as string) || (testOwner?.name as string),
-            testOwner?.deleted
-          ) || '',
-        isLink: testOwner?.type === 'team',
-        openInNewTab: false,
-        profileName:
-          testOwner?.type === OwnerType.USER ? testOwner?.name : undefined,
-      },
-    ],
-    [testOwner]
-  );
 
   useEffect(() => {
     if (testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic) {
@@ -303,53 +282,102 @@ const TestSuiteDetailsPage = () => {
     return <Loader />;
   }
 
+  if (!testSuitePermissions.ViewAll && !testSuitePermissions.ViewBasic) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
-    <>
-      {testSuitePermissions.ViewAll || testSuitePermissions.ViewBasic ? (
-        <PageContainerV1>
-          <Row className="tw-pt-4 tw-px-6 tw-w-full">
-            <Col span={24}>
-              <TestSuiteDetails
-                descriptionHandler={descriptionHandler}
-                extraInfo={extraInfo}
-                handleDeleteWidgetVisible={handleDeleteWidgetVisible}
-                handleDescriptionUpdate={onDescriptionUpdate}
-                handleRemoveOwner={onRemoveOwner}
-                handleUpdateOwner={onUpdateOwner}
-                isDeleteWidgetVisible={isDeleteWidgetVisible}
-                isDescriptionEditable={isDescriptionEditable}
-                permissions={testSuitePermissions}
-                slashedBreadCrumb={slashedBreadCrumb}
-                testSuite={testSuite}
-                testSuiteDescription={testSuiteDescription}
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(testSuite),
+      })}>
+      <Row className="page-container" gutter={[16, 32]}>
+        <Col span={24}>
+          <Space align="center" className="justify-between w-full">
+            <TitleBreadcrumb
+              data-testid="test-suite-breadcrumb"
+              titleLinks={slashedBreadCrumb}
+            />
+            <Space>
+              {(testSuitePermissions.EditAll ||
+                testSuitePermissions.EditTests) && (
+                <Button
+                  data-testid="add-test-case-btn"
+                  type="primary"
+                  onClick={() => setIsTestCaseModalOpen(true)}>
+                  {t('label.add-entity', {
+                    entity: t('label.test-case-plural'),
+                  })}
+                </Button>
+              )}
+              <ManageButton
+                isRecursiveDelete
+                afterDeleteAction={afterDeleteAction}
+                allowSoftDelete={false}
+                canDelete={hasAccess}
+                deleted={testSuite?.deleted}
+                entityId={testSuite?.id}
+                entityName={testSuite?.fullyQualifiedName as string}
+                entityType="testSuite"
               />
-            </Col>
-            <Col className="tw-mt-8" span={24}>
-              <TabsPane
-                activeTab={activeTab}
-                setActiveTab={onSetActiveValue}
-                tabs={tabs}
-              />
-              <div className="tw-mb-4">
-                {activeTab === 1 && (
-                  <TestCasesTab
-                    currentPage={currentPage}
-                    isDataLoading={isTestCaseLoading}
-                    testCasePageHandler={handleTestCasePaging}
-                    testCases={testCaseResult}
-                    testCasesPaging={testCasesPaging}
-                    onTestUpdate={afterSubmitAction}
-                  />
-                )}
-                {activeTab === 2 && <TestSuitePipelineTab />}
-              </div>
-            </Col>
-          </Row>
-        </PageContainerV1>
-      ) : (
-        <ErrorPlaceHolder>{NO_PERMISSION_TO_VIEW}</ErrorPlaceHolder>
-      )}
-    </>
+            </Space>
+          </Space>
+
+          <div className="w-full m-t-xxs m-b-xs">
+            <OwnerLabel
+              hasPermission={hasAccess}
+              owner={testOwner}
+              onUpdate={onUpdateOwner}
+            />
+          </div>
+
+          <Description
+            className="test-suite-description"
+            description={testSuiteDescription || ''}
+            entityName={testSuite?.displayName ?? testSuite?.name}
+            hasEditAccess={hasAccess}
+            isEdit={isDescriptionEditable}
+            onCancel={() => descriptionHandler(false)}
+            onDescriptionEdit={() => descriptionHandler(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
+        </Col>
+
+        <Col span={24}>
+          <DataQualityTab
+            afterDeleteAction={fetchTestCases}
+            isLoading={isTestCaseLoading}
+            pagingData={{
+              currentPage,
+              paging: testCasesPaging,
+              onPagingClick: handleTestCasePaging,
+            }}
+            removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
+            testCases={testCaseResult}
+            onTestCaseResultUpdate={handleTestSuiteUpdate}
+            onTestUpdate={handleTestSuiteUpdate}
+          />
+        </Col>
+        <Col span={24}>
+          <Modal
+            centered
+            destroyOnClose
+            closable={false}
+            footer={null}
+            open={isTestCaseModalOpen}
+            title={t('label.add-entity', {
+              entity: t('label.test-case-plural'),
+            })}
+            width={750}>
+            <AddTestCaseList
+              existingTest={testSuite?.tests ?? []}
+              onCancel={() => setIsTestCaseModalOpen(false)}
+              onSubmit={handleAddTestCaseSubmit}
+            />
+          </Modal>
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

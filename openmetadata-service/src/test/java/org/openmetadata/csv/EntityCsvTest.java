@@ -2,7 +2,6 @@ package org.openmetadata.csv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.recordToString;
@@ -24,7 +23,6 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.csv.CsvImportResult.Status;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.TableDAO;
 import org.openmetadata.service.jdbi3.TableRepository;
 
 public class EntityCsvTest {
@@ -42,7 +40,7 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableDAO.class), Mockito.mock(TableRepository.class));
+    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
   }
 
   @Test
@@ -63,37 +61,16 @@ public class EntityCsvTest {
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
   }
 
-  @Test
-  void test_validateCsvInvalidRecords() throws IOException {
-    // Invalid record 2 - Missing required value in h1
-    // Invalid record 3 - Record with only two fields instead of 3
-    List<String> records = listOf(",2,3", "1,2", "1,2,3");
-    String csv = createCsv(CSV_HEADERS, records);
-
-    TestCsv testCsv = new TestCsv();
-    CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.PARTIAL_SUCCESS, 4, 2, 2);
-
-    String[] expectedRecords = {
-      CsvUtil.recordToString(EntityCsv.getResultHeaders(CSV_HEADERS)),
-      getFailedRecord(",2,3", TestCsv.fieldRequired(0)),
-      getFailedRecord("1,2", TestCsv.invalidFieldCount(3, 2)),
-      getSuccessRecord("1,2,3", ENTITY_CREATED)
-    };
-
-    assertRows(importResult, expectedRecords);
-  }
-
   public static void assertSummary(
       CsvImportResult importResult,
       Status expectedStatus,
       int expectedRowsProcessed,
       int expectedRowsPassed,
       int expectedRowsFailed) {
-    assertEquals(expectedStatus, importResult.getStatus());
-    assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed());
-    assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed());
-    assertEquals(expectedRowsFailed, importResult.getNumberOfRowsFailed());
+    assertEquals(expectedStatus, importResult.getStatus(), importResult.toString());
+    assertEquals(expectedRowsProcessed, importResult.getNumberOfRowsProcessed(), importResult.getImportResultsCsv());
+    assertEquals(expectedRowsPassed, importResult.getNumberOfRowsPassed(), importResult.getImportResultsCsv());
+    assertEquals(expectedRowsFailed, importResult.getNumberOfRowsFailed(), importResult.getImportResultsCsv());
   }
 
   public static void assertRows(CsvImportResult importResult, String... expectedRows) {

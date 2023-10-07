@@ -33,7 +33,9 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.deltalake.metadata import DeltalakeSource
 
 METASTORE_PATH = "/tmp/spark/unit/metastore"
@@ -70,7 +72,8 @@ MOCK_DELTA_CONFIG = {
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
-    name="delta",
+    name="local_databricks",
+    fullyQualifiedName="local_databricks",
     connection=DatabaseConnection(),
     serviceType=DatabaseServiceType.DeltaLake,
 )
@@ -106,7 +109,8 @@ class DeltaLakeUnitTest(TestCase):
         MOCK_DELTA_CONFIG
     )
     delta: DeltalakeSource = DeltalakeSource.create(
-        MOCK_DELTA_CONFIG["source"], config.workflowConfig.openMetadataServerConfig
+        MOCK_DELTA_CONFIG["source"],
+        OpenMetadata(config.workflowConfig.openMetadataServerConfig),
     )
     spark = delta.spark
 
@@ -157,30 +161,29 @@ class DeltaLakeUnitTest(TestCase):
         self.assertEqual(database_names, ["default"])
 
     def test_yield_database(self):
-        database_requests = list(self.delta.yield_database(database_name="default"))
+        database_request = next(
+            self.delta.yield_database(database_name="default")
+        ).right
         expected_database_request = CreateDatabaseRequest(
             name="default",
-            service=EntityReference(
-                id="85811038-099a-11ed-861d-0242ac120002", type="databaseService"
-            ),
+            service=FullyQualifiedEntityName(__root__="local_databricks"),
         )
 
-        self.assertEqual(database_requests, [expected_database_request])
+        self.assertEqual(database_request, expected_database_request)
 
     def test_get_database_schema_names(self):
         schema_names = set(self.delta.get_database_schema_names())
         self.assertEqual(schema_names, {"default", "sample_db"})
 
     def test_yield_database_schema(self):
-        schema_requests = list(self.delta.yield_database_schema(schema_name="default"))
+        schema_request = next(
+            self.delta.yield_database_schema(schema_name="default")
+        ).right
         expected_schema_request = CreateDatabaseSchemaRequest(
-            name="default",
-            database=EntityReference(
-                id="2004514B-A800-4D92-8442-14B2796F712E", type="database"
-            ),
+            name="default", database="delta.default"
         )
 
-        self.assertEqual(schema_requests, [expected_schema_request])
+        self.assertEqual(schema_request, expected_schema_request)
 
     def test_get_tables_name_and_type(self):
         table_names = list(self.delta.get_tables_name_and_type())
@@ -188,9 +191,9 @@ class DeltaLakeUnitTest(TestCase):
         self.assertEqual(table_names, [("my_df", TableType.Regular)])
 
     def test_yield_table(self):
-        table_requests = list(
+        table_request = next(
             self.delta.yield_table(table_name_and_type=("my_df", TableType.Regular))
-        )
+        ).right
 
         expected_columns = [
             Column(name="a", dataType=DataType.BIGINT, dataTypeDisplay="bigint"),
@@ -206,11 +209,8 @@ class DeltaLakeUnitTest(TestCase):
             description="testing around",
             columns=expected_columns,
             tableConstraints=None,
-            databaseSchema=EntityReference(
-                id="92D36A9B-B1A9-4D0A-A00B-1B2ED137ABA5",
-                type="databaseSchema",
-            ),
+            databaseSchema=MOCK_DATABASE_SCHEMA.fullyQualifiedName,
             viewDefinition=None,
         )
 
-        self.assertEqual(table_requests, [expected_table_request])
+        self.assertEqual(table_request, expected_table_request)

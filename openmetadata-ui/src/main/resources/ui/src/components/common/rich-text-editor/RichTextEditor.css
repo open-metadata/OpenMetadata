@@ -263,13 +263,13 @@ li.ProseMirror-selectednode:after {
 .toastui-editor-defaultUI .toastui-editor-ok-button {
   min-width: 63px;
   height: 32px;
-  background-color: #7147e8;
+  background-color: #0968da;
   color: #fff;
-  outline-color: #7147e8;
+  outline-color: #0968da;
 }
 
 .toastui-editor-defaultUI .toastui-editor-ok-button:hover {
-  background-color: #7147e8;
+  background-color: #0968da;
 }
 
 .toastui-editor-defaultUI .toastui-editor-close-button {
@@ -421,7 +421,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-defaultUI-toolbar .scroll-sync.active::before {
-  color: #7147e8;
+  color: #0968da;
 }
 
 .toastui-editor-defaultUI-toolbar .scroll-sync input {
@@ -460,7 +460,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-defaultUI-toolbar input:checked + .switch::before {
-  background-color: #7147e8;
+  background-color: #0968da;
   -webkit-transform: translateX(12px);
   -moz-transform: translateX(12px);
   -ms-transform: translateX(12px);
@@ -528,7 +528,7 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-popup-body input[type='text']:focus {
-  outline: 1px solid #7147e8;
+  outline: 1px solid #0968da;
   border-color: transparent;
 }
 
@@ -581,8 +581,8 @@ li.ProseMirror-selectednode:after {
 }
 
 .toastui-editor-popup-add-image .toastui-editor-tabs .tab-item.active {
-  color: #7147e8;
-  border-bottom: 2px solid #7147e8;
+  color: #0968da;
+  border-bottom: 2px solid #0968da;
 }
 
 .toastui-editor-popup-add-image .toastui-editor-file-name {
@@ -652,7 +652,7 @@ li.ProseMirror-selectednode:after {
   position: absolute;
   top: 0;
   left: 0;
-  border: 1px solid #7147e8;
+  border: 1px solid #0968da;
   background: rgba(0, 169, 255, 0.1);
   z-index: 30;
 }
@@ -988,12 +988,12 @@ li.ProseMirror-selectednode:after {
 
 table.ProseMirror-selectednode {
   border-radius: 2px;
-  outline: 2px solid #7147e8;
+  outline: 2px solid #0968da;
 }
 
 .html-block.ProseMirror-selectednode {
   border-radius: 2px;
-  outline: 2px solid #7147e8;
+  outline: 2px solid #0968da;
 }
 
 .toastui-editor-contents {
@@ -1086,10 +1086,6 @@ table.ProseMirror-selectednode {
   margin: 9px 0 -4px;
 }
 
-.toastui-editor-contents del {
-  color: #37352f;
-}
-
 .toastui-editor-contents blockquote {
   margin: 14px 0;
   border-left: 4px solid #e5e5e5;
@@ -1113,9 +1109,6 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-contents pre,
 .toastui-editor-contents code {
-  font-family: Consolas, Courier, 'Apple SD 산돌고딕 Neo', -apple-system,
-    'Lucida Grande', 'Apple SD Gothic Neo', '맑은 고딕', 'Malgun Gothic',
-    'Segoe UI', '돋움', dotum, sans-serif;
   border: 0;
   border-radius: 0;
 }
@@ -1259,11 +1252,11 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-contents a {
   text-decoration: underline;
-  color: #7147e8;
+  color: #0968da;
 }
 
 .toastui-editor-contents a:hover {
-  color: #7147e8;
+  color: #0968da;
 }
 
 .toastui-editor-contents .image-link {
@@ -1557,7 +1550,7 @@ table.ProseMirror-selectednode {
 
 .toastui-editor-md-link.toastui-editor-md-link-desc.toastui-editor-md-marked-text,
 .toastui-editor-md-list-item-style.toastui-editor-md-list-item-odd {
-  color: #7147e8;
+  color: #0968da;
 }
 
 .toastui-editor-md-list-item-style.toastui-editor-md-list-item-even {
@@ -1593,12 +1586,6 @@ table.ProseMirror-selectednode {
 .toastui-editor-md-code-block-line-background.start,
 .toastui-editor-md-custom-block-line-background.start {
   margin-top: 2px;
-}
-
-.toastui-editor-md-code,
-.toastui-editor-md-code-block {
-  font-family: Consolas, Courier, 'Lucida Grande', '나눔바른고딕',
-    'Nanum Barun Gothic', '맑은고딕', 'Malgun Gothic', sans-serif;
 }
 
 .toastui-editor-md-custom-block {

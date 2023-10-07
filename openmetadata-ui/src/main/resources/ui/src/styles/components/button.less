@@ -11,12 +11,57 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 .ant-btn,
 button {
   &:disabled {
     cursor: not-allowed;
-    img {
+    img,
+    svg {
       opacity: 0.5;
     }
   }
+}
+
+.ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
+  background: @primary-color;
+  color: @white;
+}
+
+.ant-btn-background-ghost.hover-button.ant-btn-primary[disabled]:hover {
+  background: initial;
+  color: initial;
+  opacity: 0.45;
+}
+
+.ant-btn-link-custom,
+.ant-btn-link-custom:hover {
+  color: #0968da;
+}
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
+.ant-btn-primary-custom {
+  background: #0968da;
+  color: #ffffff;
+  border-color: #0968da;
+}
+
+.ant-dropdown-button.ant-btn-primary-dropdown
+  > .ant-btn-primary.ant-btn-icon-only {
+  background: #0968da;
+  color: #ffffff;
+  border-color: #0968da;
+  border-left-color: #ffffff;
+}
+.ant-btn-primary-custom:hover,
+.ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
+.ant-btn-primary-custom span:hover {
+  background: #0968da;
+  color: #ffffff;
+  border-color: #0968da;
+  text-decoration: none;
+}
+
+.ant-btn-group .ant-btn-primary:first-child:not(:last-child) {
+  border-right-color: #ffffff;
 }

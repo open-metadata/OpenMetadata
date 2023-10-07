@@ -17,8 +17,12 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { AccessTokenResponse, getAccessTokenOnExpiry } from 'rest/auth-API';
-import { AuthTypes } from '../../../enums/signin.enum';
+import { useTranslation } from 'react-i18next';
+import { AuthProvider } from '../../../generated/settings/settings';
+import {
+  AccessTokenResponse,
+  getAccessTokenOnExpiry,
+} from '../../../rest/auth-API';
 import localState from '../../../utils/LocalStorageUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
 import { useBasicAuth } from '../auth-provider/basic-auth.provider';
@@ -30,16 +34,17 @@ interface BasicAuthenticatorInterface {
 const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
+    const { t } = useTranslation();
     const { setIsAuthenticated, authConfig } = useAuthContext();
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
       const refreshToken = localState.getRefreshToken();
 
       if (
-        authConfig.provider !== AuthTypes.BASIC &&
-        authConfig.provider !== AuthTypes.LDAP
+        authConfig.provider !== AuthProvider.Basic &&
+        authConfig.provider !== AuthProvider.LDAP
       ) {
-        Promise.reject('AuthProvider is not Basic');
+        Promise.reject(t('message.authProvider-is-not-basic'));
       }
 
       const response = await getAccessTokenOnExpiry({

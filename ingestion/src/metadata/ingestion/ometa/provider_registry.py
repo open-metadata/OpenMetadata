@@ -44,6 +44,22 @@ from metadata.ingestion.ometa.auth_provider import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.utils.dispatch import enum_register
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
+
+
+def warn_auth_deprecation(auth_provider: AuthProvider) -> None:
+    logger.warning(
+        "Please, configure the ingestion-bot with the 'OpenMetadata JWT' configuration.\n"
+        f"The '{auth_provider.value}' configuration is deprecated and will be removed in future releases.\n"
+        f"Visit https://docs.open-metadata.org/deployment/security/enable-jwt-tokens to learn how to "
+        f"configure the 'OpenMetadata JWT'."
+    )
+
+
+def warn_not_supported() -> None:
+    logger.warning("Note that we don't support this implementation on the client.")
 
 
 class InvalidAuthProviderException(Exception):
@@ -61,28 +77,54 @@ def no_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
     return NoOpAuthenticationProvider.create(config)
 
 
+@auth_provider_registry.add(AuthProvider.basic.value)
+def basic_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
+    warn_not_supported()
+    return NoOpAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.saml.value)
+def saml_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
+    warn_not_supported()
+    return NoOpAuthenticationProvider.create(config)
+
+
+@auth_provider_registry.add(AuthProvider.ldap.value)
+def ldap_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
+    warn_not_supported()
+    return NoOpAuthenticationProvider.create(config)
+
+
 @auth_provider_registry.add(AuthProvider.google.value)
 def google_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
     return GoogleAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.okta.value)
 def okta_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
     return OktaAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.auth0.value)
 def auth0_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
     return Auth0AuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.azure.value)
 def azure_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
     return AzureAuthenticationProvider.create(config)
 
 
 @auth_provider_registry.add(AuthProvider.custom_oidc.value)
 def custom_oidc_auth_init(config: OpenMetadataConnection) -> AuthenticationProvider:
+    warn_auth_deprecation(config.authProvider)
     return CustomOIDCAuthenticationProvider.create(config)
 
 

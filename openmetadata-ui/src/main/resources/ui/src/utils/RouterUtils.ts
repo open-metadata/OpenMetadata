@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import { GlossaryAction } from 'components/Glossary/GlossaryV1.interfaces';
-import { ProfilerDashboardTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getServiceDetailsPath,
   INGESTION_NAME,
@@ -25,21 +22,15 @@ import {
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ENTITY_TYPE_FQN,
-  PLACEHOLDER_GLOSSARY_NAME,
-  PLACEHOLDER_GLOSSARY_TERMS_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_FQN,
-  PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_INGESTION_FQN,
   PLACEHOLDER_ROUTE_INGESTION_TYPE,
-  PLACEHOLDER_ROUTE_SEARCHQUERY,
+  PLACEHOLDER_ROUTE_QUERY_ID,
   PLACEHOLDER_ROUTE_SERVICE_CAT,
-  PLACEHOLDER_ROUTE_SERVICE_FQN,
   PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_ROUTE_VERSION,
   PLACEHOLDER_RULE_NAME,
   PLACEHOLDER_SETTING_CATEGORY,
-  PLACEHOLDER_TAG_NAME,
-  PLACEHOLDER_TEST_SUITE_FQN,
   ROUTES,
 } from '../constants/constants';
 import {
@@ -47,15 +38,11 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
-import { EntityType } from '../enums/entity.enum';
-import { ProfilerDashboardType } from '../enums/table.enum';
+import { EntityAction } from '../enums/entity.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
-
-export const isDashboard = (pathname: string): boolean => {
-  return pathname === ROUTES.FEEDS;
-};
 
 export const isInPageSearchAllowed = (pathname: string): boolean => {
   return Boolean(
@@ -90,7 +77,7 @@ export const getEditConnectionPath = (
   let path = ROUTES.EDIT_SERVICE_CONNECTION;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
 
   return path;
@@ -103,7 +90,7 @@ export const getPathByServiceFQN = (
   let path = ROUTES.SERVICE_WITH_TAB;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, 'connection');
 
   return path;
@@ -117,7 +104,7 @@ export const getAddIngestionPath = (
   let path = ROUTES.ADD_INGESTION;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
@@ -132,80 +119,52 @@ export const getEditIngestionPath = (
   let path = ROUTES.EDIT_INGESTION;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
 };
 
-/**
- *
- * @param searchQuery search text
- * @param tab selected explore result tab
- * @param filter selected facet filters
- * @returns
- */
-export const getExplorePathWithInitFilters = (
-  searchQuery = '',
-  tab = 'tables',
-  filter = ''
-) => {
-  let path = ROUTES.EXPLORE_WITH_SEARCH;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+export const getDomainPath = (fqn?: string) => {
+  let path = ROUTES.DOMAIN;
+  if (fqn) {
+    path = ROUTES.DOMAIN_DETAILS;
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
+  }
 
-  return filter ? `${path}?${filter}` : path;
+  return path;
+};
+
+export const getDomainDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab ? ROUTES.DOMAIN_DETAILS_WITH_TAB : ROUTES.DOMAIN_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getDataProductsDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab
+    ? ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB
+    : ROUTES.DATA_PRODUCT_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
 };
 
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
     path = ROUTES.GLOSSARY_DETAILS;
-    path = path.replace(PLACEHOLDER_GLOSSARY_NAME, fqn);
-  }
-
-  return path;
-};
-
-export const getParentGlossaryPath = (fqn?: string) => {
-  if (fqn) {
-    const parts = fqn.split(FQN_SEPARATOR_CHAR);
-    if (parts.length > 1) {
-      // remove the last part to get parent FQN
-      fqn = parts.slice(0, -1).join(FQN_SEPARATOR_CHAR);
-    }
-  }
-
-  return getGlossaryPath(fqn);
-};
-
-export const getGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm ? ROUTES.GLOSSARY_TERMS : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
-  }
-
-  return path;
-};
-
-export const getAddGlossaryTermsPath = (
-  glossaryName: string,
-  glossaryTerm = ''
-) => {
-  let path = glossaryTerm
-    ? ROUTES.ADD_GLOSSARY_TERMS_CHILD
-    : ROUTES.ADD_GLOSSARY_TERMS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryName);
-
-  if (glossaryTerm) {
-    path = path.replace(PLACEHOLDER_GLOSSARY_TERMS_FQN, glossaryTerm);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(fqn));
   }
 
   return path;
@@ -214,19 +173,44 @@ export const getAddGlossaryTermsPath = (
 export const getSettingPath = (
   category?: string,
   tab?: string,
-  withFqn = false
+  withFqn = false,
+  withAction = false
 ) => {
-  let path = '';
-  if (withFqn) {
-    path = ROUTES.SETTINGS_WITH_TAB_FQN;
-  } else {
-    path = tab && category ? ROUTES.SETTINGS_WITH_TAB : ROUTES.SETTINGS;
-  }
+  let path = ROUTES.SETTINGS;
 
   if (tab && category) {
+    if (withFqn) {
+      path = withAction
+        ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
+        : ROUTES.SETTINGS_WITH_TAB_FQN;
+    } else {
+      path = ROUTES.SETTINGS_WITH_TAB;
+    }
+
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
+
+  return path;
+};
+
+export const getSettingsPathWithFqn = (
+  category: string,
+  tab: string,
+  fqn: string,
+  action?: string
+) => {
+  let path = action
+    ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
+    : ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  if (action) {
+    path = path.replace(PLACEHOLDER_ACTION, action);
+  }
+
+  path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
 
   return path;
 };
@@ -305,26 +289,6 @@ export const getPath = (pathName: string) => {
   }
 };
 
-export const getProfilerDashboardWithFqnPath = (
-  dashboardType: ProfilerDashboardType,
-  entityTypeFQN: string,
-  tab?: ProfilerDashboardTab
-) => {
-  let path = tab
-    ? ROUTES.PROFILER_DASHBOARD_WITH_TAB
-    : ROUTES.PROFILER_DASHBOARD;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ENTITY_TYPE_FQN, getEncodedFqn(entityTypeFQN));
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
 export const getAddPolicyRulePath = (fqn: string) => {
   let path = ROUTES.ADD_POLICY_RULE;
 
@@ -347,7 +311,7 @@ export const getTagPath = (fqn?: string) => {
   let path = ROUTES.TAGS;
   if (fqn) {
     path = ROUTES.TAG_DETAILS;
-    path = path.replace(PLACEHOLDER_TAG_NAME, fqn);
+    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
   }
 
   return path;
@@ -368,7 +332,7 @@ export const getAddDataQualityTableTestPath = (
 
 export const getTestSuitePath = (testSuiteName: string) => {
   let path = ROUTES.TEST_SUITES_WITH_FQN;
-  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, testSuiteName);
 
   return path;
 };
@@ -380,7 +344,7 @@ export const getTestSuiteIngestionPath = (
   let path = ingestionFQN
     ? ROUTES.TEST_SUITES_EDIT_INGESTION
     : ROUTES.TEST_SUITES_ADD_INGESTION;
-  path = path.replace(PLACEHOLDER_TEST_SUITE_FQN, testSuiteName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, testSuiteName);
 
   if (ingestionFQN) {
     path = path.replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN);
@@ -425,13 +389,7 @@ export const getLogEntityPath = (
     return '';
   }
 
-  const testSuitePath = ROUTES.TEST_SUITES.split('/')[1];
-
-  if (path === testSuitePath) {
-    return ROUTES.TEST_SUITES;
-  }
-
-  if (logEntityType === testSuitePath) {
+  if (logEntityType === PipelineType.TestSuite) {
     return getTestSuitePath(path);
   }
 
@@ -448,25 +406,162 @@ export const getLogEntityPath = (
   );
 };
 
-export const getLineageViewPath = (entity: EntityType, fqn: string) => {
-  let path = ROUTES.LINEAGE_FULL_SCREEN_VIEW;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entity)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn);
-
-  return path;
-};
-
 export const getGlossaryPathWithAction = (
   fqn: string,
-  action: GlossaryAction
+  action: EntityAction
 ) => {
   let path = ROUTES.GLOSSARY_DETAILS_WITH_ACTION;
 
   path = path
-    .replace(PLACEHOLDER_GLOSSARY_NAME, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_ACTION, action);
+
+  return path;
+};
+
+export const getQueryPath = (entityFqn: string, queryId: string) => {
+  let path = ROUTES.QUERY_FULL_SCREEN_VIEW;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, entityFqn)
+    .replace(PLACEHOLDER_ROUTE_QUERY_ID, queryId);
+
+  return path;
+};
+export const getAddQueryPath = (entityFqn: string) => {
+  let path = ROUTES.ADD_QUERY;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, entityFqn);
+
+  return path;
+};
+
+export const getDataProductVersionsPath = (
+  dataProductFqn: string,
+  version: string
+) => {
+  let path = ROUTES.DATA_PRODUCT_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, dataProductFqn)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDomainVersionsPath = (domainName: string, version: string) => {
+  let path = ROUTES.DOMAIN_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, domainName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getGlossaryVersionsPath = (
+  glossaryName: string,
+  version: string
+) => {
+  let path = ROUTES.GLOSSARY_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, glossaryName)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getGlossaryTermsVersionsPath = (
+  glossaryTermsFQN: string,
+  version: string,
+  tab?: string
+) => {
+  let path = tab
+    ? ROUTES.GLOSSARY_TERMS_VERSION_TAB
+    : ROUTES.GLOSSARY_TERMS_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, encodeURIComponent(glossaryTermsFQN))
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getTestCaseDetailsPath = (testCaseFQN: string) => {
+  let path = ROUTES.TEST_CASE_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, testCaseFQN);
+
+  return path;
+};
+
+export const getDataQualityPagePath = (tab?: DataQualityPageTabs) => {
+  let path = tab ? ROUTES.DATA_QUALITY_WITH_TAB : ROUTES.DATA_QUALITY;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getServiceVersionPath = (
+  serviceCategory: string,
+  serviceFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SERVICE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatabaseVersionPath = (
+  databaseFQN: string,
+  version: string
+) => {
+  let path = ROUTES.DATABASE_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, databaseFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatabaseSchemaVersionPath = (
+  schemaFQN: string,
+  version: string
+) => {
+  let path = ROUTES.SCHEMA_VERSION;
+
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, schemaFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getClassificationDetailsPath = (classificationFQN: string) => {
+  let path = ROUTES.TAG_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classificationFQN);
+
+  return path;
+};
+
+export const getClassificationVersionsPath = (
+  classificationFQN: string,
+  version: string
+) => {
+  let path = ROUTES.TAG_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_FQN, classificationFQN)
+    .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
 };

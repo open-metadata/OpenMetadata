@@ -13,29 +13,25 @@
 
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import { EditorContentRef } from 'components/common/rich-text-editor/RichTextEditor.interface';
-import { isUndefined, toLower, trim } from 'lodash';
+import { toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTeams } from 'rest/teamsAPI';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import { EditorContentRef } from '../../components/common/rich-text-editor/RichTextEditor.interface';
+import { VALIDATION_MESSAGES } from '../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import { Team, TeamType } from '../../generated/entity/teams/team';
-import jsonData from '../../jsons/en';
-import { isUrlFriendlyName } from '../../utils/CommonUtils';
+import { getTeams } from '../../rest/teamsAPI';
+import { getTeamOptionsFromType } from '../../utils/TeamUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
-type AddTeamFormType = {
-  visible: boolean;
-  onCancel: () => void;
-  onSave: (data: Team) => void;
-  isLoading: boolean;
-};
+import { AddTeamFormType } from './AddTeamForm.interface';
 
 const AddTeamForm: React.FC<AddTeamFormType> = ({
   visible,
   onCancel,
   onSave,
   isLoading,
+  parentTeamType,
 }) => {
   const { t } = useTranslation();
   const [description, setDescription] = useState<string>('');
@@ -43,24 +39,11 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const markdownRef = useRef<EditorContentRef>();
 
   const teamTypeOptions = useMemo(() => {
-    return Object.values(TeamType)
-      .filter((type) => type !== TeamType.Organization)
-      .map((type) => ({
-        label: type,
-        value: type,
-      }));
-  }, []);
-
-  const validationMessages = useMemo(
-    () => ({
-      required: '${label} is required',
-      string: {
-        range: '${label} must be between ${min} and ${max}.',
-      },
-      whitespace: '${label} is required',
-    }),
-    []
-  );
+    return getTeamOptionsFromType(parentTeamType).map((type) => ({
+      label: type,
+      value: type,
+    }));
+  }, [parentTeamType]);
 
   const handleSubmit = (data: Team) => {
     data = {
@@ -78,10 +61,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
 
       setAllTeam(data);
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        jsonData['api-error-messages']['unexpected-server-response']
-      );
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
     }
   };
 
@@ -96,6 +76,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       centered
       closable={false}
       confirmLoading={isLoading}
+      maskClosable={false}
       okButtonProps={{
         form: 'add-team-form',
         type: 'primary',
@@ -112,7 +93,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         }}
         layout="vertical"
         name="add-team-nest-messages"
-        validateMessages={validationMessages}
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSubmit}>
         <Form.Item
           label={t('label.name')}
@@ -126,18 +107,13 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               whitespace: true,
             },
             {
+              pattern: ENTITY_NAME_REGEX,
+              message: t('message.entity-name-validation'),
+            },
+            {
               validator: (_, value) => {
-                if (!isUrlFriendlyName(value)) {
-                  return Promise.reject(
-                    t('message.special-character-not-allowed')
-                  );
-                }
                 if (
-                  !isUndefined(
-                    allTeam.find(
-                      (item) => toLower(item.name) === toLower(value)
-                    )
-                  )
+                  allTeam.some((team) => toLower(team.name) === toLower(value))
                 ) {
                   return Promise.reject(
                     t('message.entity-already-exists', {
@@ -150,7 +126,10 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               },
             },
           ]}>
-          <Input data-testid="name" placeholder={t('label.enter-name')} />
+          <Input
+            data-testid="name"
+            placeholder={t('label.enter-entity', { entity: t('label.name') })}
+          />
         </Form.Item>
         <Form.Item
           label={t('label.display-name')}
@@ -167,6 +146,17 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           <Input
             data-testid="display-name"
             placeholder={t('message.enter-display-name')}
+          />
+        </Form.Item>
+        <Form.Item
+          label={t('label.email')}
+          name="email"
+          rules={[{ type: 'email' }]}>
+          <Input
+            data-testid="email"
+            placeholder={t('label.enter-entity', {
+              entity: t('label.email-lowercase'),
+            })}
           />
         </Form.Item>
         <Form.Item label={t('label.team-type')} name="teamType">

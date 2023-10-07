@@ -32,5 +32,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["type", "sourcePythonClass"]
+  "required": ["type"]
 }

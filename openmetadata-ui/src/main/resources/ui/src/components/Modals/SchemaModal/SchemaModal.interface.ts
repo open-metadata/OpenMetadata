@@ -12,10 +12,10 @@
  */
 
 import { HTMLAttributes } from 'react';
+import { SampleDataType } from '../../SampleDataTable/sample.interface';
 
 export interface SchemaModalProp extends HTMLAttributes<HTMLDivElement> {
   onClose: () => void;
-  // eslint-disable-next-line
-  data: any;
+  data: SampleDataType;
   visible: boolean;
 }

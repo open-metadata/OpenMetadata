@@ -4,6 +4,9 @@
   "title": "reportData",
   "type": "object",
   "javaType": "org.openmetadata.schema.analytics.ReportData",
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityTimeSeriesInterface"
+  ],
   "description": "Report Data",
   "properties": {
       "id": {
@@ -20,7 +23,9 @@
         "enum": [
           "EntityReportData",
           "WebAnalyticUserActivityReportData",
-          "WebAnalyticEntityViewReportData"
+          "WebAnalyticEntityViewReportData",
+          "RawCostAnalysisReportData",
+          "AggregatedCostAnalysisReportData"
         ]
       },
       "data": {
@@ -28,8 +33,11 @@
         "oneOf": [
           {"$ref": "reportDataType/entityReportData.json"},
           {"$ref": "reportDataType/webAnalyticUserActivityReportData.json"},
-          {"$ref": "reportDataType/webAnalyticEntityViewReportData.json"}
+          {"$ref": "reportDataType/webAnalyticEntityViewReportData.json"},
+          {"$ref": "reportDataType/rawCostAnalysisReportData.json"},
+          {"$ref": "reportDataType/aggregatedCostAnalysisReportData.json"}
         ]
       }
-  }
+  },
+  "required": ["timestamp"]
 }

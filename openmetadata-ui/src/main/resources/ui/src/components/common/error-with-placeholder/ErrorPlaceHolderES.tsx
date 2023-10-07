@@ -11,171 +11,176 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { uniqueId } from 'lodash';
+import { Col, Row, Space, Typography } from 'antd';
 import { observer } from 'mobx-react';
-import React from 'react';
-import AppState from '../../../AppState';
-import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
-import { NoDataFoundPlaceHolder } from '../../../constants/Services.constant';
-import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
+import Qs from 'qs';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
+import {
+  CONNECTORS_DOCS,
+  GLOSSARIES_DOCS,
+  INGESTION_DOCS,
+  LOCAL_DEPLOYMENT,
+  OMD_SLACK_LINK,
+  TAGS_DOCS,
+} from '../../../constants/docs.constants';
+import {
+  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
+  ERROR_PLACEHOLDER_TYPE,
+} from '../../../enums/common.enum';
+import { Transi18next } from '../../../utils/CommonUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
+import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
-  type: 'error' | 'noData';
+  type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
-  query?: string;
+  query?: Qs.ParsedQs;
 };
 
 const stepsData = [
   {
     step: 1,
-    title: 'Ingest Sample Data',
-    description:
-      'Run sample data to ingest sample data assets into your OpenMetadata.',
-    link: 'https://docs.open-metadata.org/openmetadata/ingestion/workflows/profiler',
+    title: i18n.t('label.ingest-sample-data'),
+    description: i18n.t('message.run-sample-data-to-ingest-sample-data'),
+    link: INGESTION_DOCS,
   },
   {
     step: 2,
-    title: 'Start Elasticsearch Docker',
-    description: 'Ensure that the Elasticsearch docker is up and running.',
-    link: 'https://docs.open-metadata.org/quick-start/local-deployment',
+    title: i18n.t('label.start-elasticsearch-docker'),
+    description: i18n.t('message.ensure-elasticsearch-is-up-and-running'),
+    link: LOCAL_DEPLOYMENT,
   },
   {
     step: 3,
-    title: 'Install Service Connectors',
-    description:
-      'There are a lot of connectors available here to index data from your services. Please checkout our connectors.',
-    link: 'https://docs.open-metadata.org/integrations/connectors',
+    title: i18n.t('label.install-service-connectors'),
+    description: i18n.t('message.checkout-service-connectors-doc'),
+    link: CONNECTORS_DOCS,
   },
   {
     step: 4,
-    title: 'More Help',
-    description:
-      'If you are still running into issues, please reach out to us on slack.',
-    link: 'https://slack.open-metadata.org',
+    title: i18n.t('label.more-help'),
+    description: i18n.t('message.still-running-into-issue'),
+    link: OMD_SLACK_LINK,
   },
 ];
 
-const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
-  const { isAuthDisabled } = useAuthContext();
-  const getUserDisplayName = () => {
-    return isAuthDisabled
-      ? AppState.users?.length > 0
-        ? AppState.users[0].displayName || AppState.users[0].name
-        : 'User'
-      : AppState.userDetails.displayName || AppState.userDetails.name;
-  };
-  const noRecordForES = () => {
+const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
+  const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
+  const { tab } = useParams<{ tab: string }>();
+  const { t } = useTranslation();
+  const history = useHistory();
+
+  const isQuery = useMemo(
+    () =>
+      Boolean(search || queryFilter || quickFilter || showDeleted === 'true'),
+    [search, queryFilter, quickFilter, showDeleted]
+  );
+
+  const noRecordForES = useMemo(() => {
     return (
-      <div className="tw-text-center" data-testid="no-search-results">
-        <div className="flex-center flex-col tw-mt-32 " data-testid="error">
-          {' '}
-          <img
-            data-testid="no-data-image"
-            src={NoDataFoundPlaceHolder}
-            width="100"
+      <div className="text-center" data-testid="no-search-results">
+        {isQuery ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+        ) : ['glossaries', 'tags'].includes(tab) ? (
+          <ErrorPlaceHolder
+            permission
+            doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
+            heading={
+              tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
+            }
+            type={ERROR_PLACEHOLDER_TYPE.CREATE}
+            onClick={() =>
+              history.push(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
+            }
           />
-        </div>
-        <div className="tw-flex tw-flex-col tw-items-center tw-mt-6 tw-text-base tw-font-medium">
-          {query ? (
-            <>
-              No matching data assets found
-              {query ? (
-                <>
-                  {' '}
-                  for{' '}
-                  <span className="tw-text-primary tw-font-medium">
-                    {query}
-                  </span>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <>
-              {' '}
-              <Typography.Text className="tw-text-sm">
-                No Data Available
-              </Typography.Text>
-              <Typography.Text className="tw-text-sm">
-                Start by adding a service connection to ingest data into
-                OpenMetadata.
-              </Typography.Text>
-              <Typography.Text className="tw-text-sm">
-                Refer to our{' '}
-                <Typography.Link href={CONNECTORS_DOCS} target="_blank">
-                  docs
-                </Typography.Link>{' '}
-                for more information.
-              </Typography.Text>
-              <span />
-            </>
-          )}
-        </div>
+        ) : (
+          <ErrorPlaceHolder>
+            <Typography.Paragraph style={{ marginBottom: '0' }}>
+              {t('message.add-service-connection')}
+            </Typography.Paragraph>
+            <Typography.Paragraph>
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    href={CONNECTORS_DOCS}
+                    rel="noreferrer"
+                    style={{ color: '#1890ff' }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  doc: t('label.doc-plural-lowercase'),
+                }}
+              />
+            </Typography.Paragraph>
+          </ErrorPlaceHolder>
+        )}
       </div>
     );
-  };
+  }, [isQuery]);
 
-  const elasticSearchError = () => {
+  const elasticSearchError = useMemo(() => {
     const index = errorMessage?.split('[')[3]?.split(']')[0];
     const errorText = errorMessage && index ? `find ${index} in` : 'access';
 
     return (
-      <div className="tw-mb-5" data-testid="es-error">
-        <div className="tw-mb-3 tw-text-center">
+      <div data-testid="es-error">
+        <div className="m-b-lg text-center">
           <p>
-            <span>Welcome to OpenMetadata. </span>
-            <span data-testid="error-text">{`We are unable to ${errorText} Elasticsearch for entity indexes.`}</span>
+            <span>{t('message.welcome-to-open-metadata')} </span>
+            <span data-testid="error-text">
+              {t('message.unable-to-error-elasticsearch', { error: errorText })}
+            </span>
           </p>
 
-          <p>
-            Please follow the instructions here to set up Metadata ingestion and
-            index them into Elasticsearch.
-          </p>
+          <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
+        <Row gutter={16}>
           {stepsData.map((data) => (
-            <div
-              className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
-              key={uniqueId()}>
-              <div>
-                <div className="tw-flex tw-mb-2">
-                  <div className="tw-rounded-full tw-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
-                    {data.step}
+            <Col key={data.step} span={6}>
+              <Space
+                className="justify-between h-full border rounded-4 p-sm"
+                direction="vertical">
+                <div>
+                  <div className="d-flex m-b-xs">
+                    <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
+                      {data.step}
+                    </div>
                   </div>
+
+                  <h6
+                    className="text-base text-grey-body font-medium"
+                    data-testid="service-name">
+                    {data.title}
+                  </h6>
+
+                  <p className="text-grey-body text-sm m-b-lg">
+                    {data.description}
+                  </p>
                 </div>
 
-                <h6
-                  className="tw-text-base tw-text-grey-body tw-font-medium"
-                  data-testid="service-name">
-                  {data.title}
-                </h6>
-
-                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {data.description}
+                <p>
+                  <a href={data.link} rel="noopener noreferrer" target="_blank">
+                    {`${t('label.click-here')} >>`}
+                  </a>
                 </p>
-              </div>
-
-              <p>
-                <a href={data.link} rel="noopener noreferrer" target="_blank">
-                  Click here &gt;&gt;
-                </a>
-              </p>
-            </div>
+              </Space>
+            </Col>
           ))}
-        </div>
+        </Row>
       </div>
     );
-  };
+  }, [errorMessage]);
 
   return (
-    <div className="tw-mt-10 tw-text-base tw-font-medium">
-      {type !== 'noData' && (
-        <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-          {`Hi, ${getUserDisplayName()}!`}
-        </p>
-      )}
-      {type === 'noData' && noRecordForES()}
-      {type === 'error' && elasticSearchError()}
+    <div className="mt-12 text-base font-medium">
+      {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
+        ? noRecordForES
+        : elasticSearchError}
     </div>
   );
 };

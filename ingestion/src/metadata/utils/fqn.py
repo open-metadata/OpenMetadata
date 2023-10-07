@@ -13,15 +13,15 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+import hashlib
 import re
-from collections import namedtuple
 from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
@@ -29,16 +29,19 @@ from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.location import Location
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -55,7 +58,16 @@ class FQNBuildingException(Exception):
     """
 
 
-def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+class SplitTestCaseFqn(BaseModel):
+    service: str
+    database: str
+    schema_: str = Field(alias="schema")
+    table: str
+    column: Optional[str]
+    test_case: Optional[str]
+
+
+def split(s: str) -> List[str]:
     """
     Equivalent of Java's FullyQualifiedName#split
     """
@@ -70,12 +82,19 @@ def split(s: str) -> List[str]:  # pylint: disable=invalid-name
     return splitter.split()
 
 
-def _build(*args) -> str:
+def _build(*args, quote: bool = True) -> str:
     """
     Equivalent of Java's FullyQualifiedName#build
     """
-    quoted = [quote_name(name) for name in args]
-    return FQN_SEPARATOR.join(quoted)
+    if quote:
+        quoted = [quote_name(name) for name in args]
+        return FQN_SEPARATOR.join(quoted)
+
+    return FQN_SEPARATOR.join(args)
+
+
+def unquote_name(name: str) -> str:
+    return name[1:-1] if name is not None and '"' in name else name
 
 
 def quote_name(name: str) -> str:
@@ -100,7 +119,9 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
-def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[str]:
+def build(
+    metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs
+) -> Optional[str]:
     """
     Given an Entity T, build the FQN of that Entity
     based on its required pieces. For example,
@@ -125,7 +146,7 @@ def build(metadata: OpenMetadata, entity_type: Type[T], **kwargs) -> Optional[st
 
 @fqn_build_registry.add(Table)
 def _(
-    metadata: OpenMetadata,
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
     database_name: Optional[str],
@@ -143,22 +164,19 @@ def _(
     :param table_name: Table name
     :return:
     """
-    fqn_search_string = build_es_fqn_search_string(
-        database_name, schema_name, service_name, table_name
-    )
 
-    es_result = (
-        metadata.es_search_from_fqn(
-            entity_type=Table,
-            fqn_search_string=fqn_search_string,
+    entity: Optional[Union[Table, List[Table]]] = None
+
+    if not skip_es_search:
+        entity = search_table_from_es(
+            metadata=metadata,
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+            service_name=service_name,
         )
-        if not skip_es_search
-        else None
-    )
 
-    entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
-        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
-    )
     # if entity not found in ES proceed to build FQN with database_name and schema_name
     if not entity and database_name and schema_name:
         fqn = _build(service_name, database_name, schema_name, table_name)
@@ -172,7 +190,7 @@ def _(
 
 @fqn_build_registry.add(DatabaseSchema)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for Schemas
+    _: Optional[OpenMetadata],  # ES Search not enabled for Schemas
     *,
     service_name: str,
     database_name: str,
@@ -187,7 +205,7 @@ def _(
 
 @fqn_build_registry.add(Database)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for Databases
+    _: Optional[OpenMetadata],  # ES Search not enabled for Databases
     *,
     service_name: str,
     database_name: str,
@@ -201,7 +219,7 @@ def _(
 
 @fqn_build_registry.add(Dashboard)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
     *,
     service_name: str,
     dashboard_name: str,
@@ -215,7 +233,7 @@ def _(
 
 @fqn_build_registry.add(Chart)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for dashboard FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
     *,
     service_name: str,
     chart_name: str,
@@ -229,7 +247,7 @@ def _(
 
 @fqn_build_registry.add(MlModel)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for MlModel FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for MlModel FQN building
     *,
     service_name: str,
     mlmodel_name: str,
@@ -241,9 +259,19 @@ def _(
     return _build(service_name, mlmodel_name)
 
 
+@fqn_build_registry.add(TestSuite)
+def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:
+    """
+    We don't need to quote since this comes from a table FQN.
+    We're replicating the backend logic of the FQN generation in the TestSuiteRepository
+    for executable test suites.
+    """
+    return _build(table_fqn, "testSuite", quote=False)
+
+
 @fqn_build_registry.add(Topic)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for Topic FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for Topic FQN building
     *,
     service_name: str,
     topic_name: str,
@@ -255,9 +283,23 @@ def _(
     return _build(service_name, topic_name)
 
 
+@fqn_build_registry.add(SearchIndex)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for Search Index FQN building
+    *,
+    service_name: str,
+    search_index_name: str,
+) -> str:
+    if not service_name or not search_index_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, search_index=`{search_index_name}``"
+        )
+    return _build(service_name, search_index_name)
+
+
 @fqn_build_registry.add(Tag)
 def _(
-    _: OpenMetadata,  # ES Index not necessary for Tag FQN building
+    _: Optional[OpenMetadata],  # ES Index not necessary for Tag FQN building
     *,
     classification_name: str,
     tag_name: str,
@@ -271,20 +313,19 @@ def _(
 
 @fqn_build_registry.add(DataModel)
 def _(
-    _: OpenMetadata,
+    _: Optional[OpenMetadata],
     *,
     service_name: str,
     database_name: str,
     schema_name: str,
     model_name: str,
 ) -> str:
-
     return _build(service_name, database_name, schema_name, model_name)
 
 
 @fqn_build_registry.add(Pipeline)
 def _(
-    _: OpenMetadata,
+    _: Optional[OpenMetadata],
     *,
     service_name: str,
     pipeline_name: str,
@@ -292,19 +333,9 @@ def _(
     return _build(service_name, pipeline_name)
 
 
-@fqn_build_registry.add(Location)
-def _(
-    _: OpenMetadata,
-    *,
-    service_name: str,
-    location_name: str,
-) -> str:
-    return _build(service_name, location_name)
-
-
 @fqn_build_registry.add(Column)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for Columns
+    _: Optional[OpenMetadata],  # ES Search not enabled for Columns
     *,
     service_name: str,
     database_name: str,
@@ -377,13 +408,13 @@ def _(
 
 @fqn_build_registry.add(TestCase)
 def _(
-    _: OpenMetadata,  # ES Search not enabled for TestCase
+    _: Optional[OpenMetadata],  # ES Search not enabled for TestCase
     *,
     service_name: str,
     database_name: str,
     schema_name: str,
     table_name: str,
-    column_name: str,
+    column_name: Optional[str],
     test_case_name: str,
 ) -> str:
     if column_name:
@@ -404,6 +435,34 @@ def _(
     )
 
 
+@fqn_build_registry.add(DashboardDataModel)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    data_model_name: str,
+) -> str:
+    if not service_name or not data_model_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, chart=`{data_model_name}``"
+        )
+    return _build(service_name, "model", data_model_name)
+
+
+@fqn_build_registry.add(Query)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    query_checksum: str,
+) -> str:
+    if not service_name or not query_checksum:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, query_checksum=`{query_checksum}``"
+        )
+    return _build(service_name, query_checksum)
+
+
 def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     """
     Given a table name, try to extract database, schema and
@@ -421,7 +480,7 @@ def split_table_name(table_name: str) -> Dict[str, Optional[str]]:
     return {"database": database, "database_schema": database_schema, "table": table}
 
 
-def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
+def split_test_case_fqn(test_case_fqn: str) -> SplitTestCaseFqn:
     """given a test case fqn split each element
 
     Args:
@@ -430,16 +489,13 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
     Returns:
         Dict[str, Optional[str]]:
     """
-    SplitTestCaseFqn = namedtuple(
-        "SplitTestCaseFqn", "service database schema table column test_case"
-    )
     details = split(test_case_fqn)
     if len(details) < 5:
         raise ValueError(
             f"{test_case_fqn} does not appear to be a valid test_case fqn "
         )
     if len(details) != 6:
-        details.insert(4, None)
+        details.insert(4, None)  # type: ignore
 
     (  # pylint: disable=unbalanced-tuple-unpacking
         service,
@@ -450,7 +506,14 @@ def split_test_case_fqn(test_case_fqn: str) -> Dict[str, Optional[str]]:
         test_case,
     ) = details
 
-    return SplitTestCaseFqn(service, database, schema, table, column, test_case)
+    return SplitTestCaseFqn(
+        service=service,
+        database=database,
+        schema=schema,
+        table=table,
+        column=column,
+        test_case=test_case,
+    )
 
 
 def build_es_fqn_search_string(
@@ -476,3 +539,33 @@ def build_es_fqn_search_string(
         service_name, database_name or "*", schema_name or "*", table_name
     )
     return fqn_search_string
+
+
+def search_table_from_es(
+    metadata: OpenMetadata,
+    database_name: str,
+    schema_name: str,
+    service_name: str,
+    table_name: str,
+    fetch_multiple_entities: bool = False,
+):
+    fqn_search_string = build_es_fqn_search_string(
+        database_name, schema_name, service_name, table_name
+    )
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Table,
+        fqn_search_string=fqn_search_string,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+
+
+def get_query_checksum(query: str) -> str:
+    """
+    Prepare the query checksum from its string representation.
+    The checksum is used as the query's name.
+    """
+    return hashlib.md5(query.encode()).hexdigest()

@@ -14,16 +14,14 @@ Superset source module
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
-    SupersetAPIConnection,
+    SupersetApiConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 
@@ -34,13 +32,13 @@ class SupersetSource:
     """
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: SupersetConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SupersetConnection):
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"
             )
-        if isinstance(connection.connection, SupersetAPIConnection):
-            return SupersetAPISource(config, metadata_config)
-        return SupersetDBSource(config, metadata_config)
+        if isinstance(connection.connection, SupersetApiConnection):
+            return SupersetAPISource(config, metadata)
+        return SupersetDBSource(config, metadata)

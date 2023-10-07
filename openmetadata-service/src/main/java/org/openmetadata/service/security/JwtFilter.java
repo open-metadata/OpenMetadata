@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -44,9 +45,11 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
-import org.openmetadata.schema.auth.SSOAuthMechanism;
+import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
@@ -59,12 +62,12 @@ public class JwtFilter implements ContainerRequestFilter {
   private JwkProvider jwkProvider;
   private String principalDomain;
   private boolean enforcePrincipalDomain;
-  private String providerType;
+  private AuthProvider providerType;
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
-          "v1/config",
+          "v1/system/config",
           "v1/users/signup",
-          "v1/version",
+          "v1/system/version",
           "v1/users/registrationConfirmation",
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
@@ -117,7 +120,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (providerType.equals(SSOAuthMechanism.SsoServiceType.BASIC.toString())) {
+    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 
@@ -131,6 +134,12 @@ public class JwtFilter implements ContainerRequestFilter {
     // validate bot token
     if (claims.containsKey(BOT_CLAIM) && Boolean.TRUE.equals(claims.get(BOT_CLAIM).asBoolean())) {
       validateBotToken(tokenFromHeader, userName);
+    }
+
+    // validate access token
+    if (claims.containsKey(TOKEN_TYPE)
+        && ServiceTokenType.PERSONAL_ACCESS.equals(ServiceTokenType.fromValue(claims.get(TOKEN_TYPE).asString()))) {
+      validatePersonalAccessToken(tokenFromHeader, userName);
     }
 
     // Setting Security Context
@@ -206,32 +215,39 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
     if (nullOrEmpty(source)) {
-      throw new AuthenticationException("Not Authorized! Token not present");
+      throw AuthenticationException.getTokenNotPresentException();
     }
     // Extract the bearer token
     if (source.startsWith(TOKEN_PREFIX)) {
       return source.substring(TOKEN_PREFIX.length() + 1);
     }
-    throw new AuthenticationException("Not Authorized! Token not present");
+    throw AuthenticationException.getTokenNotPresentException();
   }
 
   public static String extractToken(String tokenFromHeader) {
     LOG.debug("Request Token:{}", tokenFromHeader);
     if (nullOrEmpty(tokenFromHeader)) {
-      throw new AuthenticationException("Not Authorized! Token not present");
+      throw AuthenticationException.getTokenNotPresentException();
     }
     // Extract the bearer token
     if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
       return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
     }
-    throw new AuthenticationException("Not Authorized! Token not present");
+    throw AuthenticationException.getTokenNotPresentException();
   }
 
   private void validateBotToken(String tokenFromHeader, String userName) {
-    if (tokenFromHeader.equals(BotTokenCache.getInstance().getToken(userName))) {
+    if (tokenFromHeader.equals(BotTokenCache.getToken(userName))) {
       return;
     }
-    throw new AuthenticationException("Not Authorized! Invalid Token");
+    throw AuthenticationException.getInvalidTokenException();
+  }
+
+  private void validatePersonalAccessToken(String tokenFromHeader, String userName) {
+    if (UserTokenCache.getToken(userName).contains(tokenFromHeader)) {
+      return;
+    }
+    throw AuthenticationException.getInvalidTokenException();
   }
 
   private void validateTokenIsNotUsedAfterLogout(String authToken) {

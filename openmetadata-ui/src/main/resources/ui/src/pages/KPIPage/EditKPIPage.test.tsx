@@ -26,25 +26,27 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ useParams: 'description-kpi' }),
 }));
 
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getChartById: jest
     .fn()
     .mockImplementation(() => Promise.resolve(DESCRIPTION_CHART)),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditor', () =>
+jest.mock('../../components/common/rich-text-editor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/common/title-breadcrumb/title-breadcrumb.component', () =>
-  jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
+jest.mock(
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () =>
+    jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('rest/KpiAPI', () => ({
+jest.mock('../../rest/KpiAPI', () => ({
   getKPIByName: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
   patchKPI: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
 }));
@@ -55,13 +57,17 @@ jest.mock('../../hooks/authHooks', () => ({
 
 jest.mock('../../utils/DataInsightUtils', () => ({
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getKPIFormattedDates: jest.fn().mockReturnValue({
-    startDate: `2022-12-08 00:00`,
-    endDate: `2022-12-28 23:59`,
-  }),
   getDisabledDates: jest.fn().mockReturnValue(true),
-  getKpiDateFormatByTimeStamp: jest.fn().mockReturnValue('2022-12-08'),
 }));
+
+jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
+  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </>
+  ))
+);
 
 describe('Edit KPI page', () => {
   it('Should render all the components', async () => {

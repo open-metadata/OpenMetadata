@@ -15,7 +15,7 @@ import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postKillIngestionPipelineById } from 'rest/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 interface KillIngestionModalProps {
@@ -57,10 +57,12 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   return (
     <Modal
       destroyOnClose
+      cancelText={t('label.cancel')}
       closable={false}
       confirmLoading={isLoading}
       data-testid="kill-modal"
-      okText="Confirm"
+      maskClosable={false}
+      okText={t('label.confirm')}
       title={`${t('label.kill')} ${pipelinName} ?`}
       visible={isModalOpen}
       onCancel={onClose}

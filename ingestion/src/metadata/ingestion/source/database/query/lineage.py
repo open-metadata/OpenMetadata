@@ -11,18 +11,20 @@
 """
 Common Query Log Connector
 """
-
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
 
 
 class QueryLogLineageSource(LineageSource):
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
+
+    def prepare(self):
+        """
+        Nothing to prepare for Query Log Lineage
+        """

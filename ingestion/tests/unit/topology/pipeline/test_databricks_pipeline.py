@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.databrickspipeline.metadata import (
@@ -91,6 +92,7 @@ mock_databricks_config = {
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="databricks_pipeline_test",
+    fullyQualifiedName=FullyQualifiedEntityName(__root__="databricks_pipeline_test"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.DatabricksPipeline,
 )
@@ -173,9 +175,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             downstreamTasks=[],
         ),
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service="databricks_pipeline_test",
 )
 
 
@@ -251,7 +251,7 @@ class DatabricksPipelineTests(TestCase):
         self.assertEqual(mock_data, results)
 
     def test_yield_pipeline(self):
-        pipelines = list(self.databricks.yield_pipeline(mock_data[0]))[0]
+        pipelines = list(self.databricks.yield_pipeline(mock_data[0]))[0].right
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
 
     @patch(
@@ -259,7 +259,10 @@ class DatabricksPipelineTests(TestCase):
     )
     def test_yield_pipeline_status(self, get_job_runs):
         get_job_runs.return_value = mock_history_data
-        pipeline_status = list(
-            self.databricks.yield_pipeline_status(mock_history_data[0]["job_id"])
-        )
+        pipeline_status = [
+            either.right
+            for either in self.databricks.yield_pipeline_status(
+                mock_history_data[0]["job_id"]
+            )
+        ]
         self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)

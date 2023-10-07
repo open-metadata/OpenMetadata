@@ -19,7 +19,9 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -43,7 +45,9 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -54,8 +58,9 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -74,6 +79,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
+    supportsSearchIndex = true;
   }
 
   @Test
@@ -99,19 +105,19 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
 
   @Test
   void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
-    EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
+    String[] differentServices = {REDPANDA_REFERENCE.getName(), KAFKA_REFERENCE.getName()};
 
     // Create topic for each service and test APIs
-    for (EntityReference service : differentServices) {
+    for (String service : differentServices) {
       createAndCheckEntity(createRequest(test).withService(service), ADMIN_AUTH_HEADERS);
 
       // List topics by filtering on service name and ensure right topics in the response
       Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("service", service.getName());
+      queryParams.put("service", service);
 
       ResultList<Topic> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
       for (Topic topic : list.getData()) {
-        assertEquals(service.getName(), topic.getService().getName());
+        assertEquals(service, topic.getService().getName());
       }
     }
   }
@@ -243,6 +249,62 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Test
+  void test_mutuallyExclusiveTags(TestInfo testInfo) {
+    // Apply mutually exclusive tags to a table
+    CreateTopic create =
+        createRequest(testInfo)
+            .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0);
+    // Apply mutually exclusive tags to a table
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a topic field
+    CreateTopic create1 =
+        createRequest(testInfo, 1)
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0);
+    Field field = getField("first_name", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    create1.withMessageSchema(schema.withSchemaFields(List.of(field)));
+    assertResponse(
+        () -> createEntity(create1, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+
+    // Apply mutually exclusive tags to a topic's nested field
+    CreateTopic create2 =
+        createRequest(testInfo, 1)
+            .withOwner(USER1_REF)
+            .withMaximumMessageSize(1)
+            .withMinimumInSyncReplicas(1)
+            .withPartitions(1)
+            .withReplicationFactor(1)
+            .withRetentionTime(1.0)
+            .withRetentionSize(1.0);
+    Field nestedField =
+        getField("testNested", FieldDataType.STRING, null).withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
+    Field field1 = getField("test", FieldDataType.RECORD, null).withChildren(List.of(nestedField));
+    create2.setMessageSchema(schema.withSchemaFields(List.of(field1)));
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
+  }
+
+  @Test
   void put_topicSampleData_200(TestInfo test) throws IOException {
     Topic topic = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     List<String> messages =
@@ -254,7 +316,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     Topic putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
 
-    topic = getEntity(topic.getId(), "sampleData", ADMIN_AUTH_HEADERS);
+    topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, topic.getSampleData());
     messages =
         Arrays.asList(
@@ -263,8 +325,33 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     topicSampleData.withMessages(messages);
     putResponse = putSampleData(topic.getId(), topicSampleData, ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, putResponse.getSampleData());
-    topic = getEntity(topic.getId(), "sampleData", ADMIN_AUTH_HEADERS);
+    topic = getSampleData(topic.getId(), ADMIN_AUTH_HEADERS);
     assertEquals(topicSampleData, topic.getSampleData());
+  }
+
+  @Test
+  void test_inheritDomain(TestInfo test) throws IOException {
+    // When domain is not set for a topic, carry it forward from the messaging service
+    MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    MessagingService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a topic without domain and ensure it inherits domain from the parent
+    CreateTopic create = createRequest("chart").withService(service.getFullyQualifiedName());
+    assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a messaging service with owner data consumer
+    MessagingServiceResourceTest serviceTest = new MessagingServiceResourceTest();
+    CreateMessagingService createMessagingService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    MessagingService service = serviceTest.createEntity(createMessagingService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create topic under it
+    createEntity(
+        createRequest("topic").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override
@@ -287,22 +374,21 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     return topic;
   }
 
-  public static Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource("topics/" + id);
+  public Topic getTopic(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  public static Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("topics/name/" + fqn);
+  public Topic getTopicByName(String fqn, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResourceByName(fqn);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   @Override
   public CreateTopic createRequest(String name) {
-    return new CreateTopic().withName(name).withService(getContainer()).withPartitions(1);
+    return new CreateTopic().withName(name).withService(getContainer().getFullyQualifiedName()).withPartitions(1);
   }
 
   @Override
@@ -332,7 +418,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
@@ -350,10 +436,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     }
   }
 
-  public static Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
+  public Topic putSampleData(UUID topicId, TopicSampleData data, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = OpenMetadataApplicationTest.getResource("topics/" + topicId + "/sampleData");
+    WebTarget target = getResource(topicId).path("/sampleData");
     return TestUtils.put(target, data, Topic.class, OK, authHeaders);
+  }
+
+  public Topic getSampleData(UUID topicId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(topicId).path("/sampleData");
+    return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   private static Field getField(String name, FieldDataType fieldDataType, TagLabel tag) {

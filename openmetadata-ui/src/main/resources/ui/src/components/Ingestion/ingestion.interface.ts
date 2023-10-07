@@ -12,6 +12,7 @@
  */
 
 import { ServiceCategory } from '../../enums/service.enum';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../generated/type/paging';
@@ -39,12 +40,23 @@ export interface IngestionProps {
   paging: Paging;
   ingestionList: Array<IngestionPipeline>;
   serviceList: Array<DatabaseService>;
-  currrentPage: number;
   permissions: OperationPermission;
-  pagingHandler: (value: string | number, activePage?: number) => void;
+  pipelineNameColWidth?: number;
+  pipelineType?: PipelineType;
+  displayAddIngestionButton?: boolean;
+  containerClassName?: string;
+  isLoading?: boolean;
+  isAirflowAvailable?: boolean;
   deleteIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string) => Promise<void>;
-  handleEnableDisableIngestion: (id: string) => void;
+  handleEnableDisableIngestion: (id: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  onIngestionWorkflowsUpdate: () => void;
+  onIngestionWorkflowsUpdate: (paging?: string) => void;
+  handleIngestionDataChange?: (data: Array<IngestionPipeline>) => void;
+}
+
+export interface SelectedRowDetails {
+  id: string;
+  name: string;
+  state: string;
 }

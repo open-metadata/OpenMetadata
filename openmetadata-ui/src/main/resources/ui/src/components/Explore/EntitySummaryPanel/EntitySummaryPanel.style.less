@@ -12,69 +12,58 @@
  */
 
 @import url('../../../styles/variables.less');
-@white: #ffffff;
-@gray: #dde3ea;
-@summary-panel-offset: 96px; // (topnav height) 64px + page padding top and bottom 32px
-@label-color: #6b7280;
-@succesColor: #28a745;
-@failedColor: #cb2431;
-@abortedColor: #efae2f;
-@section-header-color: #6b7280;
+@summary-panel-offset: 176px;
 
 .summary-panel-container {
-  background-color: @white;
-  margin-right: -8px;
   position: sticky;
   height: calc(100vh - @summary-panel-offset);
-  top: 2px; // To show the border properly
   z-index: 9;
-  box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
+  border: @global-border;
+  border-top: none;
+  border-left: none;
   font-size: 14px;
   overflow-y: scroll;
+  overflow-x: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
 
-  .ant-typography {
-    color: #37352f;
+  .ant-drawer-content-wrapper {
+    box-shadow: none;
+  }
+  .ant-drawer-body {
+    padding: unset;
+  }
+
+  .ant-divider {
+    visibility: hidden;
   }
 
   .summary-panel-statistics-count {
-    color: #37352f;
+    color: @text-color-secondary;
     font-size: 18px;
     line-height: 24px;
     font-weight: 700;
-  }
-
-  .text-gray {
-    color: @label-color;
-  }
-
-  .section-header {
-    font-size: 16px;
-    color: @section-header-color;
-  }
-
-  .success {
-    color: @succesColor;
-  }
-  .failed {
-    color: @failedColor;
-  }
-  .aborted {
-    color: @abortedColor;
   }
 
   .entity-title {
     font-weight: 500;
   }
 
-  .ant-divider-horizontal {
-    margin: 16px 0px;
+  .summary-panel-title {
+    color: @link-color;
+    font-weight: 500;
+    font-size: 18px;
+    word-break: break-all;
   }
 
-  div.ant-typography {
-    margin-top: 16px;
-    margin-bottom: 0px;
+  .summary-panel-section-title {
+    font-size: 14px;
+    color: @text-grey-muted;
+  }
+
+  .ant-divider-horizontal {
+    margin: 16px 0px;
   }
 
   .close-icon {
@@ -85,7 +74,7 @@
 
   .summary-schema-editor {
     margin: 16px 0px;
-    border: 1px solid @gray;
+    border: @global-border;
     border-radius: 4px;
   }
 

@@ -11,10 +11,18 @@
  *  limitations under the License.
  */
 
-import { Table, TableType } from '../../../../generated/entity/data/table';
+import {
+  Table,
+  TableType,
+  TagLabel,
+} from '../../../../generated/entity/data/table';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 
 export interface TableSummaryProps {
   entityDetails: Table;
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
+  tags?: TagLabel[];
+  isLoading?: boolean;
 }
 
 export interface BasicTableInfo {

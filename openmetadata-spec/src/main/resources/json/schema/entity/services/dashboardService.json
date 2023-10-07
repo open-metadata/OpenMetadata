@@ -11,7 +11,7 @@
   ],
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi or Mode",
+      "description": "Type of Dashboard service - Superset, Looker, Redash, Tableau, Metabase, PowerBi, Mode, or Lightdash",
       "type": "string",
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
@@ -24,7 +24,9 @@
         "Mode",
         "CustomDashboard",
         "DomoDashboard",
-        "QuickSight"
+        "QuickSight",
+        "QlikSense",
+        "Lightdash"
       ],
       "javaEnums": [
         {
@@ -56,6 +58,12 @@
         },
         {
           "name": "QuickSight"
+        },
+        {
+          "name": "QlikSense"
+        },
+        {
+          "name": "Lightdash"
         }
       ]
     },
@@ -99,6 +107,12 @@
             },
             {
               "$ref": "./connections/dashboard/quickSightConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/qlikSenseConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/lightdashConnection.json"
             }
           ]
         }
@@ -136,7 +150,11 @@
     },
     "pipelines": {
       "description": "References to pipelines deployed for this dashboard service.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "testConnectionResult": {
+      "description": "Last test connection results for this service",
+      "$ref": "connections/testConnectionResult.json"
     },
     "tags": {
       "description": "Tags for this Dashboard Service.",
@@ -174,6 +192,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the Dashboard service belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

@@ -16,6 +16,8 @@ package org.openmetadata.service.resources.services;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -26,19 +28,22 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
+import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
-import org.openmetadata.schema.services.connections.messaging.PulsarConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.service.util.JsonUtils;
@@ -46,18 +51,9 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
-
+public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
-  public static URI SCHEMA_REGISTRY_URL;
-
-  static {
-    try {
-      SCHEMA_REGISTRY_URL = new URI("http://localhost:0");
-    } catch (URISyntaxException e) {
-      e.printStackTrace();
-    }
-  }
+  public static final URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
   public MessagingServiceResourceTest() {
     super(
@@ -82,12 +78,12 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
 
     // Create Pulsar messaging service
     createMessaging
-        .withName("pulsar")
-        .withServiceType(MessagingServiceType.Pulsar)
-        .withConnection(new MessagingConnection().withConfig(new PulsarConnection()));
+        .withName("redpanda")
+        .withServiceType(MessagingServiceType.Redpanda)
+        .withConnection(TestUtils.REDPANDA_CONNECTION);
 
     messagingService = messagingServiceResourceTest.createEntity(createMessaging, ADMIN_AUTH_HEADERS);
-    PULSAR_REFERENCE = messagingService.getEntityReference();
+    REDPANDA_REFERENCE = messagingService.getEntityReference();
   }
 
   @Test
@@ -97,12 +93,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create messaging with mandatory brokers field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -120,6 +110,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                             .withBootstrapServers("localhost:9092")
                             .withSchemaRegistryURL(new URI("localhost:8081")))),
         authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -144,7 +137,10 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                     .withSchemaRegistryURL(new URI("localhost:8081")));
     // Update messaging description and ingestion service that are null
     CreateMessagingService update =
-        createRequest(test).withDescription("description1").withConnection(messagingConnection);
+        createRequest(test)
+            .withName(service.getName())
+            .withDescription("description1")
+            .withConnection(messagingConnection);
     ChangeDescription change = getChangeDescription(service.getVersion());
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
@@ -169,6 +165,31 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
     fieldUpdated(change, "connection", messagingConnection1, messagingConnection2);
     update.setConnection(messagingConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+  }
+
+  @Test
+  void put_testConnectionResult_200(TestInfo test) throws IOException {
+    MessagingService service = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    // By default, we have no result logged in
+    assertNull(service.getTestConnectionResult());
+    MessagingService updatedService =
+        putTestConnectionResult(service.getId(), TEST_CONNECTION_RESULT, ADMIN_AUTH_HEADERS);
+    // Validate that the data got properly stored
+    assertNotNull(updatedService.getTestConnectionResult());
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, updatedService.getTestConnectionResult().getStatus());
+    assertEquals(updatedService.getConnection(), service.getConnection());
+    // Check that the stored data is also correct
+    MessagingService stored = getEntity(service.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(stored.getTestConnectionResult());
+    assertEquals(TestConnectionResultStatus.SUCCESSFUL, stored.getTestConnectionResult().getStatus());
+    assertEquals(stored.getConnection(), service.getConnection());
+  }
+
+  public MessagingService putTestConnectionResult(
+      UUID serviceId, TestConnectionResult testConnectionResult, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(serviceId).path("/testConnectionResult");
+    return TestUtils.put(target, testConnectionResult, MessagingService.class, OK, authHeaders);
   }
 
   @Override
@@ -217,7 +238,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

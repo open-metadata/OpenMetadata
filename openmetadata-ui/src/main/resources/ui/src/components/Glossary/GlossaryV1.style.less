@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
+@import url('../../styles/variables.less');
+
 @box-shadow-color: rgba(0, 0, 0, 0.06);
 @left-panel-border-color: rgb(229, 231, 235);
-@manage-button-bg-primary: #7147e8;
-@manage-dropdown-bg-primary: #d9ceee;
-@white: #ffffff;
 
 .display-name {
   .ant-typography {
@@ -40,11 +39,6 @@
   margin-right: 0.3rem;
 }
 
-.glossary-manage-button {
-  border: none;
-  background-color: @manage-dropdown-bg-primary;
-}
-
 .manage-button {
   .ant-space-item:first-child {
     width: 40px;
@@ -52,16 +46,19 @@
   }
 }
 
-.ant-dropdown-menu {
-  padding: 8px 0px;
-  background: @white;
-  border: 1px solid #dde3ea;
-  box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
-  border-radius: 4px;
-  .ant-dropdown-menu-item {
-    padding: 5px 16px;
+.glossary-manage-dropdown-list-container {
+  .ant-dropdown-menu {
+    padding: 8px 0px;
+    background: @white;
+    border: 1px solid #dde3ea;
+    box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
+    border-radius: 4px;
+    .ant-dropdown-menu-item {
+      padding: 5px 16px;
+    }
   }
 }
+
 .glossary-tree-container {
   .ant-tree-node-content-wrapper {
     overflow: hidden;
@@ -71,5 +68,26 @@
 
   .ant-tree-title {
     width: calc(100% - 8px);
+  }
+}
+
+.glossary-header-edit-btn {
+  height: 16px;
+  width: 16px;
+}
+
+.glossary-name-column {
+  white-space: nowrap;
+  min-width: 300px;
+}
+
+.ant-table-row-indent {
+  float: none;
+  display: inline-block;
+}
+
+.glossary-page-layout {
+  .ant-table-wrapper .ant-table-cell {
+    vertical-align: middle;
   }
 }

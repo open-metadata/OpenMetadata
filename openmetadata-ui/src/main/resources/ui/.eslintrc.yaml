@@ -26,6 +26,7 @@ extends:
   - plugin:@typescript-eslint/recommended
   - plugin:prettier/recommended
   - prettier
+  - plugin:i18next/recommended
   - 'plugin:cypress/recommended'
 
 parser: '@typescript-eslint/parser'
@@ -43,6 +44,7 @@ plugins:
   - jest
   - jest-formatting
   - '@typescript-eslint'
+  - i18next
   - 'cypress'
 
 rules:
@@ -52,6 +54,8 @@ rules:
   eqeqeq:
     - error
     - smart
+
+  no-console: 2
 
   # Require a whitespace at the beginning of a comment
   spaced-comment:
@@ -128,6 +132,9 @@ rules:
   react/jsx-pascal-case:
     - error
 
+  react/prop-types:
+    - off
+
   # Disallow unnecessary curly braces in JSX
   react/jsx-curly-brace-presence:
     - error
@@ -173,12 +180,20 @@ rules:
   '@typescript-eslint/explicit-module-boundary-types':
     - off
 
+  '@typescript-eslint/no-use-before-define': warn
+
   # React rules
 
   react/display-name:
     - off
 
   # React rules
+
+  # i18next rules
+
+  i18next/no-literal-string: error
+
+  # i18next rules
 
   # Cypress rules
 
@@ -191,6 +206,9 @@ overrides:
   - files:
       - '*.json'
     parser: jsonc-eslint-parser
+    rules:
+      eol-last:
+        - off
 
   # disable rules on generated files
   - files:
@@ -222,6 +240,24 @@ overrides:
       jest/valid-expect-in-promise:
         - off
       jest/valid-expect:
+        - off
+
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
+        - off
+
+  # i18next rule is not required for js, jsx, json and test file
+  - files:
+      - src/**/*.{js,jsx,json}
+      - src/**/*.test.{tsx,ts}
+      - src/**/*.mock.{tsx,ts}
+    rules:
+      i18next/no-literal-string:
         - off
 
 globals:

@@ -18,8 +18,8 @@ export enum ADMIN_ONLY_ACCESSIBLE_SECTION {
 
 export enum SIZE {
   SMALL = '60',
-  MEDIUM = '80',
-  LARGE = '100',
+  MEDIUM = '86',
+  LARGE = '126',
 }
 
 export enum ACTION_TYPE {
@@ -36,4 +36,29 @@ export enum LOADING_STATE {
 export enum PROMISE_STATE {
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected',
+}
+
+export enum OPERATION {
+  UPDATE = 'update',
+  DELETE = 'delete',
+  NO_OPERATION = 'no-operation',
+}
+
+export enum SORT_ORDER {
+  ASC = 'asc',
+  DESC = 'desc',
+}
+
+export enum ERROR_PLACEHOLDER_TYPE {
+  CREATE = 'CREATE',
+  ASSIGN = 'ASSIGN',
+  FILTER = 'FILTER',
+  CUSTOM = 'CUSTOM',
+  PERMISSION = 'PERMISSION',
+  NO_DATA = 'NO_DATA',
+}
+
+export enum ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE {
+  NO_DATA = 'NO_DATA',
+  ERROR = 'ERROR',
 }

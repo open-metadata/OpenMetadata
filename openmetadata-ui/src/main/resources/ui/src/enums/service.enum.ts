@@ -18,6 +18,19 @@ export enum ServiceCategory {
   PIPELINE_SERVICES = 'pipelineServices',
   ML_MODEL_SERVICES = 'mlmodelServices',
   METADATA_SERVICES = 'metadataServices',
+  STORAGE_SERVICES = 'storageServices',
+  SEARCH_SERVICES = 'searchServices',
+}
+
+export enum ServiceCategoryPlural {
+  databaseService = 'databaseServices',
+  messagingService = 'messagingServices',
+  dashboardService = 'dashboardServices',
+  pipelineService = 'pipelineServices',
+  mlmodelService = 'mlmodelServices',
+  metadataService = 'metadataServices',
+  storageService = 'storageServices',
+  searchService = 'searchServices',
 }
 
 export enum IngestionType {
@@ -28,9 +41,11 @@ export enum IngestionType {
   SNOWFLAKE = 'snowflake',
   SNOWFLAKE_USAGE = 'snowflake-usage',
   HIVE = 'hive',
+  IMPALA = 'impala',
   MSSQL = 'mssql',
   MYSQL = 'mysql',
   POSTGRES = 'postgres',
   TRINO = 'trino',
   VERTICA = 'vertica',
+  GREENPLUM = 'greenplum',
 }

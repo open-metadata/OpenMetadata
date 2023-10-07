@@ -17,11 +17,16 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.entityTypeNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityRepositoryNotFound;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -34,6 +39,7 @@ import java.util.Random;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -49,9 +55,11 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.RestUtil;
@@ -99,7 +107,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsage(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityTypeNotFound(invalidEntityType));
+        entityRepositoryNotFound(invalidEntityType));
   }
 
   @Test
@@ -108,7 +116,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> reportUsagePut(invalidEntityType, UUID.randomUUID(), usageReport(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
-        entityTypeNotFound(invalidEntityType));
+        entityRepositoryNotFound(invalidEntityType));
   }
 
   @Test
@@ -148,25 +156,51 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void post_validUsageByName_200_OK(TestInfo test) {
-    testValidUsageByName(test, POST);
+  void post_validUsageByNameAsAdmin_200(TestInfo test) {
+    testValidUsageByName(test, POST, ADMIN_AUTH_HEADERS);
   }
 
   @Test
-  void put_validUsageByName_200_OK(TestInfo test) {
-    testValidUsageByName(test, PUT);
+  void post_validUsageByNameAsIngestionBot_200(TestInfo test) {
+    testValidUsageByName(test, POST, authHeaders(INGESTION_BOT_NAME));
+  }
+
+  @Test
+  void post_validUsageByNameAsNonPrivilegedUser_401(TestInfo test) {
+    assertResponse(
+        () -> testValidUsageByName(test, POST, TEST_AUTH_HEADERS),
+        Status.FORBIDDEN,
+        CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
+  }
+
+  @Test
+  void put_validUsageByNameAsAdmin_200(TestInfo test) {
+    testValidUsageByName(test, PUT, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_validUsageByNameAsIngestionBot_200(TestInfo test) {
+    testValidUsageByName(test, PUT, authHeaders(INGESTION_BOT_NAME));
+  }
+
+  @Test
+  void put_validUsageByNameAsNonPrivilegedUser_401(TestInfo test) {
+    assertResponse(
+        () -> testValidUsageByName(test, PUT, TEST_AUTH_HEADERS),
+        Status.FORBIDDEN,
+        CatalogExceptionMessage.permissionNotAllowed(TEST_USER_NAME, listOf(MetadataOperation.EDIT_USAGE)));
   }
 
   @SneakyThrows
-  void testValidUsageByName(TestInfo test, String methodType) {
+  void testValidUsageByName(TestInfo test, String methodType, Map<String, String> authHeaders) {
     TableResourceTest tableResourceTest = new TableResourceTest();
     Table table = tableResourceTest.createEntity(tableResourceTest.createRequest(test), ADMIN_AUTH_HEADERS);
     DailyCount usageReport = usageReport().withCount(100).withDate(RestUtil.DATE_FORMAT.format(new Date()));
-    reportUsageByNameAndCheckPut(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, ADMIN_AUTH_HEADERS);
+    reportUsageByNameAndCheckPut(TABLE, table.getFullyQualifiedName(), usageReport, 100, 100, authHeaders);
     // a put request updates the data again
     if (methodType.equals(PUT)) {
-      reportUsageByNamePut(TABLE, table.getFullyQualifiedName(), usageReport, ADMIN_AUTH_HEADERS);
-      checkUsageByName(usageReport.getDate(), TABLE, table.getFullyQualifiedName(), 200, 200, 200, ADMIN_AUTH_HEADERS);
+      reportUsageByNamePut(TABLE, table.getFullyQualifiedName(), usageReport, authHeaders);
+      checkUsageByName(usageReport.getDate(), TABLE, table.getFullyQualifiedName(), 200, 200, 200, authHeaders);
     }
   }
 
@@ -292,82 +326,76 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     Assertions.assertEquals(usage.getUsage().get(0), database.getUsageSummary());
   }
 
-  public static DailyCount usageReport() {
+  public DailyCount usageReport() {
     Random random = new Random();
     String today = RestUtil.DATE_FORMAT.format(new Date());
     return new DailyCount().withCount(random.nextInt(100)).withDate(today);
   }
 
-  public static void reportUsageByNameAndCheckPut(
+  public void reportUsageByNameAndCheckPut(
       String entity, String fqn, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsageByNamePut(entity, fqn, usage, authHeaders);
     checkUsageByName(usage.getDate(), entity, fqn, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
-  public static void reportUsageAndCheckPut(
+  public void reportUsageAndCheckPut(
       String entity, UUID id, DailyCount usage, int weeklyCount, int monthlyCount, Map<String, String> authHeaders)
       throws HttpResponseException {
     reportUsagePut(entity, id, usage, authHeaders);
     checkUsage(usage.getDate(), entity, id, usage.getCount(), weeklyCount, monthlyCount, authHeaders);
   }
 
-  public static void reportUsageByName(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
+  public void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/name/" + name);
-    TestUtils.post(target, usage, authHeaders);
-  }
-
-  public static void reportUsageByNamePut(String entity, String name, DailyCount usage, Map<String, String> authHeaders)
-      throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/name/" + name);
+    WebTarget target = getResource("usage/").path(entity).path("/name/").path(name);
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
-  public static void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
+  public void reportUsage(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/" + id);
+    WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.post(target, usage, authHeaders);
   }
 
-  public static void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
+  public void reportUsagePut(String entity, UUID id, DailyCount usage, Map<String, String> authHeaders)
       throws HttpResponseException {
-    WebTarget target = getResource("usage/" + entity + "/" + id);
+    WebTarget target = getResource("usage/").path(entity).path("/").path(id.toString());
     TestUtils.put(target, usage, Response.Status.CREATED, authHeaders);
   }
 
-  public static void computePercentile(String entity, String date, Map<String, String> authHeaders)
+  public void computePercentile(String entity, String date, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getResource("usage/compute.percentile/" + entity + "/" + date);
     TestUtils.post(target, authHeaders);
   }
 
-  public static void getAndCheckUsage(
+  public void getAndCheckUsage(
       String entity, UUID id, String date, Integer days, int expectedRecords, Map<String, String> authHeaders)
       throws HttpResponseException {
     EntityUsage usage = getUsage(entity, id, date, days, authHeaders);
     assertEquals(expectedRecords, usage.getUsage().size());
   }
 
-  public static EntityUsage getUsageByName(
+  public EntityUsage getUsageByName(
       String entity, String fqn, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
-    return getUsage(getResource("usage/" + entity + "/name/" + fqn), date, days, authHeaders);
+    return getUsage(getResource("usage/" + entity + "/name/").path(fqn), date, days, authHeaders);
   }
 
-  public static EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)
+  public EntityUsage getUsage(String entity, UUID id, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
     return getUsage(getResource("usage/" + entity + "/" + id), date, days, authHeaders);
   }
 
-  public static EntityUsage getUsage(WebTarget target, String date, Integer days, Map<String, String> authHeaders)
+  public EntityUsage getUsage(WebTarget target, String date, Integer days, Map<String, String> authHeaders)
       throws HttpResponseException {
     target = date != null ? target.queryParam("date", date) : target;
     target = days != null ? target.queryParam("days", days) : target;
     return TestUtils.get(target, EntityUsage.class, authHeaders);
   }
 
-  public static void checkUsage(
+  public void checkUsage(
       String date,
       String entity,
       UUID id,
@@ -381,7 +409,7 @@ class UsageResourceTest extends OpenMetadataApplicationTest {
     checkUsage(usage, date, entity, dailyCount, weeklyCount, monthlyCount);
   }
 
-  public static void checkUsageByName(
+  public void checkUsageByName(
       String date,
       String entity,
       String name,

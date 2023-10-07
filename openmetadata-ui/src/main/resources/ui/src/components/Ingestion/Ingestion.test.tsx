@@ -58,7 +58,6 @@ const mockPaging = {
   total: 1,
 };
 
-const mockPaginghandler = jest.fn();
 const mockDeleteIngestion = jest.fn();
 const handleEnableDisableIngestion = jest.fn();
 const mockDeployIngestion = jest
@@ -68,20 +67,8 @@ const mockTriggerIngestion = jest
   .fn()
   .mockImplementation(() => Promise.resolve());
 
-jest.mock('../containers/PageContainer', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ));
-});
-
 jest.mock('../common/searchbar/Searchbar', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
-});
-
-jest.mock('../common/next-previous/NextPrevious', () => {
-  return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
 
 jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () => {
@@ -101,7 +88,7 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
     .mockImplementation(() => <p>IngestionRecentRuns</p>),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -121,7 +108,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -129,7 +115,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPaging}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -165,7 +150,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -173,7 +157,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPaging}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -204,43 +187,6 @@ describe('Test Ingestion page', () => {
     expect(logsButton).toBeInTheDocument();
   });
 
-  it('Pagination should be render if paging is provided', async () => {
-    const mockPagingAfter = {
-      after: 'afterKey',
-      before: 'beforeKey',
-      total: 0,
-    };
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        currrentPage={1}
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPagingAfter}
-        pagingHandler={mockPaginghandler}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceList={[]}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const nextPrevious = await findByText(container, /NextPrevious/i);
-
-    expect(nextPrevious).toBeInTheDocument();
-  });
-
   it('Update button should work', async () => {
     const mockPagingAfter = {
       after: 'afterKey',
@@ -252,7 +198,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -260,7 +205,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPagingAfter}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -292,7 +236,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -300,7 +243,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPagingAfter}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -345,7 +287,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint="http://localhost"
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -353,7 +294,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPaging}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -367,7 +307,7 @@ describe('Test Ingestion page', () => {
       }
     );
 
-    const viewButton = await findByTestId(container, 'airflow-tree-view');
+    const viewButton = await findByTestId(container, 'ingestion-dag-link');
 
     expect(viewButton).toBeInTheDocument();
   });
@@ -377,7 +317,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint="http://localhost"
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -385,7 +324,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPaging}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -413,7 +351,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint="http://localhost"
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -423,7 +360,6 @@ describe('Test Ingestion page', () => {
           ] as unknown as IngestionPipeline[]
         }
         paging={mockPaging}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}
@@ -459,7 +395,6 @@ describe('Test Ingestion page', () => {
       <Ingestion
         isRequiredDetailsAvailable
         airflowEndpoint=""
-        currrentPage={1}
         deleteIngestion={mockDeleteIngestion}
         deployIngestion={mockDeployIngestion}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -467,7 +402,6 @@ describe('Test Ingestion page', () => {
           mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
         }
         paging={mockPagingAfter}
-        pagingHandler={mockPaginghandler}
         permissions={mockPermissions}
         serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         serviceDetails={mockService}

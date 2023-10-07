@@ -17,17 +17,6 @@ import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
 
-jest.mock(
-  '../containers/PageLayout',
-  () =>
-    ({ children }: { children: React.ReactNode }) =>
-      <div data-testid="PageLayout">{children}</div>
-);
-
-jest.mock('../dropdown/DropDown', () => {
-  return jest.fn().mockReturnValue(<p>Dropdown component</p>);
-});
-
 jest.mock('../TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });
@@ -41,7 +30,7 @@ jest.mock('../common/rich-text-editor/RichTextEditor', () => {
 });
 
 const propsValue: CreateUserProps = {
-  saveState: 'initial',
+  isLoading: false,
   roles: [],
   forceBot: false,
   onSave: jest.fn(),
@@ -54,7 +43,6 @@ describe('Test CreateUser component', () => {
       wrapper: MemoryRouter,
     });
 
-    const PageLayout = await findByTestId(container, 'PageLayout');
     const email = await findByTestId(container, 'email');
     const admin = await findByTestId(container, 'admin');
     const cancelButton = await findByTestId(container, 'cancel-user');
@@ -63,17 +51,15 @@ describe('Test CreateUser component', () => {
       container,
       /MarkdownWithPreview component/i
     );
-    const dropdown = await findByText(container, /Dropdown component/i);
+
     const teamsSelectable = await findByText(
       container,
       /TeamsSelectable component/i
     );
 
-    expect(PageLayout).toBeInTheDocument();
     expect(email).toBeInTheDocument();
     expect(admin).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(dropdown).toBeInTheDocument();
     expect(teamsSelectable).toBeInTheDocument();
     expect(cancelButton).toBeInTheDocument();
     expect(saveButton).toBeInTheDocument();

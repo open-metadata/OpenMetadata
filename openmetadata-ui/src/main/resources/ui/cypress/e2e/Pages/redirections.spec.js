@@ -13,7 +13,6 @@
 
 import { BASE_URL } from '../../constants/constants';
 import {
-  LEFT_PANEL_DETAILS,
   NAVBAR_DETAILS,
   SETTINGS_LEFT_PANEL,
 } from '../../constants/redirections.constants';
@@ -38,15 +37,6 @@ describe('Redirection link should work properly', () => {
       //
       cy.get('body').click();
       validateURL(navbar.url);
-      cy.clickOnLogo();
-      validateURL(`${BASE_URL}/my-data`);
-    });
-  });
-
-  it(`Check mydata redirection mydata links on left panel.`, () => {
-    Object.values(LEFT_PANEL_DETAILS).map((leftpanel) => {
-      cy.get(leftpanel.testid).should('be.visible').click();
-      validateURL(leftpanel.url);
       cy.clickOnLogo();
       validateURL(`${BASE_URL}/my-data`);
     });

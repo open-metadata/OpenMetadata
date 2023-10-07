@@ -13,10 +13,7 @@ Register SSL verification results
 """
 from typing import Callable, Optional
 
-from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
-    ValidateSSLClientConfig,
-)
-from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+from metadata.generated.schema.security.ssl.verifySSLConfig import SslConfig, VerifySSL
 from metadata.utils.dispatch import enum_register
 
 
@@ -31,18 +28,18 @@ ssl_verification_registry = enum_register()
 
 
 @ssl_verification_registry.add(VerifySSL.no_ssl.value)
-def no_ssl_init(_: Optional[ValidateSSLClientConfig]) -> None:
+def no_ssl_init(_: Optional[SslConfig]) -> None:
     return None
 
 
 @ssl_verification_registry.add(VerifySSL.ignore.value)
-def ignore_ssl_init(_: Optional[ValidateSSLClientConfig]) -> bool:
+def ignore_ssl_init(_: Optional[SslConfig]) -> bool:
     return False
 
 
 @ssl_verification_registry.add(VerifySSL.validate.value)
-def validate_ssl_init(ssl_config: Optional[ValidateSSLClientConfig]) -> str:
-    return ssl_config.certificatePath
+def validate_ssl_init(ssl_config: Optional[SslConfig]) -> str:
+    return ssl_config.__root__.certificatePath
 
 
 def get_verify_ssl_fn(verify_ssl: VerifySSL) -> Callable:

@@ -17,7 +17,10 @@ DOT = "_DOT_"
 TEN_MIN = 10 * 60
 UTF_8 = "utf-8"
 CHUNKSIZE = 200000
-
+DEFAULT_DATABASE = "default"
+BUILDER_PASSWORD_ATTR = "password"
+TIMEDELTA = "timedelta"
+COMPLEX_COLUMN_SEPARATOR = "_##"
 
 ES_SOURCE_TO_ES_OBJ_ARGS = {
     "caCerts": "ca_certs",
@@ -27,3 +30,18 @@ ES_SOURCE_TO_ES_OBJ_ARGS = {
     "useSSL": "use_ssl",
     "verifyCerts": "verify_certs",
 }
+
+ES_SOURCE_IGNORE_KEYS = {
+    "searchIndexMappingLanguage",
+    "batchSize",
+    "recreateIndex",
+    "type",
+}
+
+QUERY_WITH_OM_VERSION = '/* {"app": "OpenMetadata"'
+
+QUERY_WITH_DBT = '/* {"app": "dbt"'
+
+AUTHORIZATION_HEADER = "Authorization"
+
+NO_ACCESS_TOKEN = "no_token"

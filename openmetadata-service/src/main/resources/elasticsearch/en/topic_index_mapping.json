@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 3,
+          "max_gram": 10,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -34,10 +42,15 @@
       },
       "name": {
         "type": "text",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -45,13 +58,23 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "fields": {
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "index_options": "freqs"
       },
       "version": {
         "type": "float"
@@ -66,11 +89,200 @@
       "href": {
         "type": "text"
       },
-      "schemaText": {
-        "type": "text"
+      "sourceUrl": {
+        "type": "keyword"
       },
-      "schemaType": {
-        "type": "text"
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "extension": {
+        "type": "keyword"
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "messageSchema": {
+        "properties": {
+          "schemaText": {
+            "type": "text"
+          },
+          "schemaType": {
+            "type": "text"
+          },
+          "schemaFields": {
+            "properties": {
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "dataType": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text",
+                "index_options": "docs",
+                "analyzer": "om_analyzer",
+                "norms": false
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "tags": {
+                "properties": {
+                  "tagFQN": {
+                    "type": "keyword"
+                  },
+                  "labelType": {
+                    "type": "keyword"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "source": {
+                    "type": "keyword"
+                  },
+                  "state": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "children": {
+                "properties": {
+                  "id": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                      }
+                    }
+                  },
+                  "dataType": {
+                    "type": "text"
+                  },
+                  "name": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "fullyQualifiedName": {
+                    "type": "text"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "tags": {
+                    "properties": {
+                      "tagFQN": {
+                        "type": "keyword"
+                      },
+                      "labelType": {
+                        "type": "keyword"
+                      },
+                      "description": {
+                        "type": "text"
+                      },
+                      "source": {
+                        "type": "keyword"
+                      },
+                      "state": {
+                        "type": "keyword"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "cleanupPolicies": {
         "type": "keyword"
@@ -79,10 +291,10 @@
         "type": "integer"
       },
       "maximumMessageSize": {
-        "type": "integer"
+        "type": "long"
       },
       "retentionSize": {
-        "type": "integer"
+        "type": "long"
       },
       "service": {
         "properties": {
@@ -211,6 +423,9 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "keyword"
+      },
       "serviceType": {
         "type": "keyword"
       },
@@ -226,6 +441,9 @@
             "path": "deleted"
           }
         ]
+      },
+      "field_suggest": {
+        "type": "completion"
       },
       "service_suggest": {
         "type": "completion"

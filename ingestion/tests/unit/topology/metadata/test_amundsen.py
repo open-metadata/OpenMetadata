@@ -27,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import Href
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.amundsen.metadata import AmundsenSource
 
 mock_amundsen_config = {
@@ -81,6 +82,7 @@ EXPECTED_SERVICE = [
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
                 supportsProfiler=True,
+                supportsDBTExtraction=True,
             )
         ),
         pipelines=None,
@@ -116,6 +118,7 @@ EXPECTED_SERVICE = [
                 ),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
+                supportsDBTExtraction=True,
             )
         ),
         pipelines=None,
@@ -149,7 +152,6 @@ EXPECTED_SERVICE = [
                 awsConfig=AWSCredentials(awsRegion="aws_region"),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
-                supportsProfiler=True,
             )
         ),
         pipelines=None,
@@ -182,7 +184,7 @@ class AmundsenUnitTest(TestCase):
     """
 
     @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        "metadata.ingestion.source.metadata.amundsen.metadata.AmundsenSource.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
@@ -190,7 +192,7 @@ class AmundsenUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_amundsen_config)
         self.amundsen = AmundsenSource.create(
             mock_amundsen_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
     def test_database_service(self):

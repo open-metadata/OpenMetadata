@@ -122,23 +122,16 @@ jest.mock('../../utils/CommonUtils', () => ({
   getHtmlForNonAdminAction: jest.fn().mockReturnValue('admin action'),
 }));
 
-jest.mock('../../utils/GlossaryUtils', () => ({
-  fetchGlossaryTerms: jest.fn(),
-  getGlossaryTermlist: jest.fn().mockReturnValue([]),
-}));
-
-jest.mock('../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockReturnValue('entityLink'),
-}));
-
-jest.mock('../../utils/TagsUtils', () => ({
-  getClassifications: jest.fn(),
-  getTaglist: jest.fn().mockReturnValue([]),
-  getTagDisplay: jest.fn(),
-}));
-
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
+jest.mock('..//TableTags/TableTags.component', () => {
+  return jest.fn().mockReturnValue(<p>TableTags</p>);
+});
+
+jest.mock('../TableDescription/TableDescription.component', () => {
+  return jest.fn().mockReturnValue(<p>TableDescription</p>);
 });
 
 jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
@@ -147,9 +140,15 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
     .mockReturnValue(<p> ModalWithMarkdownEditor</p>),
 }));
 
-jest.mock('components/Tag/Tags/tags', () => {
-  return jest.fn().mockImplementation(({ tag }) => <span>{tag}</span>);
-});
+jest.mock('../../utils/TableUtils', () => ({
+  getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+  getTagsHierarchy: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/GlossaryUtils', () => ({
+  getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
+  getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
+}));
 
 const handleFeaturesUpdate = jest.fn();
 
@@ -157,6 +156,16 @@ const mockProp = {
   mlFeatures: mockData['mlFeatures'] as Mlmodel['mlFeatures'],
   handleFeaturesUpdate,
   permissions: DEFAULT_ENTITY_PERMISSION,
+  onThreadLinkSelect: jest.fn(),
+  entityFieldThreads: [
+    {
+      entityLink:
+        '<#E::mlmodel::mlflow_svc.eta_predictions::mlFeatures::sales::description>',
+      count: 1,
+      entityField: 'mlFeatures::sales::description',
+    },
+  ],
+  entityFqn: 'mlflow_svc.eta_predictions',
 };
 
 describe('Test MlModel feature list', () => {
@@ -176,9 +185,13 @@ describe('Test MlModel feature list', () => {
     });
 
     const featureList = await screen.findByTestId('feature-list');
-    const featureCards = await screen.findAllByTestId('feature-card');
+    const salesFeatureCard = await screen.findByTestId('feature-card-sales');
+    const personaFeatureCard = await screen.findByTestId(
+      'feature-card-persona'
+    );
 
     expect(featureList).toBeInTheDocument();
-    expect(featureCards).toHaveLength(mockData['mlFeatures'].length);
+    expect(salesFeatureCard).toBeInTheDocument();
+    expect(personaFeatureCard).toBeInTheDocument();
   });
 });

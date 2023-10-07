@@ -11,109 +11,66 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
-import { AxiosError } from 'axios';
-import { isEmpty, isEqual } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { getTagSuggestions } from 'rest/miscAPI';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../../generated/type/tagLabel';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { DefaultOptionType } from 'antd/lib/select';
+import { t } from 'i18next';
+import { isArray, isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
+import React from 'react';
+import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import { TagSource } from '../../../generated/entity/data/container';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { fetchTagsElasticSearch } from '../../../utils/TagsUtils';
 
-const { Option } = Select;
-
-interface SelectOption {
-  label: string;
-  value: string;
-  'data-sourcetype': string;
+export interface TagSuggestionProps {
+  onChange?: (newTags: TagLabel[]) => void;
+  value?: TagLabel[];
 }
 
-interface Props {
-  onChange: (newTags: TagLabel[]) => void;
-  selectedTags: TagLabel[];
-}
+const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
+  const handleTagSelection = (
+    newValue: DefaultOptionType | DefaultOptionType[]
+  ) => {
+    if (isArray(newValue)) {
+      let newTags: EntityTags[] = [];
+      if (!isEmpty(newValue)) {
+        newTags = newValue.reduce((acc, tag) => {
+          const oldTag = value?.find((oldTag) => oldTag.tagFQN === tag.value);
+          if (oldTag) {
+            return [...acc, oldTag];
+          }
+          let tagData: EntityTags = {
+            tagFQN: tag.value,
+            source: TagSource.Classification,
+          };
 
-const TagSuggestion: React.FC<Props> = ({ onChange, selectedTags }) => {
-  const selectedOptions = () =>
-    selectedTags.map((tag) => ({
-      label: tag.tagFQN,
-      value: tag.tagFQN,
-      'data-sourcetype': isEqual(tag.source, 'Tag') ? 'tag' : 'glossaryTerm',
-    }));
+          if (tag.data) {
+            tagData = {
+              ...tagData,
+              name: tag.data?.name,
+              displayName: tag.data?.displayName,
+              description: tag.data?.description,
+              style: tag.data?.style,
+            };
+          }
 
-  const [options, setOptions] = useState<SelectOption[]>([]);
+          return [...acc, tagData];
+        }, [] as EntityTags[]);
+      }
 
-  const fetchOptions = (query: string) => {
-    getTagSuggestions(query)
-      .then((res) => {
-        const suggestOptions =
-          res.data.suggest['metadata-suggest'][0].options ?? [];
-        const uniqueOptions = [
-          ...new Set(suggestOptions.map((op) => op._source)),
-        ];
-        setOptions(
-          uniqueOptions.map((op) => ({
-            label: op.fullyQualifiedName as string,
-            value: op.fullyQualifiedName as string,
-            'data-sourcetype': op.entityType,
-          }))
-        );
-      })
-      .catch((err: AxiosError) => showErrorToast(err));
-  };
-  const handleSearch = (newValue: string) => {
-    if (newValue) {
-      fetchOptions(newValue);
-    } else {
-      setOptions([]);
+      onChange?.(newTags);
     }
   };
-  const handleOnChange = (
-    _values: SelectOption[],
-    option: SelectOption | SelectOption[]
-  ) => {
-    const newTags = (option as SelectOption[]).map((value) => ({
-      labelType: LabelType.Manual,
-      state: State.Suggested,
-      source: isEqual(value['data-sourcetype'], 'tag')
-        ? TagSource.Tag
-        : TagSource.Glossary,
-      tagFQN: value.value,
-    }));
-    onChange(newTags);
-  };
-
-  useEffect(() => {
-    setOptions(selectedOptions());
-  }, [selectedTags]);
 
   return (
-    <Select
-      showSearch
-      className="ant-select-custom"
-      data-testid="select-tags"
-      defaultActiveFirstOption={false}
-      filterOption={false}
+    <AsyncSelectList
+      defaultValue={value?.map((item) => item.tagFQN) || []}
+      fetchOptions={fetchTagsElasticSearch}
       mode="multiple"
-      notFoundContent={null}
-      placeholder="Search to Select"
-      showArrow={false}
-      value={!isEmpty(selectedOptions()) ? selectedOptions() : undefined}
-      onChange={handleOnChange}
-      onSearch={handleSearch}>
-      {options.map((d) => (
-        <Option
-          data-sourcetype={d['data-sourcetype']}
-          data-testid="tag-option"
-          key={d.value}>
-          {d.label}
-        </Option>
-      ))}
-    </Select>
+      placeholder={t('label.select-field', {
+        field: t('label.tag-plural'),
+      })}
+      onChange={(value) => handleTagSelection(value)}
+    />
   );
 };
 

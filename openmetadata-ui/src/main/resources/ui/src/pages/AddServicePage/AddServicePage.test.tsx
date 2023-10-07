@@ -11,23 +11,15 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
-import React, { ReactNode } from 'react';
+import { findByText, render } from '@testing-library/react';
+import React from 'react';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-jest.mock('components/containers/PageContainerV1', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children }: { children: ReactNode }) => (
-      <div data-testid="PageContainerV1">{children}</div>
-    ));
-});
-
-jest.mock('components/AddService/AddService.component', () => {
+jest.mock('../../components/AddService/AddService.component', () => {
   return jest.fn().mockImplementation(() => <div>AddService.component</div>);
 });
 
@@ -43,9 +35,7 @@ describe('Test AddServicePage component', () => {
       container,
       /AddService.component/i
     );
-    const pageContainerV1 = await findByTestId(container, 'PageContainerV1');
 
     expect(addServiceComponent).toBeInTheDocument();
-    expect(pageContainerV1).toBeInTheDocument();
   });
 });

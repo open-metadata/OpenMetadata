@@ -17,21 +17,22 @@ from typing import List
 
 from sqlalchemy.engine import Engine
 
-from metadata.ingestion.api.sink import SinkStatus
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.api.workflow import Workflow
+from metadata.ingestion.api.status import Status
+from metadata.workflow.metadata import MetadataWorkflow
 
-from .test_cli_dbt_base import PATH_TO_RESOURCES, CliDBTBase
+from .base.test_cli import PATH_TO_RESOURCES
+from .base.test_cli_dbt import CliDBTBase
 
 
 class DbtCliTest(CliDBTBase.TestSuite):
-
     engine: Engine
 
     @classmethod
     def setUpClass(cls) -> None:
         connector = cls.get_connector_name()
-        workflow: Workflow = cls.get_workflow(connector)
+        workflow: MetadataWorkflow = cls.get_workflow(
+            test_type=cls.get_test_type(), connector=connector
+        )
         cls.engine = workflow.source.engine
         cls.openmetadata = workflow.source.metadata
         cls.config_file_path = str(
@@ -57,28 +58,28 @@ class DbtCliTest(CliDBTBase.TestSuite):
     @staticmethod
     def fqn_dbt_tables() -> List[str]:
         return [
-            "local_redshift.dev.dbt_jaffle.customers",
-            "local_redshift.dev.dbt_jaffle.orders",
+            "local_redshift.dev.dbt_cli_e2e.customers",
+            "local_redshift.dev.dbt_cli_e2e.orders",
         ]
 
     def assert_for_vanilla_ingestion(
-        self, source_status: SourceStatus, sink_status: SinkStatus
+        self, source_status: Status, sink_status: Status
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
-        self.assertTrue(len(source_status.filtered) == 5)
-        self.assertTrue(len(source_status.success) >= self.expected_tables())
+        self.assertTrue(len(source_status.filtered) == 9)
+        self.assertTrue(len(source_status.records) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) > self.expected_tables())
 
     def assert_for_dbt_ingestion(
-        self, source_status: SourceStatus, sink_status: SinkStatus
+        self, source_status: Status, sink_status: Status
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
-        self.assertTrue(len(source_status.success) >= 0)
+        self.assertTrue(len(source_status.records) >= 0)
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         self.assertTrue(len(sink_status.records) >= self.expected_records())

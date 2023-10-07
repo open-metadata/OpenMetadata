@@ -1,0 +1,46 @@
+{
+    "name": "tableRowInsertedCountToBeBetween",
+    "fullyQualifiedName": "tableRowInsertedCountToBeBetween",
+    "displayName": "Table Row Inserted Count To be Between",
+    "description": "This schema defines the test tableRowInsertedCountToBeBetween. Test the number of rows inserted is between x and y.",
+    "entityType": "TABLE",
+    "testPlatforms": ["OpenMetadata"],
+    "parameterDefinition": [
+      {
+        "name": "min",
+        "displayName": "Min Row Count",
+        "description": "Lower Bound of the Count",
+        "dataType": "INT",
+        "required": false
+      },
+      {
+        "name": "max",
+        "displayName": "Max Row Count",
+        "description": "Upper Bound of the Count",
+        "dataType": "INT",
+        "required": false
+      },
+      {
+        "name": "columnName",
+        "displayName": "Column Name",
+        "description": "Name of the Column. It should be a timestamp, date or datetime field.",
+        "dataType": "STRING",
+        "required": true
+      },
+      {
+        "name": "rangeType",
+        "displayName": "Range Type",
+        "description": "One of 'HOUR', 'DAY', 'MONTH', 'YEAR'",
+        "dataType": "STRING",
+        "required": true
+      },
+      {
+        "name": "rangeInterval",
+        "displayName": "Interval",
+        "description": "Interval Range. E.g. if rangeInterval=1 and rangeType=DAY, we'll check the numbers of rows inserted where columnName=-1 DAY",
+        "dataType": "INT",
+        "required": true
+      }
+    ]
+  }
+  

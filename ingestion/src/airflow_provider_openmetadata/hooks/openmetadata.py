@@ -26,7 +26,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
-    ValidateSSLClientConfig,
+    ValidateSslClientConfig,
 )
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -52,7 +52,6 @@ class OpenMetadataHook(BaseHook):
         self.default_ssl_config = None
 
     def get_conn(self) -> OpenMetadataConnection:
-
         conn: Connection = self.get_connection(self.openmetadata_conn_id)
         jwt_token = conn.get_password()
         if not jwt_token:
@@ -67,7 +66,7 @@ class OpenMetadataHook(BaseHook):
         extra = conn.extra_dejson if conn.get_extra() else {}
         verify_ssl = extra.get("verifySSL") or self.default_verify_ssl
         ssl_config = (
-            ValidateSSLClientConfig(certificatePath=extra["sslConfig"])
+            ValidateSslClientConfig(certificatePath=extra["sslConfig"])
             if extra.get("sslConfig")
             else self.default_ssl_config
         )

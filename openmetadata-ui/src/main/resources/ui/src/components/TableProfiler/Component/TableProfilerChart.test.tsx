@@ -13,39 +13,25 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { getSystemProfileList, getTableProfilesList } from 'rest/tableAPI';
 import {
-  getPastDatesTimeStampFromCurrentDate,
-  getPastDaysDateTimeMillis,
-} from '../../../utils/TimeUtils';
+  getSystemProfileList,
+  getTableProfilesList,
+} from '../../../rest/tableAPI';
 import TableProfilerChart from './TableProfilerChart';
 
 const mockFQN = 'testFQN';
 const mockTimeValue = {
   endSec: 1670667984,
   startSec: 1670408784,
-  endMilli: 1670667985445,
-  startMilli: 1670408785445,
+  endMilli: 1670667984000,
+  startMilli: 1670408784000,
 };
+const mockDateRangeObject = { startTs: 1670408784000, endTs: 1670667984000 };
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockImplementation(() => ({ datasetFQN: mockFQN })),
+  useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
 }));
-jest.mock('../../../utils/TimeUtils', () => ({
-  getCurrentDateTimeMillis: jest
-    .fn()
-    .mockImplementation(() => mockTimeValue.endMilli),
-  getCurrentDateTimeStamp: jest
-    .fn()
-    .mockImplementation(() => mockTimeValue.endSec),
-  getPastDatesTimeStampFromCurrentDate: jest
-    .fn()
-    .mockImplementation(() => mockTimeValue.startSec),
-  getPastDaysDateTimeMillis: jest
-    .fn()
-    .mockImplementation(() => mockTimeValue.startMilli),
-}));
-jest.mock('rest/tableAPI');
+jest.mock('../../../rest/tableAPI');
 jest.mock('../../ProfilerDashboard/component/ProfilerLatestValue', () => {
   return jest.fn().mockImplementation(() => <div>ProfilerLatestValue</div>);
 });
@@ -64,7 +50,7 @@ describe('TableProfilerChart component test', () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
     act(() => {
-      render(<TableProfilerChart selectedTimeRange="last3days" />);
+      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
     });
 
     expect(
@@ -89,7 +75,7 @@ describe('TableProfilerChart component test', () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
     await act(async () => {
-      render(<TableProfilerChart selectedTimeRange="last3days" />);
+      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
     });
 
     // API should be call once
@@ -104,27 +90,21 @@ describe('TableProfilerChart component test', () => {
       endTs: mockTimeValue.endMilli,
     });
     expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
-      startTs: mockTimeValue.startSec,
-      endTs: mockTimeValue.endSec,
+      startTs: mockTimeValue.startMilli,
+      endTs: mockTimeValue.endMilli,
     });
   });
 
   it('If TimeRange change API should be call accordingly', async () => {
     const startTime = {
-      inMilli: 1670063664901,
-      inSec: 1670063664,
+      inMilli: 1670408784000,
+      inSec: 1670408784,
     };
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;
     const mockGetTableProfilesList = getTableProfilesList as jest.Mock;
-    (getPastDatesTimeStampFromCurrentDate as jest.Mock).mockImplementationOnce(
-      () => startTime.inSec
-    );
-    (getPastDaysDateTimeMillis as jest.Mock).mockImplementationOnce(
-      () => startTime.inMilli
-    );
 
     await act(async () => {
-      render(<TableProfilerChart selectedTimeRange="last7days" />);
+      render(<TableProfilerChart dateRangeObject={mockDateRangeObject} />);
     });
 
     // API should be call with proper Param value
@@ -133,8 +113,8 @@ describe('TableProfilerChart component test', () => {
       endTs: mockTimeValue.endMilli,
     });
     expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
-      startTs: startTime.inSec,
-      endTs: mockTimeValue.endSec,
+      startTs: startTime.inMilli,
+      endTs: mockTimeValue.endMilli,
     });
   });
 });

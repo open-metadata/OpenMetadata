@@ -13,8 +13,6 @@
 
 import { isEmpty } from 'lodash';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
-import SigninPage from 'pages/login';
-import PageNotFound from 'pages/page-not-found';
 import React, {
   ComponentType,
   forwardRef,
@@ -27,6 +25,8 @@ import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { ROUTES } from '../../../constants/constants';
+import SigninPage from '../../../pages/login/index';
+import PageNotFound from '../../../pages/page-not-found/PageNotFound';
 import localState from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../Loader/Loader';
@@ -74,6 +74,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       isSigningIn,
       setIsSigningIn,
       setLoadingIndicator,
+      updateAxiosInterceptors,
     } = useAuthContext();
     const history = useHistory();
     const { userDetails, newUser } = AppState;
@@ -94,7 +95,10 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
-      return userManager.signinSilent().then((user) => user.id_token);
+      const user = await userManager.signinSilent();
+      localState.setOidcToken(user.id_token);
+
+      return user.id_token;
     };
 
     useImperativeHandle(ref, () => ({
@@ -158,6 +162,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   }}
                   onSuccess={(user) => {
                     localState.setOidcToken(user.id_token);
+                    updateAxiosInterceptors();
                   }}
                 />
               </>

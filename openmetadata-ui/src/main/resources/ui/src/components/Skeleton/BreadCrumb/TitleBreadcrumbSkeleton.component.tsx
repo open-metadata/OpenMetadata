@@ -10,29 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from 'antd';
+import { Col, Row, Skeleton } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
 import { TitleBreadcrumbSkeletonProps } from '../Skeleton.interfaces';
 
 const TitleBreadcrumbSkeleton = ({
-  titleLinks,
+  loading,
   children,
 }: TitleBreadcrumbSkeletonProps) =>
-  titleLinks.length === 0 ? (
-    <div className="flex">
-      {titleLinks.map(() => (
-        <Skeleton
-          active
-          className="m-l-xs"
-          key={uniqueId()}
-          paragraph={{ rows: 0 }}
-          title={{
-            width: 150,
-          }}
-        />
-      ))}
-    </div>
+  loading ? (
+    <Row gutter={16}>
+      {Array(3)
+        .fill(null)
+        .map(() => (
+          <Col key={uniqueId()}>
+            <Skeleton
+              active
+              className="m-l-xs"
+              paragraph={{ rows: 0 }}
+              title={{
+                width: 150,
+              }}
+            />
+          </Col>
+        ))}
+    </Row>
   ) : (
     children
   );

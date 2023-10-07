@@ -20,7 +20,8 @@ from unittest.mock import patch
 import boto3
 from moto import mock_kinesis
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 CONFIG = """
 {
@@ -59,9 +60,9 @@ CONFIG = """
 
 
 def execute_workflow():
-    workflow = Workflow.create(json.loads(CONFIG))
+    workflow = MetadataWorkflow.create(json.loads(CONFIG))
     workflow.execute()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

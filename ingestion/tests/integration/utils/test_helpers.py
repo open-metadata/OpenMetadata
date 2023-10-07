@@ -15,7 +15,6 @@ import uuid
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.utils.helpers import (
     find_column_in_table,
     find_column_in_table_with_index,
@@ -40,10 +39,7 @@ class HelpersTest(TestCase):
         table = Table(
             id=uuid.uuid4(),
             name="test",
-            databaseSchema=EntityReference(
-                id=uuid.uuid4(),
-                type="databaseSchema",
-            ),
+            databaseSchema="test-service-table.test-db.test-schema",
             fullyQualifiedName="test-service-table.test-db.test-schema.test",
             columns=[
                 Column(name="id", dataType=DataType.BIGINT),

@@ -38,6 +38,12 @@ const mockProps: SearchDropdownProps = {
   onSearch: mockOnSearch,
 };
 
+jest.mock('lodash', () => ({
+  ...jest.requireActual('lodash'),
+  // Assign the import a new implementation, in this case it's execute the function given to you
+  debounce: jest.fn().mockImplementation((fn) => fn),
+}));
+
 describe('Search DropDown Component', () => {
   it('Should render Dropdown components', async () => {
     render(<SearchDropdown {...mockProps} />);

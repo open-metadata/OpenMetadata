@@ -12,8 +12,8 @@
  */
 
 import {
+  checkServiceFieldSectionHighlighting,
   deleteCreatedService,
-  editOwnerforCreatedService,
   goToAddNewServicePage,
   testServiceCreationAndIngestion,
   updateDescriptionForIngestedTables,
@@ -35,35 +35,41 @@ describe('Metabase Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Dashboard);
 
     // Select Dashboard services
-    cy.get('[data-testid="service-category"]').select('dashboardServices');
+    cy.get('[data-testid="service-category"]').should('be.visible').click();
+    cy.get('.ant-select-item-option-content')
+      .contains('Dashboard Services')
+      .click();
 
     const connectionInput = () => {
-      cy.get('#root_username').type(Cypress.env('metabaseUsername'));
-      cy.get('#root_password')
+      cy.get('#root\\/username')
+        .scrollIntoView()
+        .type(Cypress.env('metabaseUsername'));
+      checkServiceFieldSectionHighlighting('username');
+      cy.get('#root\\/password')
         .scrollIntoView()
         .type(Cypress.env('metabasePassword'));
-      cy.get('#root_hostPort')
+      checkServiceFieldSectionHighlighting('password');
+      cy.get('#root\\/hostPort')
         .scrollIntoView()
         .type(Cypress.env('metabaseHostPort'));
+      checkServiceFieldSectionHighlighting('hostPort');
     };
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="dashboard-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-dashboard"]')
-        .should('be.visible')
-        .type(tableName);
+      cy.get('#root\\/dashboardFilterPattern\\/includes')
+        .scrollIntoView()
+
+        .type(`${tableName}{enter}`);
     };
 
-    testServiceCreationAndIngestion(
+    testServiceCreationAndIngestion({
       serviceType,
       connectionInput,
       addIngestionInput,
       serviceName,
-      'dashboard'
-    );
+      type: 'dashboard',
+      serviceCategory: SERVICE_TYPE.Dashboard,
+    });
   });
 
   it('Update table description and verify description after re-run', () => {
@@ -73,14 +79,6 @@ describe('Metabase Ingestion', () => {
       description,
       SERVICE_TYPE.Dashboard,
       'dashboards'
-    );
-  });
-
-  it('Edit and validate owner', () => {
-    editOwnerforCreatedService(
-      SERVICE_TYPE.Dashboard,
-      serviceName,
-      API_SERVICE.dashboardServices
     );
   });
 

@@ -25,6 +25,12 @@
         },
         {
           "$ref": "../mlmodelService.json#/definitions/mlModelConnection"
+        },
+        {
+          "$ref": "../storageService.json#/definitions/storageConnection"
+        },
+        {
+          "$ref": "../searchService.json#/definitions/searchConnection"
         }
       ]
     }

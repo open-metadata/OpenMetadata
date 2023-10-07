@@ -14,26 +14,21 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import {
   mockDashboardEntityDetails,
   mockFetchChartsResponse,
 } from '../mocks/DashboardSummary.mock';
 import DashboardSummary from './DashboardSummary.component';
 
-jest.mock(
-  '../../../common/table-data-card-v2/TableDataCardTitle.component',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="TableDataCardTitle">TableDataCardTitle</div>
-      ))
-);
-
 jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
+);
+
+jest.mock('../CommonEntitySummaryInfo/CommonEntitySummaryInfo', () =>
+  jest.fn().mockImplementation(() => <div>testCommonEntitySummaryInfo</div>)
 );
 
 jest.mock('../../../../utils/DashboardDetailsUtils', () => ({
@@ -48,36 +43,46 @@ describe('DashboardSummary component tests', () => {
       });
     });
 
-    const dashboardTitle = screen.getByTestId('TableDataCardTitle');
-    const dashboardUrlLabel = screen.getByTestId('dashboard-url-label');
-    const dashboardUrlValue = screen.getByTestId('dashboard-link-name');
+    const commonEntitySummaryInfo = screen.getByText(
+      'testCommonEntitySummaryInfo'
+    );
     const chartsHeader = screen.getByTestId('charts-header');
-    const summaryList = screen.getByTestId('SummaryList');
+    const summaryList = screen.getAllByTestId('SummaryList');
 
-    expect(dashboardTitle).toBeInTheDocument();
-    expect(dashboardUrlLabel).toBeInTheDocument();
-    expect(dashboardUrlValue).toContainHTML(mockDashboardEntityDetails.name);
+    expect(commonEntitySummaryInfo).toBeInTheDocument();
     expect(chartsHeader).toBeInTheDocument();
-    expect(summaryList).toBeInTheDocument();
+    expect(summaryList).toHaveLength(2);
   });
 
-  it('If the dashboard url is not present in dashboard details, "-" should be displayed as dashboard url value', async () => {
+  it('Component should render properly, when loaded in the Lineage page.', async () => {
     await act(async () => {
-      render(
+      const { debug } = render(
         <DashboardSummary
-          entityDetails={{
-            ...mockDashboardEntityDetails,
-            dashboardUrl: undefined,
-          }}
+          componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+          entityDetails={mockDashboardEntityDetails}
         />,
         {
           wrapper: MemoryRouter,
         }
       );
 
-      const dashboardUrlValue = screen.getByTestId('dashboard-url-value');
-
-      expect(dashboardUrlValue).toContainHTML('-');
+      debug();
     });
+
+    const ownerLabel = screen.queryByTestId('label.owner-label');
+    const commonEntitySummaryInfo = screen.getByText(
+      'testCommonEntitySummaryInfo'
+    );
+    const tags = screen.getByText('label.tag-plural');
+    const description = screen.getByText('label.description');
+    const noDataFound = screen.getByText('label.no-data-found');
+
+    expect(ownerLabel).not.toBeInTheDocument();
+
+    expect(commonEntitySummaryInfo).toBeInTheDocument();
+
+    expect(tags).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
+    expect(noDataFound).toBeInTheDocument();
   });
 });

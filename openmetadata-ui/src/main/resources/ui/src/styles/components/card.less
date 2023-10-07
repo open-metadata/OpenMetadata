@@ -11,7 +11,69 @@
  *  limitations under the License.
  */
 
+@import url('../variables.less');
+
 .ant-card {
-  box-shadow: @card-shadow;
-  border: 1px #dde3ea solid;
+  background: @background-color;
+  border: @global-border;
+  border-radius: @border-radius-base;
+  width: 100%;
+}
+
+.card-body-full {
+  .ant-card-body {
+    height: 100%;
+    padding: 16px;
+  }
+}
+
+.card-padding-0 {
+  .ant-card-body {
+    padding: 0;
+  }
+}
+
+.card-padding-y-0 {
+  .ant-card-body {
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+.card-body-border-none {
+  border: none;
+  .ant-card-head {
+    border: none;
+  }
+}
+
+.ant-card-body {
+  padding: 14px;
+}
+
+.ant-card-feed > .ant-card-body {
+  padding-bottom: 0px;
+}
+
+.ant-card-head-title {
+  padding: 8px 0px;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #dce3ec;
+  padding: 0 18px;
+}
+
+.custom-entity-schema > .CodeMirror {
+  height: 70vh;
+}
+
+.ant-card-head {
+  padding: 0 14px;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+.ant-card-extra {
+  padding: 0px;
 }

@@ -22,6 +22,8 @@ from metadata.cli.backup import UploadDestinationType, run_backup
 from metadata.cli.dataquality import run_test
 from metadata.cli.docker import BACKEND_DATABASES, DockerActions, run_docker
 from metadata.cli.ingest import run_ingest
+from metadata.cli.insight import run_insight
+from metadata.cli.lineage import run_lineage
 from metadata.cli.openmetadata_dag_config_migration import (
     run_openmetadata_dag_config_migration,
 )
@@ -30,6 +32,7 @@ from metadata.cli.openmetadata_imports_migration import (
 )
 from metadata.cli.profile import run_profiler
 from metadata.cli.restore import run_restore
+from metadata.cli.usage import run_usage
 from metadata.utils.helpers import BackupRestoreArgs
 from metadata.utils.logger import cli_logger, set_loggers_level
 
@@ -38,12 +41,15 @@ logger = cli_logger()
 
 class MetadataCommands(Enum):
     INGEST = "ingest"
+    USAGE = "usage"
     PROFILE = "profile"
     TEST = "test"
     DOCKER = "docker"
     BACKUP = "backup"
     RESTORE = "restore"
     WEBHOOK = "webhook"
+    INSIGHT = "insight"
+    LINEAGE = "lineage"
     OPENMETADATA_IMPORTS_MIGRATION = "openmetadata_imports_migration"
     OPENMETADATA_DAG_CONFIG_MIGRATION = "openmetadata_dag_config_migration"
 
@@ -133,7 +139,7 @@ def create_openmetadata_dag_config_migration_args(parser: argparse.ArgumentParse
 
 def docker_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Docker
+    Additional Parser Arguments for Docker
     """
     parser.add_argument(
         "--start", help="Start release docker containers", action="store_true"
@@ -186,7 +192,7 @@ def docker_args(parser: argparse.ArgumentParser):
 
 def webhook_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Webhook
+    Additional Parser Arguments for Webhook
     """
     parser.add_argument(
         "-H", "--host", help="Webserver Host", type=str, default="0.0.0.0"
@@ -196,7 +202,7 @@ def webhook_args(parser: argparse.ArgumentParser):
 
 def backup_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Backup
+    Additional Parser Arguments for Backup
     """
     parser.add_argument(
         "-H", "--host", help="Host that runs the database", required=True
@@ -310,7 +316,7 @@ def restore_args(parser: argparse.ArgumentParser):
 
 def add_metadata_args(parser: argparse.ArgumentParser):
     """
-    Addtional Parser Arguments for Metadata
+    Additional Parser Arguments for Metadata
     """
     parser.add_argument(
         "-v", "--version", action="version", version=get_metadata_version()
@@ -333,6 +339,15 @@ def get_parser(args=None):
 
     create_common_config_parser_args(
         sub_parser.add_parser(MetadataCommands.INGEST.value, help="Ingestion Workflow")
+    )
+    create_common_config_parser_args(
+        sub_parser.add_parser(MetadataCommands.LINEAGE.value, help="Lineage Workflow")
+    )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.USAGE.value,
+            help="Workflow to check the query logs of a database service.",
+        )
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
@@ -378,13 +393,18 @@ def get_parser(args=None):
             help="Simple Webserver to test webhook metadata events",
         )
     )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.INSIGHT.value, help="Data Insigt Workflow"
+        )
+    )
 
     add_metadata_args(parser)
     parser.add_argument("--debug", help="Debug Mode", action="store_true")
     return parser.parse_args(args)
 
 
-def metadata(args=None):
+def metadata(args=None):  # pylint: disable=too-many-branches
     """
     This method implements parsing of the arguments passed from CLI
     """
@@ -400,6 +420,12 @@ def metadata(args=None):
 
     if metadata_workflow == MetadataCommands.INGEST.value:
         run_ingest(config_path=config_file)
+    if metadata_workflow == MetadataCommands.USAGE.value:
+        run_usage(config_path=config_file)
+    if metadata_workflow == MetadataCommands.LINEAGE.value:
+        run_lineage(config_path=config_file)
+    if metadata_workflow == MetadataCommands.INSIGHT.value:
+        run_insight(config_path=config_file)
     if metadata_workflow == MetadataCommands.PROFILE.value:
         run_profiler(config_path=config_file)
     if metadata_workflow == MetadataCommands.TEST.value:
