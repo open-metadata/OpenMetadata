@@ -297,7 +297,7 @@ public class TeamRepository extends EntityRepository<Team> {
         allTeams.stream()
             .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
             .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
-            .collect(Collectors.toList());
+            .toList();
     // build hierarchy of joinable teams
     joinableTeams.forEach(
         team -> {
@@ -517,7 +517,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  public void initOrganization() throws IOException {
+  public void initOrganization() {
     String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);

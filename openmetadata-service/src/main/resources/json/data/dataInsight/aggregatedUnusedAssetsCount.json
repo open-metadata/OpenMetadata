@@ -1,0 +1,18 @@
+{
+  "name": "AggregatedUnusedAssetsCount",
+  "fullyQualifiedName": "AggregatedUnusedAssetsCount",
+  "displayName": "Unused Assets Count",
+  "description": "Displays the total count of unused assets over time.",
+  "dataIndexType": "aggregated_cost_analysis_report_data_index",
+  "dimensions": [
+    {"name": "timestamp","chartDataType":"INT"}
+  ],
+  "metrics": [
+    {"name": "threeDays", "displayName": "3 Days", "chartDataType": "FLOAT"},
+    {"name": "sevenDays", "displayName": "7 Days", "chartDataType": "FLOAT"},
+    {"name": "fourteenDays", "displayName": "14 Days", "chartDataType": "FLOAT"},
+    {"name": "thirtyDays", "displayName": "30 Days", "chartDataType": "FLOAT"},
+    {"name": "sixtyDays", "displayName": "60 Days", "chartDataType": "FLOAT"},
+    {"name": "totalAssetCount", "displayName": "Total Asset Counts", "chartDataType": "FLOAT"}
+  ]
+}

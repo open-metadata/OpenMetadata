@@ -197,8 +197,7 @@ public class SubscriptionUtil {
       CreateEventSubscription.SubscriptionType type,
       Client client,
       CollectionDAO daoCollection,
-      ChangeEvent event)
-      throws IOException {
+      ChangeEvent event) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =

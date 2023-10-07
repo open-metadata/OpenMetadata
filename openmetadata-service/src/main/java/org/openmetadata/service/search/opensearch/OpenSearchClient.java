@@ -64,7 +64,10 @@ import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsSizeAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesOwnerAggregator;
@@ -147,9 +150,9 @@ import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  private RestHighLevelClient client;
+  private final RestHighLevelClient client;
   private static final NamedXContentRegistry X_CONTENT_REGISTRY;
-  private boolean isClientAvailable;
+  private final boolean isClientAvailable;
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
@@ -1191,8 +1194,14 @@ public class OpenSearchClient implements SearchClient {
         return new OpenSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
       case UNUSED_ASSETS:
         return new OpenSearchUnusedAssetsAggregator(aggregations.getHits());
-      case AGGREGATED_UNUSED_ASSETS:
-        return new OpenSearchAggregatedUnusedAssetsAggregator(aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+        return new OpenSearchAggregatedUnusedAssetsSizeAggregator(aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        return new OpenSearchAggregatedUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        return new OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+        return new OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator(aggregations.getAggregations());
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
@@ -1307,23 +1316,48 @@ public class OpenSearchClient implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
-      case AGGREGATED_UNUSED_ASSETS:
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+        boolean isSize =
+            dataInsightChartName.equals(DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
+        String fieldType = isSize ? "size" : "count";
+        String totalField = isSize ? "totalSize" : "totalCount";
         SumAggregationBuilder threeDaysAgg =
-            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+            AggregationBuilders.sum("threeDays").field(String.format("data.unusedDataAssets.%s.threeDays", fieldType));
         SumAggregationBuilder sevenDaysAgg =
-            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+            AggregationBuilders.sum("sevenDays").field(String.format("data.unusedDataAssets.%s.sevenDays", fieldType));
         SumAggregationBuilder fourteenDaysAgg =
-            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+            AggregationBuilders.sum("fourteenDays")
+                .field(String.format("data.unusedDataAssets.%s.fourteenDays", fieldType));
         SumAggregationBuilder thirtyDaysAgg =
-            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+            AggregationBuilders.sum("thirtyDays")
+                .field(String.format("data.unusedDataAssets.%s.thirtyDays", fieldType));
         SumAggregationBuilder sixtyDaysAgg =
-            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+            AggregationBuilders.sum("sixtyDays").field(String.format("data.unusedDataAssets.%s.sixtyDays", fieldType));
+        SumAggregationBuilder totalUnused =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalField));
+        SumAggregationBuilder totalUsed =
+            AggregationBuilders.sum("totalUsed").field(String.format("data.unusedDataAssets.%s", totalField));
         return dateHistogramAggregationBuilder
             .subAggregation(threeDaysAgg)
             .subAggregation(sevenDaysAgg)
             .subAggregation(fourteenDaysAgg)
             .subAggregation(thirtyDaysAgg)
-            .subAggregation(sixtyDaysAgg);
+            .subAggregation(sixtyDaysAgg)
+            .subAggregation(totalUnused)
+            .subAggregation(totalUsed);
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        boolean isSizeReport =
+            dataInsightChartName.equals(
+                DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);
+        String totalFieldString = isSizeReport ? "totalSize" : "totalCount";
+        SumAggregationBuilder totalUnusedAssets =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalFieldString));
+        SumAggregationBuilder totalUsedAssets =
+            AggregationBuilders.sum("totalUsed")
+                .field(String.format("data.frequentlyUsedDataAssets.%s", totalFieldString));
+        return dateHistogramAggregationBuilder.subAggregation(totalUnusedAssets).subAggregation(totalUsedAssets);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)

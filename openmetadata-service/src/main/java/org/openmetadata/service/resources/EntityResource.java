@@ -70,7 +70,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
    * Method used for upgrading a resource such as adding new fields to entities, etc. that can't be done in bootstrap
    * migrate
    */
-  public void upgrade() throws IOException {
+  public void upgrade() {
     // Nothing to do in the default implementation
   }
 

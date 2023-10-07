@@ -196,6 +196,10 @@ CREATE TABLE IF NOT EXISTS doc_store (
   UNIQUE (fqnHash)
 );
 CREATE INDEX page_name_index ON doc_store USING btree (name);
+-- Remove Mark All Deleted Field
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,markAllDeletedTables}'
+WHERE json #>> '{pipelineType}' = 'metadata';
 
 CREATE TABLE IF NOT EXISTS installed_application (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
