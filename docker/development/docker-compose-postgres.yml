@@ -42,13 +42,13 @@ services:
       timeout: 10s
       retries: 10
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
-    container_name: openmetadata_elasticsearch
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: openmetadata_opensearch
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
-      - xpack.security.enabled=false
+      - plugins.security.disabled=true
     networks:
       - local_app_net
     expose:
@@ -58,7 +58,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/opensearch/data
 
   execute-migrate-all:
     build:
@@ -114,7 +114,7 @@ services:
       DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # ElasticSearch Configurations
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- opensearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
       ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
@@ -212,7 +212,7 @@ services:
       WEB_CONF_PERMISSION_POLICY_ENABLED: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
       WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
