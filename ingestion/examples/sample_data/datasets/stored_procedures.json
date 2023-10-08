@@ -1,0 +1,60 @@
+{
+      "storedProcedures": [
+          {
+              "name": "update_dim_address_table",
+              "description": "This stored procedure updates dim_address table",
+              "version": 0.1,
+              "updatedAt": 1638354087391,
+              "updatedBy": "anonymous",
+              "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+              "storedProcedureCode": {
+                "langauge": "SQL",
+                "code": "CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;"
+              },
+              "database": {
+                  "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                  "type": "database",
+                  "name": "sample_data.ecommerce_db",
+                  "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+              },
+              "tags": [],
+              "followers": [],
+              "databaseSchema": {
+                  "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                  "type": "databaseSchema",
+                  "name": "sample_data.ecommerce_db.shopify",
+                  "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+              }
+          },
+          {
+              "name": "update_orders_table",
+              "description": "This stored procedure is written java script to update the orders table",
+              "version": 0.1,
+              "updatedAt": 1638354087391,
+              "updatedBy": "anonymous",
+              "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+              "storedProcedureCode": {
+                "langauge": "JavaScript",
+                "code": "create or replace procedure read_result_set()\n  returns float not null\n  language javascript\n  as     \n  $$  \n    var my_sql_command = \"select * from table1\";\n    var statement1 = snowflake.createStatement( {sqlText: my_sql_command} );\n    var result_set1 = statement1.execute();\n    // Loop through the results, processing one row at a time... \n    while (result_set1.next())  {\n       var column1 = result_set1.getColumnValue(1);\n       var column2 = result_set1.getColumnValue(2);\n       // Do something with the retrieved values...\n       }\n  return 0.0; // Replace with something more useful.\n  $$\n  ;"
+              },
+              "database": {
+                  "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                  "type": "database",
+                  "name": "sample_data.ecommerce_db",
+                  "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+              },
+              "tags": [],
+              "followers": [],
+              "databaseSchema": {
+                  "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                  "type": "databaseSchema",
+                  "name": "sample_data.ecommerce_db.shopify",
+                  "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                  "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+              }
+          }
+      ]
+}

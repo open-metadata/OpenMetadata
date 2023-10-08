@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { postKillIngestionPipelineById } from 'rest/ingestionPipelineAPI';
+import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
 
 const mockHandleClose = jest.fn();
@@ -27,7 +27,7 @@ const mockProps = {
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,
 };
 
-jest.mock('rest/ingestionPipelineAPI', () => ({
+jest.mock('../../../rest/ingestionPipelineAPI', () => ({
   postKillIngestionPipelineById: jest
     .fn()
     .mockImplementation(() => Promise.resolve()),
@@ -43,8 +43,8 @@ describe('Test Kill Ingestion Modal component', () => {
 
     const container = await screen.findByTestId('kill-modal');
     const body = await screen.findByTestId('kill-modal-body');
-    const cancelButton = await screen.findByText('Cancel');
-    const confirmButton = await screen.findByText('Confirm');
+    const cancelButton = await screen.findByText('label.cancel');
+    const confirmButton = await screen.findByText('label.confirm');
 
     expect(container).toBeInTheDocument();
     expect(body).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('Test Kill Ingestion Modal component', () => {
   it('Should close modal on click of cancel button', async () => {
     render(<KillIngestionModal {...mockProps} />);
 
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
 
     expect(cancelButton).toBeInTheDocument();
 
@@ -68,7 +68,7 @@ describe('Test Kill Ingestion Modal component', () => {
     await act(async () => {
       render(<KillIngestionModal {...mockProps} />);
 
-      const confirmButton = await screen.findByText('Confirm');
+      const confirmButton = await screen.findByText('label.confirm');
 
       expect(confirmButton).toBeInTheDocument();
 

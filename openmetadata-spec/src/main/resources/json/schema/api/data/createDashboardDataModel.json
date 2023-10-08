@@ -62,6 +62,10 @@
     "domain" : {
       "description": "Fully qualified name of the domain the Dashboard Data Model belongs to.",
       "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service", "dataModelType", "columns"],

@@ -15,9 +15,9 @@ import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import { ImageShape } from 'Models';
 import React, { useMemo } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { EntityReference, User } from '../../../generated/entity/teams/user';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import { getUserProfilePic } from '../../../utils/UserDataUtils';
 import Loader from '../../Loader/Loader';
@@ -84,10 +84,10 @@ const ProfilePicture = ({
         }}>
         {getAvatarByName()}
         <div
-          className="absolute tw-inset-0 tw-opacity-60 tw-bg-grey-backdrop tw-rounded"
+          className="absolute inset-0 opacity-60 bg-grey-4 rounded-full"
           data-testid="loader-cntnr">
           <Loader
-            className="absolute tw-inset-0"
+            className="absolute inset-0"
             size="small"
             style={{ height: `${+width - 2}px`, width: `${+width - 2}px` }}
             type="white"

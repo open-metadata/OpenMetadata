@@ -61,7 +61,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -69,7 +68,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseService, CreateDatabaseService> {
+public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseService, CreateDatabaseService> {
   public DatabaseServiceResourceTest() {
     super(
         Entity.DATABASE_SERVICE,
@@ -120,13 +119,9 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-  }
 
-  @Test
-  void post_invalidDatabaseServiceNoConnection_4xx(TestInfo test) {
-    // No jdbc connection set
-    CreateDatabaseService create = createRequest(test).withConnection(null);
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "connection must not be null");
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -333,7 +328,7 @@ public class DatabaseServiceResourceTest extends EntityResourceTest<DatabaseServ
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);

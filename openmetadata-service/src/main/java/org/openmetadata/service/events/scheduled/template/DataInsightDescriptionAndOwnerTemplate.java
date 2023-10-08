@@ -28,7 +28,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
     NOT_MET
   }
 
-  private Double percentCompleted;
+  private final Double percentCompleted;
   private boolean kpiAvailable;
   private Double percentChange;
   private String targetKpi;

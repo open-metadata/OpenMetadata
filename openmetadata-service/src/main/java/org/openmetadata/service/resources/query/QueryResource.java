@@ -11,10 +11,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -45,9 +43,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Votes;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.resources.Collection;
@@ -69,20 +65,19 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static final String COLLECTION_PATH = "v1/queries/";
   static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
 
-  public QueryResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Query.class, new QueryRepository(dao), authorizer);
+  public QueryResource(Authorizer authorizer) {
+    super(Entity.QUERY, authorizer);
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("users,votes,queryUsedIn", MetadataOperation.VIEW_BASIC);
+    addViewOperation("users,queryUsedIn", MetadataOperation.VIEW_BASIC);
     return null;
   }
 
   @Override
   public Query addHref(UriInfo uriInfo, Query entity) {
-    Entity.withHref(uriInfo, entity.getOwner());
-    Entity.withHref(uriInfo, entity.getFollowers());
+    super.addHref(uriInfo, entity);
     Entity.withHref(uriInfo, entity.getUsers());
     Entity.withHref(uriInfo, entity.getQueryUsedIn());
     return entity;
@@ -120,6 +115,9 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "UUID of the entity for which to list the Queries", schema = @Schema(type = "UUID"))
           @QueryParam("entityId")
           UUID entityId,
+      @Parameter(description = "Filter Queries by service Fully Qualified Name", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          String service,
       @Parameter(description = "Limit the number queries returned. " + "(1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -131,12 +129,12 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
           String before,
       @Parameter(description = "Returns list of queries after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     ListFilter filter = new ListFilter(null);
     if (!CommonUtil.nullOrEmpty(entityId)) {
       filter.addQueryParam("entityId", entityId.toString());
     }
+    filter.addQueryParam("service", service);
     ResultList<Query> queries =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     return PIIMasker.getQueries(queries, authorizer, securityContext);
@@ -163,8 +161,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, null);
   }
 
@@ -190,8 +187,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam)
-      throws IOException {
+          String fieldsParam) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, null);
   }
 
@@ -210,8 +206,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Query Id", schema = @Schema(type = "string")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -238,8 +233,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
               description = "Query version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -258,8 +252,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
                     schema = @Schema(implementation = QueryResource.QueryList.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create)
-      throws IOException {
+  public Response create(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create) {
     Query query = getQuery(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, query);
   }
@@ -277,8 +271,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateQuery create) {
     Query query = getQuery(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, query);
   }
@@ -303,8 +296,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -325,17 +317,16 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId)
-      throws IOException {
+      @Parameter(description = "Id of the user to be added as follower", schema = @Schema(type = "UUID")) UUID userId) {
     return repository.addFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVote",
-      summary = "Update Vote for a query",
-      description = "Update vote for a query",
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -346,9 +337,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response updateVote(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid VoteRequest request)
-      throws IOException {
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
     return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
@@ -370,8 +360,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Id of the user being removed as follower", schema = @Schema(type = "UUID"))
           @PathParam("userId")
-          UUID userId)
-      throws IOException {
+          UUID userId) {
     return repository.deleteFollower(securityContext.getUserPrincipal().getName(), id, userId).toResponse();
   }
 
@@ -391,11 +380,55 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid List<EntityReference> entityIds)
-      throws IOException {
+      @Valid List<EntityReference> entityIds) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return repository.addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds).toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/users")
+  @Operation(
+      operationId = "addQueryUsers",
+      summary = "Add query users",
+      description = "Add query users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Response addQueryUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<String> userFqnList) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.AddQueryUser(uriInfo, securityContext.getUserPrincipal().getName(), id, userFqnList).toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/usedBy")
+  @Operation(
+      operationId = "addQueryUsedBy",
+      summary = "Populate Used By Field",
+      description = "Add query users",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
+      })
+  public Response addQueryUsedBy(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid List<String> usedByList) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.AddQueryUsedBy(uriInfo, securityContext.getUserPrincipal().getName(), id, usedByList)
+        .toResponse();
   }
 
   @DELETE
@@ -414,8 +447,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid List<EntityReference> entityIds)
-      throws IOException {
+      @Valid List<EntityReference> entityIds) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return repository
@@ -436,8 +468,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Query.class)))
       })
   public Response restoreQuery(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -454,8 +485,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the query", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -474,24 +504,21 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fully qualified name of the location", schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, true);
   }
 
-  private Query getQuery(CreateQuery create, String user) throws IOException {
+  private Query getQuery(CreateQuery create, String user) {
     return copy(new Query(), create, user)
         .withTags(create.getTags())
         .withQuery(create.getQuery())
+        .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))
-        .withUsers(
-            getEntityReferences(
-                USER,
-                create.getUsers() == null
-                    ? create.getUsers()
-                    : create.getUsers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
+        .withUsers(getEntityReferences(USER, create.getUsers()))
         .withQueryUsedIn(EntityUtil.populateEntityReferences(create.getQueryUsedIn()))
-        .withQueryDate(create.getQueryDate());
+        .withQueryDate(create.getQueryDate())
+        .withTriggeredBy(create.getTriggeredBy())
+        .withProcessedLineage(create.getProcessedLineage());
   }
 }

@@ -18,6 +18,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
+import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
 import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
 import databricksConnection from '../jsons/connectionSchemas/connections/database/databricksConnection.json';
 import DatalakeConnection from '../jsons/connectionSchemas/connections/database/datalakeConnection.json';
@@ -27,6 +28,7 @@ import domoDatabaseConnection from '../jsons/connectionSchemas/connections/datab
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
+import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
 import impalaConnection from '../jsons/connectionSchemas/connections/database/impalaConnection.json';
 import mariaDBConnection from '../jsons/connectionSchemas/connections/database/mariaDBConnection.json';
@@ -200,8 +202,18 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.Couchbase: {
+      schema = couchbaseConnection;
+
+      break;
+    }
     case DatabaseServiceType.PinotDB: {
       schema = pinotConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Greenplum: {
+      schema = greenplumConnection;
 
       break;
     }

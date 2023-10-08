@@ -11,21 +11,9 @@
  *  limitations under the License.
  */
 
-import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import { findActiveSearchIndex } from 'components/Explore/Explore.utils';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 
-import {
-  ExploreProps,
-  ExploreSearchIndex,
-  SearchHitCounts,
-  UrlParams,
-} from 'components/Explore/explore.interface';
-import ExploreV1 from 'components/ExploreV1/ExploreV1.component';
-import { withAdvanceSearch } from 'components/router/withAdvanceSearch';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { mockSearchData } from 'constants/mockTourData.constants';
-import { SORT_ORDER } from 'enums/common.enum';
-import { get, isEmpty, isNil, isString } from 'lodash';
+import { get, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -35,17 +23,28 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchQuery } from 'rest/searchAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import AppState from '../../AppState';
+import {
+  ExploreProps,
+  ExploreSearchIndex,
+  SearchHitCounts,
+  UrlParams,
+} from '../../components/Explore/explore.interface';
+import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { withAdvanceSearch } from '../../components/router/withAdvanceSearch';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
+import { mockSearchData } from '../../constants/mockTourData.constants';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
+import { searchQuery } from '../../rest/searchAPI';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -178,21 +177,12 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (searchHitCounts) {
-      const tabInfo = Object.entries(tabsInfo).find(
-        ([, tabInfo]) => tabInfo.path === tab
-      );
-      if (isNil(tabInfo)) {
-        const activeKey = findActiveSearchIndex(searchHitCounts);
+    const tabInfo = Object.entries(tabsInfo).find(
+      ([, tabInfo]) => tabInfo.path === tab
+    );
 
-        return activeKey ? activeKey : SearchIndex.TABLE;
-      }
-
-      return tabInfo[0] as ExploreSearchIndex;
-    }
-
-    return SearchIndex.TABLE;
-  }, [tab, searchHitCounts]);
+    return (tabInfo?.[0] as ExploreSearchIndex) ?? SearchIndex.TABLE;
+  }, [tab]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
@@ -282,8 +272,11 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.PIPELINE,
           SearchIndex.MLMODEL,
           SearchIndex.CONTAINER,
+          SearchIndex.STORED_PROCEDURE,
+          SearchIndex.DASHBOARD_DATA_MODEL,
           SearchIndex.GLOSSARY,
           SearchIndex.TAG,
+          SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
             query: searchQueryParam,
@@ -305,8 +298,11 @@ const ExplorePageV1: FunctionComponent = () => {
           pipelineResponse,
           mlmodelResponse,
           containerResponse,
+          storeProcedureResponse,
+          dataModelResponse,
           glossaryResponse,
           tagsResponse,
+          searchIndexResponse,
         ]) => {
           setSearchHitCounts({
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
@@ -315,8 +311,13 @@ const ExplorePageV1: FunctionComponent = () => {
             [SearchIndex.PIPELINE]: pipelineResponse.hits.total.value,
             [SearchIndex.MLMODEL]: mlmodelResponse.hits.total.value,
             [SearchIndex.CONTAINER]: containerResponse.hits.total.value,
+            [SearchIndex.STORED_PROCEDURE]:
+              storeProcedureResponse.hits.total.value,
+            [SearchIndex.DASHBOARD_DATA_MODEL]:
+              dataModelResponse.hits.total.value,
             [SearchIndex.GLOSSARY]: glossaryResponse.hits.total.value,
             [SearchIndex.TAG]: tagsResponse.hits.total.value,
+            [SearchIndex.SEARCH_INDEX]: searchIndexResponse.hits.total.value,
           });
         }
       ),

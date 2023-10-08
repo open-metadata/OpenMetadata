@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.permissions;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DESCRIPTION;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_DISPLAY_NAME;
@@ -32,7 +31,6 @@ import static org.openmetadata.service.security.policyevaluator.OperationContext
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -80,7 +78,7 @@ import org.openmetadata.service.util.TestUtils;
 class PermissionsResourceTest extends OpenMetadataApplicationTest {
   private static Rule ORG_IS_OWNER_RULE;
   private static Rule ORG_NO_OWNER_RULE;
-  private static final List<MetadataOperation> ORG_IS_OWNER_RULE_OPERATIONS = getAllOperations(CREATE);
+  private static final List<MetadataOperation> ORG_IS_OWNER_RULE_OPERATIONS = getAllOperations();
   private static final List<MetadataOperation> ORG_NO_OWNER_RULE_OPERATIONS = List.of(EDIT_OWNER);
 
   private static final String DATA_STEWARD_ROLE_NAME = "DataSteward";
@@ -126,13 +124,13 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
         policyResourceTest.getEntityByName(DATA_STEWARD_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_STEWARD_RULES = DATA_STEWARD_POLICY.getRules();
 
-    DATA_STEWARD_USER = EntityResourceTest.USER_WITH_DATA_STEWARD_ROLE;
+    DATA_STEWARD_USER = EntityResourceTest.DATA_STEWARD;
 
     DATA_CONSUMER_POLICY =
         policyResourceTest.getEntityByName(DATA_CONSUMER_POLICY_NAME, null, PolicyResource.FIELDS, ADMIN_AUTH_HEADERS);
     DATA_CONSUMER_RULES = DATA_CONSUMER_POLICY.getRules();
 
-    DATA_CONSUMER_USER = EntityResourceTest.USER_WITH_DATA_CONSUMER_ROLE;
+    DATA_CONSUMER_USER = EntityResourceTest.DATA_CONSUMER;
   }
 
   @Test
@@ -196,8 +194,6 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   @Test
   void get_dataSteward_permissions_for_role() throws HttpResponseException {
     Map<String, String> authHeaders = SecurityUtil.authHeaders(DATA_STEWARD_USER_NAME + "@open-metadata.org");
-    List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
-
     ResourcePermissionsBuilder permissionsBuilder = new ResourcePermissionsBuilder();
     permissionsBuilder.setPermission(
         DATA_STEWARD_ALLOWED, ALLOW, DATA_STEWARD_ROLE_NAME, DATA_STEWARD_POLICY_NAME, DATA_STEWARD_RULES.get(0));
@@ -207,6 +203,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     permissionsBuilder.setPermission(
         ORG_IS_OWNER_RULE_OPERATIONS, CONDITIONAL_ALLOW, null, ORGANIZATION_POLICY_NAME, ORG_IS_OWNER_RULE);
 
+    List<ResourcePermission> actualPermissions = getPermissions(authHeaders);
     assertResourcePermissions(
         PolicyEvaluator.trimResourcePermissions(permissionsBuilder.getResourcePermissions()), actualPermissions);
   }
@@ -260,7 +257,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void get_owner_permissions() throws HttpResponseException, JsonProcessingException {
+  void get_owner_permissions() throws HttpResponseException {
     //
     // Test getting permissions for an entity as an owner - where ORG_POLICY isOwner becomes effective
     //

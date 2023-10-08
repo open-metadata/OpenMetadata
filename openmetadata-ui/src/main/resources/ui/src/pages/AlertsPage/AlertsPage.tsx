@@ -10,33 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Tooltip, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
+import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
-import { ALERTS_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import {
-  EventSubscription,
-  ProviderType,
-} from 'generated/events/eventSubscription';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getAllAlerts } from 'rest/alertsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Table from '../../components/common/Table/Table';
+import PageHeader from '../../components/header/PageHeader.component';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
+import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  EventSubscription,
+  ProviderType,
+} from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
+import { getAllAlerts } from '../../rest/alertsAPI';
+import { showPagination } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -81,12 +83,15 @@ const AlertsPage = () => {
     }
   }, [fetchAlerts]);
 
-  const onPageChange = useCallback((after: string | number, page?: number) => {
-    if (after) {
-      fetchAlerts(after + '');
-      page && setCurrentPage(page);
-    }
-  }, []);
+  const onPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchAlerts(cursorType + '');
+        setCurrentPage(currentPage);
+      }
+    },
+    []
+  );
 
   const columns = useMemo(
     () => [
@@ -185,48 +190,42 @@ const AlertsPage = () => {
           </div>
         </Col>
         <Col span={24}>
-          {loading ? (
-            <Loader />
-          ) : (
-            <Table
-              bordered
-              columns={columns}
-              dataSource={alerts}
-              locale={{
-                emptyText: !loading && (
-                  <ErrorPlaceHolder
-                    permission
-                    className="p-y-md"
-                    doc={ALERTS_DOCS}
-                    heading={t('label.alert')}
-                    type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                    onClick={() =>
-                      history.push(
-                        getSettingPath(
-                          GlobalSettingsMenuCategory.NOTIFICATIONS,
-                          GlobalSettingOptions.ADD_ALERTS
-                        )
+          <Table
+            bordered
+            columns={columns}
+            dataSource={alerts}
+            loading={loading}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  permission
+                  className="p-y-md"
+                  doc={ALERTS_DOCS}
+                  heading={t('label.alert')}
+                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                  onClick={() =>
+                    history.push(
+                      getSettingPath(
+                        GlobalSettingsMenuCategory.NOTIFICATIONS,
+                        GlobalSettingOptions.ADD_ALERTS
                       )
-                    }
-                  />
-                ),
-              }}
-              pagination={false}
-              rowKey="id"
-              size="middle"
-            />
-          )}
+                    )
+                  }
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="id"
+            size="small"
+          />
         </Col>
         <Col span={24}>
-          {Boolean(
-            !isNil(alertsPaging.after) || !isNil(alertsPaging.before)
-          ) && (
+          {showPagination(alertsPaging) && (
             <NextPrevious
               currentPage={currentPage}
               pageSize={PAGE_SIZE_MEDIUM}
               paging={alertsPaging}
               pagingHandler={onPageChange}
-              totalCount={alertsPaging.total}
             />
           )}
 

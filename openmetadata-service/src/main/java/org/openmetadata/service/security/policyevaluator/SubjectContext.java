@@ -14,26 +14,41 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
 public class SubjectContext {
+  private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
+  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
   @Getter protected final User user;
 
   protected SubjectContext(User user) {
     this.user = user;
+  }
+
+  public static SubjectContext getSubjectContext(String userName) {
+    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    return new SubjectContext(user);
   }
 
   public boolean isAdmin() {
@@ -52,7 +67,7 @@ public class SubjectContext {
       return true; // Owner is same as user.
     }
     if (owner.getType().equals(Entity.TEAM)) {
-      for (EntityReference userTeam : user.getTeams()) {
+      for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
         if (userTeam.getName().equals(owner.getName())) {
           return true; // Owner is a team, and the user is part of this team.
         }
@@ -63,7 +78,7 @@ public class SubjectContext {
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
   public boolean isUserUnderTeam(String parentTeam) {
-    for (EntityReference userTeam : user.getTeams()) {
+    for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
       if (isInTeam(parentTeam, userTeam)) {
         return true;
       }
@@ -74,18 +89,49 @@ public class SubjectContext {
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, EntityReference owner) {
     if (owner.getType().equals(Entity.USER)) {
-      SubjectContext subjectContext = SubjectCache.getSubjectContext(owner.getName());
+      SubjectContext subjectContext = getSubjectContext(owner.getName());
       return subjectContext.isUserUnderTeam(parentTeam);
     } else if (owner.getType().equals(Entity.TEAM)) {
-      Team team = SubjectCache.getTeam(owner.getId());
-      return isInTeam(parentTeam, team.getEntityReference());
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+        return isInTeam(parentTeam, team.getEntityReference());
+      } catch (Exception ex) {
+        // Ignore and return false
+      }
     }
     return false;
   }
 
   /** Return true if the team is part of the hierarchy of parentTeam */
-  private boolean isInTeam(String parentTeam, EntityReference team) {
-    return SubjectCache.isInTeam(parentTeam, team);
+  public static boolean isInTeam(String parentTeam, EntityReference team) {
+    Deque<EntityReference> stack = new ArrayDeque<>();
+    stack.push(team); // Start with team and see if the parent matches
+    while (!stack.isEmpty()) {
+      try {
+        Team parent = Entity.getEntity(Entity.TEAM, stack.pop().getId(), "parents", NON_DELETED);
+        if (parent.getName().equals(parentTeam)) {
+          return true;
+        }
+        listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+      } catch (Exception ex) {
+        // Ignore and return false
+      }
+    }
+    return false;
+  }
+
+  public static List<EntityReference> getRolesForTeams(List<EntityReference> teams) {
+    List<EntityReference> roles = new ArrayList<>();
+    for (EntityReference teamRef : listOrEmpty(teams)) {
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), TEAM_FIELDS, NON_DELETED);
+        roles.addAll(team.getDefaultRoles());
+        roles.addAll(getRolesForTeams(team.getParents()));
+      } catch (Exception ex) {
+        // Ignore and continue
+      }
+    }
+    return roles.stream().distinct().collect(Collectors.toList());
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to
@@ -99,7 +145,33 @@ public class SubjectContext {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return SubjectCache.hasRole(getUser(), roles);
+    return hasRole(getUser(), roles);
+  }
+
+  /** Return true if the given user has any roles the list of roles */
+  public static boolean hasRole(User user, String role) {
+    Deque<EntityReference> stack = new ArrayDeque<>();
+    // If user has one of the roles directly assigned then return true
+    if (hasRole(user.getRoles(), role)) {
+      return true;
+    }
+    listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
+    while (!stack.isEmpty()) {
+      try {
+        Team parent = Entity.getEntity(Entity.TEAM, stack.pop().getId(), TEAM_FIELDS, NON_DELETED);
+        if (hasRole(parent.getDefaultRoles(), role)) {
+          return true;
+        }
+        listOrEmpty(parent.getParents()).forEach(stack::push); // Continue to go up the chain of parents
+      } catch (Exception ex) {
+        // Ignore the exception and return false
+      }
+    }
+    return false;
+  }
+
+  private static boolean hasRole(List<EntityReference> userRoles, String expectedRole) {
+    return listOrEmpty(userRoles).stream().anyMatch(userRole -> userRole.getName().equals(expectedRole));
   }
 
   @Getter
@@ -162,8 +234,16 @@ public class SubjectContext {
         throw new NoSuchElementException();
       }
       EntityReference policy = policies.get(policyIndex++);
-      return new PolicyContext(
-          entityType, entityName, roleName, policy.getName(), PolicyCache.getPolicyRules(policy.getId()));
+      return new PolicyContext(entityType, entityName, roleName, policy.getName(), getPolicyRules(policy.getId()));
+    }
+
+    private static List<CompiledRule> getPolicyRules(UUID policyId) {
+      Policy policy = Entity.getEntity(Entity.POLICY, policyId, "rules", Include.NON_DELETED);
+      List<CompiledRule> rules = new ArrayList<>();
+      for (Rule r : policy.getRules()) {
+        rules.add(new CompiledRule(r));
+      }
+      return rules;
     }
   }
 
@@ -182,9 +262,8 @@ public class SubjectContext {
       this.entityType = entityType;
       this.entityName = entityName;
       for (EntityReference role : listOrEmpty(roles)) {
-        policyIterators.add(
-            new PolicyIterator(
-                entityType, entityName, role.getName(), RoleCache.getRoleById(role.getId()).getPolicies()));
+        Role roleEntity = Entity.getEntity(Entity.ROLE, role.getId(), "policies", Include.NON_DELETED);
+        policyIterators.add(new PolicyIterator(entityType, entityName, role.getName(), roleEntity.getPolicies()));
       }
     }
 
@@ -237,8 +316,12 @@ public class SubjectContext {
 
       // Finally, iterate over policies of teams that own the resource
       if (resourceOwner != null && resourceOwner.getType().equals(Entity.TEAM)) {
-        Team team = SubjectCache.getTeam(resourceOwner.getId());
-        iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
+        try {
+          Team team = Entity.getEntity(Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
+        } catch (Exception ex) {
+          // Ignore
+        }
       }
     }
 
@@ -273,7 +356,7 @@ public class SubjectContext {
 
     /** Policy iterator for a team */
     TeamPolicyIterator(UUID teamId, List<UUID> teamsVisited, boolean skipRoles) {
-      Team team = SubjectCache.getTeam(teamId);
+      Team team = Entity.getEntity(Entity.TEAM, teamId, TEAM_FIELDS, Include.NON_DELETED);
 
       // If a team is already visited (because user can belong to multiple teams
       // and a team can belong to multiple teams) then don't visit the roles/policies of that team

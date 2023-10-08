@@ -31,7 +31,10 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.ingestion.api.models import Entity
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
     OMetaPatchMixinBase,
@@ -51,25 +54,27 @@ OWNER_TYPES: List[str] = ["user", "team"]
 
 def update_column_tags(
     columns: List[Column],
-    column_fqn: str,
-    tag_label: TagLabel,
+    column_tag: ColumnTag,
     operation: PatchOperation,
 ) -> None:
     """
     Inplace update for the incoming column list
     """
     for col in columns:
-        if str(col.fullyQualifiedName.__root__).lower() == column_fqn.lower():
+        if (
+            str(col.fullyQualifiedName.__root__).lower()
+            == column_tag.column_fqn.lower()
+        ):
             if operation == PatchOperation.REMOVE:
                 for tag in col.tags:
-                    if tag.tagFQN == tag_label.tagFQN:
+                    if tag.tagFQN == column_tag.tag_label.tagFQN:
                         col.tags.remove(tag)
             else:
-                col.tags.append(tag_label)
+                col.tags.append(column_tag.tag_label)
             break
 
         if col.children:
-            update_column_tags(col.children, column_fqn, tag_label, operation)
+            update_column_tags(col.children, column_tag, operation)
 
 
 def update_column_description(
@@ -138,7 +143,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Error trying to PATCH description for {entity.__class__.__name__} [{source.id}]: {exc}"
+                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
             )
 
         return None
@@ -245,11 +250,11 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         return self.patch(entity=TestCase, source=source, destination=destination)
 
-    def patch_tag(
+    def patch_tags(
         self,
         entity: Type[T],
         source: T,
-        tag_label: TagLabel,
+        tag_labels: List[TagLabel],
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
@@ -275,14 +280,31 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         source.tags = instance.tags or []
         destination = source.copy(deep=True)
 
+        tag_fqns = {label.tagFQN.__root__ for label in tag_labels}
+
         if operation == PatchOperation.REMOVE:
             for tag in destination.tags:
-                if tag.tagFQN == tag_label.tagFQN:
+                if tag.tagFQN.__root__ in tag_fqns:
                     destination.tags.remove(tag)
         else:
-            destination.tags.append(tag_label)
+            destination.tags.extend(tag_labels)
 
         return self.patch(entity=entity, source=source, destination=destination)
+
+    def patch_tag(
+        self,
+        entity: Type[T],
+        source: T,
+        tag_label: TagLabel,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
+    ) -> Optional[T]:
+        """Will be deprecated in 1.3"""
+        logger.warning("patch_tag will be deprecated in 1.3. Use `patch_tags` instead.")
+        return self.patch_tags(
+            entity=entity, source=source, tag_labels=[tag_label], operation=operation
+        )
 
     def patch_owner(
         self,
@@ -326,11 +348,10 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         return self.patch(entity=entity, source=source, destination=destination)
 
-    def patch_column_tag(
+    def patch_column_tags(
         self,
         table: Table,
-        column_fqn: str,
-        tag_label: TagLabel,
+        column_tags: List[ColumnTag],
         operation: Union[
             PatchOperation.ADD, PatchOperation.REMOVE
         ] = PatchOperation.ADD,
@@ -356,16 +377,36 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         table.columns = instance.columns
 
         destination = table.copy(deep=True)
-        update_column_tags(destination.columns, column_fqn, tag_label, operation)
+        for column_tag in column_tags or []:
+            update_column_tags(destination.columns, column_tag, operation)
 
         patched_entity = self.patch(entity=Table, source=table, destination=destination)
         if patched_entity is None:
             logger.debug(
-                f"Empty PATCH result. Either everything is up to date or "
-                f"[{column_fqn}] not in [{table.fullyQualifiedName.__root__}]"
+                f"Empty PATCH result. Either everything is up to date or the "
+                f"column names are  not in [{table.fullyQualifiedName.__root__}]"
             )
 
         return patched_entity
+
+    def patch_column_tag(
+        self,
+        table: Table,
+        column_fqn: str,
+        tag_label: TagLabel,
+        operation: Union[
+            PatchOperation.ADD, PatchOperation.REMOVE
+        ] = PatchOperation.ADD,
+    ) -> Optional[T]:
+        """Will be deprecated in 1.3"""
+        logger.warning(
+            "patch_column_tag will be deprecated in 1.3. Use `patch_column_tags` instead."
+        )
+        return self.patch_column_tags(
+            table=table,
+            column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=tag_label)],
+            operation=operation,
+        )
 
     def patch_column_description(
         self,
@@ -442,4 +483,21 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Error trying to PATCH status for automation workflow [{model_str(automation_workflow)}]: {exc}"
+            )
+
+    def patch_life_cycle(self, entity: Entity, life_cycle: LifeCycle) -> None:
+        """
+        Patch life cycle data for a entity
+
+        :param entity: Entity to update the life cycle for
+        :param life_cycle_data: Life Cycle data to add
+        """
+        try:
+            destination = entity.copy(deep=True)
+            destination.lifeCycle = life_cycle
+            self.patch(entity=type(entity), source=entity, destination=destination)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.__root__}: {exc}"
             )

@@ -17,7 +17,6 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.lmax.disruptor.BatchEventProcessor;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -107,7 +106,7 @@ public class SubscriptionPublisher extends AbstractAlertPublisher {
     this.processor = processor;
   }
 
-  protected void sendAlert(EventResource.EventList list) throws InterruptedException, JsonProcessingException {
+  protected void sendAlert(EventResource.EventList list) {
     /* This method needs to be over-ridden by specific Publisher for sending Alert */
   }
 

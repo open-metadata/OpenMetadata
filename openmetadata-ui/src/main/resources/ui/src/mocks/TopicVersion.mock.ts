@@ -23,20 +23,21 @@
  *  limitations under the License.
  */
 
+import { TopicVersionProp } from '../components/TopicVersion/TopicVersion.interface';
 import {
   CleanupPolicy,
   MessagingServiceType,
-} from 'generated/entity/data/topic';
-import { DataTypeTopic, SchemaType } from 'generated/type/schema';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
+} from '../generated/entity/data/topic';
+import { DataTypeTopic, SchemaType } from '../generated/type/schema';
+import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
   mockVersionList,
-} from 'mocks/VersionCommon.mock';
-import { TopicVersionProp } from '../components/TopicVersion/TopicVersion.interface';
+} from '../mocks/VersionCommon.mock';
 
 export const mockTopicData = {
   id: 'eccc8f43-abd8-494b-9173-6b18644d5336',
@@ -91,6 +92,7 @@ export const topicVersionMockProps: TopicVersionProp = {
   currentVersionData: mockTopicData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedTopicName: [],
   topicFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',

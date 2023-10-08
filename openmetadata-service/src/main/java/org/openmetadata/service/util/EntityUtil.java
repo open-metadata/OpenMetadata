@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,20 +41,16 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.system.FailureDetails;
-import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
-import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
@@ -79,8 +74,6 @@ public final class EntityUtil {
   public static final Comparator<ChangeEvent> compareChangeEvent = Comparator.comparing(ChangeEvent::getTimestamp);
   public static final Comparator<GlossaryTerm> compareGlossaryTerm = Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty = Comparator.comparing(CustomProperty::getName);
-  public static final Comparator<FailureDetails> compareLastFailedAt =
-      Comparator.comparing(FailureDetails::getLastFailedAt);
 
   //
   // Matchers used for matching two items in a list
@@ -109,7 +102,9 @@ public final class EntityUtil {
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
-              && constraint1.getColumns().equals(constraint2.getColumns());
+              && constraint1.getColumns().equals(constraint2.getColumns())
+              && ((constraint1.getReferredColumns() == null && constraint2.getReferredColumns() == null)
+                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch = MlHyperParameter::equals;
@@ -132,22 +127,27 @@ public final class EntityUtil {
       (field1, field2) ->
           field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
 
+  public static final BiPredicate<SearchIndexField, SearchIndexField> searchIndexFieldMatch =
+      (field1, field2) ->
+          field1.getName().equalsIgnoreCase(field2.getName()) && field1.getDataType() == field2.getDataType();
+
   private EntityUtil() {}
 
   /** Validate that JSON payload can be turned into POJO object */
-  public static <T> T validate(String identity, String json, Class<T> clz) throws WebApplicationException, IOException {
+  public static <T> T validate(Object id, String json, Class<T> clz) throws WebApplicationException {
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
     }
     if (entity == null) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), identity));
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), id.toString()));
     }
     return entity;
   }
 
   // TODO delete
-  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) throws IOException {
+  public static List<EntityReference> populateEntityReferences(List<EntityReference> list) {
     if (list != null) {
       for (EntityReference ref : list) {
         EntityReference ref2 = Entity.getEntityReference(ref, ALL);
@@ -159,7 +159,7 @@ public final class EntityUtil {
   }
 
   // TODO delete
-  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) throws IOException {
+  public static List<EntityReference> getEntityReferences(List<EntityRelationshipRecord> list) {
     if (nullOrEmpty(list)) {
       return Collections.emptyList();
     }
@@ -171,8 +171,7 @@ public final class EntityUtil {
     return refs;
   }
 
-  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType)
-      throws IOException {
+  public static List<EntityReference> populateEntityReferencesById(List<UUID> list, String entityType) {
     List<EntityReference> refs = toEntityReferences(list, entityType);
     return populateEntityReferences(refs);
   }
@@ -197,32 +196,6 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
-  }
-
-  public static TestSummary getTestCaseExecutionSummary(
-      CollectionDAO.EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDAO,
-      List<String> testCaseFQNs,
-      String extensionName)
-      throws IOException {
-    List<String> testCaseFQNHashes =
-        testCaseFQNs.stream().map(FullyQualifiedName::buildHash).collect(Collectors.toList());
-
-    if (testCaseFQNHashes.isEmpty()) return new TestSummary();
-
-    List<String> jsonList = entityExtensionTimeSeriesDAO.getLatestExtensionByFQNs(testCaseFQNHashes, extensionName);
-
-    HashMap<String, Integer> testCaseSummary = new HashMap<>();
-    for (String json : jsonList) {
-      TestCaseResult testCaseResult = JsonUtils.readValue(json, TestCaseResult.class);
-      String status = testCaseResult.getTestCaseStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
-    }
-
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withTotal(jsonList.size());
   }
 
   /** Merge two sets of tags */
@@ -359,7 +332,7 @@ public final class EntityUtil {
   }
 
   /** Return column field name of format "columns".columnName.columnFieldName */
-  public static <T extends EntityInterface> String getColumnField(Column column, String columnField) {
+  public static String getColumnField(Column column, String columnField) {
     // Remove table FQN from column FQN to get the local name
     String localColumnName = column.getName();
     return columnField == null
@@ -374,6 +347,15 @@ public final class EntityUtil {
     return fieldName == null
         ? FullyQualifiedName.build("schemaFields", localFieldName)
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+  /** Return searchIndex field name of format "fields".fieldName.fieldName */
+  public static String getSearchIndexField(SearchIndex searchIndex, SearchIndexField field, String fieldName) {
+    // Remove topic FQN from schemaField FQN to get the local name
+    String localFieldName =
+        EntityUtil.getLocalColumnName(searchIndex.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("fields", localFieldName)
+        : FullyQualifiedName.build("fields", localFieldName, fieldName);
   }
 
   /** Return rule field name of format "rules".ruleName.ruleFieldName */
@@ -430,6 +412,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(GlossaryTerm term) {
     return new TagLabel()
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
+        .withDescription(term.getDescription())
+        .withStyle(term.getStyle())
         .withTagFQN(term.getFullyQualifiedName())
         .withDescription(term.getDescription())
         .withSource(TagSource.GLOSSARY);
@@ -437,6 +423,10 @@ public final class EntityUtil {
 
   public static TagLabel toTagLabel(Tag tag) {
     return new TagLabel()
+        .withName(tag.getName())
+        .withDisplayName(tag.getDisplayName())
+        .withDescription(tag.getDescription())
+        .withStyle(tag.getStyle())
         .withTagFQN(tag.getFullyQualifiedName())
         .withDescription(tag.getDescription())
         .withSource(TagSource.CLASSIFICATION);
@@ -460,7 +450,7 @@ public final class EntityUtil {
     change.getFieldsUpdated().add(fieldChange);
   }
 
-  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) throws IOException {
+  public static MetadataOperation createOrUpdateOperation(ResourceContext resourceContext) {
     return resourceContext.getEntity() == null ? MetadataOperation.CREATE : MetadataOperation.EDIT_ALL;
   }
 
@@ -521,8 +511,7 @@ public final class EntityUtil {
    * required to set relationship as id, type are the only required fields in entity reference, whereas we need to send
    * fully populated object such that ElasticSearch index has all the details.
    */
-  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include)
-      throws IOException {
+  public static List<EntityReference> getEntityReferences(List<EntityReference> entities, Include include) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();
     }
@@ -546,7 +535,7 @@ public final class EntityUtil {
       byte[] checksum = MessageDigest.getInstance("MD5").digest(input.getBytes());
       return Hex.encodeHexString(checksum);
     }
-    return input;
+    return null;
   }
 
   public static boolean isDescriptionTask(TaskType taskType) {
@@ -555,5 +544,17 @@ public final class EntityUtil {
 
   public static boolean isTagTask(TaskType taskType) {
     return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
+  }
+
+  public static boolean isApprovalTask(TaskType taskType) {
+    return taskType == TaskType.RequestApproval;
+  }
+
+  public static Column findColumn(List<Column> columns, String columnName) {
+    return columns.stream()
+        .filter(c -> c.getName().equals(columnName))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalArgumentException(CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 }

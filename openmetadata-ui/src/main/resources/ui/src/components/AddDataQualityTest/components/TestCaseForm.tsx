@@ -13,18 +13,16 @@
 
 import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isEmpty, snakeCase } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getListTestCase, getListTestDefinitions } from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
+import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import {
   TestCase,
   TestCaseParameterValue,
@@ -35,7 +33,9 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import { getListTestCase, getListTestDefinitions } from '../../../rest/testAPI';
 import { replaceAllSpacialCharWith_ } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -51,7 +51,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   table,
 }) => {
   const history = useHistory();
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } =
+    useParams<{ entityTypeFQN: string; dashboardType: string }>();
   const decodedEntityFQN = getDecodedFqn(entityTypeFQN);
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const [form] = Form.useForm();
@@ -308,7 +309,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       </Form.Item>
 
       <Form.Item noStyle>
-        <Space className="tw-w-full tw-justify-end" size={16}>
+        <Space className="w-full justify-end" size={16}>
           <Button onClick={onBack}>{t('label.back')}</Button>
           <Button data-testid="submit-test" htmlType="submit" type="primary">
             {t('label.submit')}

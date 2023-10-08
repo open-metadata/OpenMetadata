@@ -22,31 +22,41 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
+  Link: jest.fn().mockImplementation(({ children, to, ...res }) => (
+    <a href={to} {...res}>
+      {children}
+    </a>
+  )),
 }));
 
-jest.mock('rest/rolesAPIV1', () => ({
+jest.mock('../../../rest/rolesAPIV1', () => ({
   getRoles: jest
     .fn()
     .mockImplementation(() => Promise.resolve(ROLES_LIST_WITH_PAGING)),
 }));
+jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+  jest
+    .fn()
+    .mockReturnValue(<div data-testid="delete-modal">DeletWdigetModal</div>)
+);
 
-jest.mock('components/common/next-previous/NextPrevious', () =>
+jest.mock(
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
+);
+
+jest.mock('../../../components/common/next-previous/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
-
-jest.mock('components/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div>Loader</div>)
-);
-
-jest.mock('./RolesList', () =>
-  jest.fn().mockReturnValue(<div data-testid="roles-list">RolesList</div>)
-);
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('data'),
+}));
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       role: {
@@ -69,7 +79,7 @@ describe('Test Roles List Page', () => {
     const container = await screen.findByTestId('roles-list-container');
     const addRoleButton = await screen.findByTestId('add-role');
 
-    const rolesList = await screen.findByTestId('roles-list');
+    const rolesList = await screen.findByTestId('roles-list-table');
 
     expect(container).toBeInTheDocument();
     expect(addRoleButton).toBeInTheDocument();
@@ -88,5 +98,39 @@ describe('Test Roles List Page', () => {
     fireEvent.click(addRoleButton);
 
     expect(mockPush).toHaveBeenCalledWith('/settings/access/roles/add-role');
+  });
+
+  it('Should render all table columns', async () => {
+    render(<RolesListPage />);
+
+    const container = await screen.findByTestId('roles-list-table');
+
+    const nameCol = await screen.findByText('label.name');
+    const descriptionCol = await screen.findByText('label.description');
+    const policiesCol = await screen.findByText('label.policy-plural');
+    const actionsCol = await screen.findByText('label.action-plural');
+
+    expect(container).toBeInTheDocument();
+    expect(nameCol).toBeInTheDocument();
+    expect(descriptionCol).toBeInTheDocument();
+    expect(policiesCol).toBeInTheDocument();
+    expect(actionsCol).toBeInTheDocument();
+  });
+
+  it('Should render all table rows', async () => {
+    render(<RolesListPage />);
+
+    const container = await screen.findByTestId('roles-list-table');
+
+    const nameRows = await screen.findAllByTestId('role-name');
+    const descriptionRows = await screen.findAllByTestId('previewer');
+    const policiesRows = await screen.findAllByTestId('policy-link');
+    const actionsRows = await screen.findAllByTestId('delete-action-data');
+
+    expect(container).toBeInTheDocument();
+    expect(nameRows).toHaveLength(3);
+    expect(descriptionRows).toHaveLength(3);
+    expect(policiesRows).toHaveLength(3);
+    expect(actionsRows).toHaveLength(3);
   });
 });

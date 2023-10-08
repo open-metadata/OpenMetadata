@@ -52,6 +52,10 @@
       "items" : {
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service"],

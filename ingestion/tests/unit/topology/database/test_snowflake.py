@@ -16,7 +16,7 @@ snowflake unit tests
 # pylint: disable=line-too-long
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -90,7 +90,7 @@ class SnowflakeUnitTest(TestCase):
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_snowflake_config)
-        self.snowflake_source = SnowflakeSource.create(
+        self.snowflake_source: SnowflakeSource = SnowflakeSource.create(
             mock_snowflake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
@@ -128,23 +128,23 @@ class SnowflakeUnitTest(TestCase):
         method to test source url
         """
         with patch.object(
-            SnowflakeSource, "_get_current_account", return_value="random_account"
+            SnowflakeSource,
+            "account",
+            return_value="random_account",
+            new_callable=PropertyMock,
         ):
             with patch.object(
-                SnowflakeSource, "_get_current_region", return_value="AWS_US_WEST_2"
+                SnowflakeSource,
+                "region",
+                return_value="us-west-2",
+                new_callable=PropertyMock,
             ):
                 self._assert_urls()
 
             with patch.object(
                 SnowflakeSource,
-                "_get_current_region",
-                return_value="PUBLIC.AWS_US_WEST_2",
-            ):
-                self._assert_urls()
-
-            with patch.object(
-                SnowflakeSource,
-                "_get_current_region",
+                "region",
+                new_callable=PropertyMock,
                 return_value=None,
             ):
                 self.assertIsNone(

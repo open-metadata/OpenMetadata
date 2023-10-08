@@ -6,6 +6,7 @@ import com.google.common.cache.LoadingCache;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import lombok.NonNull;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
@@ -26,7 +27,7 @@ public class LoginAttemptCache {
             .expireAfterWrite(accessBlockTime, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
-                  public Integer load(@NonNull String key) {
+                  public @NotNull Integer load(@NonNull String username) {
                     return 0;
                   }
                 });
@@ -40,38 +41,38 @@ public class LoginAttemptCache {
             .expireAfterWrite(blockTimeInSec, TimeUnit.SECONDS)
             .build(
                 new CacheLoader<>() {
-                  public Integer load(@NonNull String key) {
+                  public @NotNull Integer load(@NonNull String username) {
                     return 0;
                   }
                 });
   }
 
-  public void recordSuccessfulLogin(String key) {
-    attemptsCache.invalidate(key);
+  public void recordSuccessfulLogin(String username) {
+    attemptsCache.invalidate(username.toLowerCase());
   }
 
-  public void recordFailedLogin(String key) {
+  public void recordFailedLogin(String username) {
     int attempts;
     try {
-      attempts = attemptsCache.get(key);
+      attempts = attemptsCache.get(username.toLowerCase());
     } catch (ExecutionException e) {
       attempts = 0;
     }
     attempts++;
-    attemptsCache.put(key, attempts);
+    attemptsCache.put(username, attempts);
   }
 
-  public boolean isLoginBlocked(String key) {
+  public boolean isLoginBlocked(String username) {
     try {
-      return attemptsCache.get(key) >= maxAttempt;
+      return attemptsCache.get(username.toLowerCase()) >= maxAttempt;
     } catch (ExecutionException e) {
       return false;
     }
   }
 
-  public int getUserFailedLoginCount(String key) {
+  public int getUserFailedLoginCount(String username) {
     try {
-      return attemptsCache.get(key);
+      return attemptsCache.get(username.toLowerCase());
     } catch (ExecutionException e) {
       return -1;
     }

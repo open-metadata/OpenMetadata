@@ -12,44 +12,36 @@
  */
 
 import { Card } from 'antd';
-import { ONBOARDING_STEPS_DATA } from 'constants/Onboarding.constants';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
+import { ONBOARDING_STEPS_DATA } from '../../constants/Onboarding.constants';
 
 const Onboarding: FC = () => {
   return (
-    <div
-      className="tw-mt-10 tw-text-base tw-font-medium"
-      data-testid="onboarding">
-      <div className="tw-text-center tw-text-xl tw-font-semibold tw-mb-1">
+    <div className="text-base font-medium" data-testid="onboarding">
+      <div className="text-center text-xl font-semibold ">
         {t('message.welcome-to-open-metadata')}
       </div>
-      <div className="tw-mb-5">
-        <div className="tw-mb-3 tw-text-center">
-          {t('message.om-description')}
-        </div>
-        <div className="tw-grid tw-grid-cols-3 tw-gap-3 tw-mt-5">
+      <div>
+        <div className="text-center">{t('message.om-description')}</div>
+        <div>
           {ONBOARDING_STEPS_DATA.map((data) => (
-            <Card
-              className="d-flex flex-col tw-justify-between tw-p-5"
-              key={uniqueId()}>
+            <Card className="d-flex flex-col justify-between " key={uniqueId()}>
               <div>
-                <div className="d-flex tw-mb-2">
-                  <div className="tw-rounded-full d-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
+                <div className="d-flex mb-2">
+                  <div className="d-flex justify-center items-center text-lg font-bold text-primary">
                     {data.step}
                   </div>
                 </div>
 
                 <h6
-                  className="tw-text-base tw-text-grey-body tw-font-medium"
+                  className="text-base text-grey-body font-medium"
                   data-testid="service-name">
                   {t(data.title)}
                 </h6>
 
-                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
-                  {t(data.description)}
-                </p>
+                <p className="text-grey-body text-sm">{t(data.description)}</p>
               </div>
             </Card>
           ))}

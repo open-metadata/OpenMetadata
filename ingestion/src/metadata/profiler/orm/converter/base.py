@@ -15,13 +15,15 @@ to an SQLAlchemy ORM class.
 """
 from typing import Optional, cast
 
+import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from metadata.generated.schema.entity.data.database import Database, databaseService
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.orm.converter.converter_registry import converter_registry
 
 Base = declarative_base()
 
@@ -62,6 +64,32 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
     return None
 
 
+def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Column:
+    """
+    Cook the ORM column from our metadata instance
+    information.
+
+    The first parsed column will be used arbitrarily
+    as the PK, as SQLAlchemy forces us to specify
+    at least one PK.
+
+    As this is only used for INSERT/UPDATE/DELETE,
+    there is no impact for our read-only purposes.
+    """
+    return sqlalchemy.Column(
+        name=str(col.name.__root__),
+        type_=converter_registry[table_service_type]().map_types(
+            col, table_service_type
+        ),
+        primary_key=not bool(idx),  # The first col seen is used as PK
+        quote=check_if_should_quote_column_name(table_service_type)
+        or check_snowflake_case_sensitive(table_service_type, col.name.__root__),
+        key=str(
+            col.name.__root__
+        ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
+    )
+
+
 def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
 ) -> DeclarativeMeta:
@@ -74,9 +102,6 @@ def ometa_to_sqa_orm(
     `type` and passing SQLAlchemy `Base` class
     as the bases tuple for inheritance.
     """
-    # pylint: disable=import-outside-toplevel,cyclic-import
-    from metadata.profiler.orm.converter.dispatch_converter import build_orm_col
-
     table.serviceType = cast(
         databaseService.DatabaseServiceType, table.serviceType
     )  # satisfy mypy

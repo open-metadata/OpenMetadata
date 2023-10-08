@@ -120,7 +120,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Token from header:{}", tokenFromHeader);
 
     // the case where OMD generated the Token for the Client
-    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.toString().equals(providerType)) {
+    if (AuthProvider.BASIC.equals(providerType) || AuthProvider.SAML.equals(providerType)) {
       validateTokenIsNotUsedAfterLogout(tokenFromHeader);
     }
 

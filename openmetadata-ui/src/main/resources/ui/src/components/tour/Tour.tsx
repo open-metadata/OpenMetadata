@@ -12,12 +12,13 @@
  */
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { CurrentTourPageType } from 'enums/tour.enum';
+import { Button } from 'antd';
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { PRIMERY_COLOR } from '../../constants/constants';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
 import './tour.style.less';
 
@@ -46,9 +47,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
           accentColor={PRIMERY_COLOR}
           inViewThreshold={200}
           lastStepNextButton={
-            <button
-              className="tw-w-4"
-              onClick={() => setShowTourEndModal(true)}>
+            <Button onClick={() => setShowTourEndModal(true)}>
               <svg viewBox="0 0 18.4 14.4">
                 <path
                   d="M17 7.2H1M10.8 1 17 7.2l-6.2 6.2"
@@ -59,7 +58,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
                   strokeWidth={2}
                 />
               </svg>
-            </button>
+            </Button>
           }
           maskColor="#302E36"
           playTour={isTourOpen}

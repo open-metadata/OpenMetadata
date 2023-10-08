@@ -18,7 +18,7 @@ from typing import List
 
 import pytest
 
-from metadata.ingestion.api.workflow import Workflow
+from metadata.workflow.metadata import MetadataWorkflow
 
 from .base.e2e_types import E2EType
 from .base.test_cli import PATH_TO_RESOURCES
@@ -29,7 +29,7 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
     @classmethod
     def setUpClass(cls) -> None:
         connector = cls.get_connector_name()
-        workflow: Workflow = cls.get_workflow(
+        workflow: MetadataWorkflow = cls.get_workflow(
             test_type=cls.get_test_type(), connector=connector
         )
         cls.openmetadata = workflow.source.metadata

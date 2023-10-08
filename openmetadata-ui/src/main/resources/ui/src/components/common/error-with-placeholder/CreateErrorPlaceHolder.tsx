@@ -16,8 +16,8 @@ import { Button, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Transi18next } from 'utils/CommonUtils';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import { Transi18next } from '../../../utils/CommonUtils';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 import { CreatePlaceholderProps } from './placeholder.interface';
 
@@ -69,19 +69,21 @@ const CreateErrorPlaceHolder = ({
             />
           </Typography.Paragraph>
 
-          <Tooltip
-            placement="top"
-            title={!permission && t('message.admin-only-action')}>
-            <Button
-              ghost
-              className="p-x-lg"
-              data-testid={buttonId ?? 'add-placeholder-button'}
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={onClick}>
-              {t('label.add')}
-            </Button>
-          </Tooltip>
+          {onClick && (
+            <Tooltip
+              placement="top"
+              title={!permission && t('message.admin-only-action')}>
+              <Button
+                ghost
+                className="p-x-lg"
+                data-testid={buttonId ?? 'add-placeholder-button'}
+                icon={<PlusOutlined />}
+                type="primary"
+                onClick={onClick}>
+                {t('label.add')}
+              </Button>
+            </Tooltip>
+          )}
         </div>
       </Space>
     </div>

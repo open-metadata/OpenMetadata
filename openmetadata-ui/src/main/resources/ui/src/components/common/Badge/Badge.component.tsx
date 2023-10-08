@@ -49,7 +49,7 @@ const AppBadge = ({
       data-testid="badge-container"
       style={{ color, backgroundColor: bgColor }}>
       {icon && (
-        <span className="m-r-xss" data-testid="badge-icon">
+        <span className="d-flex m-r-xss" data-testid="badge-icon">
           {icon}
         </span>
       )}

@@ -39,7 +39,10 @@
         "EditTier",
         "EditTests",
         "EditUsage",
-        "EditUsers"
+        "EditUsers",
+        "EditLifeCycle",
+        "EditKnowledgePanel",
+        "EditPage"
       ]
     }
   },

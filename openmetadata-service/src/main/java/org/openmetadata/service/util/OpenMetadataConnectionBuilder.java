@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.util;
 
-import java.io.IOException;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -40,17 +39,17 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class OpenMetadataConnectionBuilder {
 
-  AuthProvider authProvider;
+  final AuthProvider authProvider;
   String bot;
-  Object securityConfig;
+  final Object securityConfig;
   private final VerifySSL verifySSL;
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
   private final SecretsManagerClientLoader secretsManagerLoader;
   private final Object openMetadataSSLConfig;
-  BotRepository botRepository;
-  UserRepository userRepository;
+  final BotRepository botRepository;
+  final UserRepository userRepository;
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
@@ -156,7 +155,7 @@ public class OpenMetadataConnectionBuilder {
         user.getAuthenticationMechanism().setConfig(user.getAuthenticationMechanism().getConfig());
       }
       return user;
-    } catch (IOException | EntityNotFoundException ex) {
+    } catch (EntityNotFoundException ex) {
       LOG.debug((bot == null ? "Bot" : String.format("User for bot [%s]", botName)) + " [{}] not found.", botName);
       return null;
     }

@@ -13,7 +13,7 @@ Add methods to the workflows for updating the IngestionPipeline status
 """
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Tuple
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -23,18 +23,29 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.api.step import Step
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+SUCCESS_THRESHOLD_VALUE = 90
 
 
 class WorkflowStatusMixin:
     """
     Helper methods to manage IngestionPipeline status
-    and workflow run ID
+    and workflow run ID.
+
+    To be inherited by the Base Workflow
     """
 
     config: OpenMetadataWorkflowConfig
     _run_id: Optional[str] = None
     metadata: OpenMetadata
+
+    # All workflows require a source as a first step
+    source: Source
+    # All workflows execute a series of steps, aside from the source
+    steps: Tuple[Step]
 
     @property
     def run_id(self) -> str:
@@ -49,6 +60,28 @@ class WorkflowStatusMixin:
                 self._run_id = str(uuid.uuid4())
 
         return self._run_id
+
+    def _raise_from_status_internal(self, raise_warnings=False):
+        """
+        Check the status of all steps
+        """
+        if (
+            self.source.get_status().failures
+            and self._get_source_success() < SUCCESS_THRESHOLD_VALUE
+        ):
+            raise WorkflowExecutionError(
+                "Source reported errors", self.source.get_status()
+            )
+
+        for step in self.steps:
+            if step.status.failures:
+                raise WorkflowExecutionError(
+                    f"{step.__class__.__name__} reported errors", step.get_status()
+                )
+            if raise_warnings and step.status.warnings:
+                raise WorkflowExecutionError(
+                    f"{step.__class__.__name__} reported warnings", step.get_status()
+                )
 
     def set_ingestion_pipeline_status(
         self,
@@ -79,6 +112,19 @@ class WorkflowStatusMixin:
                 self.config.ingestionPipelineFQN, pipeline_status
             )
 
+    def update_ingestion_status_at_end(self):
+        """
+        Once the execute method is done, update the status
+        as OK or KO depending on the success rate.
+        """
+        pipeline_state = PipelineState.success
+        if SUCCESS_THRESHOLD_VALUE <= self._get_source_success() < 100:
+            pipeline_state = PipelineState.partialSuccess
+        self.set_ingestion_pipeline_status(pipeline_state)
+
+    def _get_source_success(self):
+        return self.source.get_status().calculate_success()
+
     def raise_from_status(self, raise_warnings=False):
         """
         Method to raise error if failed execution
@@ -89,3 +135,11 @@ class WorkflowStatusMixin:
         except WorkflowExecutionError as err:
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
+
+    def result_status(self) -> int:
+        """
+        Returns 1 if source status is failed, 0 otherwise.
+        """
+        if self.source.get_status().failures:
+            return 1
+        return 0

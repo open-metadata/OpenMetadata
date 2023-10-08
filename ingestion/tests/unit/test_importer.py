@@ -114,14 +114,6 @@ class ImporterTest(TestCase):
             MetadataUsageBulkSink,
         )
 
-    def test_import_sink_from(self) -> None:
-        from metadata.profiler.sink.metadata_rest import MetadataRestSink
-
-        self.assertEqual(
-            import_sink_class(sink_type="metadata-rest", from_="profiler"),
-            MetadataRestSink,
-        )
-
     def test_import_get_connection(self) -> None:
         connection = MysqlConnection(
             username="name",

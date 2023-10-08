@@ -12,7 +12,6 @@
  */
 
 import { Popover, Skeleton, Space, Tag } from 'antd';
-import { PIPELINE_INGESTION_RUN_STATUS } from 'constants/pipeline.constants';
 import { isEmpty, startCase } from 'lodash';
 import React, {
   FunctionComponent,
@@ -21,17 +20,18 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRunHistoryForPipeline } from 'rest/ingestionPipelineAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import { PIPELINE_INGESTION_RUN_STATUS } from '../../../constants/pipeline.constants';
 import {
   IngestionPipeline,
   PipelineStatus,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getRunHistoryForPipeline } from '../../../rest/ingestionPipelineAPI';
 import {
-  getCurrentDateTimeMillis,
-  getDateTimeFromMilliSeconds,
-  getPastDaysDateTimeMillis,
-} from '../../../utils/TimeUtils';
+  formatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../utils/date-time/DateTimeUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import './ingestion-recent-run.style.less';
 
 interface Props {
@@ -39,8 +39,8 @@ interface Props {
   classNames?: string;
 }
 const queryParams = {
-  startTs: getPastDaysDateTimeMillis(1),
-  endTs: getCurrentDateTimeMillis(),
+  startTs: getEpochMillisForPastDays(1),
+  endTs: getCurrentMillis(),
 };
 
 export const IngestionRecentRuns: FunctionComponent<Props> = ({
@@ -113,23 +113,22 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
             <Popover
               key={i}
               title={
-                <div className="tw-text-left">
+                <div className="text-left">
                   {r.timestamp && (
                     <p>
                       {`${t('label.execution-date')}:`}{' '}
-                      {getDateTimeFromMilliSeconds(r.timestamp)}
+                      {formatDateTime(r.timestamp)}
                     </p>
                   )}
                   {r.startDate && (
                     <p>
                       {t('label.start-entity', { entity: t('label.date') })}:{' '}
-                      {getDateTimeFromMilliSeconds(r.startDate)}
+                      {formatDateTime(r.startDate)}
                     </p>
                   )}
                   {r.endDate && (
                     <p>
-                      {`${t('label.end-date')}:`}{' '}
-                      {getDateTimeFromMilliSeconds(r.endDate)}
+                      {`${t('label.end-date')}:`} {formatDateTime(r.endDate)}
                     </p>
                   )}
                 </div>

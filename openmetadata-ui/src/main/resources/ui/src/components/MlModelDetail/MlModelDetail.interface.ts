@@ -12,12 +12,14 @@
  */
 
 import { HTMLAttributes } from 'react';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 
 export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
+  updateMlModelDetailsState?: (data: DataAssetWithDomains) => void;
   mlModelDetail: Mlmodel;
-  version?: string;
   fetchMlModel: () => void;
   followMlModelHandler: () => Promise<void>;
   unFollowMlModelHandler: () => Promise<void>;
@@ -28,4 +30,6 @@ export interface MlModelDetailProp extends HTMLAttributes<HTMLDivElement> {
   versionHandler: () => void;
   onExtensionUpdate: (updatedMlModel: Mlmodel) => Promise<void>;
   createThread: (data: CreateThread) => void;
+  handleToggleDelete: () => void;
+  onUpdateVote: (data: QueryVote, id: string) => Promise<void>;
 }

@@ -1,6 +1,7 @@
 package org.openmetadata.service.socket;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.USER;
 
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
@@ -11,9 +12,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class WebSocketManager {
@@ -102,7 +104,7 @@ public class WebSocketManager {
 
   public void sendToOne(String username, String event, String message) {
     try {
-      UUID receiver = SubjectCache.getSubjectContext(username).getUser().getId();
+      UUID receiver = Entity.getEntityReferenceByName(USER, username, Include.NON_DELETED).getId();
       if (activityFeedEndpoints.containsKey(receiver)) {
         activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
       }

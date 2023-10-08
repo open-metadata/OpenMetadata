@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
-import { ReactComponent as EditIconComponent } from 'assets/svg/edit-new.svg';
 import { t } from 'i18next';
 import { isUndefined, toNumber } from 'lodash';
 import React, { FC, Fragment, useState } from 'react';
+import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -31,15 +32,6 @@ interface Props {
   onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
   hasEditPermissions: boolean;
 }
-
-const EditIcon = ({ onShowInput }: { onShowInput: () => void }) => (
-  <span
-    className="cursor-pointer m-l-xs h-auto mt-2px"
-    data-testid="edit-icon"
-    onClick={onShowInput}>
-    <EditIconComponent height={16} width={16} />
-  </span>
-);
 
 export const PropertyValue: FC<Props> = ({
   isVersionView,
@@ -161,9 +153,15 @@ export const PropertyValue: FC<Props> = ({
         getPropertyInput()
       ) : (
         <Fragment>
-          <div className="d-flex">
+          <div className="d-flex gap-2 items-center">
             {getValueElement()}
-            {hasEditPermissions && <EditIcon onShowInput={onShowInput} />}
+            {hasEditPermissions && (
+              <Icon
+                component={EditIconComponent}
+                data-testid="edit-icon"
+                onClick={onShowInput}
+              />
+            )}
           </div>
         </Fragment>
       )}

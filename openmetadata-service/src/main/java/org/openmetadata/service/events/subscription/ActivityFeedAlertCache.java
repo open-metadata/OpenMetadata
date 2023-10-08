@@ -4,7 +4,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -27,7 +26,7 @@ public class ActivityFeedAlertCache {
     // Private constructor for static class
   }
 
-  public static EventSubscription getActivityFeedAlert() throws EntityNotFoundException {
+  public static EventSubscription getActivityFeedAlert() {
     try {
       return EVENT_SUB_CACHE.get(ACTIVITY_FEED_ALERT);
     } catch (ExecutionException | UncheckedExecutionException ex) {
@@ -37,7 +36,7 @@ public class ActivityFeedAlertCache {
 
   static class ActivityFeedAlertLoader extends CacheLoader<String, EventSubscription> {
     @Override
-    public EventSubscription load(@CheckForNull String alertName) throws IOException {
+    public EventSubscription load(@CheckForNull String alertName) {
       EventSubscription alert = Entity.getEntityByName(Entity.EVENT_SUBSCRIPTION, alertName, "*", Include.NON_DELETED);
       LOG.debug("Loaded Alert {}", alert);
       return alert;

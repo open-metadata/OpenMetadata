@@ -3,16 +3,20 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
+import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterAll;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -22,12 +26,12 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
@@ -41,28 +45,36 @@ class RuleEvaluatorTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
-    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
-    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
+    Mockito.when(teamRepository.find(any(UUID.class), any(Include.class)))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+    Mockito.when(teamRepository.getReference(any(UUID.class), any(Include.class)))
+        .thenAnswer(
+            i ->
+                EntityRepository.CACHE_WITH_ID
+                    .get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0)))
+                    .getEntityReference());
+
+    Mockito.when(teamRepository.findByName(anyString(), any(Include.class)))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(0))));
+
+    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+
+    Mockito.when(teamRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     TableRepository tableRepository = mock(TableRepository.class);
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
     Mockito.when(tableRepository.getAllTags(any()))
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
-    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository, null);
 
     user = new User().withId(UUID.randomUUID()).withName("user");
-    resourceContext =
-        ResourceContext.builder().resource("table").entity(table).entityRepository(mock(TableRepository.class)).build();
-
+    resourceContext = new ResourceContext("table", table, mock(TableRepository.class));
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-  }
-
-  @AfterAll
-  public static void cleanup() {
-    SubjectCache.cleanUp();
-    RoleCache.cleanUp();
   }
 
   @Test
@@ -253,10 +265,10 @@ class RuleEvaluatorTest {
     Team team = new Team().withName(teamName).withId(teamId);
     if (parentName != null) {
       UUID parentId = UUID.nameUUIDFromBytes(parentName.getBytes(StandardCharsets.UTF_8));
-      Team parentTeam = SubjectCache.getTeam(parentId);
-      team.setParents(listOf(parentTeam.getEntityReference()));
+      EntityReference parentTeam = Entity.getEntityReferenceById(Entity.TEAM, parentId, Include.NON_DELETED);
+      team.setParents(listOf(parentTeam));
     }
-    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, team.getId()), team);
     return team;
   }
 
@@ -266,7 +278,7 @@ class RuleEvaluatorTest {
     team.setDefaultRoles(listOf(role.getEntityReference()));
     team.setInheritedRoles(new ArrayList<>());
     for (EntityReference parent : listOrEmpty(team.getParents())) {
-      Team parentTeam = SubjectCache.getTeam(parent.getId());
+      Team parentTeam = Entity.getEntity(Entity.TEAM, parent.getId(), TEAM_FIELDS, Include.NON_DELETED);
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getDefaultRoles()));
       team.getInheritedRoles().addAll(listOrEmpty(parentTeam.getInheritedRoles()));
     }
@@ -276,7 +288,7 @@ class RuleEvaluatorTest {
   private Role createRole(String roleName) {
     UUID roleId = UUID.nameUUIDFromBytes(roleName.getBytes(StandardCharsets.UTF_8));
     Role role = new Role().withName(roleName).withId(roleId);
-    RoleCache.CACHE_WITH_ID.put(role.getId(), role);
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.ROLE, role.getId()), role);
     return role;
   }
 

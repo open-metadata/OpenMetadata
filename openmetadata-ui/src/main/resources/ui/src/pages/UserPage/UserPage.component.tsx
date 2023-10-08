@@ -13,8 +13,6 @@
 
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import Users from 'components/Users/Users.component';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -29,22 +27,24 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getUserByName, updateUserDetail } from 'rest/userAPI';
-import { Transi18next } from 'utils/CommonUtils';
+import Loader from '../../components/Loader/Loader';
+import Users from '../../components/Users/Users.component';
 import { PAGE_SIZE } from '../../constants/constants';
 import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import { UserProfileTab } from '../../enums/user.enum';
 import { User } from '../../generated/entity/teams/user';
+import { searchData } from '../../rest/miscAPI';
+import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { SearchEntityHits } from '../../utils/APIUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { UserAssetsDataType } from './UserPage.interface';
 
 const UserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { username, tab = UserProfileTab.ACTIVITY } =
-    useParams<{ [key: string]: string }>();
+  const { fqn: username, tab = UserProfileTab.ACTIVITY } =
+    useParams<{ fqn: string; tab: UserProfileTab }>();
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
@@ -161,11 +161,9 @@ const UserPage = () => {
   const ErrorPlaceholder = () => {
     return (
       <div
-        className="d-flex flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1"
+        className="d-flex items-center justify-center h-full"
         data-testid="error">
-        <Typography.Paragraph
-          className="tw-text-base"
-          data-testid="error-message">
+        <Typography.Paragraph className="text-base" data-testid="error-message">
           <Transi18next
             i18nKey="message.no-username-available"
             renderElement={<strong data-testid="username" />}

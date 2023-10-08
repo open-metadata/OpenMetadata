@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import QueryCount from './QueryCount.component';
 
-jest.mock('rest/searchAPI', () => ({
+jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
     .mockImplementation(() =>

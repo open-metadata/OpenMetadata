@@ -12,13 +12,13 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
-import Loader from 'components/Loader/Loader';
-import { AIRFLOW_DOCS } from 'constants/docs.constants';
-import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import React from 'react';
+import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
+import Loader from '../../../components/Loader/Loader';
+import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
+import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 const ErrorPlaceHolderIngestion = () => {
@@ -28,17 +28,17 @@ const ErrorPlaceHolderIngestion = () => {
 
   const airflowSetupGuide = () => {
     return (
-      <div className="tw-mb-5" data-testid="error-steps">
-        <Card className="d-flex flex-col tw-justify-between tw-p-5 tw-w-4/5 tw-mx-auto">
+      <div className="mb-5" data-testid="error-steps">
+        <Card className="d-flex flex-col justify-between w-4/5 mx-auto">
           <AirflowMessageBanner className="m-b-xs" />
           {isAirflowPlatform ? (
             <>
               <div>
-                <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
+                <h6 className="text-base text-grey-body font-medium">
                   {t('message.manage-airflow-api-failed')}
                 </h6>
 
-                <p className="tw-text-grey-body tw-text-sm tw-mb-5">
+                <p className="text-grey-body text-sm mb-5">
                   {t('message.airflow-guide-message')}
                 </p>
               </div>
@@ -68,7 +68,7 @@ const ErrorPlaceHolderIngestion = () => {
   };
 
   return (
-    <div className="tw-mt-5 tw-text-base tw-font-medium">
+    <div className="m-t-lg text-base font-medium">
       {isFetchingStatus ? <Loader /> : airflowSetupGuide()}
     </div>
   );

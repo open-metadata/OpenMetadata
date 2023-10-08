@@ -108,6 +108,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
+
     assertListNotNull(database.getService(), database.getServiceType());
     // Fields usageSummary and location are not set during creation - tested elsewhere
     TestUtils.validateEntityReferences(database.getDatabaseSchemas(), true);
@@ -149,7 +150,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
-import java.io.IOException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.service.Entity;
@@ -10,24 +9,28 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
-  public TestDefinitionRepository(CollectionDAO dao) {
+  public TestDefinitionRepository() {
     super(
         TestDefinitionResource.COLLECTION_PATH,
         TEST_DEFINITION,
         TestDefinition.class,
-        dao.testDefinitionDAO(),
-        dao,
+        Entity.getCollectionDAO().testDefinitionDAO(),
         "",
         "");
   }
 
   @Override
-  public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) throws IOException {
-    return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
+  public TestDefinition setFields(TestDefinition entity, EntityUtil.Fields fields) {
+    return entity; // Nothing to set
   }
 
   @Override
-  public void prepare(TestDefinition entity) {
+  public TestDefinition clearFields(TestDefinition entity, EntityUtil.Fields fields) {
+    return entity; // Nothing to set
+  }
+
+  @Override
+  public void prepare(TestDefinition entity, boolean update) {
     // validate test platforms
     if (CommonUtil.nullOrEmpty(entity.getTestPlatforms())) {
       throw new IllegalArgumentException("testPlatforms must not be empty");
@@ -35,7 +38,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   }
 
   @Override
-  public void storeEntity(TestDefinition entity, boolean update) throws IOException {
+  public void storeEntity(TestDefinition entity, boolean update) {
     store(entity, update);
   }
 
@@ -55,7 +58,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange("supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());
       recordChange("parameterDefinition", original.getParameterDefinition(), updated.getParameterDefinition());

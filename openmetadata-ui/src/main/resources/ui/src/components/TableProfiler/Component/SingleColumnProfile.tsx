@@ -12,11 +12,14 @@
  */
 import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import DataDistributionHistogram from 'components/Chart/DataDistributionHistogram.component';
-import Loader from 'components/Loader/Loader';
-import ProfilerDetailsCard from 'components/ProfilerDashboard/component/ProfilerDetailsCard';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
-import { MetricChartType } from 'components/ProfilerDashboard/profilerDashboard.interface';
+import { first, isString, last, sortBy } from 'lodash';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import DataDistributionHistogram from '../../../components/Chart/DataDistributionHistogram.component';
+import Loader from '../../../components/Loader/Loader';
+import ProfilerDetailsCard from '../../../components/ProfilerDashboard/component/ProfilerDetailsCard';
+import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
+import { MetricChartType } from '../../../components/ProfilerDashboard/profilerDashboard.interface';
 import {
   DEFAULT_RANGE_DATA,
   INITIAL_COUNT_METRIC_VALUE,
@@ -24,15 +27,12 @@ import {
   INITIAL_PROPORTION_METRIC_VALUE,
   INITIAL_QUARTILE_METRIC_VALUE,
   INITIAL_SUM_METRIC_VALUE,
-} from 'constants/profiler.constant';
-import { ColumnProfile } from 'generated/entity/data/container';
-import { first, isString, last, sortBy } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getColumnProfilerList } from 'rest/tableAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../constants/profiler.constant';
+import { ColumnProfile } from '../../../generated/entity/data/container';
+import { getColumnProfilerList } from '../../../rest/tableAPI';
+import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 interface SingleColumnProfileProps {
   activeColumnFqn: string;
@@ -99,7 +99,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     const sumMetricData: MetricChartType['data'] = [];
     const quartileMetricData: MetricChartType['data'] = [];
     updateProfilerData.forEach((col) => {
-      const x = getFormattedDateFromSeconds(col.timestamp);
+      const x = customFormatDateTime(col.timestamp, 'MMM dd, hh:mm');
 
       countMetricData.push({
         name: x,

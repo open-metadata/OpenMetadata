@@ -17,7 +17,14 @@
         "DailyActiveUsers",
         "MostActiveUsers",
         "MostViewedEntities",
-        "PageViewsByEntities"
+        "PageViewsByEntities",
+        "PercentageOfServicesWithDescription",
+        "PercentageOfServicesWithOwner",
+        "UnusedAssets",
+        "AggregatedUnusedAssetsSize",
+        "AggregatedUnusedAssetsCount",
+        "AggregatedUsedVsUnusedAssetsSize",
+        "AggregatedUsedVsUnusedAssetsCount"
       ]
     }
   },
@@ -25,6 +32,10 @@
     "chartType": {
       "description": "Chart Type that will consume the data. Must match name of dataInsightChart.",
       "$ref": "#/definitions/dataInsightChartType"
+    },
+    "total": {
+      "description": "Total number of hits returned by the aggregation.",
+      "type": "integer"
     },
     "data": {
       "description": "Array of consumable data.",
@@ -38,7 +49,14 @@
           {"$ref": "./type/dailyActiveUsers.json"},
           {"$ref": "./type/pageViewsByEntities.json"},
           {"$ref": "type/mostActiveUsers.json"},
-          {"$ref": "type/mostViewedEntities.json"}
+          {"$ref": "type/mostViewedEntities.json"},
+          {"$ref": "type/percentageOfServicesWithDescription.json"},
+          {"$ref": "type/percentageOfServicesWithOwner.json"},
+          {"$ref": "type/unusedAssets.json"},
+          {"$ref": "type/aggregatedUnusedAssetsSize.json"},
+          {"$ref": "type/aggregatedUnusedAssetsCount.json"},
+          {"$ref": "type/aggregatedUsedVsUnusedAssetsSize.json"},
+          {"$ref": "type/aggregatedUsedVsUnusedAssetsCount.json"}
         ]
       }
     }

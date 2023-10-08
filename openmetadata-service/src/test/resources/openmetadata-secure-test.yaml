@@ -96,15 +96,16 @@ logging:
 
 database:
   # the name of the JDBC driver, h2 is used for testing
-  driverClass: com.postgresql.Driver
+  driverClass: org.postgresql.Driver
   # the username and password
   user: test
   password:
   # the JDBC URL; the database is called openmetadata_test_db
-  url: jdbc:postgres://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
+  url: jdbc:postgresql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 migrationConfiguration:
-  path: "../bootstrap/sql"
+  flywayPath: "../bootstrap/sql/migrations/flyway"
+  nativePath: "../bootstrap/sql/migrations/native"
 
 #elasticsearch:
 #  host: localhost
@@ -128,6 +129,7 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
+    - "hello.world"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"

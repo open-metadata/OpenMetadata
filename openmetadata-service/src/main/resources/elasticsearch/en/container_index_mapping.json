@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 3,
+          "max_gram": 10,
           "filter": [
             "lowercase"
           ]
@@ -53,6 +53,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer",
@@ -65,14 +68,8 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "index_options": "freqs",
+        "analyzer": "om_analyzer"
       },
       "version": {
         "type": "float"
@@ -86,6 +83,9 @@
       },
       "href": {
         "type": "text"
+      },
+      "sourceUrl": {
+        "type": "keyword"
       },
       "parent": {
         "properties": {
@@ -151,13 +151,7 @@
               "description": {
                 "type": "text",
                 "index_options": "docs",
-                "analyzer": "om_analyzer",
-                "fields": {
-                  "ngram": {
-                    "type": "text",
-                    "analyzer": "om_ngram"
-                  }
-                }
+                "analyzer": "om_analyzer"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -188,6 +182,46 @@
           }
         }
       },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "extension": {
+        "type": "keyword"
+      },
       "children": {
         "properties": {
           "id": {
@@ -217,13 +251,7 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer"
           },
           "deleted": {
             "type": "text"
@@ -328,6 +356,9 @@
             "type": "text"
           }
         }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "usageSummary": {
         "properties": {

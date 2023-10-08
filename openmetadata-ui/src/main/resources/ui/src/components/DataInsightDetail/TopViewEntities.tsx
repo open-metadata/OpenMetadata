@@ -11,20 +11,20 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Table, Typography } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
-import Loader from 'components/Loader/Loader';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+import Table from '../../components/common/Table/Table';
+import PageHeader from '../../components/header/PageHeader.component';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
@@ -122,6 +122,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
     <Card
       className="data-insight-card"
       data-testid="entity-summary-card-percentage"
+      loading={isLoading}
       title={
         <PageHeader
           data={{
@@ -130,19 +131,17 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
           }}
         />
       }>
-      {isLoading ? (
-        <Loader />
-      ) : isEmpty(mostViewedEntities) ? (
-        <EmptyGraphPlaceholder />
-      ) : (
-        <Table
-          className="data-insight-table-wrapper"
-          columns={columns}
-          dataSource={mostViewedEntities}
-          pagination={false}
-          size="small"
-        />
-      )}
+      <Table
+        className="data-insight-table-wrapper"
+        columns={columns}
+        dataSource={mostViewedEntities}
+        loading={isLoading}
+        locale={{
+          emptyText: <EmptyGraphPlaceholder />,
+        }}
+        pagination={false}
+        size="small"
+      />
     </Card>
   );
 };

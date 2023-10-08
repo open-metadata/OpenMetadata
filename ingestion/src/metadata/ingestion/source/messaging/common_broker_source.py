@@ -26,14 +26,13 @@ from confluent_kafka.schema_registry.schema_registry_client import Schema
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import TopicSampleData
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.schema import SchemaType, Topic
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -65,9 +64,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
@@ -89,7 +88,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic(
         self, topic_details: BrokerTopicDetails
-    ) -> Iterable[CreateTopicRequest]:
+    ) -> Iterable[Either[CreateTopicRequest]]:
         try:
             schema_type_map = {
                 key.lower(): value.value
@@ -136,14 +135,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 topic.messageSchema = Topic(
                     schemaText="", schemaType=SchemaType.Other, schemaFields=[]
                 )
+            yield Either(right=topic)
             self.register_record(topic_request=topic)
-            yield topic
 
         except Exception as exc:
-            error = f"Unexpected exception to yield topic [{topic_details}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(topic_details.topic_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     @staticmethod
     def add_properties_to_topic_from_resource(
@@ -205,7 +207,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic_sample_data(
         self, topic_details: BrokerTopicDetails
-    ) -> TopicSampleData:
+    ) -> Iterable[Either[TopicSampleData]]:
         """
         Method to Get Sample Data of Messaging Entity
         """
@@ -221,9 +223,12 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
                 messages = self.consumer_client.consume(num_messages=10, timeout=10)
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Failed to fetch sample data from topic {topic_name}: {exc}"
+                yield Either(
+                    left=StackTraceError(
+                        name=topic_details.topic_name,
+                        error=f"Failed to fetch sample data from topic {topic_name}: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
             else:
                 if messages:
@@ -243,9 +248,11 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             )
             if self.consumer_client:
                 self.consumer_client.unsubscribe()
-            yield OMetaTopicSampleData(
-                topic=self.context.topic,
-                sample_data=TopicSampleData(messages=sample_data),
+            yield Either(
+                right=OMetaTopicSampleData(
+                    topic=self.context.topic,
+                    sample_data=TopicSampleData(messages=sample_data),
+                )
             )
 
     def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):

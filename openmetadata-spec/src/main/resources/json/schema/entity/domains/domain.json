@@ -42,6 +42,9 @@
       "description": "Description of the Domain.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -71,7 +74,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "experts": {
-      "description": "List of of users who are experts in this Domain.",
+      "description": "List of users who are experts in this Domain.",
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },

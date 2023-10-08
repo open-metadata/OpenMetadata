@@ -56,6 +56,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -82,6 +85,9 @@
       },
       "href": {
         "type": "text"
+      },
+      "sourceUrl": {
+        "type": "keyword"
       },
       "parent": {
         "properties": {
@@ -120,6 +126,46 @@
             "type": "text"
           }
         }
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "extension": {
+        "type": "keyword"
       },
       "dataModel": {
         "properties": {
@@ -387,6 +433,9 @@
             "type": "keyword"
           }
         }
+      },
+      "lifeCycle": {
+        "type": "object"
       },
       "serviceType": {
         "type": "keyword"

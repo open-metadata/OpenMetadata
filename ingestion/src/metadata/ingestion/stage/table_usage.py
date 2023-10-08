@@ -18,16 +18,15 @@ import os
 import shutil
 import traceback
 from pathlib import Path
+from typing import Iterable, List, Tuple
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.teams.user import User
-from metadata.generated.schema.type.queryParserData import QueryParserData
+from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableUsageCount import TableUsageCount
-from metadata.ingestion.api.stage import Stage
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import init_staging_dir
@@ -40,7 +39,7 @@ class TableStageConfig(ConfigModel):
     filename: str
 
 
-class TableUsageStage(Stage[QueryParserData]):
+class TableUsageStage(Stage):
     """
     Stage implementation for Table Usage data.
 
@@ -53,21 +52,20 @@ class TableUsageStage(Stage[QueryParserData]):
     def __init__(
         self,
         config: TableStageConfig,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.table_usage = {}
         self.table_queries = {}
         init_staging_dir(self.config.filename)
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = TableStageConfig.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def init_location(self) -> None:
         """
@@ -80,34 +78,80 @@ class TableUsageStage(Stage[QueryParserData]):
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
-    def _get_user_entity(self, username: str):
+    def _get_user_entity(self, username: str) -> Tuple[List[str], List[str]]:
         if username:
             user = self.metadata.get_by_name(entity=User, fqn=username)
             if user:
-                return [user.fullyQualifiedName.__root__]
-        return []
+                return [user.fullyQualifiedName.__root__], []
+        return [], [username]
 
     def _add_sql_query(self, record, table):
+        users, used_by = self._get_user_entity(record.userName)
         if self.table_queries.get((table, record.date)):
             self.table_queries[(table, record.date)].append(
                 CreateQueryRequest(
                     query=record.sql,
-                    users=self._get_user_entity(record.userName),
+                    query_type=record.query_type,
+                    exclude_usage=record.exclude_usage,
+                    users=users,
                     queryDate=record.date,
+                    usedBy=used_by,
                     duration=record.duration,
+                    service=record.serviceName,
                 )
             )
         else:
             self.table_queries[(table, record.date)] = [
                 CreateQueryRequest(
                     query=record.sql,
-                    users=self._get_user_entity(record.userName),
+                    query_type=record.query_type,
+                    exclude_usage=record.exclude_usage,
+                    users=users,
                     queryDate=record.date,
+                    usedBy=used_by,
                     duration=record.duration,
+                    service=record.serviceName,
                 )
             ]
 
-    def stage_record(self, record: QueryParserData) -> None:
+    def _handle_table_usage(
+        self, parsed_data: ParsedData, table: str
+    ) -> Iterable[Either[str]]:
+        table_joins = parsed_data.joins.get(table)
+        try:
+            self._add_sql_query(record=parsed_data, table=table)
+            table_usage_count = self.table_usage.get((table, parsed_data.date))
+            if table_usage_count is not None:
+                table_usage_count.count = table_usage_count.count + 1
+                if table_joins:
+                    table_usage_count.joins.extend(table_joins)
+            else:
+                joins = []
+                if table_joins:
+                    joins.extend(table_joins)
+
+                table_usage_count = TableUsageCount(
+                    table=table,
+                    databaseName=parsed_data.databaseName,
+                    date=parsed_data.date,
+                    joins=joins,
+                    serviceName=parsed_data.serviceName,
+                    sqlQueries=[],
+                    databaseSchema=parsed_data.databaseSchema,
+                )
+
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=table,
+                    error=f"Error in staging record [{exc}]",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+        self.table_usage[(table, parsed_data.date)] = table_usage_count
+        yield Either(right=table)
+
+    def _run(self, record: QueryParserData) -> Iterable[Either[str]]:
         """
         Process the parsed data and store it in a file
         """
@@ -119,34 +163,9 @@ class TableUsageStage(Stage[QueryParserData]):
             if parsed_data is None:
                 continue
             for table in parsed_data.tables:
-                table_joins = parsed_data.joins.get(table)
-                try:
-                    self._add_sql_query(record=parsed_data, table=table)
-                    table_usage_count = self.table_usage.get((table, parsed_data.date))
-                    if table_usage_count is not None:
-                        table_usage_count.count = table_usage_count.count + 1
-                        if table_joins:
-                            table_usage_count.joins.extend(table_joins)
-                    else:
-                        joins = []
-                        if table_joins:
-                            joins.extend(table_joins)
-
-                        table_usage_count = TableUsageCount(
-                            table=table,
-                            databaseName=parsed_data.databaseName,
-                            date=parsed_data.date,
-                            joins=joins,
-                            serviceName=parsed_data.serviceName,
-                            sqlQueries=[],
-                            databaseSchema=parsed_data.databaseSchema,
-                        )
-
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error in staging record: {exc}")
-                self.table_usage[(table, parsed_data.date)] = table_usage_count
-                logger.info(f"Successfully record staged for {table}")
+                yield from self._handle_table_usage(
+                    parsed_data=parsed_data, table=table
+                )
         self.dump_data_to_file()
 
     def dump_data_to_file(self):

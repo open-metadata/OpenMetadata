@@ -68,7 +68,6 @@ const tasks = [
 ];
 
 const TasksDAGViewProps = {
-  selectedExec: {},
   tasks,
 };
 

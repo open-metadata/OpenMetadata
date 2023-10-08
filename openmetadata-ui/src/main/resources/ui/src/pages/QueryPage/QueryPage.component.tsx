@@ -12,43 +12,41 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import QueryCard from 'components/TableQueries/QueryCard';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import { getTableTabPath } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { Query } from 'generated/entity/data/query';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router-dom';
-import { getQueryById, patchQueries, updateQueryVote } from 'rest/queryAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { parseSearchParams } from 'utils/Query/QueryUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import { useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import QueryCard from '../../components/TableQueries/QueryCard';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { getTableTabPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { Query } from '../../generated/entity/data/query';
+import {
+  getQueryById,
+  patchQueries,
+  updateQueryVote,
+} from '../../rest/queryAPI';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const QueryPage = () => {
-  const { datasetFQN, queryId } =
-    useParams<{ datasetFQN: string; queryId: string }>();
+  const { fqn: datasetFQN, queryId } =
+    useParams<{ fqn: string; queryId: string }>();
   const { t } = useTranslation();
-  const location = useLocation();
-  const searchFilter = useMemo(
-    () => parseSearchParams(location.search),
-    [location.search]
-  );
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -191,8 +189,8 @@ const QueryPage = () => {
   }
 
   return (
-    <PageLayoutV1 className="p-x-lg" pageTitle={t('label.query')}>
-      <Row gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.query')}>
+      <Row className="p-x-lg" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={titleBreadcrumb} />
         </Col>
@@ -202,7 +200,6 @@ const QueryPage = () => {
             afterDeleteAction={afterDeleteAction}
             permission={queryPermissions}
             query={query}
-            tableId={searchFilter.tableId}
             onQueryUpdate={handleQueryUpdate}
             onUpdateVote={updateVote}
           />

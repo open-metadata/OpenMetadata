@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router';
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
-} from 'rest/databaseAPI';
+} from '../../rest/databaseAPI';
 import DatabaseDetailsPage from './DatabaseDetailsPage';
 
 const mockDatabase = {
@@ -116,7 +116,7 @@ const mockFeedCount = {
   ],
 };
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -130,9 +130,12 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
-});
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => {
+    return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
+  }
+);
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -142,12 +145,15 @@ jest.mock('react-router-dom', () => ({
     )),
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
-    databaseFQN: 'bigquery.shopify',
+    fqn: 'bigquery.shopify',
   }),
+  useLocation: jest
+    .fn()
+    .mockImplementation(() => ({ search: '?schema=sales' })),
 }));
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => ({
     useActivityFeedProvider: jest.fn().mockImplementation(() => ({
       postFeed: jest.fn(),
@@ -165,7 +171,7 @@ jest.mock('../../AppState', () => {
   });
 });
 
-jest.mock('rest/databaseAPI', () => ({
+jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockDatabase)),
@@ -178,7 +184,7 @@ jest.mock('rest/databaseAPI', () => ({
     .mockImplementation(() => Promise.resolve(mockSchemaData)),
 }));
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../rest/feedsAPI', () => ({
   getFeedCount: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockFeedCount)),
@@ -191,11 +197,11 @@ jest.mock('../../utils/TableUtils', () => ({
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
 }));
 
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock('../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockReturnValue(<div>NextPrevious</div>);
 });
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () => {
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockReturnValue(<div>TagsContainerV2</div>);
 });
 
@@ -208,14 +214,14 @@ jest.mock('../../utils/TagsUtils', () => ({
     },
   ]),
 }));
-jest.mock('components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest
     .fn()
     .mockImplementation(({ name, id }) => <div data-testid={id}>{name}</div>);
 });
 
 jest.mock(
-  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -223,30 +229,33 @@ jest.mock(
   })
 );
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => children);
 });
 
 jest.mock(
-  'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
   () => {
     return jest.fn().mockReturnValue(<p>ActivityFeedTab</p>);
   }
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
   () => {
     return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
   }
 );
+jest.mock('../../components/common/searchbar/Searchbar', () => {
+  return jest.fn().mockReturnValue(<p>Searchbar.component</p>);
+});
 
 jest.mock(
-  'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
     DataAssetsHeader: jest
       .fn()
@@ -287,12 +296,14 @@ describe('Test DatabaseDetails page', () => {
     );
     const headerOwner = await findByText(container, 'label.owner');
     const headerUsage = await findByText(container, 'label.usage');
+    const searchBox = await findByText(container, 'Searchbar.component');
 
     expect(databaseTable).toBeInTheDocument();
     expect(headerName).toBeInTheDocument();
     expect(headerDescription).toBeInTheDocument();
     expect(headerOwner).toBeInTheDocument();
     expect(headerUsage).toBeInTheDocument();
+    expect(searchBox).toBeInTheDocument();
   });
 
   it('Should render error placeholder if getDatabase Details Api fails', async () => {

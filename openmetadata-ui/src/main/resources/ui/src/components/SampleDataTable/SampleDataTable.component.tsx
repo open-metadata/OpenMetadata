@@ -11,19 +11,39 @@
  *  limitations under the License.
  */
 
-import { Space, Table as AntdTable, Typography } from 'antd';
+import {
+  Button,
+  Dropdown,
+  Space,
+  Table as AntdTable,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { mockDatasetData } from 'constants/mockTourData.constants';
 import { t } from 'i18next';
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { getSampleDataByTableId } from 'rest/tableAPI';
+import { observer } from 'mobx-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AppState from '../../AppState';
+import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
+import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
+import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { WORKFLOWS_PROFILER_DOCS } from '../../constants/docs.constants';
+import { DROPDOWN_ICON_SIZE_PROPS } from '../../constants/ManageButton.constants';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
+import { LOADING_STATE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { withLoader } from '../../hoc/withLoader';
-import { Transi18next } from '../../utils/CommonUtils';
+import {
+  deleteSampleDataByTableId,
+  getSampleDataByTableId,
+} from '../../rest/tableAPI';
+import { getEntityDeleteMessage, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';
@@ -34,11 +54,38 @@ import {
   SampleDataType,
 } from './sample.interface';
 import './SampleDataTable.style.less';
-const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
+
+const SampleDataTable = ({
+  isTableDeleted,
+  tableId,
+  ownerId,
+  permissions,
+}: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [deleteState, setDeleteState] = useState(LOADING_STATE.INITIAL);
+  const [showActions, setShowActions] = useState(false);
+
+  const currentUser = useMemo(
+    () => AppState.getCurrentUserDetails(),
+    [AppState.userDetails]
+  );
+
+  const hasPermission = useMemo(
+    () =>
+      permissions.EditAll ||
+      permissions.EditSampleData ||
+      currentUser?.id === ownerId,
+    [ownerId, permissions, currentUser]
+  );
+
+  const handleDeleteModal = useCallback(
+    () => setIsDeleteModalOpen((prev) => !prev),
+    []
+  );
 
   const getSampleDataWithType = (table: Table) => {
     const { sampleData, columns } = table;
@@ -91,6 +138,52 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
     }
   };
 
+  const handleDeleteSampleData = async () => {
+    setDeleteState(LOADING_STATE.WAITING);
+
+    try {
+      await deleteSampleDataByTableId(tableId);
+      handleDeleteModal();
+      fetchSampleData();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', {
+          entity: t('label.sample-data'),
+        })
+      );
+    } finally {
+      setDeleteState(LOADING_STATE.SUCCESS);
+    }
+  };
+
+  const manageButtonContent: ItemType[] = [
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.delete-entity-type-action-description', {
+            entityType: t('label.sample-data'),
+          })}
+          icon={
+            <IconDelete
+              className="m-t-xss"
+              {...DROPDOWN_ICON_SIZE_PROPS}
+              name="Delete"
+            />
+          }
+          id="delete-button"
+          name={t('label.delete')}
+        />
+      ),
+      key: 'delete-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setShowActions(false);
+        handleDeleteModal();
+      },
+    },
+  ];
+
   useEffect(() => {
     setIsLoading(true);
     if (!isTableDeleted && tableId && !isTourPage) {
@@ -114,7 +207,7 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder>
+      <ErrorPlaceHolder className="error-placeholder">
         <Typography.Paragraph>
           <Transi18next
             i18nKey="message.view-sample-data-entity"
@@ -142,6 +235,30 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
+      <Space className="m-b-md justify-end w-full">
+        {hasPermission && (
+          <Dropdown
+            menu={{
+              items: manageButtonContent,
+            }}
+            open={showActions}
+            overlayClassName="manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}
+            onOpenChange={setShowActions}>
+            <Tooltip placement="right">
+              <Button
+                className="flex-center px-1.5"
+                data-testid="sample-data-manage-button"
+                onClick={() => setShowActions(true)}>
+                <IconDropdown className="anticon self-center " />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        )}
+      </Space>
+
       <AntdTable
         bordered
         columns={sampleData?.columns}
@@ -152,8 +269,20 @@ const SampleDataTable = ({ isTableDeleted, tableId }: SampleDataProps) => {
         scroll={{ x: true }}
         size="small"
       />
+
+      {isDeleteModalOpen && (
+        <EntityDeleteModal
+          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
+          entityName={t('label.sample-data')}
+          entityType={EntityType.SAMPLE_DATA}
+          loadingState={deleteState}
+          visible={isDeleteModalOpen}
+          onCancel={handleDeleteModal}
+          onConfirm={handleDeleteSampleData}
+        />
+      )}
     </div>
   );
 };
 
-export default withLoader<SampleDataProps>(SampleDataTable);
+export default withLoader<SampleDataProps>(observer(SampleDataTable));

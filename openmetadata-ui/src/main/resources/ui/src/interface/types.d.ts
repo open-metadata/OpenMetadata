@@ -12,17 +12,18 @@
  */
 
 declare module 'Models' {
-  import { EntityType } from 'enums/entity.enum';
-  import { SearchEntityHits } from 'utils/APIUtils';
+  import { EntityType } from '../enums/entity.enum';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
   import { CreateMlModelService } from '../generated/api/services/createMlModelService';
   import { CreatePipelineService } from '../generated/api/services/createPipelineService';
+  import { CreateSearchService } from '../generated/api/services/createSearchService';
   import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
   import { TagLabel } from '../generated/type/tagLabel';
+  import { SearchEntityHits } from '../utils/APIUtils';
   import { Paging } from './../generated/type/paging';
 
   export interface RestoreRequestType {
@@ -35,7 +36,8 @@ declare module 'Models' {
     | CreateDashboardService
     | CreateDatabaseService
     | CreateMessagingService
-    | CreateStorageService;
+    | CreateStorageService
+    | CreateSearchService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -142,7 +144,8 @@ declare module 'Models' {
     | 'pipelineServices'
     | 'mlmodelServices'
     | 'metadataServices'
-    | 'storageServices';
+    | 'storageServices'
+    | 'searchServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -257,4 +260,16 @@ declare module 'Models' {
     | Topic
     | Mlmodel
     | Container;
+
+  export type TagFilterOptions = {
+    text: string;
+    value: string;
+    source: TagSource;
+  };
+
+  export type TagsData = {
+    tags?: TagLabel[];
+    fullyQualifiedName?: string;
+    children?: TagsData[];
+  };
 }

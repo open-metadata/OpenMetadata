@@ -2,10 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
-import java.io.IOException;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.automations.WorkflowResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -15,17 +13,29 @@ import org.openmetadata.service.util.EntityUtil;
 public class WorkflowRepository extends EntityRepository<Workflow> {
   private static final String PATCH_FIELDS = "status,response";
 
-  public WorkflowRepository(CollectionDAO dao) {
-    super(WorkflowResource.COLLECTION_PATH, WORKFLOW, Workflow.class, dao.workflowDAO(), dao, PATCH_FIELDS, "");
+  public WorkflowRepository() {
+    super(
+        WorkflowResource.COLLECTION_PATH,
+        WORKFLOW,
+        Workflow.class,
+        Entity.getCollectionDAO().workflowDAO(),
+        PATCH_FIELDS,
+        "");
+    quoteFqn = true;
   }
 
   @Override
-  public Workflow setFields(Workflow entity, EntityUtil.Fields fields) throws IOException {
-    return entity.withOwner(fields.contains(Entity.FIELD_OWNER) ? getOwner(entity) : null);
+  public Workflow setFields(Workflow entity, EntityUtil.Fields fields) {
+    return entity;
   }
 
   @Override
-  public void prepare(Workflow entity) {
+  public Workflow clearFields(Workflow entity, EntityUtil.Fields fields) {
+    return entity;
+  }
+
+  @Override
+  public void prepare(Workflow entity, boolean update) {
     // validate request and status
     if (entity.getRequest() == null) {
       throw new IllegalArgumentException("Request must not be empty");
@@ -33,8 +43,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
   }
 
   @Override
-  public void storeEntity(Workflow entity, boolean update) throws IOException {
-    EntityReference owner = entity.getOwner();
+  public void storeEntity(Workflow entity, boolean update) {
     OpenMetadataConnection openmetadataConnection = entity.getOpenMetadataServerConnection();
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
@@ -43,11 +52,11 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     }
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    entity.withOwner(null).withHref(null).withOpenMetadataServerConnection(null);
+    entity.withOpenMetadataServerConnection(null);
     store(entity, update);
 
     // Restore the relationships
-    entity.withOwner(owner).withOpenMetadataServerConnection(openmetadataConnection);
+    entity.withOpenMetadataServerConnection(openmetadataConnection);
   }
 
   /** Remove the secrets from the secret manager */
@@ -72,7 +81,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     }
 
     @Override
-    public void entitySpecificUpdate() throws IOException {
+    public void entitySpecificUpdate() {
       recordChange("status", original.getStatus(), updated.getStatus());
       recordChange("response", original.getResponse(), updated.getResponse(), true);
     }

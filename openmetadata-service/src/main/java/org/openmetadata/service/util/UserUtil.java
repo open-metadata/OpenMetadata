@@ -19,7 +19,6 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +41,7 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public final class UserUtil {
@@ -59,8 +59,7 @@ public final class UserUtil {
     }
   }
 
-  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin)
-      throws IOException {
+  private static void createOrUpdateUser(AuthProvider authProvider, String username, String domain, Boolean isAdmin) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updatedUser = null;
     try {
@@ -69,8 +68,7 @@ public final class UserUtil {
       fieldList.add("authenticationMechanism");
 
       // Fetch Original User, is available
-      User originalUser =
-          userRepository.getByName(null, EntityInterfaceUtil.quoteName(username), new Fields(fieldList));
+      User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
       if (Boolean.FALSE.equals(originalUser.getIsBot()) && Boolean.FALSE.equals(originalUser.getIsAdmin())) {
         updatedUser = originalUser;
 
@@ -91,10 +89,12 @@ public final class UserUtil {
         // user email
         updatedUser.setEmail(String.format("%s@%s", username, domain));
       } else {
-        LOG.error(
-            String.format(
-                "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
-                originalUser.getName()));
+        if (Boolean.TRUE.equals(originalUser.getIsBot())) {
+          LOG.error(
+              String.format(
+                  "You configured bot user %s in initialAdmins config. Bot user cannot be promoted to be an admin.",
+                  originalUser.getName()));
+        }
       }
     } catch (EntityNotFoundException e) {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
@@ -132,7 +132,7 @@ public final class UserUtil {
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();
@@ -140,7 +140,6 @@ public final class UserUtil {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception", exception);
       user.setAuthenticationMechanism(null);
-      LOG.debug("User entry: {} already exists.", user.getName());
     }
     return null;
   }
@@ -149,7 +148,7 @@ public final class UserUtil {
     return new User()
         .withId(UUID.randomUUID())
         .withName(name)
-        .withFullyQualifiedName(name)
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
         .withEmail(name + "@" + domain)
         .withUpdatedBy(updatedBy)
         .withUpdatedAt(System.currentTimeMillis())
@@ -203,7 +202,7 @@ public final class UserUtil {
     EntityRepository<User> userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
       return userRepository.getByName(null, user.getName(), new Fields(Set.of("authenticationMechanism")));
-    } catch (IOException | EntityNotFoundException e) {
+    } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
     }

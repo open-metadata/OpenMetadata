@@ -13,25 +13,23 @@
 
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import {
-  SERVICE_DEFAULT_ERROR_MAP,
-  STEPS_FOR_ADD_SERVICE,
-} from 'constants/Services.constant';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { t } from 'i18next';
 import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import {
+  SERVICE_DEFAULT_ERROR_MAP,
+  STEPS_FOR_ADD_SERVICE,
+} from '../../constants/Services.constant';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData } from '../../interface/service.interface';
 import { getCurrentUserId, getServiceLogo } from '../../utils/CommonUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
@@ -40,6 +38,8 @@ import {
   getServiceRouteFromServiceType,
   getServiceType,
 } from '../../utils/ServiceUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import AddIngestion from '../AddIngestion/AddIngestion.component';
 import ServiceDocPanel from '../common/ServiceDocPanel/ServiceDocPanel';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
@@ -212,7 +212,7 @@ const AddService = ({
         activeStep={activeServiceStep}
         steps={STEPS_FOR_ADD_SERVICE}
       />
-      <div className="tw-pt-5">
+      <div className="m-t-lg">
         {activeServiceStep === 1 && (
           <SelectServiceType
             handleServiceTypeClick={handleServiceTypeClick}

@@ -27,6 +27,9 @@
       "description": "Unique name of the classification",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "associatedTags": {
       "description": "Fully qualified names of tags associated with this tag",
       "type": "array",

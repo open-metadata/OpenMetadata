@@ -12,29 +12,38 @@
  */
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { SearchIndex } from 'enums/search.enum';
-import { Paging } from 'generated/type/paging';
-import { TagSource } from 'generated/type/tagLabel';
+import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getGlossaryTerms } from 'rest/glossaryAPI';
-import { searchQuery } from 'rest/searchAPI';
-import { formatSearchGlossaryTermResponse } from 'utils/APIUtils';
-import { getEntityFeedLink } from 'utils/EntityUtils';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
-import { fetchTagsElasticSearch, getTagPlaceholder } from 'utils/TagsUtils';
-import { getRequestTagsPath, getUpdateTagsPath } from 'utils/TasksUtils';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
+import { SearchIndex } from '../../../enums/search.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Paging } from '../../../generated/type/paging';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { getGlossaryTerms } from '../../../rest/glossaryAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import {
+  fetchTagsElasticSearch,
+  getTagPlaceholder,
+} from '../../../utils/TagsUtils';
+import {
+  getRequestTagsPath,
+  getUpdateTagsPath,
+} from '../../../utils/TasksUtils';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
+import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
 
 const TagsContainerV2 = ({
@@ -42,10 +51,10 @@ const TagsContainerV2 = ({
   showTaskHandler = true,
   selectedTags,
   entityType,
-  entityThreadLink,
   entityFqn,
   tagType,
   displayType,
+  layoutType,
   showHeader = true,
   showBottomEditButton,
   showInlineEditButton,
@@ -60,19 +69,19 @@ const TagsContainerV2 = ({
   const [isEditTags, setIsEditTags] = useState(false);
   const [tags, setTags] = useState<TableTagsProps>();
 
-  const isGlossaryType = useMemo(
-    () => tagType === TagSource.Glossary,
-    [tagType]
-  );
-
-  const showAddTagButton = useMemo(
-    () => permission && isEmpty(tags?.[tagType]),
-    [permission, tags?.[tagType]]
-  );
-
-  const selectedTagsInternal = useMemo(
-    () => tags?.[tagType].map(({ tagFQN }) => tagFQN),
-    [tags, tagType]
+  const {
+    isGlossaryType,
+    showAddTagButton,
+    selectedTagsInternal,
+    isHoriZontalLayout,
+  } = useMemo(
+    () => ({
+      isGlossaryType: tagType === TagSource.Glossary,
+      showAddTagButton: permission && isEmpty(tags?.[tagType]),
+      selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
+      isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
+    }),
+    [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
   const fetchGlossaryList = useCallback(
@@ -83,6 +92,7 @@ const TagsContainerV2 = ({
       data: {
         label: string;
         value: string;
+        data: GlossaryTerm;
       }[];
       paging: Paging;
     }> => {
@@ -94,19 +104,20 @@ const TagsContainerV2 = ({
         searchIndex: SearchIndex.GLOSSARY,
       });
 
+      const hits = glossaryResponse.hits.hits;
+
       return {
-        data: formatSearchGlossaryTermResponse(
-          glossaryResponse.hits.hits ?? []
-        ).map((item) => ({
-          label: item.fullyQualifiedName ?? '',
-          value: item.fullyQualifiedName ?? '',
+        data: hits.map(({ _source }) => ({
+          label: _source.fullyQualifiedName ?? '',
+          value: _source.fullyQualifiedName ?? '',
+          data: _source,
         })),
         paging: {
           total: glossaryResponse.hits.total.value,
         },
       };
     },
-    [searchQuery, getGlossaryTerms, formatSearchGlossaryTermResponse]
+    [searchQuery, getGlossaryTerms]
   );
 
   const fetchAPI = useCallback(
@@ -125,11 +136,25 @@ const TagsContainerV2 = ({
     [showAddTagButton, tags?.[tagType]]
   );
 
-  const handleSave = async (data: string[]) => {
-    const updatedTags = data.map((t) => ({
-      tagFQN: t,
-      source: tagType,
-    }));
+  const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
+    const updatedTags = (data as DefaultOptionType[]).map((tag) => {
+      let tagData: EntityTags = {
+        tagFQN: tag.value,
+        source: tagType,
+      };
+
+      if (tag.data) {
+        tagData = {
+          ...tagData,
+          name: tag.data?.name,
+          displayName: tag.data?.displayName,
+          description: tag.data?.description,
+          style: tag.data?.style,
+        };
+      }
+
+      return tagData;
+    });
 
     if (onSelectionChange) {
       await onSelectionChange([
@@ -156,7 +181,7 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col onClick={handleAddClick}>
+        <Col className="m-t-xss" onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
         </Col>
       ) : null,
@@ -165,7 +190,7 @@ const TagsContainerV2 = ({
 
   const renderTags = useMemo(
     () => (
-      <Col>
+      <Col span={24}>
         <TagsViewer
           displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}
@@ -173,7 +198,7 @@ const TagsContainerV2 = ({
         />
       </Col>
     ),
-    [displayType, showNoDataPlaceholder, tags?.[tagType]]
+    [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -245,21 +270,14 @@ const TagsContainerV2 = ({
             width={14}
             onClick={() =>
               onThreadLinkSelect?.(
-                entityThreadLink ??
-                  getEntityFeedLink(entityType, entityFqn, 'tags')
+                getEntityFeedLink(entityType, entityFqn, 'tags')
               )
             }
           />
         </Tooltip>
       </Col>
     ),
-    [
-      entityType,
-      entityFqn,
-      entityThreadLink,
-      getEntityFeedLink,
-      onThreadLinkSelect,
-    ]
+    [entityType, entityFqn, onThreadLinkSelect]
   );
 
   const header = useMemo(() => {
@@ -321,6 +339,56 @@ const TagsContainerV2 = ({
     [permission, tags, tagType, handleAddClick]
   );
 
+  const horizontalLayout = useMemo(() => {
+    return (
+      <Space>
+        {showAddTagButton ? (
+          <div onClick={handleAddClick}>
+            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+          </div>
+        ) : null}
+        <TagsViewer
+          displayType={displayType}
+          showNoDataPlaceholder={showNoDataPlaceholder}
+          tags={tags?.[tagType] ?? []}
+        />
+        {showInlineEditButton ? editTagButton : null}
+      </Space>
+    );
+  }, [
+    showAddTagButton,
+    displayType,
+    layoutType,
+    showNoDataPlaceholder,
+    tags?.[tagType],
+    showInlineEditButton,
+    handleAddClick,
+  ]);
+
+  const tagBody = useMemo(() => {
+    if (isEditTags) {
+      return tagsSelectContainer;
+    } else {
+      return isHoriZontalLayout ? (
+        horizontalLayout
+      ) : (
+        <Row data-testid="entity-tags">
+          {addTagButton}
+          {renderTags}
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
+      );
+    }
+  }, [
+    isEditTags,
+    tagsSelectContainer,
+    addTagButton,
+    isHoriZontalLayout,
+    horizontalLayout,
+    renderTags,
+    editTagButton,
+  ]);
+
   useEffect(() => {
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
@@ -330,15 +398,7 @@ const TagsContainerV2 = ({
       className="w-full"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
-
-      {!isEditTags && (
-        <Row data-testid="entity-tags">
-          {addTagButton}
-          {renderTags}
-          {showInlineEditButton && <Col>{editTagButton}</Col>}
-        </Row>
-      )}
-      {isEditTags && tagsSelectContainer}
+      {tagBody}
 
       <Space align="baseline" className="m-t-xs w-full" size="middle">
         {showBottomEditButton && !showInlineEditButton && editTagButton}

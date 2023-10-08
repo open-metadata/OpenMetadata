@@ -42,6 +42,10 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineServiceType,
 )
+from metadata.generated.schema.entity.services.searchService import (
+    SearchConnection,
+    SearchServiceType,
+)
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageServiceType,
@@ -74,6 +78,10 @@ from metadata.generated.schema.metadataIngestion.pipelineServiceMetadataPipeline
     PipelineMetadataConfigType,
     PipelineServiceMetadataPipeline,
 )
+from metadata.generated.schema.metadataIngestion.searchServiceMetadataPipeline import (
+    SearchMetadataConfigType,
+    SearchServiceMetadataPipeline,
+)
 from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline import (
     StorageMetadataConfigType,
     StorageServiceMetadataPipeline,
@@ -102,6 +110,7 @@ SERVICE_TYPE_MAP = {
     **{service: PipelineConnection for service in PipelineServiceType.__members__},
     **{service: MlModelConnection for service in MlModelServiceType.__members__},
     **{service: StorageConnection for service in StorageServiceType.__members__},
+    **{service: SearchConnection for service in SearchServiceType.__members__},
 }
 
 SOURCE_CONFIG_CLASS_MAP = {
@@ -113,6 +122,7 @@ SOURCE_CONFIG_CLASS_MAP = {
     MlModelMetadataConfigType.MlModelMetadata.value: MlModelServiceMetadataPipeline,
     DatabaseMetadataConfigType.DatabaseMetadata.value: DatabaseServiceMetadataPipeline,
     StorageMetadataConfigType.StorageMetadata.value: StorageServiceMetadataPipeline,
+    SearchMetadataConfigType.SearchMetadata.value: SearchServiceMetadataPipeline,
 }
 
 
@@ -373,7 +383,7 @@ def parse_server_config(config_dict: dict) -> None:
 
 def parse_workflow_config_gracefully(
     config_dict: dict,
-) -> Optional[OpenMetadataWorkflowConfig]:
+) -> OpenMetadataWorkflowConfig:
     """
     This function either correctly parses the pydantic class, or
     throws a scoped error while fetching the required source connection

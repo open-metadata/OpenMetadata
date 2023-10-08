@@ -76,6 +76,9 @@
     "domain" : {
       "description": "Domain the Metrics belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
     }
   },
   "required": ["id", "name", "service"],

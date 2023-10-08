@@ -47,31 +47,29 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
     def get_excludes_charts(self) -> List[str]:
         return ["Total Rejected Defect Quantity"]
 
-    # PowerBI do not ingest datamodels
     def get_includes_datamodels(self) -> List[str]:
         return []
 
-    # PowerBI do not ingest datamodels
     def get_excludes_datamodels(self) -> List[str]:
         return []
 
-    def expected_entities(self) -> int:
-        return 91
+    def expected_datamodels(self) -> int:
+        return 9
+
+    def expected_dashboards_and_charts(self) -> int:
+        return 83
 
     def expected_lineage(self) -> int:
-        return 58
+        return 44
+
+    def expected_datamodel_lineage(self) -> int:
+        return 13
 
     def expected_tags(self) -> int:
         return 0
-
-    def expected_not_included_entities(self) -> int:
-        return 82
-
-    def expected_not_included_sink_entities(self) -> int:
-        return 127
 
     def expected_filtered_mix(self) -> int:
         return 19
 
     def expected_filtered_sink_mix(self) -> int:
-        return 36
+        return 46

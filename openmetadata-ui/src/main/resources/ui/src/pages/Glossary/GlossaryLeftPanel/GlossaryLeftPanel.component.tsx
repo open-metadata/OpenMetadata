@@ -13,27 +13,27 @@
 
 import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
-import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import GlossaryV1Skeleton from 'components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { ROUTES } from 'constants/constants';
-import { Operation } from 'generated/entity/policies/policy';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
+import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import GlossaryV1Skeleton from '../../../components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
+import { ROUTES } from '../../../constants/constants';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
 const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { glossaryName } = useParams<{ glossaryName: string }>();
+  const { fqn: glossaryName } = useParams<{ fqn: string }>();
   const glossaryFqn = glossaryName ? decodeURIComponent(glossaryName) : null;
   const history = useHistory();
 

@@ -17,10 +17,6 @@ import { MemoryRouter } from 'react-router-dom';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
 
-jest.mock('../dropdown/DropDown', () => {
-  return jest.fn().mockReturnValue(<p>Dropdown component</p>);
-});
-
 jest.mock('../TeamsSelectable/TeamsSelectable', () => {
   return jest.fn().mockReturnValue(<p>TeamsSelectable component</p>);
 });

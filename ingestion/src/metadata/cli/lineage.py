@@ -25,7 +25,7 @@ from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import cli_logger
-from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
+from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 

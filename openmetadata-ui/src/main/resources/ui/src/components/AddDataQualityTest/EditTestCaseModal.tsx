@@ -14,9 +14,7 @@
 import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
 import { compare } from 'fast-json-patch';
-import { Table } from 'generated/entity/data/table';
 import React, {
   useCallback,
   useEffect,
@@ -25,13 +23,15 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTestDefinitionById, updateTestCaseById } from 'rest/testAPI';
+import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { Table } from '../../generated/entity/data/table';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { getTestDefinitionById, updateTestCaseById } from '../../rest/testAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityFqnFromEntityLink } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -173,6 +173,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       form.setFieldsValue({
         name: testCase?.name,
         testDefinition: testCase?.testDefinition?.name,
+        displayName: testCase?.displayName,
         params: getParamsValue(),
         table: getNameFromFQN(tableFqn),
         column: getNameFromFQN(
@@ -212,7 +213,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         <Loader />
       ) : (
         <Form
-          className="tw-h-70vh tw-overflow-auto"
           data-testid="edit-test-form"
           form={form}
           layout="vertical"

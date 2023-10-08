@@ -37,6 +37,7 @@ public final class RestUtil {
   public static final String ENTITY_FIELDS_CHANGED = "entityFieldsChanged";
   public static final String ENTITY_NO_CHANGE = "entityNoChange";
   public static final String ENTITY_SOFT_DELETED = "entitySoftDeleted";
+  public static final String ENTITY_RESTORED = "entityRestored";
   public static final String ENTITY_DELETED = "entityDeleted";
   public static final String DELETED_USER_NAME = "DeletedUser";
   public static final String DELETED_USER_DISPLAY = "User was deleted";
@@ -45,7 +46,7 @@ public final class RestUtil {
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final String LOGICAL_TEST_CASES_ADDED = "Logical Test Cases Added to Test Suite";
   public static final String TEST_CASE_REMOVED_FROM_LOGICAL_TEST_SUITE =
-      "Test case successfuly removed from test suite ID %s";
+      "Test case successfully  removed from test suite ID %s";
 
   public static final DateFormat DATE_TIME_FORMAT;
   public static final DateFormat DATE_FORMAT;
@@ -147,6 +148,7 @@ public final class RestUtil {
       if (changeType.equals(RestUtil.ENTITY_CREATED)
           || changeType.equals(RestUtil.ENTITY_UPDATED)
           || changeType.equals(RestUtil.ENTITY_NO_CHANGE)
+          || changeType.equals(RestUtil.ENTITY_RESTORED)
           || changeType.equals(RestUtil.LOGICAL_TEST_CASES_ADDED)) {
         return responseBuilder.entity(entity).build();
       } else {
@@ -177,7 +179,7 @@ public final class RestUtil {
 
   public static class DeleteResponse<T> {
     @Getter private final T entity;
-    private final String changeType;
+    @Getter private final String changeType;
 
     public DeleteResponse(T entity, String changeType) {
       this.entity = entity;

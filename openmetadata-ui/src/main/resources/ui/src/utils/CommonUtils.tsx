@@ -16,12 +16,6 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  getDayCron,
-  getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -44,9 +38,13 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import { getFeedCount } from 'rest/feedsAPI';
 import AppState from '../AppState';
-import { AddIngestionState } from '../components/AddIngestion/addIngestion.interface';
+import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -54,8 +52,10 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getDataModelDetailsPath,
+  getGlossaryTermDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
+  getStoredProcedureDetailPath,
   getTableTabPath,
   getTeamAndUserDetailsPath,
   getTopicDetailsPath,
@@ -67,16 +67,16 @@ import {
 import { UrlEntityCharRegEx } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
-import { FilterPatternEnum } from '../enums/filterPattern.enum';
 import { ThreadType } from '../generated/entity/feed/thread';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
-import { EntityFieldThreadCount } from '../interface/feed.interface';
+import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
+import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
@@ -148,6 +148,11 @@ export const getPartialNameFromTableFQN = (
 
   if (fqnParts.includes(FqnPart.Topic)) {
     // Remove the first 2 parts ( service, database)
+    return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.SearchIndexField)) {
+    // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
@@ -228,7 +233,7 @@ export const getCountBadge = (
   return (
     <span
       className={classNames(
-        'tw-py-px p-x-xss m-x-xss tw-border tw-rounded tw-text-xs text-center',
+        'p-x-xss m-x-xss global-border rounded-4 text-xs text-center',
         clsBG,
         className
       )}>
@@ -338,15 +343,11 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   setRecentlyViewedData(recentlyViewed.data);
 };
 
-export const getActiveCatClass = (name: string, activeName = '') => {
-  return activeName === name ? 'activeCategory' : '';
-};
-
 export const errorMsg = (value: string) => {
   return (
-    <div className="tw-mt-1">
+    <div>
       <strong
-        className="tw-text-red-500 tw-text-xs tw-italic"
+        className="text-xs font-italic text-failure"
         data-testid="error-message">
         {value}
       </strong>
@@ -357,22 +358,9 @@ export const errorMsg = (value: string) => {
 export const requiredField = (label: string, excludeSpace = false) => (
   <>
     {label}{' '}
-    <span className="tw-text-red-500">{!excludeSpace && <>&nbsp;</>}*</span>
+    <span className="text-failure">{!excludeSpace && <>&nbsp;</>}*</span>
   </>
 );
-
-export const getSeparator = (
-  title: string | JSX.Element,
-  hrMarginTop = 'tw-mt-2.5'
-) => {
-  return (
-    <span className="d-flex tw-py-2 text-grey-muted">
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-      {title && <span className="tw-px-0.5 tw-min-w-max">{title}</span>}
-      <hr className={classNames('tw-w-full', hrMarginTop)} />
-    </span>
-  );
-};
 
 export const getImages = (imageUri: string) => {
   const imagesObj: typeof imageTypes = imageTypes;
@@ -534,10 +522,7 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 export const getFeedCounts = (
   entityType: string,
   entityFQN: string,
-  conversationCallback: (
-    value: React.SetStateAction<EntityFieldThreadCount[]>
-  ) => void,
-  entityCallback: (value: React.SetStateAction<number>) => void
+  conversationCallback: (value: React.SetStateAction<number>) => void
 ) => {
   // To get conversation count
   getFeedCount(
@@ -546,20 +531,7 @@ export const getFeedCounts = (
   )
     .then((res) => {
       if (res) {
-        conversationCallback(res.counts);
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
-
-  // To get all thread count (task + conversation)
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        entityCallback(res.totalCount);
+        conversationCallback(res.totalCount);
       } else {
         throw t('server.entity-feed-fetch-error');
       }
@@ -770,38 +742,6 @@ export const Transi18next = ({
 );
 
 /**
- * It takes a string and returns a string
- * @param {FilterPatternEnum} type - FilterPatternEnum
- * @returns A function that takes in a type and returns a keyof AddIngestionState
- */
-export const getFilterTypes = (
-  type: FilterPatternEnum
-): keyof AddIngestionState => {
-  switch (type) {
-    case FilterPatternEnum.CHART:
-      return 'chartFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD:
-      return 'dashboardFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DATABASE:
-      return 'databaseFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.MLMODEL:
-      return 'mlModelFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.PIPELINE:
-      return 'pipelineFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.SCHEMA:
-      return 'schemaFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.TABLE:
-      return 'tableFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.CONTAINER:
-      return 'containerFilterPattern' as keyof AddIngestionState;
-    case FilterPatternEnum.DASHBOARD_DATAMODEL:
-      return 'dataModelFilterPattern' as keyof AddIngestionState;
-    default:
-      return 'topicFilterPattern' as keyof AddIngestionState;
-  }
-};
-
-/**
  * It takes a state and an action, and returns a new state with the action merged into it
  * @param {S} state - S - The current state of the reducer.
  * @param {A} action - A - The action that was dispatched.
@@ -887,6 +827,11 @@ export const getEntityDetailLink = (
 
       break;
 
+    case EntityType.SEARCH_INDEX:
+      path = getSearchIndexTabPath(fqn, tab, subTab);
+
+      break;
+
     case EntityType.DASHBOARD_DATA_MODEL:
       path = getDataModelDetailsPath(fqn, tab, subTab);
 
@@ -902,11 +847,26 @@ export const getEntityDetailLink = (
 
       break;
 
-    case EntityType.USER_NAME:
+    case EntityType.USER:
       path = getUserPath(fqn, tab, subTab);
+
+      break;
+
+    case EntityType.STORED_PROCEDURE:
+      path = getStoredProcedureDetailPath(fqn, tab, subTab);
+
+      break;
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      path = getGlossaryTermDetailsPath(fqn, tab, subTab);
 
       break;
   }
 
   return path;
 };
+
+export const getUniqueArray = (count: number) =>
+  [...Array(count)].map((_, index) => ({
+    key: `key${index}`,
+  }));

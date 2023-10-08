@@ -3,6 +3,7 @@ package org.openmetadata.service.security.policyevaluator;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
@@ -22,7 +23,7 @@ public class ThreadResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityReference getOwner() {
-    return SubjectCache.getUser(createdBy).getEntityReference();
+    return Entity.getEntityReferenceByName(Entity.USER, createdBy, Include.NON_DELETED);
   }
 
   @Override

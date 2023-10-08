@@ -37,6 +37,12 @@ const MOCK_DATA = {
   width: 100,
 };
 
+jest.mock('./CustomStatistic', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>CustomStatistic.component</div>);
+});
+
 describe('Test DataInsightProgressBar Component', () => {
   it('Should render the ProgressBar Component', async () => {
     await act(async () => {
@@ -61,12 +67,8 @@ describe('Test DataInsightProgressBar Component', () => {
 
     expect(progressBarContainer).toBeInTheDocument();
 
-    const progressBarLabel = screen.getByTestId('progress-bar-label');
-    const progressBarValue = screen.getByTestId('progress-bar-value');
+    const progressBarLabel = screen.getByText('CustomStatistic.component');
 
     expect(progressBarLabel).toBeInTheDocument();
-    expect(progressBarValue).toBeInTheDocument();
-    expect(progressBarLabel).toHaveTextContent('No Tier');
-    expect(progressBarValue).toHaveTextContent('99.66%');
   });
 });

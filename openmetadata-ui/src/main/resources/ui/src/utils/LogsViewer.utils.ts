@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import { getTableTabPath } from 'constants/constants';
-import { OPEN_METADATA } from 'constants/service-guide.constant';
-import { EntityTabs } from 'enums/entity.enum';
-import { ConfigClass } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { isUndefined, startCase } from 'lodash';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
+import { TableProfilerTab } from '../components/ProfilerDashboard/profilerDashboard.interface';
+import { getTableTabPath } from '../constants/constants';
+import { OPEN_METADATA } from '../constants/service-guide.constant';
+import { EntityTabs } from '../enums/entity.enum';
+import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { getNameFromFQN } from './CommonUtils';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
@@ -71,7 +71,7 @@ export const getLogBreadCrumbs = (
         url:
           getTableTabPath(
             getEncodedFqn(
-              (ingestionDetails.sourceConfig.config as ConfigClass)
+              (ingestionDetails.sourceConfig.config as Pipeline)
                 ?.entityFullyQualifiedName ?? ''
             ),
             EntityTabs.PROFILER

@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import { Table, Tooltip, Typography } from 'antd';
+import { Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import Loader from 'components/Loader/Loader';
 import cronstrue from 'cronstrue';
-import { Paging } from 'generated/type/paging';
 import { isNil } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from 'utils/EntityUtils';
-import { getErrorPlaceHolder } from 'utils/IngestionUtils';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Table from '../../components/common/Table/Table';
 import { PAGE_SIZE } from '../../constants/constants';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import NextPrevious from '../common/next-previous/NextPrevious';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getErrorPlaceHolder } from '../../utils/IngestionUtils';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
 import PipelineActions from './PipelineActions.component';
@@ -50,14 +50,16 @@ function IngestionListTable({
   const { t } = useTranslation();
   const [ingestionCurrentPage, setIngestionCurrentPage] = useState(1);
 
-  const ingestionPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${paging[cursorType as keyof Paging]}`;
+  const ingestionPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      const pagingString = `&${cursorType}=${paging[cursorType]}`;
 
-    onIngestionWorkflowsUpdate(pagingString);
-    setIngestionCurrentPage(activePage ?? 1);
+      onIngestionWorkflowsUpdate(pagingString);
+      setIngestionCurrentPage(currentPage);
+    }
   };
 
   const renderNameField = (text: string, record: IngestionPipeline) => {
@@ -71,8 +73,8 @@ function IngestionListTable({
             : t('message.no-permission-to-view')
         }>
         <Typography.Link
-          className="tw-mr-2 overflow-wrap-anywhere"
-          data-testid="airflow-tree-view"
+          className="m-r-xs overflow-wrap-anywhere"
+          data-testid="ingestion-dag-link"
           disabled={!(permissions.ViewAll || permissions.ViewBasic)}
           href={`${airflowEndpoint}/tree?dag_id=${text}`}
           rel="noopener noreferrer"
@@ -181,16 +183,17 @@ function IngestionListTable({
   );
 
   return (
-    <div className="tw-mb-6" data-testid="ingestion-table">
+    <Space
+      className="m-b-md w-full"
+      data-testid="ingestion-table"
+      direction="vertical"
+      size="large">
       <Table
         bordered
         columns={tableColumn}
-        data-testid="schema-table"
+        data-testid="ingestion-list-table"
         dataSource={ingestionData}
-        loading={{
-          spinning: isLoading,
-          indicator: <Loader size="small" />,
-        }}
+        loading={isLoading}
         locale={{
           emptyText: getErrorPlaceHolder(
             isRequiredDetailsAvailable,
@@ -209,10 +212,9 @@ function IngestionListTable({
           pageSize={PAGE_SIZE}
           paging={paging}
           pagingHandler={ingestionPagingHandler}
-          totalCount={paging.total}
         />
       )}
-    </div>
+    </Space>
   );
 }
 

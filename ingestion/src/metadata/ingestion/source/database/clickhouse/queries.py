@@ -58,7 +58,7 @@ select
 	name as view_name,
 	database as schema,
 	create_table_query as view_def
-from system.tables where engine = 'View'
+from system.tables where engine in ['MaterializedView', 'View']
 """
 )
 

@@ -12,12 +12,12 @@
  */
 import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import AddGlossaryTermForm from 'components/AddGlossaryTermForm/AddGlossaryTermForm.component';
-import { GlossaryTermForm } from 'components/AddGlossaryTermForm/AddGlossaryTermForm.interface';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { EntityReference } from 'generated/type/entityReference';
 import React, { FC, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../../generated/entity/type';
+import AddGlossaryTermForm from '../AddGlossaryTermForm/AddGlossaryTermForm.component';
+import { GlossaryTermForm } from '../AddGlossaryTermForm/AddGlossaryTermForm.interface';
 
 interface Props {
   glossaryName: string;

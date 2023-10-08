@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
-import { EntityTabs } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
-import { getPartialNameFromFQN } from 'utils/CommonUtils';
-import i18n from 'utils/i18next/LocalUtil';
+import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { EntityTabs } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { getPartialNameFromFQN } from '../utils/CommonUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -46,38 +46,33 @@ export const HOVER_CHART_OPACITY = 0.3;
 
 export const SUPPORTED_FIELD_TYPES = ['string', 'markdown', 'integer'];
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
+export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
+export const DEFAULT_DOMAIN_VALUE = 'All Domains';
 
-export const TAG_VIEW_CAP = 33;
 export const USER_DATA_SIZE = 4;
-export const FOLLOWERS_VIEW_CAP = 20;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
-export const PAGE_SIZE_BASE = 12;
-export const PAGE_SIZE_MEDIUM = 15;
-export const SERVICE_VIEW_CAP = 20;
-export const PAGE_SIZE_LARGE = 100;
+export const PAGE_SIZE_BASE = 15;
+export const PAGE_SIZE_MEDIUM = 25;
+export const PAGE_SIZE_LARGE = 50;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
-export const SIDEBAR_WIDTH_COLLAPSED = 290;
-export const SIDEBAR_WIDTH_EXPANDED = 290;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
-export const MAX_CHAR_LIMIT_TEST_SUITE = 75;
+export const SMALL_TABLE_LOADER_SIZE = 3;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
 export const LOCALSTORAGE_USER_PROFILES = 'userProfiles';
 export const oidcTokenKey = 'oidcIdToken';
 export const refreshTokenKey = 'refreshToken';
-export const accessToken = 'accessToken';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
-export const TERM_ALL = 'all';
 export const imageTypes = {
   image: 's96-c',
   image192: 's192-c',
@@ -88,23 +83,12 @@ export const imageTypes = {
   image72: 's72-c',
 };
 export const NO_DATA_PLACEHOLDER = '--';
-export const ELLIPSES = '...';
-export const SINGLE_DOT = '•';
 export const PIPE_SYMBOL = '|';
+export const NO_DATA = '-';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR404 = t('label.no-data-found');
 export const ERROR500 = t('message.something-went-wrong');
-export const PLACEHOLDER_ROUTE_TABLE_FQN = ':datasetFQN';
 
-const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
-const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
-const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
-const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
-const PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN = ':databaseSchemaFQN';
-
-export const PLACEHOLDER_ROUTE_TEST_CASE_FQN = ':testCaseFQN';
-export const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
 export const PLACEHOLDER_ROUTE_SERVICE_CAT = ':serviceCategory';
@@ -114,29 +98,21 @@ export const PLACEHOLDER_ROUTE_FQN = ':fqn';
 export const PLACEHOLDER_ROUTE_TEAM_AND_USER = ':teamAndUser';
 export const PLACEHOLDER_ROUTE_VERSION = ':version';
 export const PLACEHOLDER_ROUTE_ENTITY_TYPE = ':entityType';
-export const PLACEHOLDER_ROUTE_ENTITY_FQN = ':entityFQN';
+
 export const PLACEHOLDER_ROUTE_QUERY_ID = ':queryId';
 export const PLACEHOLDER_WEBHOOK_NAME = ':webhookName';
-export const PLACEHOLDER_GLOSSARY_NAME = ':glossaryName';
-export const PLACEHOLDER_GLOSSARY_TERMS_FQN = ':glossaryTermsFQN';
-export const PLACEHOLDER_USER_NAME = ':username';
-export const PLACEHOLDER_BOTS_NAME = ':botsName';
-export const PLACEHOLDER_ROUTE_MLMODEL_FQN = ':mlModelFqn';
 export const PLACEHOLDER_ENTITY_TYPE_FQN = ':entityTypeFQN';
 export const PLACEHOLDER_TASK_ID = ':taskId';
-export const PLACEHOLDER_TAG_NAME = ':tagCategoryName';
 export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
-export const PLACEHOLDER_TEST_SUITE_FQN = ':testSuiteFQN';
 export const LOG_ENTITY_TYPE = ':logEntityType';
 export const INGESTION_NAME = ':ingestionName';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const KPI_NAME = ':kpiName';
 export const PLACEHOLDER_ACTION = ':action';
-export const PLACEHOLDER_ROUTE_DATA_MODEL_FQN = ':dashboardDataModelFQN';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -158,8 +134,11 @@ export const globalSearchOptions = [
   { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
   { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
   { value: SearchIndex.CONTAINER, label: t('label.container') },
+  { value: SearchIndex.STORED_PROCEDURE, label: t('label.stored-procedure') },
+  { value: SearchIndex.DASHBOARD_DATA_MODEL, label: t('label.data-model') },
   { value: SearchIndex.GLOSSARY, label: t('label.glossary') },
   { value: SearchIndex.TAG, label: t('label.tag') },
+  { value: SearchIndex.SEARCH_INDEX, label: t('label.search-index') },
 ];
 
 export const versionTypes = [
@@ -202,18 +181,20 @@ export const ROUTES = {
   STORE: '/store',
   FEEDS: '/feeds',
   DUMMY: '/dummy',
-  SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}`,
-  SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}`,
+  SERVICE_VERSION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  SERVICE_WITH_TAB: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_SERVICE: `/${PLACEHOLDER_ROUTE_SERVICE_CAT}/add-service`,
-  EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
+  EDIT_SERVICE_CONNECTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/edit-connection`,
   SERVICES_WITH_TAB: `/services/${PLACEHOLDER_ROUTE_SERVICE_CAT}`,
-  ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
-  EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_SERVICE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
+  ADD_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/add-ingestion/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
+  EDIT_INGESTION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}/${PLACEHOLDER_ROUTE_INGESTION_TYPE}`,
   USERS: '/users',
   SCORECARD: '/scorecard',
   SWAGGER: '/docs',
   TAGS: '/tags',
-  TAG_DETAILS: `/tags/${PLACEHOLDER_TAG_NAME}`,
+  TAG_DETAILS: `/tags/${PLACEHOLDER_ROUTE_FQN}`,
+  TAG_VERSION: `/tags/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SIGNUP: '/signup',
   REGISTER: '/register',
   SIGNIN: '/signin',
@@ -221,66 +202,85 @@ export const ROUTES = {
   RESET_PASSWORD: '/users/password/reset',
   ACCOUNT_ACTIVATION: '/users/registrationConfirmation',
 
-  TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}`,
-  TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
-  ENTITY_VERSION_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
-  TABLE_DETAILS_WITH_SUB_TAB: `/table/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  TABLE_DETAILS: `/table/${PLACEHOLDER_ROUTE_FQN}`,
+  TABLE_DETAILS_WITH_TAB: `/table/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  ENTITY_VERSION: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  ENTITY_VERSION_WITH_TAB: `/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  TABLE_DETAILS_WITH_SUB_TAB: `/table/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
-  TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  TOPIC_DETAILS_WITH_SUB_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
-  DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
-  DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  DASHBOARD_DETAILS_WITH_SUB_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_FQN}`,
+  TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TOPIC_DETAILS_WITH_SUB_TAB: `/topic/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_FQN}`,
+  DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DASHBOARD_DETAILS_WITH_SUB_TAB: `/dashboard/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  DATA_MODEL_DETAILS: `/dashboardDataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}`,
-  DATA_MODEL_DETAILS_WITH_TAB: `/dashboardDataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  DATA_MODEL_DETAILS_WITH_SUB_TAB: `/dashboardDataModel/${PLACEHOLDER_ROUTE_DATA_MODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  DATA_MODEL_DETAILS: `/dashboardDataModel/${PLACEHOLDER_ROUTE_FQN}`,
+  DATA_MODEL_DETAILS_WITH_TAB: `/dashboardDataModel/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_MODEL_DETAILS_WITH_SUB_TAB: `/dashboardDataModel/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
-  DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  DATABASE_DETAILS_WITH_SUB_TAB: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_FQN}`,
+  DATABASE_VERSION: `/database/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  DATABASE_DETAILS_WITH_TAB: `/database/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DATABASE_DETAILS_WITH_SUB_TAB: `/database/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}`,
-  SCHEMA_DETAILS_WITH_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  SCHEMA_DETAILS_WITH_SUB_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  SCHEMA_DETAILS: `/databaseSchema/${PLACEHOLDER_ROUTE_FQN}`,
+  SCHEMA_VERSION: `/databaseSchema/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  SCHEMA_DETAILS_WITH_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SCHEMA_DETAILS_WITH_SUB_TAB: `/databaseSchema/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
-  PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  PIPELINE_DETAILS_WITH_SUB_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_FQN}`,
+  PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  PIPELINE_DETAILS_WITH_SUB_TAB: `/pipeline/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}`,
-  MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  MLMODEL_DETAILS_WITH_SUB_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_MLMODEL_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  MLMODEL_DETAILS: `/mlmodel/${PLACEHOLDER_ROUTE_FQN}`,
+  MLMODEL_DETAILS_WITH_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  MLMODEL_DETAILS_WITH_SUB_TAB: `/mlmodel/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
-  CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
-  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  CONTAINER_DETAILS_WITH_SUB_TAB: `/container/${PLACEHOLDER_ROUTE_ENTITY_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  CONTAINER_DETAILS: `/container/${PLACEHOLDER_ROUTE_FQN}`,
+  CONTAINER_DETAILS_WITH_TAB: `/container/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  CONTAINER_DETAILS_WITH_SUB_TAB: `/container/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+
+  SEARCH_INDEX_DETAILS: `/searchIndex/${PLACEHOLDER_ROUTE_FQN}`,
+  SEARCH_INDEX_DETAILS_WITH_TAB: `/searchIndex/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  SEARCH_INDEX_DETAILS_WITH_SUB_TAB: `/searchIndex/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  STORED_PROCEDURE_DETAILS: `/storedProcedure/${PLACEHOLDER_ROUTE_FQN}`,
+  STORED_PROCEDURE_DETAILS_WITH_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  STORED_PROCEDURE_DETAILS_WITH_SUB_TAB: `/storedProcedure/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   USER_LIST: '/user-list',
   CREATE_USER: '/create-user',
   CREATE_USER_WITH_BOT: `/create-user/${PLACEHOLDER_USER_BOT}`,
-  USER_PROFILE: `/users/${PLACEHOLDER_USER_NAME}`,
-  USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
-  USER_PROFILE_WITH_SUB_TAB: `/users/${PLACEHOLDER_USER_NAME}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  USER_PROFILE: `/users/${PLACEHOLDER_ROUTE_FQN}`,
+  USER_PROFILE_WITH_TAB: `/users/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  USER_PROFILE_WITH_SUB_TAB: `/users/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   ROLES: '/roles',
   ADD_WEBHOOK: '/add-webhook/',
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
+
+  DOMAIN: '/domain',
+  DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
+  DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DOMAIN_VERSION: `/domain/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+
+  ADD_DOMAIN: '/add-domain',
+  DATA_PRODUCT_DETAILS: `/data-product/${PLACEHOLDER_ROUTE_FQN}`,
+  DATA_PRODUCT_DETAILS_WITH_TAB: `/data-product/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_PRODUCT_VERSION: `/data-product/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/add-glossary',
-  GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}`,
-  GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/action/${PLACEHOLDER_ACTION}`,
-  ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/add-term`,
-  GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/${PLACEHOLDER_ROUTE_TAB}`,
-  GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
-  GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
-  GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_GLOSSARY_NAME}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
-  ADD_GLOSSARY_TERMS_CHILD: `/glossary/${PLACEHOLDER_GLOSSARY_NAME}/term/${PLACEHOLDER_GLOSSARY_TERMS_FQN}/add-term`,
-  BOTS_PROFILE: `/bots/${PLACEHOLDER_BOTS_NAME}`,
+  GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_ROUTE_FQN}`,
+  GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_ROUTE_FQN}/action/${PLACEHOLDER_ACTION}`,
+  ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_ROUTE_FQN}/add-term`,
+  GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  GLOSSARY_DETAILS_WITH_SUBTAB: `/glossary/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
+  GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
   CUSTOM_ENTITY_DETAIL: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ENTITY_TYPE_FQN}/add-field`,
@@ -289,15 +289,15 @@ export const ROUTES = {
   ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ENTITY_TYPE_FQN}`,
 
   // Query Routes
-  QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_TABLE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
-  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_TEST_CASE_FQN}`,
-  ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_TABLE_FQN}/add-query`,
+  QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
+  TEST_CASE_DETAILS: `/test-case/${PLACEHOLDER_ROUTE_FQN}`,
+  ADD_QUERY: `/query/${PLACEHOLDER_ROUTE_FQN}/add-query`,
 
   // Tasks Routes
-  REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
-  REQUEST_TAGS: `/request-tags/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
-  UPDATE_DESCRIPTION: `/update-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
-  UPDATE_TAGS: `/update-tags/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_ENTITY_FQN}`,
+  REQUEST_DESCRIPTION: `/request-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  REQUEST_TAGS: `/request-tags/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  UPDATE_DESCRIPTION: `/update-description/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  UPDATE_TAGS: `/update-tags/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   TASK_DETAIL: `/tasks/${PLACEHOLDER_TASK_ID}`,
 
   ACTIVITY_PUSH_FEED: '/api/v1/push/feed',
@@ -307,9 +307,9 @@ export const ROUTES = {
   EDIT_POLICY_RULE: `/settings/access/policies/${PLACEHOLDER_ROUTE_FQN}/edit-rule/${PLACEHOLDER_RULE_NAME}`,
 
   // test suites
-  TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}`,
-  TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/add-ingestion`,
-  TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_TEST_SUITE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
+  TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
+  TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/add-ingestion`,
+  TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
   ADD_TEST_SUITES: `/add-test-suites`,
 
   // data quality
@@ -341,7 +341,17 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_TABLE_FQN, getEncodedFqn(tableFQN));
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tableFQN));
+
+  return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+
+export const getStoredProcedureDetailsPath = (
+  storedProcedureFQN: string,
+  columnName?: string
+) => {
+  let path = ROUTES.STORED_PROCEDURE_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(storedProcedureFQN));
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -349,7 +359,7 @@ export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
 export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {
   let path = ROUTES.TAG_DETAILS;
   const classification = getPartialNameFromFQN(entityFQN, ['service']);
-  path = path.replace(PLACEHOLDER_TAG_NAME, classification);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -362,7 +372,7 @@ export const getVersionPath = (
   let path = ROUTES.ENTITY_VERSION;
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;
@@ -377,7 +387,7 @@ export const getVersionPathWithTab = (
   let path = ROUTES.ENTITY_VERSION_WITH_TAB;
   path = path
     .replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, entityType)
-    .replace(PLACEHOLDER_ROUTE_ENTITY_FQN, fqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn)
     .replace(PLACEHOLDER_ROUTE_VERSION, version)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
@@ -396,7 +406,7 @@ export const getTableTabPath = (
     path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
   }
   path = path
-    .replace(PLACEHOLDER_ROUTE_TABLE_FQN, tableFQN)
+    .replace(PLACEHOLDER_ROUTE_FQN, tableFQN)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -410,7 +420,7 @@ export const getServiceDetailsPath = (
   let path = tab ? ROUTES.SERVICE_WITH_TAB : ROUTES.SERVICE;
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCat)
-    .replace(PLACEHOLDER_ROUTE_SERVICE_FQN, serviceFQN);
+    .replace(PLACEHOLDER_ROUTE_FQN, serviceFQN);
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
@@ -482,10 +492,7 @@ export const getDatabaseDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(
-    PLACEHOLDER_ROUTE_DATABASE_FQN,
-    getEncodedFqn(databaseFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(databaseFQN));
 
   return path;
 };
@@ -506,10 +513,7 @@ export const getDatabaseSchemaDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(
-    PLACEHOLDER_ROUTE_DATABASE_SCHEMA_FQN,
-    getEncodedFqn(schemaFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(schemaFQN));
 
   return path;
 };
@@ -530,7 +534,7 @@ export const getTopicDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, getEncodedFqn(topicFQN));
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(topicFQN));
 
   return path;
 };
@@ -551,10 +555,7 @@ export const getDashboardDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(
-    PLACEHOLDER_ROUTE_DASHBOARD_FQN,
-    getEncodedFqn(dashboardFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(dashboardFQN));
 
   return path;
 };
@@ -577,10 +578,7 @@ export const getDataModelDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(
-    PLACEHOLDER_ROUTE_DATA_MODEL_FQN,
-    getEncodedFqn(dataModelFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(dataModelFQN));
 
   return path;
 };
@@ -601,10 +599,7 @@ export const getPipelineDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(
-    PLACEHOLDER_ROUTE_PIPELINE_FQN,
-    getEncodedFqn(pipelineFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(pipelineFQN));
 
   return path;
 };
@@ -625,7 +620,7 @@ export const getMlModelDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, getEncodedFqn(mlModelFQN));
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(mlModelFQN));
 
   return path;
 };
@@ -646,24 +641,50 @@ export const getContainerDetailPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
-  path = path.replace(
-    PLACEHOLDER_ROUTE_ENTITY_FQN,
-    getEncodedFqn(containerFQN)
-  );
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(containerFQN));
+
+  return path;
+};
+
+export const getStoredProcedureDetailPath = (
+  storedProcedureFQN: string,
+  tab?: string,
+  subTab = 'all'
+) => {
+  let path = tab
+    ? ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB
+    : ROUTES.STORED_PROCEDURE_DETAILS;
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(storedProcedureFQN));
 
   return path;
 };
 
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
-  tab?: string
+  tab?: string,
+  subTab = 'all'
 ) => {
   let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_GLOSSARY_NAME, glossaryFQN);
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryFQN));
 
   return path;
 };
@@ -703,14 +724,14 @@ export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
-  path = path.replace(PLACEHOLDER_USER_NAME, username);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, username);
 
   return path;
 };
 
 export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
-  path = path.replace(PLACEHOLDER_BOTS_NAME, botsName);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, botsName);
 
   return path;
 };
@@ -718,7 +739,7 @@ export const getBotsPath = (botsName: string) => {
 export const getMlModelPath = (mlModelFqn: string, tab = '') => {
   let path = ROUTES.MLMODEL_DETAILS_WITH_TAB;
   path = path
-    .replace(PLACEHOLDER_ROUTE_MLMODEL_FQN, mlModelFqn)
+    .replace(PLACEHOLDER_ROUTE_FQN, mlModelFqn)
     .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
@@ -769,15 +790,20 @@ export const configOptions = {
 export const NOTIFICATION_READ_TIMER = 2500;
 export const TIER_CATEGORY = 'Tier';
 
-export const ENTITY_PATH: Record<string, string> = {
+export const ENTITY_PATH = {
   tables: 'table',
   topics: 'topic',
   dashboards: 'dashboard',
   pipelines: 'pipeline',
-  mlmodels: 'mlmodel',
+  mlModels: 'mlmodel',
   containers: 'container',
   tags: 'tag',
   glossaries: 'glossary',
+  searchIndex: 'searchIndex',
+  storedProcedure: 'storedProcedure',
+  glossaryTerm: 'glossaryTerm',
+  database: 'database',
+  databaseSchema: 'databaseSchema',
 };
 
 export const VALIDATION_MESSAGES = {

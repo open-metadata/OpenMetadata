@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.socket;
 
+import static org.openmetadata.service.exception.OMErrorPageHandler.setSecurityHeader;
+
 import io.dropwizard.servlets.assets.AssetServlet;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,15 +22,20 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.jetbrains.annotations.Nullable;
+import org.openmetadata.service.config.OMWebConfiguration;
 
 public class OpenMetadataAssetServlet extends AssetServlet {
+  private final OMWebConfiguration webConfiguration;
 
-  public OpenMetadataAssetServlet(String resourcePath, String uriPath, @Nullable String indexFile) {
+  public OpenMetadataAssetServlet(
+      String resourcePath, String uriPath, @Nullable String indexFile, OMWebConfiguration webConf) {
     super(resourcePath, uriPath, indexFile, "text/html", StandardCharsets.UTF_8);
+    this.webConfiguration = webConf;
   }
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    setSecurityHeader(webConfiguration, resp);
     super.doGet(req, resp);
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
       resp.sendError(404);

@@ -84,7 +84,7 @@ mock_domodatabase_config = {
                 "secretToken": "abcdefg",
                 "accessToken": "accessTpokem",
                 "apiHost": "api.domo.com",
-                "sandboxDomain": "https://domain.domo.com",
+                "instanceDomain": "https://domain.domo.com",
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},

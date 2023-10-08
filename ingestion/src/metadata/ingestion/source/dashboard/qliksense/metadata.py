@@ -38,7 +38,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.qliksense.client import QlikSenseClient
 from metadata.ingestion.source.dashboard.qliksense.models import (
@@ -54,36 +56,34 @@ logger = ingestion_logger()
 
 
 class QliksenseSource(DashboardServiceSource):
-    """
-    Qlik Sense Source Class
-    """
+    """Qlik Sense Source Class"""
 
     config: WorkflowSource
     client: QlikSenseClient
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: QlikSenseConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, QlikSenseConnection):
             raise InvalidSourceException(
                 f"Expected QlikSenseConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self.collections: List[QlikDashboard] = []
+        # Data models will be cleared up for each dashboard
+        self.data_models: List[QlikTable] = []
 
     def get_dashboards_list(self) -> Iterable[QlikDashboard]:
-        """
-        Get List of all dashboards
-        """
+        """Get List of all dashboards"""
         for dashboard in self.client.get_dashboards_list():
             # create app specific websocket
             self.client.connect_websocket(dashboard.qDocId)
@@ -92,20 +92,16 @@ class QliksenseSource(DashboardServiceSource):
             yield dashboard
 
     def get_dashboard_name(self, dashboard: QlikDashboard) -> str:
-        """
-        Get Dashboard Name
-        """
+        """Get Dashboard Name"""
         return dashboard.qDocName
 
-    def get_dashboard_details(self, dashboard: QlikDashboard) -> dict:
-        """
-        Get Dashboard Details
-        """
+    def get_dashboard_details(self, dashboard: QlikDashboard) -> QlikDashboard:
+        """Get Dashboard Details"""
         return dashboard
 
     def yield_dashboard(
         self, dashboard_details: QlikDashboard
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -134,24 +130,21 @@ class QliksenseSource(DashboardServiceSource):
                 ],
                 service=self.context.dashboard_service.fullyQualifiedName.__root__,
             )
-            yield dashboard_request
+            yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error creating dashboard [{dashboard_details.qDocName}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name=dashboard_details.qDocName,
+                    error=f"Error creating dashboard [{dashboard_details.qDocName}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def yield_dashboard_chart(
         self, dashboard_details: QlikDashboard
     ) -> Iterable[CreateChartRequest]:
-        """Get chart method
-
-        Args:
-            dashboard_details:
-        Returns:
-            Iterable[CreateChartRequest]
-        """
+        """Get chart method"""
         charts = self.client.get_dashboard_charts(dashboard_id=dashboard_details.qDocId)
         for chart in charts:
             try:
@@ -169,26 +162,27 @@ class QliksenseSource(DashboardServiceSource):
                 ):
                     self.status.filter(chart.qMeta.title, "Chart Pattern not allowed")
                     continue
-                yield CreateChartRequest(
-                    name=chart.qInfo.qId,
-                    displayName=chart.qMeta.title,
-                    description=chart.qMeta.description,
-                    chartType=ChartType.Other,
-                    sourceUrl=chart_url,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                yield Either(
+                    right=CreateChartRequest(
+                        name=chart.qInfo.qId,
+                        displayName=chart.qMeta.title,
+                        description=chart.qMeta.description,
+                        chartType=ChartType.Other,
+                        sourceUrl=chart_url,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    )
                 )
-                self.status.scanned(chart.qMeta.title)
             except Exception as exc:  # pylint: disable=broad-except
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
+                yield Either(
+                    left=StackTraceError(
+                        name=dashboard_details.qDocName,
+                        error=f"Error creating chart [{chart}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def get_column_info(self, data_source: QlikTable) -> Optional[List[Column]]:
-        """
-        Args:
-            data_source: DataSource
-        Returns:
-            Columns details for Data Model
-        """
+        """Build data model columns"""
         datasource_columns = []
         for field in data_source.fields or []:
             try:
@@ -204,7 +198,7 @@ class QliksenseSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def yield_datamodel(self, dashboard_details: QlikDashboard):
+    def yield_datamodel(self, _: QlikDashboard) -> Iterable[Either[DashboardDataModel]]:
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_dashboard_models()
             for data_model in self.data_models or []:
@@ -226,19 +220,18 @@ class QliksenseSource(DashboardServiceSource):
                         serviceType=DashboardServiceType.QlikSense.value,
                         columns=self.get_column_info(data_model),
                     )
-                    yield data_model_request
-                    self.status.scanned(
-                        f"Data Model Scanned: {data_model_request.displayName}"
-                    )
+                    yield Either(right=data_model_request)
                 except Exception as exc:
-                    error_msg = f"Error yielding Data Model [{data_model_name}]: {exc}"
-                    self.status.failed(
-                        name=data_model_name,
-                        error=error_msg,
-                        stack_trace=traceback.format_exc(),
+                    name = (
+                        data_model.tableName if data_model.tableName else data_model.id
                     )
-                    logger.error(error_msg)
-                    logger.debug(traceback.format_exc())
+                    yield Either(
+                        left=StackTraceError(
+                            name=name,
+                            error=f"Error yielding Data Model [{name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
     def _get_datamodel(self, datamodel: QlikTable):
         datamodel_fqn = fqn.build(
@@ -296,12 +289,8 @@ class QliksenseSource(DashboardServiceSource):
         self,
         dashboard_details: QlikDashboard,
         db_service_name: Optional[str],
-    ) -> Iterable[AddLineageRequest]:
-        """Get lineage method
-
-        Args:
-            dashboard_details
-        """
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Get lineage method"""
         db_service_entity = self.metadata.get_by_name(
             entity=DatabaseService, fqn=db_service_name
         )
@@ -317,9 +306,15 @@ class QliksenseSource(DashboardServiceSource):
                             to_entity=data_model_entity, from_entity=om_table
                         )
             except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {err}"
+                yield Either(
+                    left=StackTraceError(
+                        name=f"{dashboard_details.qDocName} Lineage",
+                        error=(
+                            "Error to yield dashboard lineage details for DB "
+                            f"service name [{db_service_name}]: {err}"
+                        ),
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def close(self):

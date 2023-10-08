@@ -11,34 +11,35 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Table, Tooltip, Typography } from 'antd';
+import { Button, Col, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import DeleteWidgetModal from 'components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import { EmptyGraphPlaceholder } from 'components/DataInsightDetail/EmptyGraphPlaceholder';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getListKPIs } from 'rest/KpiAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from '../../components/common/Table/Table';
+import { EmptyGraphPlaceholder } from '../../components/DataInsightDetail/EmptyGraphPlaceholder';
 import {
   getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
 } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
+import { getListKPIs } from '../../rest/KpiAPI';
+import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import { formatDateTime } from '../../utils/TimeUtils';
 
 const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   const history = useHistory();
@@ -101,7 +102,7 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         dataIndex: 'startDate',
         key: 'startDate',
         render: (startDate: number) => (
-          <Typography.Text> {formatDateTime(startDate)}</Typography.Text>
+          <Typography.Text>{formatDateTime(startDate)}</Typography.Text>
         ),
       },
       {
@@ -111,6 +112,22 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         render: (endDate: number) => (
           <Typography.Text>{formatDateTime(endDate)}</Typography.Text>
         ),
+      },
+      {
+        title: t('label.target'),
+        dataIndex: 'targetDefinition',
+        key: 'targetDefinition',
+        render: (targetDefinition: Kpi['targetDefinition'], record: Kpi) => {
+          const isPercentageMetric =
+            record.metricType === KpiTargetType.Percentage;
+          const targetValue = targetDefinition?.length
+            ? isPercentageMetric
+              ? `${+targetDefinition[0].value * 100}%`
+              : targetDefinition[0].value
+            : '-';
+
+          return <Typography.Text>{targetValue}</Typography.Text>;
+        },
       },
       {
         title: t('label.metric-type'),
@@ -170,14 +187,16 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
     return col;
   }, [kpiList]);
 
-  const kpiPagingHandler = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
-    setKpiPage(activePage as number);
-    fetchKpiList({
-      [cursorValue]: kpiPaging[cursorValue as keyof Paging] as string,
-    });
+  const kpiPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setKpiPage(currentPage);
+      fetchKpiList({
+        [cursorType]: kpiPaging[cursorType as keyof Paging] as string,
+      });
+    }
   };
 
   useEffect(() => {
@@ -201,22 +220,19 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
   return (
     <>
       <Col span={24}>
-        {isLoading ? (
-          <Loader />
-        ) : (
-          <Table
-            bordered
-            columns={columns}
-            data-testid="kpi-table"
-            dataSource={kpiList}
-            locale={{
-              emptyText: noDataPlaceHolder,
-            }}
-            pagination={false}
-            rowKey="name"
-            size="small"
-          />
-        )}
+        <Table
+          bordered
+          columns={columns}
+          data-testid="kpi-table"
+          dataSource={kpiList}
+          loading={isLoading}
+          locale={{
+            emptyText: noDataPlaceHolder,
+          }}
+          pagination={false}
+          rowKey="name"
+          size="small"
+        />
       </Col>
       {kpiList.length > PAGE_SIZE_MEDIUM && (
         <Col span={24}>
@@ -225,7 +241,6 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
             pageSize={PAGE_SIZE_MEDIUM}
             paging={kpiPaging}
             pagingHandler={kpiPagingHandler}
-            totalCount={kpiPaging.total}
           />
         </Col>
       )}
@@ -234,9 +249,9 @@ const KPIList = ({ viewKPIPermission }: { viewKPIPermission: boolean }) => {
         <DeleteWidgetModal
           afterDeleteAction={handleAfterDeleteAction}
           allowSoftDelete={false}
-          deleteMessage={`Are you sure you want to delete ${getEntityName(
-            selectedKpi
-          )}`}
+          deleteMessage={t('message.are-you-sure-delete-entity', {
+            entity: getEntityName(selectedKpi),
+          })}
           entityId={selectedKpi.id}
           entityName={getEntityName(selectedKpi)}
           entityType={EntityType.KPI}

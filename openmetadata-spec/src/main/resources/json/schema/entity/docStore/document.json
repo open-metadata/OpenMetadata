@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/docStore/document.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Document",
+  "description": "This schema defines Document. A Generic entity to capture any kind of Json Payload.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entities.docStore.Document",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface", "org.openmetadata.schema.DocStoreEntityInterface"],
+  "definitions": {
+    "data": {
+      "javaType": "org.openmetadata.schema.entities.docStore.Data",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the DocStore",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this column name.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the DocStore Entity.",
+      "type": "string"
+    },
+    "entityType": {
+      "description": "Type of the Entity stored in DocStore.",
+      "type": "string"
+    },
+    "data": {
+      "$ref": "#/definitions/data"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": ["name","entityType", "fullyQualifiedName", "data"],
+  "additionalProperties": false
+}

@@ -108,9 +108,20 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sourceUrl": {
+      "description": "Source URL of database.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "domain" : {
       "description": "Domain the Database belongs to. When not set, the Database inherits the domain from the database service it belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "votes" : {
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service"],

@@ -20,6 +20,9 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.data.createTableProfile import (
+    CreateTableProfileRequest,
+)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -27,8 +30,8 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
     DataType,
-    Table,
     TableData,
+    TableProfile,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -44,12 +47,24 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+    Source,
+    SourceConfig,
+    WorkflowConfig,
+)
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
+from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
+from metadata.profiler.api.models import ProfilerResponse
 
 table_data = TableData(
     columns=[
@@ -57,7 +72,8 @@ table_data = TableData(
         ColumnName(__root__="first_name"),
         ColumnName(__root__="last_name"),
         ColumnName(__root__="first_order"),
-        ColumnName(__root__="customer_email"),
+        # Apply a random name to force the NER scanner execution here
+        ColumnName(__root__="random"),
         ColumnName(__root__="number_of_orders"),
     ],
     rows=[
@@ -100,158 +116,33 @@ table_data = TableData(
 )
 
 
-EXPECTED_TABLE_ENTITY = [
-    Column(
-        name=ColumnName(__root__="customer_id"),
-        displayName=None,
-        dataType="INT",
-        arrayDataType=None,
-        dataLength=None,
-        precision=None,
-        scale=None,
-        dataTypeDisplay="int",
-        description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.customer_id",
-        tags=[],
-        constraint=None,
-        ordinalPosition=None,
-        jsonSchema=None,
-        children=None,
-        customMetrics=None,
-        profile=None,
+EXPECTED_COLUMN_TAGS = [
+    ColumnTag(
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.first_name",
+        tag_label=TagLabel(
+            tagFQN=TagFQN(__root__="PII.Sensitive"),
+            source="Classification",
+            labelType="Automated",
+            state="Suggested",
+        ),
     ),
-    Column(
-        name=ColumnName(__root__="first_name"),
-        displayName=None,
-        dataType="VARCHAR",
-        arrayDataType=None,
-        dataLength=20,
-        precision=None,
-        scale=None,
-        dataTypeDisplay="varchar",
-        description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_name",
-        tags=[
-            TagLabel(
-                tagFQN=TagFQN(__root__="PII.Sensitive"),
-                description=(
-                    "PII which if lost, compromised, or disclosed without authorization, could result in"
-                    " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
-                ),
-                source="Classification",
-                labelType="Automated",
-                state="Suggested",
-                href=None,
-            )
-        ],
-        constraint=None,
-        ordinalPosition=None,
-        jsonSchema=None,
-        children=None,
-        customMetrics=None,
-        profile=None,
+    ColumnTag(
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.first_order",
+        tag_label=TagLabel(
+            tagFQN=TagFQN(__root__="PII.NonSensitive"),
+            source="Classification",
+            labelType="Automated",
+            state="Suggested",
+        ),
     ),
-    Column(
-        name=ColumnName(__root__="last_name"),
-        displayName=None,
-        dataType="VARCHAR",
-        arrayDataType=None,
-        dataLength=20,
-        precision=None,
-        scale=None,
-        dataTypeDisplay="varchar",
-        description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.last_name",
-        tags=[],
-        constraint=None,
-        ordinalPosition=None,
-        jsonSchema=None,
-        children=None,
-        customMetrics=None,
-        profile=None,
-    ),
-    Column(
-        name=ColumnName(__root__="first_order"),
-        displayName=None,
-        dataType="DATE",
-        arrayDataType=None,
-        dataLength=None,
-        precision=None,
-        scale=None,
-        dataTypeDisplay="date",
-        description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.first_order",
-        tags=[
-            TagLabel(
-                tagFQN=TagFQN(__root__="PII.NonSensitive"),
-                description=(
-                    "PII which is easily accessible from public sources and can include zip code, "
-                    "race, gender, and date of birth."
-                ),
-                source="Classification",
-                labelType="Automated",
-                state="Suggested",
-                href=None,
-            )
-        ],
-        constraint=None,
-        ordinalPosition=None,
-        jsonSchema=None,
-        children=None,
-        customMetrics=None,
-        profile=None,
-    ),
-    Column(
-        name=ColumnName(__root__="customer_email"),
-        displayName=None,
-        dataType="VARCHAR",
-        arrayDataType=None,
-        dataLength=20,
-        precision=None,
-        scale=None,
-        dataTypeDisplay="date",
-        description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.customer_email",
-        tags=[
-            TagLabel(
-                tagFQN=TagFQN(__root__="PII.Sensitive"),
-                description=(
-                    (
-                        "PII which if lost, compromised, or disclosed without authorization, could result in"
-                        " substantial harm, embarrassment, inconvenience, or unfairness to an individual."
-                    )
-                ),
-                source="Classification",
-                labelType="Automated",
-                state="Suggested",
-                href=None,
-            )
-        ],
-        constraint=None,
-        ordinalPosition=None,
-        jsonSchema=None,
-        children=None,
-        customMetrics=None,
-        profile=None,
-    ),
-    Column(
-        name=ColumnName(__root__="number_of_orders"),
-        displayName=None,
-        dataType="BIGINT",
-        arrayDataType=None,
-        dataLength=None,
-        precision=None,
-        scale=None,
-        dataTypeDisplay="bigint",
-        description=None,
-        fullyQualifiedName="test-service-table-patch.test-db.test-schema.customers.number_of_orders",
-        tags=[],
-        constraint=None,
-        ordinalPosition=None,
-        jsonSchema=None,
-        children=None,
-        customMetrics=None,
-        profile=None,
+    ColumnTag(
+        column_fqn="test-service-table-patch.test-db.test-schema.customers.random",
+        tag_label=TagLabel(
+            tagFQN=TagFQN(__root__="PII.Sensitive"),
+            source="Classification",
+            labelType="Automated",
+            state="Suggested",
+        ),
     ),
 ]
 
@@ -275,8 +166,25 @@ class PiiProcessorTest(TestCase):
             "5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
         ),
     )
+
+    workflow_config = OpenMetadataWorkflowConfig(
+        source=Source(
+            type="mysql",
+            serviceName="test",
+            sourceConfig=SourceConfig(
+                config=DatabaseServiceProfilerPipeline(
+                    confidence=85,
+                    processPiiSensitive=True,
+                )
+            ),
+        ),
+        workflowConfig=WorkflowConfig(openMetadataServerConfig=server_config),
+    )
+
     metadata = OpenMetadata(server_config)
-    ner_scanner_processor = PIIProcessor(metadata)
+    pii_processor = PIIProcessor(
+        config=workflow_config, metadata=OpenMetadata(server_config)
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -344,20 +252,75 @@ class PiiProcessorTest(TestCase):
             hard_delete=True,
         )
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        """
+        Prepare ingredients
+        """
+        service = CreateDatabaseServiceRequest(
+            name="test-service-table-patch",
+            serviceType=DatabaseServiceType.Mysql,
+            connection=DatabaseConnection(
+                config=MysqlConnection(
+                    username="username",
+                    authType=BasicAuth(
+                        password="password",
+                    ),
+                    hostPort="http://localhost:1234",
+                )
+            ),
+        )
+        service_entity = cls.metadata.create_or_update(data=service)
+
+        create_db = CreateDatabaseRequest(
+            name="test-db",
+            service=service_entity.fullyQualifiedName,
+        )
+
+        create_db_entity = cls.metadata.create_or_update(data=create_db)
+
+        create_schema = CreateDatabaseSchemaRequest(
+            name="test-schema",
+            database=create_db_entity.fullyQualifiedName,
+        )
+
+        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
+
+        created_table = CreateTableRequest(
+            name="customers",
+            columns=[
+                Column(name="customer_id", dataType=DataType.INT),
+                Column(name="first_name", dataType=DataType.VARCHAR, dataLength=20),
+                Column(name="last_name", dataType=DataType.VARCHAR, dataLength=20),
+                Column(name="first_order", dataType=DataType.DATE),
+                Column(name="random", dataType=DataType.VARCHAR, dataLength=20),
+                Column(name="number_of_orders", dataType=DataType.BIGINT),
+            ],
+            databaseSchema=create_schema_entity.fullyQualifiedName,
+        )
+        cls.table_entity = cls.metadata.create_or_update(data=created_table)
+
     def test_ner_scanner_process(self):
         """
         test function for ner Scanner
         """
 
-        self.ner_scanner_processor.process(
-            table_data=table_data,
-            table_entity=self.table_entity,
-            confidence_threshold=85,
+        record = ProfilerResponse(
+            table=self.table_entity,
+            profile=CreateTableProfileRequest(
+                tableProfile=TableProfile(
+                    timestamp=Timestamp(
+                        __root__=int(datetime.datetime.now().timestamp() * 1000)
+                    )
+                )
+            ),
+            sample_data=table_data,
         )
-        updated_table_entity = self.metadata.get_by_id(
-            entity=Table, entity_id=self.table_entity.id, fields=["tags"]
-        )
+
+        updated_record: ProfilerResponse = self.pii_processor.run(record)
+
         for _, (expected, original) in enumerate(
-            zip(EXPECTED_TABLE_ENTITY, updated_table_entity.columns)
+            zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags)
         ):
-            self.assertEqual(expected.tags, original.tags)
+            self.assertEqual(expected.column_fqn, original.column_fqn)
+            self.assertEqual(expected.tag_label.tagFQN, original.tag_label.tagFQN)

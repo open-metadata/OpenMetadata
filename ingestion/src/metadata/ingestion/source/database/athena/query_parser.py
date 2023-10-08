@@ -19,13 +19,11 @@ from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.athena.models import (
     AthenaQueryExecutionList,
     QueryExecutionIdsResponse,
@@ -46,12 +44,12 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
 
     filters: str
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.client = AWSClient(self.service_connection.awsConfig).get_athena_client()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AthenaConnection = config.serviceConnection.__root__.config
@@ -59,7 +57,7 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_queries(self):
         query_limit = ceil(

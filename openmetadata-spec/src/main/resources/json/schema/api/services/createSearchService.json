@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createSearchService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateSearchServiceRequest",
+  "description": "Create Search Service entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.services.CreateSearchService",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this search service. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of search service entity.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/searchService.json#/definitions/searchServiceType"
+    },
+    "connection": {
+      "$ref": "../../entity/services/searchService.json#/definitions/searchConnection"
+    },
+    "tags": {
+      "description": "Tags for this Search Service.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this search service.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Search Service belongs to.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "serviceType"],
+  "additionalProperties": false
+}

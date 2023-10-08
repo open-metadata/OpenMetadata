@@ -12,9 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { Column } from 'generated/entity/data/container';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Column } from '../../generated/entity/data/container';
 import { Table } from '../../generated/entity/data/table';
 import EntityTableV1 from './SchemaTable.component';
 
@@ -83,6 +83,45 @@ const mockEntityTableProp = {
   onUpdate,
 };
 
+const columnsWithDisplayName = [
+  {
+    name: 'comments',
+    displayName: 'Comments',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.comments',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 1,
+  },
+  {
+    name: 'products',
+    dataType: 'ARRAY',
+    arrayDataType: 'STRUCT',
+    dataLength: 1,
+    dataTypeDisplay:
+      'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.products',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 2,
+  },
+  {
+    name: 'platform',
+    dataType: 'STRING',
+    dataLength: 1,
+    dataTypeDisplay: 'string',
+    fullyQualifiedName:
+      'bigquery_gcp.ecommerce.shopify.raw_product_catalog.platform',
+    tags: [],
+    constraint: 'NULL',
+    ordinalPosition: 3,
+  },
+] as Column[];
+
 jest.mock('../../hooks/authHooks', () => {
   return {
     useAuth: jest.fn().mockReturnValue({
@@ -101,7 +140,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock(
-  'components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../components/common/error-with-placeholder/FilterTablePlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }
@@ -117,17 +156,20 @@ jest.mock('../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('components/TableTags/TableTags.component', () => {
+jest.mock('../../components/TableTags/TableTags.component', () => {
   return jest.fn().mockReturnValue(<p>TableTags</p>);
 });
 
-jest.mock('components/TableDescription/TableDescription.component', () => {
-  return jest.fn().mockReturnValue(<p>TableDescription</p>);
-});
+jest.mock(
+  '../../components/TableDescription/TableDescription.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>TableDescription</p>);
+  }
+);
 
 const mockTableScrollValue = jest.fn();
 
-jest.mock('constants/Table.constants', () => ({
+jest.mock('../../constants/Table.constants', () => ({
   get TABLE_SCROLL_VALUE() {
     return mockTableScrollValue();
   },
@@ -172,5 +214,42 @@ describe('Test EntityTable Component', () => {
     const emptyPlaceholder = screen.getByText('FilterTablePlaceHolder');
 
     expect(emptyPlaceholder).toBeInTheDocument();
+  });
+
+  it('should render column name only if displayName is not present', async () => {
+    render(<EntityTableV1 {...mockEntityTableProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const columnNames = await screen.findAllByTestId('column-display-name');
+
+    expect(columnNames).toHaveLength(3);
+
+    expect(columnNames[0].textContent).toBe('comments');
+    expect(columnNames[1].textContent).toBe('products');
+    expect(columnNames[2].textContent).toBe('platform');
+  });
+
+  it('should render column name & displayName for column if both presents', async () => {
+    render(
+      <EntityTableV1
+        {...mockEntityTableProp}
+        tableColumns={[...columnsWithDisplayName]}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const columnDisplayName = await screen.findAllByTestId(
+      'column-display-name'
+    );
+    const columnName = await screen.findByTestId('column-name');
+
+    expect(columnDisplayName[0]).toBeInTheDocument();
+    expect(columnName).toBeInTheDocument();
+
+    expect(columnDisplayName[0].textContent).toBe('Comments');
+    expect(columnName.textContent).toBe('comments');
   });
 });

@@ -68,6 +68,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -84,13 +87,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer_jp"
       },
       "entityLink": {
         "type": "text"
@@ -159,13 +156,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer_jp"
           },
           "entityType": {
             "type": "keyword"
@@ -180,6 +171,19 @@
             }
           }
         }
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "owner": {
         "properties": {

@@ -29,6 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.source.dashboard.domodashboard.metadata import (
     DomoDashboardDetails,
@@ -61,7 +62,7 @@ mock_domopipeline_config = {
                 "secretToken": "abcdefg",
                 "accessToken": "accessTpokem",
                 "apiHost": "api.domo.com",
-                "sandboxDomain": "https://domain.domo.com",
+                "instanceDomain": "https://domain.domo.com",
             }
         },
         "sourceConfig": {
@@ -163,8 +164,8 @@ class DomoDashboardUnitTest(TestCase):
         dashboard_list = []
         results = self.domodashboard.yield_dashboard(MOCK_DASHBOARD)
         for result in results:
-            if isinstance(result, CreateDashboardRequest):
-                dashboard_list.append(result)
+            if isinstance(result, Either) and result.right:
+                dashboard_list.append(result.right)
         self.assertEqual(EXPECTED_DASHBOARD, dashboard_list[0])
 
     def test_dashboard_name(self):
@@ -181,17 +182,15 @@ class DomoDashboardUnitTest(TestCase):
             results = self.domodashboard.yield_dashboard_chart(MOCK_DASHBOARD)
             chart_list = []
             for result in results:
-                if isinstance(result, CreateChartRequest):
-                    chart_list.append(result)
+                if isinstance(result, Either) and result.right:
+                    chart_list.append(result.right)
             for _, (expected, original) in enumerate(zip(EXPECTED_CHARTS, chart_list)):
                 self.assertEqual(expected, original)
 
+        # Cover error responses
         with patch.object(REST, "_request", return_value=mock_data[1]):
-            result = self.domodashboard.domo_client.get_chart_details(
-                MOCK_DASHBOARD.cardIds[0]
-            )
             assert (
-                self.domodashboard.domo_client.get_chart_details(
+                self.domodashboard.client.custom.get_chart_details(
                     MOCK_DASHBOARD.cardIds[0]
                 )
                 is None
@@ -199,7 +198,7 @@ class DomoDashboardUnitTest(TestCase):
 
         with patch.object(REST, "_request", return_value=mock_data[2]):
             assert (
-                self.domodashboard.domo_client.get_chart_details(
+                self.domodashboard.client.custom.get_chart_details(
                     MOCK_DASHBOARD.cardIds[0]
                 )
                 is None

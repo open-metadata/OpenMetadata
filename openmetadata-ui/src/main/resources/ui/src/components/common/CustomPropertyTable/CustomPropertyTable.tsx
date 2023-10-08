@@ -11,53 +11,78 @@
  *  limitations under the License.
  */
 
-import { Table, Typography } from 'antd';
+import { Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { EntityField } from 'constants/Feeds.constants';
-import { EntityType } from 'enums/entity.enum';
-import { ChangeDescription } from 'generated/tests/testCase';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { useParams } from 'react-router-dom';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  ChangeDescription,
+  CustomProperty,
+  Type,
+} from '../../../generated/entity/type';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
-} from 'utils/EntityVersionUtils';
-import { CustomProperty, Type } from '../../../generated/entity/type';
+} from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../PermissionProvider/PermissionProvider.interface';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
+import Table from '../Table/Table';
 import {
   CustomPropertyProps,
-  EntityDetails,
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
 } from './CustomPropertyTable.interface';
 import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
-export const CustomPropertyTable: FC<CustomPropertyProps> = ({
-  entityDetails,
+export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   handleExtensionUpdate,
   entityType,
   hasEditAccess,
   className,
   isVersionView,
-}) => {
+  hasPermission,
+  entityDetails,
+}: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const [extentionDetails, setExtentionDetails] =
+    useState<ExtentionEntities[T]>();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
+  const { fqn } = useParams<{ fqn: string; tab: string; version: string }>();
+
+  const fetchExtentiondetails = async () => {
+    const response = await getEntityExtentionDetailsFromEntityType<T>(
+      entityType,
+      fqn
+    );
+
+    setExtentionDetails(response as ExtentionEntities[T]);
+  };
+
+  useEffect(() => {
+    fetchExtentiondetails();
+  }, [fqn]);
 
   const [typePermission, setPermission] = useState<OperationPermission>();
+  const versionDetails = entityDetails ?? extentionDetails;
 
   const fetchTypeDetail = async () => {
     setEntityTypeDetailLoading(true);
@@ -92,23 +117,26 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
     }
   };
 
-  const onExtensionUpdate = async (
-    updatedExtension: CustomPropertyProps['entityDetails']['extension']
-  ) => {
-    if (!isUndefined(handleExtensionUpdate)) {
-      await handleExtensionUpdate({
-        ...entityDetails,
-        extension: updatedExtension,
-      });
-    }
-  };
+  const onExtensionUpdate = useCallback(
+    async (updatedExtension: ExtentionEntities[T]) => {
+      if (!isUndefined(handleExtensionUpdate) && versionDetails) {
+        const updatedData = {
+          ...versionDetails,
+          extension: updatedExtension,
+        };
+        await handleExtensionUpdate(updatedData);
+        setExtentionDetails(updatedData);
+      }
+    },
+    [versionDetails]
+  );
 
   const extensionObject: {
-    extensionObject: EntityDetails['extension'];
+    extensionObject: ExtentionEntities[T];
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {
-      const changeDescription = entityDetails.changeDescription;
+      const changeDescription = versionDetails?.changeDescription;
       const extensionDiff = getDiffByFieldName(
         EntityField.EXTENSION,
         changeDescription as ChangeDescription
@@ -120,19 +148,19 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
         const addedFields = JSON.parse(newValues ? newValues : [])[0];
         if (addedFields) {
           return {
-            extensionObject: entityDetails.extension,
+            extensionObject: versionDetails?.extension,
             addedKeysList: Object.keys(addedFields),
           };
         }
       }
 
-      if (extensionDiff.updated) {
-        return getUpdatedExtensionDiffFields(entityDetails, extensionDiff);
+      if (versionDetails && extensionDiff.updated) {
+        return getUpdatedExtensionDiffFields(versionDetails, extensionDiff);
       }
     }
 
-    return { extensionObject: entityDetails.extension };
-  }, [isVersionView, entityDetails]);
+    return { extensionObject: versionDetails?.extension };
+  }, [isVersionView, versionDetails]);
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [
@@ -161,7 +189,7 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
       },
     ];
   }, [
-    entityDetails.extension,
+    versionDetails?.extension,
     hasEditAccess,
     extensionObject,
     isVersionView,
@@ -179,38 +207,48 @@ export const CustomPropertyTable: FC<CustomPropertyProps> = ({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Loader />;
+    return <Skeleton active />;
   }
 
-  if (!isEmpty(entityTypeDetail.customProperties)) {
+  if (!hasPermission) {
     return (
-      <Table
-        bordered
-        className="m-md"
-        columns={tableColumn}
-        data-testid="custom-properties-table"
-        dataSource={entityTypeDetail.customProperties || []}
-        pagination={false}
-        rowKey="name"
-        size="small"
-      />
+      <div className="flex-center tab-content-height">
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+      </div>
     );
   }
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails.extension)
+    isUndefined(versionDetails?.extension)
   ) {
-    return <ExtensionTable extension={entityDetails.extension} />;
+    return (
+      <div className="flex-center tab-content-height">
+        <ErrorPlaceHolder className={className}>
+          <Typography.Paragraph>
+            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+              entity: t('label.custom-property-plural'),
+            })}
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      </div>
+    );
   }
 
-  return (
-    <ErrorPlaceHolder className={className}>
-      <Typography.Paragraph>
-        {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-          entity: t('label.custom-property-plural'),
-        })}
-      </Typography.Paragraph>
-    </ErrorPlaceHolder>
+  return isEmpty(entityTypeDetail.customProperties) &&
+    !isUndefined(versionDetails?.extension) ? (
+    <ExtensionTable extension={versionDetails?.extension} />
+  ) : (
+    <Table
+      bordered
+      className="m-md"
+      columns={tableColumn}
+      data-testid="custom-properties-table"
+      dataSource={entityTypeDetail.customProperties ?? []}
+      loading={entityTypeDetailLoading}
+      pagination={false}
+      rowKey="name"
+      size="small"
+    />
   );
 };

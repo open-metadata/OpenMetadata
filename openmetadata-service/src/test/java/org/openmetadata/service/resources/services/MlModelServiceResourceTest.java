@@ -41,14 +41,13 @@ import org.openmetadata.schema.services.connections.mlmodel.MlflowConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResource.MlModelServiceList;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MlModelServiceResourceTest extends EntityResourceTest<MlModelService, CreateMlModelService> {
+public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelService, CreateMlModelService> {
   public MlModelServiceResourceTest() {
     super(Entity.MLMODEL_SERVICE, MlModelService.class, MlModelServiceList.class, "services/mlmodelServices", "owner");
     this.supportsPatch = false;
@@ -76,12 +75,6 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create MlModel with mandatory MlModelUrl field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -94,6 +87,9 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
         new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000");
     createAndCheckEntity(
         createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -197,7 +193,7 @@ public class MlModelServiceResourceTest extends EntityResourceTest<MlModelServic
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

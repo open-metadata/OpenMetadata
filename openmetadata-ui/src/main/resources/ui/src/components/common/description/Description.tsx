@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { Button, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as IconEdit } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
 import { t } from 'i18next';
 import { isFunction, isUndefined } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCommentPlus } from '../../../assets/svg/add-chat.svg';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
+import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { ReactComponent as IconTaskColor } from '../../../assets/svg/task-ic.svg';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -198,11 +198,11 @@ const Description: FC<DescriptionProps> = ({
   };
 
   return (
-    <div className={`schema-description tw-relative ${className}`}>
+    <div className={`schema-description relative ${className}`}>
       <Space align="end" className="description-inner-main-container" size={4}>
-        <div className="tw-relative">
+        <div className="relative">
           <div
-            className="description tw-h-full tw-overflow-y-scroll tw-relative "
+            className="description h-full relative overflow-y-scroll"
             data-testid="description"
             id="center">
             {description?.trim() ? (

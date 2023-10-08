@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
-import java.io.IOException;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -50,7 +49,6 @@ import org.openmetadata.service.events.subscription.SubscriptionPublisher;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.Trigger;
 
@@ -107,25 +105,25 @@ public class SubscriptionUtil {
     Set<String> data = new HashSet<>();
     try {
       List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
-          daoCollection.relationshipDAO().findFrom(entityId.toString(), entityType, relationship.ordinal());
+          daoCollection.relationshipDAO().findFrom(entityId, entityType, relationship.ordinal());
       ownerOrFollowers.forEach(
           owner -> {
             if (type == CreateEventSubscription.SubscriptionType.EMAIL
                 || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
               if (USER.equals(owner.getType())) {
-                User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
+                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
                 data.add(user.getEmail());
               } else {
-                Team team = SubjectCache.getTeam(owner.getId());
+                Team team = Entity.getEntity(TEAM, owner.getId(), "", Include.NON_DELETED);
                 data.add(team.getEmail());
               }
             } else {
               Profile profile = null;
               if (USER.equals(owner.getType())) {
-                User user = SubjectCache.getSubjectContext(owner.getId()).getUser();
+                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
                 profile = user.getProfile();
               } else if (TEAM.equals(owner.getType())) {
-                Team team = SubjectCache.getTeam(owner.getId());
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
                 profile = team.getProfile();
               }
               data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));
@@ -202,8 +200,7 @@ public class SubscriptionUtil {
       CreateEventSubscription.SubscriptionType type,
       Client client,
       CollectionDAO daoCollection,
-      ChangeEvent event)
-      throws IOException {
+      ChangeEvent event) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =

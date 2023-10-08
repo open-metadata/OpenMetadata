@@ -12,17 +12,15 @@
  */
 
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import UserListV1 from 'components/UserList/UserListV1';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import UserListV1 from '../../components/UserList/UserListV1';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -31,6 +29,8 @@ import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { SearchResponse } from '../../interface/search.interface';
+import { searchData } from '../../rest/miscAPI';
+import { getUsers, UsersQueryParams } from '../../rest/userAPI';
 import { formatUsersResponse } from '../../utils/APIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -44,7 +44,7 @@ const UserListPageV1 = () => {
   const [isAdminPage, setIsAdminPage] = useState<boolean | undefined>(
     tab === GlobalSettingOptions.ADMINS || undefined
   );
-  const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
+
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
   const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);
   const [userList, setUserList] = useState<User[]>([]);
@@ -54,27 +54,21 @@ const UserListPageV1 = () => {
 
   const initialSetup = () => {
     setIsAdminPage(tab === GlobalSettingOptions.ADMINS || undefined);
-    setIsPageLoading(true);
     setIsDataLoading(true);
     setShowDeletedUser(false);
     setSearchValue('');
     setCurrentPage(INITIAL_PAGING_VALUE);
   };
 
-  const fetchUsersList = async (
-    isAdmin: boolean | undefined = undefined,
-    param = {} as Record<string, string>,
-    limit = PAGE_SIZE_MEDIUM
-  ) => {
+  const fetchUsersList = async (params: UsersQueryParams) => {
     setIsDataLoading(true);
     try {
-      const { data, paging } = await getUsers(
-        'profile,teams,roles',
-        limit,
-        param,
-        isAdmin,
-        false
-      );
+      const { data, paging } = await getUsers({
+        isBot: false,
+        limit: PAGE_SIZE_BASE,
+        fields: 'profile,teams,roles',
+        ...params,
+      });
       if (data) {
         setUserList(data);
         setPaging(paging);
@@ -92,11 +86,11 @@ const UserListPageV1 = () => {
       );
     }
     setIsDataLoading(false);
-    setIsPageLoading(false);
   };
 
   const handleFetch = () => {
-    fetchUsersList(isAdminPage, {
+    fetchUsersList({
+      isAdmin: isAdminPage,
       include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
     });
   };
@@ -116,7 +110,7 @@ const UserListPageV1 = () => {
       searchData(
         text,
         currentPage,
-        PAGE_SIZE_MEDIUM,
+        PAGE_SIZE_BASE,
         filters,
         '',
         '',
@@ -155,17 +149,18 @@ const UserListPageV1 = () => {
     );
   };
 
-  const handlePagingChange = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePagingChange = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (searchValue) {
-      setCurrentPage(cursorValue as number);
-      getSearchedUsers(searchValue, cursorValue as number);
-    } else {
-      setCurrentPage(activePage as number);
-      fetchUsersList(isAdminPage, {
-        [cursorValue]: paging[cursorValue as keyof Paging] as string,
+      setCurrentPage(currentPage);
+      getSearchedUsers(searchValue, currentPage);
+    } else if (cursorType && paging[cursorType]) {
+      setCurrentPage(currentPage);
+      fetchUsersList({
+        isAdmin: isAdminPage,
+        [cursorType]: paging[cursorType],
         include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
       });
     }
@@ -175,7 +170,8 @@ const UserListPageV1 = () => {
     setCurrentPage(INITIAL_PAGING_VALUE);
     setSearchValue('');
     setShowDeletedUser(value);
-    fetchUsersList(isAdminPage, {
+    fetchUsersList({
+      isAdmin: isAdminPage,
       include: value ? Include.Deleted : Include.NonDeleted,
     });
   };
@@ -210,19 +206,16 @@ const UserListPageV1 = () => {
         const userSearchTerm = searchParameter.get('user') || '';
         setSearchValue(userSearchTerm);
         getSearchedUsers(userSearchTerm, 1);
-        setIsPageLoading(false);
+        setIsDataLoading(false);
       } else {
-        fetchUsersList(tab === GlobalSettingOptions.ADMINS || undefined);
+        fetchUsersList({
+          isAdmin: tab === GlobalSettingOptions.ADMINS || undefined,
+        });
       }
     } else {
-      setIsPageLoading(false);
       setIsDataLoading(false);
     }
   }, [tab]);
-
-  if (isPageLoading) {
-    return <Loader />;
-  }
 
   return (
     <UserListV1

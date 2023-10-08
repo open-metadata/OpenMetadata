@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Aggregations, Bucket } from 'interface/search.interface';
 import { isEmpty, isEqual, isUndefined, uniqWith } from 'lodash';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { tabsInfo } from '../../constants/explore.constants';
+import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { Aggregations, Bucket } from '../../interface/search.interface';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
-} from 'pages/explore/ExplorePage.interface';
-import { QueryFilterFieldsEnum } from '../../enums/Explore.enum';
+} from '../../pages/explore/ExplorePage.interface';
 
 export const getQueryFiltersArray = (
   field: QueryFilterFieldsEnum,
@@ -116,3 +119,13 @@ export const getBucketsWithUpdatedCounts = (
       };
     })
     .sort((a, b) => b.doc_count - a.doc_count); // Sorting buckets according to the entity counts
+
+export const getSearchIndexFromPath = (path: string): SearchIndex | null => {
+  for (const key in tabsInfo) {
+    if (tabsInfo[key as ExploreSearchIndex].path === path) {
+      return key as SearchIndex;
+    }
+  }
+
+  return null;
+};

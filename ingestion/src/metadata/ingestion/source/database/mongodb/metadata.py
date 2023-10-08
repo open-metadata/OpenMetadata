@@ -20,13 +20,11 @@ from pymongo.errors import OperationFailure
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
@@ -42,19 +40,19 @@ class MongodbSource(CommonNoSQLSource):
     Database metadata from Dynamo Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.mongodb = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MongoDBConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MongoDBConnection):
             raise InvalidSourceException(
                 f"Expected MongoDBConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_schema_name_list(self) -> List[str]:
         """

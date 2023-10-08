@@ -13,14 +13,6 @@
 
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import DatePickerMenu from 'components/DatePickerMenu/DatePickerMenu.component';
-import {
-  GREEN_3,
-  GREEN_3_OPACITY,
-  RED_3,
-  YELLOW_2,
-} from 'constants/Color.constants';
 import { t } from 'i18next';
 import { isEmpty, isEqual, isUndefined, round, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -37,8 +29,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getListTestCaseResults } from 'rest/testAPI';
-import { getTestCaseDetailsPath } from 'utils/RouterUtils';
+import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
+import {
+  GREEN_3,
+  GREEN_3_OPACITY,
+  RED_3,
+  YELLOW_2,
+} from '../../../constants/Color.constants';
 import {
   COLORS,
   DEFAULT_RANGE_DATA,
@@ -50,17 +48,19 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../generated/tests/testCase';
+import { getListTestCaseResults } from '../../../rest/testAPI';
 import { axisTickFormatter } from '../../../utils/ChartUtils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { getTestCaseDetailsPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringsUtils';
-import { getFormattedDateFromSeconds } from '../../../utils/TimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
+import DatePickerMenu from '../../DatePickerMenu/DatePickerMenu.component';
 import Loader from '../../Loader/Loader';
 import SchemaEditor from '../../schema-editor/SchemaEditor';
 import { TestSummaryProps } from '../profilerDashboard.interface';
 import './TestSummary.style.less';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
 
 type ChartDataType = {
   information: { label: string; color: string }[];
@@ -103,7 +103,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       }, {});
 
       chartData.push({
-        name: getFormattedDateFromSeconds(result.timestamp as number),
+        name: formatDateTime(result.timestamp),
         status: result.testCaseStatus ?? '',
         ...values,
       });
@@ -218,7 +218,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       </ResponsiveContainer>
     ) : (
       <ErrorPlaceHolder
-        className="tw-mt-0"
+        className="m-t-0"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.FILTER}
       />

@@ -18,8 +18,8 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/vector.svg';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
+import { formatDateTimeFromSeconds } from '../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../utils/executionUtils';
-import { formatDateTimeFromSeconds } from '../../../utils/TimeUtils';
 import './tree-view-tab.less';
 
 interface TreeViewProps {

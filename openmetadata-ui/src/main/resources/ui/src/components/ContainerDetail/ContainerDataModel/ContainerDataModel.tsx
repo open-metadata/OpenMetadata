@@ -10,26 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FilterOutlined } from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { ModalWithMarkdownEditor } from 'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TableDescription from 'components/TableDescription/TableDescription.component';
-import TableTags from 'components/TableTags/TableTags.component';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { EntityType } from 'enums/entity.enum';
-import { Column, TagLabel } from 'generated/entity/data/container';
-import { TagSource } from 'generated/type/tagLabel';
-import { cloneDeep, isEmpty, isUndefined, map, toLower } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import {
+  cloneDeep,
+  groupBy,
+  isEmpty,
+  isUndefined,
+  toLower,
+  uniqBy,
+} from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { ColumnFilter } from '../../../components/Table/ColumnFilter/ColumnFilter.component';
+import TableDescription from '../../../components/TableDescription/TableDescription.component';
+import TableTags from '../../../components/TableTags/TableTags.component';
+import { PRIMERY_COLOR } from '../../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { Column, TagLabel } from '../../../generated/entity/data/container';
+import { TagSource } from '../../../generated/type/tagLabel';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from 'utils/ContainerDetailUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
+} from '../../../utils/ContainerDetailUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
@@ -39,7 +53,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   isReadOnly,
   onUpdate,
   entityFqn,
-  entityFieldThreads,
   onThreadLinkSelect,
 }) => {
   const { t } = useTranslation();
@@ -49,18 +62,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
-      const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-        fqn: tag.tagFQN,
-        source: tag.source,
-      }));
-
-      if (newSelectedTags && editColumnTag) {
+      if (selectedTags && editColumnTag) {
         const containerDataModel = cloneDeep(dataModel);
 
         updateContainerColumnTags(
           containerDataModel?.columns,
           editColumnTag.fullyQualifiedName ?? '',
-          newSelectedTags
+          selectedTags
         );
 
         await onUpdate(containerDataModel);
@@ -83,6 +91,15 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     }
     setEditContainerColumnDescription(undefined);
   };
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(dataModel?.columns ?? []);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [dataModel?.columns]);
 
   const columns: ColumnsType<Column> = useMemo(
     () => [
@@ -138,7 +155,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               fqn: record.fullyQualifiedName ?? '',
               field: record.description,
             }}
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             hasEditPermission={hasDescriptionEditAccess}
@@ -155,9 +171,17 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
@@ -174,12 +198,20 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
-        key: 'tags',
+        key: 'glossary',
         accessor: 'tags',
         width: 300,
+        filterIcon: (filtered: boolean) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{ color: filtered ? PRIMERY_COLOR : undefined }}
+          />
+        ),
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFieldThreads={entityFieldThreads}
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
@@ -198,7 +230,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       isReadOnly,
       entityFqn,
       hasTagEditAccess,
-      entityFieldThreads,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,

@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Switch, Table, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getBots } from 'rest/botsAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import {
-  getBotsPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_LARGE,
-} from '../../constants/constants';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Table from '../../components/common/Table/Table';
+import { getBotsPath } from '../../constants/constants';
 import { BOTS_DOCS } from '../../constants/docs.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Bot, ProviderType } from '../../generated/entity/bot';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
+import { usePaging } from '../../hooks/paging/usePaging';
+import { getBots } from '../../rest/botsAPI';
+import { showPagination } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -42,7 +42,6 @@ import NextPrevious from '../common/next-previous/NextPrevious';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../common/searchbar/Searchbar';
 import PageHeader from '../header/PageHeader.component';
-import Loader from '../Loader/Loader';
 import { BotListV1Props } from './BotListV1.interfaces';
 
 const BotListV1 = ({
@@ -53,10 +52,17 @@ const BotListV1 = ({
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
   const [botUsers, setBotUsers] = useState<Bot[]>([]);
-  const [paging, setPaging] = useState<Paging>({} as Paging);
   const [selectedUser, setSelectedUser] = useState<Bot>();
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
+
+  const {
+    currentPage,
+    paging,
+    pageSize,
+    handlePagingChange,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging();
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
@@ -65,15 +71,16 @@ const BotListV1 = ({
    *
    * @param after - Pagination value if passed data will be fetched post cursor value
    */
-  const fetchBots = async (showDeleted?: boolean, after?: string) => {
+  const fetchBots = async (showDeleted?: boolean, pagingOffset?: Paging) => {
     try {
       setLoading(true);
       const { data, paging } = await getBots({
-        after,
-        limit: PAGE_SIZE_LARGE,
+        after: pagingOffset?.after,
+        before: pagingOffset?.before,
+        limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
-      setPaging(paging);
+      handlePagingChange(paging);
       setBotUsers(data);
       setSearchedData(data);
       if (!showDeleted && isEmpty(data)) {
@@ -98,14 +105,16 @@ const BotListV1 = ({
         dataIndex: 'displayName',
         key: 'displayName',
         width: 200,
-        render: (_, record) => (
-          <Link
-            className="hover:tw-underline tw-cursor-pointer"
-            data-testid={`bot-link-${getEntityName(record)}`}
-            to={getBotsPath(record?.fullyQualifiedName || record?.name || '')}>
-            {getEntityName(record)}
-          </Link>
-        ),
+        render: (_, record) => {
+          const name = getEntityName(record);
+          const fqn = record.fullyQualifiedName || record.name || '';
+
+          return (
+            <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
+              {name}
+            </Link>
+          );
+        },
       },
       {
         title: t('label.description'),
@@ -137,23 +146,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Space align="center" size={8}>
-              <Tooltip placement="topRight" title={title}>
-                <Button
-                  data-testid={`bot-delete-${getEntityName(record)}`}
-                  disabled={isDisabled}
-                  icon={
-                    <SVGIcons
-                      alt={t('label.delete')}
-                      className="tw-w-4"
-                      icon={Icons.DELETE}
-                    />
-                  }
-                  type="text"
-                  onClick={() => setSelectedUser(record)}
-                />
-              </Tooltip>
-            </Space>
+            <Tooltip placement="topRight" title={title}>
+              <Button
+                data-testid={`bot-delete-${getEntityName(record)}`}
+                disabled={isDisabled}
+                icon={<SVGIcons alt={t('label.delete')} icon={Icons.DELETE} />}
+                type="text"
+                onClick={() => setSelectedUser(record)}
+              />
+            </Tooltip>
           );
         },
       },
@@ -165,8 +166,16 @@ const BotListV1 = ({
    *
    * @param cursorValue - represents pagination value
    */
-  const handlePageChange = (cursorValue: string | number) => {
-    setCurrentPage(cursorValue as number);
+  const handleBotPageChange = ({
+    currentPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    handlePageChange(currentPage);
+    cursorType &&
+      fetchBots(false, {
+        [cursorType]: paging[cursorType],
+        total: paging.total,
+      } as Paging);
   };
 
   /**
@@ -196,13 +205,13 @@ const BotListV1 = ({
     setBotUsers([]);
     setSearchedData([]);
     fetchBots(showDeleted);
-  }, [showDeleted]);
+  }, [showDeleted, pageSize]);
 
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 
   return handleErrorPlaceholder ? (
     <Row>
-      <Col className="w-full d-flex tw-justify-end">
+      <Col className="w-full d-flex justify-end">
         <Space align="end" size={5}>
           <Switch
             checked={showDeleted}
@@ -231,7 +240,7 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <Space align="center" className="tw-w-full tw-justify-end" size={16}>
+        <Space align="center" className="w-full justify-end" size={16}>
           <Space align="end" size={5}>
             <Switch
               checked={showDeleted}
@@ -265,49 +274,42 @@ const BotListV1 = ({
         />
       </Col>
       <Col span={24}>
-        <Row>
-          <Col span={24}>
-            {loading ? (
-              <Loader />
-            ) : (
-              <Table
-                bordered
-                columns={columns}
-                dataSource={searchedData}
-                locale={{
-                  emptyText: <FilterTablePlaceHolder />,
-                }}
-                pagination={false}
-                rowKey="name"
-                size="small"
-              />
-            )}
-          </Col>
-          <Col span={24}>
-            {paging.total > PAGE_SIZE_LARGE && (
-              <NextPrevious
-                currentPage={currentPage}
-                pageSize={PAGE_SIZE_LARGE}
-                paging={paging}
-                pagingHandler={handlePageChange}
-                totalCount={paging.total}
-              />
-            )}
-          </Col>
-        </Row>
-
-        <DeleteWidgetModal
-          afterDeleteAction={handleDeleteAction}
-          allowSoftDelete={!showDeleted}
-          entityId={selectedUser?.id || ''}
-          entityName={selectedUser?.displayName || ''}
-          entityType={EntityType.BOT}
-          visible={Boolean(selectedUser)}
-          onCancel={() => {
-            setSelectedUser(undefined);
+        <Table
+          bordered
+          columns={columns}
+          dataSource={searchedData}
+          loading={loading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
           }}
+          pagination={false}
+          rowKey="name"
+          size="small"
         />
       </Col>
+      <Col span={24}>
+        {showPagination(paging) && (
+          <NextPrevious
+            currentPage={currentPage}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handleBotPageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </Col>
+
+      <DeleteWidgetModal
+        afterDeleteAction={handleDeleteAction}
+        allowSoftDelete={!showDeleted}
+        entityId={selectedUser?.id || ''}
+        entityName={selectedUser?.displayName || ''}
+        entityType={EntityType.BOT}
+        visible={Boolean(selectedUser)}
+        onCancel={() => {
+          setSelectedUser(undefined);
+        }}
+      />
     </Row>
   );
 };

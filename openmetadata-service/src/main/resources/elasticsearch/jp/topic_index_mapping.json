@@ -61,6 +61,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer_jp",
@@ -73,13 +76,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer_jp"
       },
       "version": {
         "type": "float"
@@ -93,6 +90,9 @@
       },
       "href": {
         "type": "text"
+      },
+      "sourceUrl": {
+        "type": "keyword"
       },
       "messageSchema": {
         "properties": {
@@ -126,6 +126,43 @@
               },
               "fullyQualifiedName": {
                 "type": "text"
+              },
+              "domain" : {
+                "properties": {
+                  "id": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 36
+                      }
+                    }
+                  },
+                  "type": {
+                    "type": "keyword"
+                  },
+                  "name": {
+                    "type": "keyword",
+                    "fields": {
+                      "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                      }
+                    }
+                  },
+                  "fullyQualifiedName": {
+                    "type": "keyword"
+                  },
+                  "description": {
+                    "type": "text"
+                  },
+                  "deleted": {
+                    "type": "text"
+                  },
+                  "href": {
+                    "type": "text"
+                  }
+                }
               },
               "tags": {
                 "properties": {
@@ -227,6 +264,53 @@
             "type": "keyword"
           },
           "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
             "type": "keyword",
             "fields": {
               "keyword": {

@@ -44,9 +44,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.core.Response.Status;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -328,7 +331,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Test
-  void testImportInvalidCsv() throws IOException {
+  @SneakyThrows
+  void testImportInvalidCsv() {
     String glossaryName = "invalidCsv";
     createEntity(createRequest(glossaryName), ADMIN_AUTH_HEADERS);
 
@@ -337,6 +341,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String record = ",g::1,dsp1,dsc1,,,,,,,";
     String csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(glossaryName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader, getFailedRecord(record, "[name must match \"\"^(?U)[\\w'\\- .&()%]+$\"\"]")
@@ -347,6 +352,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     record = "invalidParent,g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,,,";
     csv = createCsv(GlossaryCsv.HEADERS, listOf(record), null);
     result = importCsv(glossaryName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
     assertSummary(result, CsvImportResult.Status.FAILURE, 2, 1, 1);
     expectedRows = new String[] {resultsHeader, getFailedRecord(record, entityNotFound(0, "invalidParent"))};
     assertRows(result, expectedRows);
@@ -365,7 +371,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
     String user1 = USER1.getName();
     String user2 = USER2.getName();
-    String team1 = TEAM1.getName();
+    String team11 = TEAM11.getName();
 
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references" "tags",
     // "reviewers", "owner", "status"
@@ -376,8 +382,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
-            String.format("importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Approved"),
+            String.format("importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
@@ -386,12 +392,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,Tier.Tier1,%s;%s,user;%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Draft"),
-            String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team1, "Deprecated"));
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,Tier.Tier2,%s,user;%s,%s", user1, user2, "Approved"),
+            String.format("importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s,team;%s,%s", user1, team11, "Draft"));
 
     // Add new row to existing rows
-    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Draft");
+    List<String> newRecords = listOf(",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,Tier.Tier3,,,Approved");
     testImportExport(glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
   }
 
@@ -442,7 +447,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

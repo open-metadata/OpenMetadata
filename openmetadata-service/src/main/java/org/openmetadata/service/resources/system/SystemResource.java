@@ -10,7 +10,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Objects;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -33,8 +32,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
@@ -54,9 +53,8 @@ public class SystemResource {
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
 
-  public SystemResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "SystemRepository must not be null");
-    this.systemRepository = new SystemRepository(dao.systemDAO());
+  public SystemResource(Authorizer authorizer) {
+    this.systemRepository = Entity.getSystemRepository();
     this.authorizer = authorizer;
   }
 

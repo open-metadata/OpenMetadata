@@ -11,22 +11,125 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
-import { getDatabaseSchemaDetailsByFQN } from 'rest/databaseAPI';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
+import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
-  mockEntityPermissions,
-  mockGetAllFeedsData,
   mockGetDatabaseSchemaDetailsByFQNData,
   mockGetFeedCountData,
   mockPatchDatabaseSchemaDetailsData,
-  mockPostFeedByIdData,
   mockPostThreadData,
-  mockSearchQueryData,
 } from './mocks/DatabaseSchemaPage.mock';
+
+const mockEntityPermissionByFqn = jest
+  .fn()
+  .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
+
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockEntityPermissionByFqn,
+  })),
+}));
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
+  () => ({
+    useActivityFeedProvider: jest.fn().mockImplementation(() => ({
+      postFeed: jest.fn(),
+      deleteFeed: jest.fn(),
+      updateFeed: jest.fn(),
+    })),
+    __esModule: true,
+    default: 'ActivityFeedProvider',
+  })
+);
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <>testActivityFeedTab</>),
+  })
+);
+
+jest.mock(
+  '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testActivityThreadPanel</p>);
+  }
+);
+
+jest.mock(
+  '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
+  () => ({
+    DataAssetsHeader: jest
+      .fn()
+      .mockImplementation(() => <p>testDataAssetsHeader</p>),
+  })
+);
+
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+  jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
+);
+
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
+  return jest.fn().mockImplementation(() => <p>testTagsContainerV2</p>);
+});
+
+jest.mock('./SchemaTablesTab', () => {
+  return jest.fn().mockReturnValue(<p>testSchemaTablesTab</p>);
+});
+
+jest.mock('../../pages/StoredProcedure/StoredProcedureTab', () => {
+  return jest.fn().mockImplementation(() => <div>testStoredProcedureTab</div>);
+});
+
+jest.mock('../../components/containers/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
+});
+
+jest.mock('../../utils/StringsUtils', () => ({
+  getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
+}));
+
+jest.mock('../../rest/storedProceduresAPI', () => ({
+  getStoredProceduresList: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ data: [], paging: { total: 2 } })
+    ),
+}));
+
+jest.mock('../../rest/tableAPI', () => ({
+  getTableList: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    ),
+}));
+
+jest.mock('../../utils/CommonUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation((error) => error),
+}));
+
+jest.mock('../../utils/RouterUtils', () => ({
+  getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
+}));
+
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityFeedLink: jest.fn(),
+  getEntityName: jest.fn().mockImplementation((obj) => obj.name),
+}));
+
+jest.mock('../../utils/TableUtils', () => ({
+  getTierTags: jest.fn(),
+  getTagsWithoutTier: jest.fn(),
+}));
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest
@@ -34,106 +137,42 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('components/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="Loader">Loader</div>)
-);
-
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="RichTextEditorPreviewer">RichTextEditorPreviewer</div>
-    ))
-);
-
-jest.mock('components/common/next-previous/NextPrevious', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="NextPrevious">NextPrevious</div>
-    ))
-);
-
-jest.mock('components/FeedEditor/FeedEditor', () => {
-  return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
-});
-
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="ErrorPlaceHolder">{children}</div>
-    ))
-);
-
-jest.mock('components/common/description/Description', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({ onThreadLinkSelect, onDescriptionEdit, onDescriptionUpdate }) => (
-        <div
-          data-testid="Description"
-          onClick={() => {
-            onThreadLinkSelect('threadLink');
-            onDescriptionEdit();
-            onDescriptionUpdate('Updated Description');
-          }}>
-          Description
-        </div>
-      )
-    )
+jest.mock('../../components/Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <div>testLoader</div>)
 );
 
 jest.mock(
-  'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="ActivityThreadPanel">ActivityThreadPanel</div>
-      ))
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
 );
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(mockEntityPermissions)),
+    getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
-jest.mock('rest/searchAPI', () => ({
-  searchQuery: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockSearchQueryData)),
-}));
-
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
-  jest.fn().mockReturnValue(<p>Sidebar</p>)
-);
-
-jest.mock('rest/feedsAPI', () => ({
-  getAllFeeds: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockGetAllFeedsData)),
+jest.mock('../../rest/feedsAPI', () => ({
   getFeedCount: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetFeedCountData)),
-  postFeedById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockPostFeedByIdData)),
   postThread: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockPostThreadData)),
 }));
 
-jest.mock('rest/databaseAPI', () => ({
+jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseSchemaDetailsByFQN: jest
     .fn()
     .mockImplementation(() =>
       Promise.resolve(mockGetDatabaseSchemaDetailsByFQNData)
     ),
   patchDatabaseSchemaDetails: jest
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(mockPatchDatabaseSchemaDetailsData)
+    ),
+  restoreDatabaseSchema: jest
     .fn()
     .mockImplementation(() =>
       Promise.resolve(mockPatchDatabaseSchemaDetailsData)
@@ -145,16 +184,13 @@ jest.mock('../../AppState', () => ({
 }));
 
 const mockParams = {
-  databaseSchemaFQN: 'sample_data.ecommerce_db.shopify',
+  fqn: 'sample_data.ecommerce_db.shopify',
   tab: 'table',
 };
 
+const API_FIELDS = ['owner', 'usageSummary', 'tags', 'domain', 'votes'];
+
 jest.mock('react-router-dom', () => ({
-  Link: jest
-    .fn()
-    .mockImplementation(({ children }) => (
-      <div data-testid="link">{children}</div>
-    )),
   useHistory: jest.fn().mockImplementation(() => ({
     history: {
       push: jest.fn(),
@@ -163,111 +199,113 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => children);
-});
+describe('Tests for DatabaseSchemaPage', () => {
+  it('DatabaseSchemaPage should fetch permissions', () => {
+    render(<DatabaseSchemaPageComponent />);
 
-describe.skip('Tests for DatabaseSchemaPage', () => {
-  it('Page should render properly for "Tables" tab', async () => {
-    act(() => {
-      render(<DatabaseSchemaPageComponent />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const entityPageInfo = await screen.findByTestId('entityPageInfo');
-    const tabsPane = await screen.findByTestId('tabs');
-    const richTextEditorPreviewer = await screen.findAllByTestId(
-      'RichTextEditorPreviewer'
+    expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
+      'databaseSchema',
+      mockParams.fqn
     );
-    const description = await screen.findByTestId('Description');
-    const nextPrevious = await screen.findByTestId('NextPrevious');
-    const databaseSchemaTable = await screen.findByTestId(
-      'databaseSchema-tables'
-    );
-
-    expect(entityPageInfo).toBeInTheDocument();
-    expect(tabsPane).toBeInTheDocument();
-    expect(richTextEditorPreviewer).toHaveLength(10);
-    expect(description).toBeInTheDocument();
-    expect(nextPrevious).toBeInTheDocument();
-    expect(databaseSchemaTable).toBeInTheDocument();
   });
 
-  it('Activity Feed List should render properly for "Activity Feeds" tab', async () => {
-    mockParams.tab = 'activity_feed';
+  it('DatabaseSchemaPage should not fetch details if permission is there', () => {
+    render(<DatabaseSchemaPageComponent />);
 
-    await act(async () => {
-      render(<DatabaseSchemaPageComponent />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const activityFeedList = await screen.findByTestId('ActivityFeedList');
-
-    expect(activityFeedList).toBeInTheDocument();
+    expect(getDatabaseSchemaDetailsByFQN).not.toHaveBeenCalled();
+    expect(getStoredProceduresList).not.toHaveBeenCalled();
   });
 
-  it('AcivityThreadPanel should render properly after clicked on thread panel button', async () => {
-    mockParams.tab = 'table';
-    await act(async () => {
-      render(<DatabaseSchemaPageComponent />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const description = await screen.findByTestId('Description');
-
-    expect(description).toBeInTheDocument();
-
-    act(() => {
-      fireEvent.click(description);
-    });
-
-    const activityThreadPanel = await screen.findByTestId(
-      'ActivityThreadPanel'
-    );
-
-    expect(activityThreadPanel).toBeInTheDocument();
-  });
-
-  it('ErrorPlaceholder should be displayed in case error occurs while fetching database schema details', async () => {
-    (getDatabaseSchemaDetailsByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject('An error occurred')
-    );
-
-    await act(async () => {
-      render(<DatabaseSchemaPageComponent />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    const errorPlaceHolder = await screen.findByTestId('ErrorPlaceHolder');
-    const errorMessage = await screen.findByTestId('error-message');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(errorMessage).toHaveTextContent('An error occurred');
-  });
-
-  it('ErrorPlaceholder should be shown in case of not viewing permissions', async () => {
+  it('DatabaseSchemaPage should render permission placeholder if not have required permission', async () => {
     (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
-      getEntityPermissionByFqn: jest.fn().mockImplementation(() =>
-        Promise.resolve({
-          ...mockEntityPermissions,
-          ViewAll: false,
-          ViewBasic: false,
-        })
-      ),
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: false,
+      })),
     }));
 
     await act(async () => {
-      render(<DatabaseSchemaPageComponent />, {
-        wrapper: MemoryRouter,
-      });
+      render(<DatabaseSchemaPageComponent />);
     });
 
-    const errorPlaceHolder = await screen.findByTestId('ErrorPlaceHolder');
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+  });
 
-    expect(errorPlaceHolder).toBeInTheDocument();
+  it('DatabaseSchemaPage should fetch details with basic fields', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<DatabaseSchemaPageComponent />);
+    });
+
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+      mockParams.fqn,
+      API_FIELDS,
+      'include=all'
+    );
+  });
+
+  it('DatabaseSchemaPage should fetch storedProcedure with basic fields', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<DatabaseSchemaPageComponent />);
+    });
+
+    expect(getStoredProceduresList).toHaveBeenCalledWith({
+      databaseSchema: mockParams.fqn,
+      fields: 'owner,tags,followers',
+      include: 'non-deleted',
+      limit: 0,
+    });
+  });
+
+  it('DatabaseSchemaPage should render page for ViewBasic permissions', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<DatabaseSchemaPageComponent />);
+    });
+
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+      mockParams.fqn,
+      API_FIELDS,
+      'include=all'
+    );
+
+    expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
+    expect(await screen.findByTestId('tabs')).toBeInTheDocument();
+    expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();
+  });
+
+  it('DatabaseSchemaPage should render tables by default', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<DatabaseSchemaPageComponent />);
+    });
+
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
+      mockParams.fqn,
+      API_FIELDS,
+      'include=all'
+    );
+
+    expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();
   });
 });

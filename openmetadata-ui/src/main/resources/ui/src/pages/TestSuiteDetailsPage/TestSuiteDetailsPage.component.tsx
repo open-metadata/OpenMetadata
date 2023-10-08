@@ -13,51 +13,52 @@
 
 import { Button, Col, Modal, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { AddTestCaseList } from 'components/AddTestCaseList/AddTestCaseList.component';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import Description from 'components/common/description/Description';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
 import { compare } from 'fast-json-patch';
-import { useAuth } from 'hooks/authHooks';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import Description from '../../components/common/description/Description';
+import ManageButton from '../../components/common/entityPageInfo/ManageButton/ManageButton';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
-  addTestCaseToLogicalTestSuite,
-  getListTestCase,
-  getTestSuiteByName,
-  ListTestCaseParams,
-  updateTestSuiteById,
-} from 'rest/testAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import DataQualityTab from '../../components/ProfilerDashboard/component/DataQualityTab';
 import { INITIAL_PAGING_VALUE, pagingObject } from '../../constants/constants';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useAuth } from '../../hooks/authHooks';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import {
+  addTestCaseToLogicalTestSuite,
+  getListTestCase,
+  getTestSuiteByName,
+  ListTestCaseParams,
+  updateTestSuiteById,
+} from '../../rest/testAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './TestSuiteDetailsPage.styles.less';
 
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { testSuiteFQN } = useParams<Record<string, string>>();
+  const { fqn: testSuiteFQN } = useParams<{ fqn: string }>();
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const { isAuthDisabled } = useAuthContext();
@@ -122,6 +123,7 @@ const TestSuiteDetailsPage = () => {
       const response = await getListTestCase({
         fields: 'testCaseResult,testDefinition,testSuite',
         testSuiteId: testSuiteId,
+        orderByLastExecutionDate: true,
         ...param,
       });
 
@@ -244,14 +246,16 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const handleTestCasePaging = (
-    cursorValue: string | number,
-    activePage?: number | undefined
-  ) => {
-    setCurrentPage(activePage as number);
-    fetchTestCases({
-      [cursorValue]: testCasesPaging[cursorValue as keyof Paging] as string,
-    });
+  const handleTestCasePaging = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      setCurrentPage(currentPage);
+      fetchTestCases({
+        [cursorType]: testCasesPaging[cursorType],
+      });
+    }
   };
 
   const handleTestSuiteUpdate = (testCase?: TestCase) => {
@@ -319,7 +323,7 @@ const TestSuiteDetailsPage = () => {
             </Space>
           </Space>
 
-          <div className="d-flex tw-gap-1 tw-mb-2 tw-mt-1 flex-wrap">
+          <div className="w-full m-t-xxs m-b-xs">
             <OwnerLabel
               hasPermission={hasAccess}
               owner={testOwner}
@@ -327,19 +331,18 @@ const TestSuiteDetailsPage = () => {
             />
           </div>
 
-          <Space>
-            <Description
-              className="test-suite-description"
-              description={testSuiteDescription || ''}
-              entityName={testSuite?.displayName ?? testSuite?.name}
-              hasEditAccess={hasAccess}
-              isEdit={isDescriptionEditable}
-              onCancel={() => descriptionHandler(false)}
-              onDescriptionEdit={() => descriptionHandler(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
-          </Space>
+          <Description
+            className="test-suite-description"
+            description={testSuiteDescription || ''}
+            entityName={testSuite?.displayName ?? testSuite?.name}
+            hasEditAccess={hasAccess}
+            isEdit={isDescriptionEditable}
+            onCancel={() => descriptionHandler(false)}
+            onDescriptionEdit={() => descriptionHandler(true)}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
         </Col>
+
         <Col span={24}>
           <DataQualityTab
             afterDeleteAction={fetchTestCases}

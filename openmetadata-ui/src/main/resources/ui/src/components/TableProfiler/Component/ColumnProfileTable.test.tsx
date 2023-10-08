@@ -19,11 +19,10 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { ColumnsType } from 'antd/lib/table';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column, ColumnProfile } from '../../../generated/entity/data/table';
+import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
+import { Column } from '../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../mocks/TableData.mock';
 import { ColumnProfileTableProps } from '../TableProfiler.interface';
 import ColumnProfileTable from './ColumnProfileTable';
@@ -46,31 +45,10 @@ jest.mock('antd', () => ({
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
-  Table: jest.fn().mockImplementation(({ columns, dataSource }) => (
-    <table>
-      <thead>
-        <tr>
-          {(columns as ColumnsType<ColumnProfile>).map((col) => (
-            <th key={col.key}>{col.title}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody key="tbody">
-        {dataSource.map((row: any, i: number) => (
-          <tr key={i}>
-            {columns.map((col: any) => (
-              <td key={col.key}>
-                {col.render
-                  ? col.render(row[col.dataIndex], col)
-                  : row[col.dataIndex]}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  )),
 }));
+jest.mock('../../../components/common/Table/Table', () =>
+  jest.fn().mockImplementation(() => <div>Table</div>)
+);
 
 jest.mock('../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),

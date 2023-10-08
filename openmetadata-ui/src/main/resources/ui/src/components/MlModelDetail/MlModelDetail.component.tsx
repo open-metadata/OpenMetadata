@@ -14,56 +14,48 @@
 import { Col, Row, Space, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { TagLabel, TagSource } from 'generated/type/schema';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { restoreMlmodel } from 'rest/mlModelAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
-import { getEntityName, getEntityThreadLink } from 'utils/EntityUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { getMlModelDetailsPath } from '../../constants/constants';
-import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { MlHyperParameter } from '../../generated/api/data/createMlModel';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { LabelType, State } from '../../generated/type/tagLabel';
-import {
-  getEmptyPlaceholder,
-  getFeedCounts,
-  refreshPage,
-} from '../../utils/CommonUtils';
+import { TagLabel, TagSource } from '../../generated/type/schema';
+import { restoreMlmodel } from '../../rest/mlModelAPI';
+import { getEmptyPlaceholder, getFeedCounts } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from '../common/CustomPropertyTable/CustomPropertyTable.interface';
-import EntityLineageComponent from '../EntityLineage/EntityLineage.component';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import { MlModelDetailProp } from './MlModelDetail.interface';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
 const MlModelDetail: FC<MlModelDetailProp> = ({
+  updateMlModelDetailsState,
   mlModelDetail,
   fetchMlModel,
   followMlModelHandler,
@@ -73,20 +65,19 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   updateMlModelFeatures,
   onExtensionUpdate,
   createThread,
+  onUpdateVote,
   versionHandler,
   tagUpdateHandler,
+  handleToggleDelete,
 }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { mlModelFqn, tab: activeTab } =
-    useParams<{ tab: EntityTabs; mlModelFqn: string }>();
+  const { fqn: mlModelFqn, tab: activeTab } =
+    useParams<{ tab: EntityTabs; fqn: string }>();
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
 
   const [mlModelPermissions, setPipelinePermissions] = useState(
     DEFAULT_ENTITY_PERMISSION
@@ -126,7 +117,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [AppState.nonSecureUserDetails, AppState.userDetails]
   );
 
-  const { mlModelTags, isFollowing, tier, entityFqn } = useMemo(() => {
+  const { mlModelTags, isFollowing, tier } = useMemo(() => {
     return {
       ...mlModelDetail,
       tier: getTierTags(mlModelDetail.tags ?? []),
@@ -135,17 +126,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       isFollowing: mlModelDetail.followers?.some(
         ({ id }: { id: string }) => id === currentUser?.id
       ),
-      entityFqn: mlModelDetail.fullyQualifiedName ?? '',
     };
   }, [mlModelDetail]);
 
   const fetchEntityFeedCount = () => {
-    getFeedCounts(
-      EntityType.MLMODEL,
-      mlModelFqn,
-      setEntityFieldThreadCount,
-      setFeedCount
-    );
+    getFeedCounts(EntityType.MLMODEL, mlModelFqn, setFeedCount);
   };
 
   useEffect(() => {
@@ -201,17 +186,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     [mlModelDetail, mlModelDetail.owner]
   );
 
-  const onTierUpdate = async (newTier?: string) => {
-    const tierTag: Mlmodel['tags'] = newTier
-      ? [
-          ...mlModelTags,
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(mlModelDetail.tags ?? []);
+  const onTierUpdate = async (newTier?: Tag) => {
+    const tierTag = updateTierTag(mlModelDetail?.tags ?? [], newTier);
     const updatedMlModelDetails = {
       ...mlModelDetail,
       tags: tierTag,
@@ -238,7 +214,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         // Autoclose timer
         2000
       );
-      refreshPage();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -357,12 +333,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && mlModelDetail) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -370,6 +341,12 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       await tagUpdateHandler(updatedMlModel);
     }
   };
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
 
   const tabs = useMemo(
     () => [
@@ -388,11 +365,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={mlModelDetail.description}
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.DESCRIPTION,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
+                  entityFqn={mlModelFqn}
                   entityName={mlModelDetail.name}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={
@@ -408,11 +381,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   onThreadLinkSelect={handleThreadLinkSelect}
                 />
                 <MlModelFeaturesList
-                  entityFieldThreads={getEntityFieldThreadCounts(
-                    EntityField.ML_FEATURES,
-                    entityFieldThreadCount
-                  )}
-                  entityFqn={entityFqn}
+                  entityFqn={mlModelFqn}
                   handleFeaturesUpdate={onFeaturesUpdate}
                   isDeleted={mlModelDetail.deleted}
                   mlFeatures={mlModelDetail.mlFeatures}
@@ -428,8 +397,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityFqn={mlModelFqn}
                   entityType={EntityType.MLMODEL}
                   permission={
                     (mlModelPermissions.EditAll ||
@@ -444,8 +412,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelDetail.fullyQualifiedName}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
+                  entityFqn={mlModelFqn}
                   entityType={EntityType.MLMODEL}
                   permission={
                     (mlModelPermissions.EditAll ||
@@ -514,18 +481,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: !mlModelPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
-            entityDetails={
-              mlModelDetail as CustomPropertyProps['entityDetails']
-            }
             entityType={EntityType.MLMODEL}
             handleExtensionUpdate={onExtensionUpdate}
             hasEditAccess={
               mlModelPermissions.EditAll || mlModelPermissions.EditCustomFields
             }
+            hasPermission={mlModelPermissions.ViewAll}
           />
         ),
       },
@@ -536,7 +499,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       mlModelDetail,
       mlModelPermissions,
       isEdit,
-      entityFieldThreadCount,
       getMlHyperParameters,
       getMlModelStore,
       onCancel,
@@ -557,7 +519,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
-            afterDeleteAction={handleDataAssetAfterDeleteAction}
+            afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={updateMlModelDetailsState}
             dataAsset={mlModelDetail}
             entityType={EntityType.MLMODEL}
             permissions={mlModelPermissions}
@@ -566,6 +529,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreMlmodel}
             onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
         </Col>

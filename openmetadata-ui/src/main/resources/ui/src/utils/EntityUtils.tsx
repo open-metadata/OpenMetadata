@@ -12,39 +12,37 @@
  */
 
 import { Popover } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import QueryCount from 'components/common/QueryCount/QueryCount.component';
-import { DataAssetsWithoutServiceField } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import {
-  LeafNodes,
-  LineagePos,
-} from 'components/EntityLineage/EntityLineage.interface';
-import {
-  EntityUnion,
-  EntityWithServices,
-} from 'components/Explore/explore.interface';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import {
-  SearchedDataProps,
-  SourceType,
-} from 'components/searched-data/SearchedData.interface';
-import { EntityField } from 'constants/Feeds.constants';
-import { GlobalSettingsMenuCategory } from 'constants/GlobalSettings.constants';
-import { ExplorePageTabs } from 'enums/Explore.enum';
-import { Tag } from 'generated/entity/classification/tag';
-import { Container } from 'generated/entity/data/container';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Database } from 'generated/entity/data/database';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
-import { Topic } from 'generated/entity/data/topic';
 import i18next from 'i18next';
-import { EntityFieldThreadCount } from 'interface/feed.interface';
-import { get, isEmpty, isNil, isUndefined, lowerCase, startCase } from 'lodash';
+import {
+  get,
+  isEmpty,
+  isNil,
+  isObject,
+  isUndefined,
+  lowerCase,
+  startCase,
+} from 'lodash';
 import { Bucket, EntityDetailUnion } from 'Models';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import QueryCount from '../components/common/QueryCount/QueryCount.component';
+import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import {
+  LeafNodes,
+  LineagePos,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
+import {
+  EntityServiceUnion,
+  EntityUnion,
+  EntityWithServices,
+} from '../components/Explore/explore.interface';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+import {
+  SearchedDataProps,
+  SourceType,
+} from '../components/searched-data/SearchedData.interface';
+import { QueryVoteType } from '../components/TableQueries/TableQueries.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -56,16 +54,37 @@ import {
   getMlModelDetailsPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
+  getStoredProcedureDetailPath,
   getTableDetailsPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
+  NO_DATA,
 } from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { AssetsType, EntityType, FqnPart } from '../enums/entity.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
+import { Tag } from '../generated/entity/classification/tag';
+import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
+import { Database } from '../generated/entity/data/database';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import {
+  SearchIndex as SearchIndexAsset,
+  SearchIndex as SearchIndexEntity,
+  SearchIndexField,
+} from '../generated/entity/data/searchIndex';
+import {
+  StoredProcedure,
+  StoredProcedureCodeObject,
+} from '../generated/entity/data/storedProcedure';
 import {
   Column,
   ColumnJoins,
@@ -73,21 +92,34 @@ import {
   Table,
   TableType,
 } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Edge, EntityLineage } from '../generated/type/entityLineage';
 import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
+import { UsageDetails } from '../generated/type/usageDetails';
+import { Votes } from '../generated/type/votes';
+import { EntityFieldThreadCount } from '../interface/feed.interface';
 import {
   getOwnerValue,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getEntityFieldThreadCounts } from './FeedUtils';
 import Fqn from './Fqn';
-import { getGlossaryPath, getSettingPath } from './RouterUtils';
+import {
+  getDataProductsDetailsPath,
+  getDomainPath,
+  getGlossaryPath,
+  getSettingPath,
+} from './RouterUtils';
+import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
 import { getEncodedFqn } from './StringsUtils';
 import {
   getDataTypeString,
+  getTagsWithoutTier,
   getTierFromTableTags,
   getUsagePercentile,
 } from './TableUtils';
@@ -110,7 +142,7 @@ export const getEntityName = (entity?: {
   return entity?.displayName || entity?.name || '';
 };
 
-export const getEntityId = (entity?: { id?: string }) => entity?.id || '';
+export const getEntityId = (entity?: { id?: string }) => entity?.id ?? '';
 
 export const getEntityTags = (
   type: string,
@@ -125,10 +157,14 @@ export const getEntityTags = (
 
       return tableTags;
     }
-    case EntityType.PIPELINE:
     case EntityType.DASHBOARD:
+    case EntityType.SEARCH_INDEX:
+    case EntityType.PIPELINE:
+      return getTagsWithoutTier(entityDetail.tags || []);
+
     case EntityType.TOPIC:
     case EntityType.MLMODEL:
+    case EntityType.STORED_PROCEDURE:
     case EntityType.DASHBOARD_DATA_MODEL: {
       return entityDetail.tags || [];
     }
@@ -146,416 +182,754 @@ export const getOwnerNameWithProfilePic = (
       {' '}
       <ProfilePicture
         displayName={owner.displayName}
-        id={owner.id as string}
-        name={owner.name || ''}
+        id={owner.id}
+        name={owner.name ?? ''}
         width="20"
       />
       <span>{getEntityName(owner)}</span>
     </div>
   ) : null;
 
+const getUsageData = (usageSummary: UsageDetails | undefined) =>
+  !isNil(usageSummary?.weeklyStats?.percentileRank)
+    ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank ?? 0)
+    : NO_DATA;
+
+const getTableFieldsFromTableDetails = (tableDetails: Table) => {
+  const {
+    fullyQualifiedName,
+    owner,
+    tags,
+    usageSummary,
+    profile,
+    columns,
+    tableType,
+  } = tableDetails;
+  const [service, database, schema] = getPartialNameFromTableFQN(
+    fullyQualifiedName ?? '',
+    [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+    FQN_SEPARATOR_CHAR
+  ).split(FQN_SEPARATOR_CHAR);
+
+  const tier = getTierFromTableTags(tags ?? []);
+
+  return {
+    fullyQualifiedName,
+    owner,
+    service,
+    database,
+    schema,
+    tier,
+    usage: getUsageData(usageSummary),
+    profile,
+    columns,
+    tableType,
+  };
+};
+
+const getTableOverview = (tableDetails: Table) => {
+  const {
+    fullyQualifiedName,
+    owner,
+    profile,
+    columns,
+    tableType,
+    service,
+    database,
+    schema,
+    tier,
+    usage,
+  } = getTableFieldsFromTableDetails(tableDetails);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.type'),
+      value: tableType ?? TableType.Regular,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service || NO_DATA,
+      url: getServiceDetailsPath(service, ServiceCategory.DATABASE_SERVICES),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.database'),
+      value: database || NO_DATA,
+      url: getDatabaseDetailsPath(
+        getPartialNameFromTableFQN(
+          fullyQualifiedName ?? '',
+          [FqnPart.Service, FqnPart.Database],
+          FQN_SEPARATOR_CHAR
+        )
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.schema'),
+      value: schema || NO_DATA,
+      url: getDatabaseSchemaDetailsPath(
+        getPartialNameFromTableFQN(
+          fullyQualifiedName ?? '',
+          [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+          FQN_SEPARATOR_CHAR
+        )
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.usage'),
+      value: usage || NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.query-plural'),
+      value: <QueryCount tableId={tableDetails.id || ''} />,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.column-plural'),
+      value: columns ? columns.length : NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.row-plural'),
+      value:
+        !isUndefined(profile) && profile?.rowCount ? profile.rowCount : NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+  ];
+
+  return overview;
+};
+
+const getPipelineOverview = (pipelineDetails: Pipeline) => {
+  const { owner, tags, sourceUrl, service, displayName } = pipelineDetails;
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: `${i18next.t('label.pipeline')} ${i18next.t(
+        'label.url-uppercase'
+      )}`,
+      dataTestId: 'pipeline-url-label',
+      value: displayName ?? NO_DATA,
+      url: sourceUrl,
+      isLink: true,
+      isExternal: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: (service?.name as string) || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name as string,
+        ServiceCategory.PIPELINE_SERVICES
+      ),
+      isLink: true,
+      isExternal: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+  ];
+
+  return overview;
+};
+
+const getDashboardOverview = (dashboardDetails: Dashboard) => {
+  const { owner, tags, sourceUrl, service, displayName } = dashboardDetails;
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: `${i18next.t('label.dashboard')} ${i18next.t(
+        'label.url-uppercase'
+      )}`,
+      value: displayName ?? NO_DATA,
+      url: sourceUrl,
+      isLink: true,
+      isExternal: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name as string,
+        ServiceCategory.DASHBOARD_SERVICES
+      ),
+      isExternal: false,
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      isExternal: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+  ];
+
+  return overview;
+};
+
+export const getSearchIndexOverview = (
+  searchIndexDetails: SearchIndexEntity
+) => {
+  const { owner, tags, service } = searchIndexDetails;
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      isExternal: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name as string,
+        ServiceCategory.SEARCH_SERVICES
+      ),
+      isExternal: false,
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+  ];
+
+  return overview;
+};
+
+const getMlModelOverview = (mlModelDetails: Mlmodel) => {
+  const { algorithm, target, server, dashboard, owner } = mlModelDetails;
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.algorithm'),
+      value: algorithm || NO_DATA,
+      url: '',
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.target'),
+      value: target ?? NO_DATA,
+      url: '',
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.server'),
+      value: server ?? NO_DATA,
+      url: server,
+      isLink: Boolean(server),
+      isExternal: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.dashboard'),
+      value: getEntityName(dashboard) || NO_DATA,
+      url: getDashboardDetailsPath(dashboard?.fullyQualifiedName as string),
+      isLink: true,
+      isExternal: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+  ];
+
+  return overview;
+};
+
+const getContainerOverview = (containerDetails: Container) => {
+  const { numberOfObjects, serviceType, dataModel } = containerDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview = [
+    {
+      name: i18next.t('label.object-plural'),
+      value: numberOfObjects,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.column-plural'),
+      value:
+        !isUndefined(dataModel) && dataModel.columns
+          ? dataModel.columns.length
+          : NO_DATA,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
+  const {
+    owner,
+    tags,
+    service,
+    displayName,
+    dataModelType,
+    fullyQualifiedName,
+  } = dataModelDetails;
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: `${i18next.t('label.data-model')} ${i18next.t(
+        'label.url-uppercase'
+      )}`,
+      value: displayName || NO_DATA,
+      url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name as string,
+        ServiceCategory.DASHBOARD_SERVICES
+      ),
+      isExternal: false,
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      isExternal: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.data-model-type'),
+      value: dataModelType,
+      isLink: false,
+      isExternal: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+  ];
+
+  return overview;
+};
+
+const getStoredProcedureOverview = (
+  storedProcedureDetails: StoredProcedure
+) => {
+  const { fullyQualifiedName, owner, tags, storedProcedureCode } =
+    storedProcedureDetails;
+  const [service, database, schema] = getPartialNameFromTableFQN(
+    fullyQualifiedName ?? '',
+    [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+    FQN_SEPARATOR_CHAR
+  ).split(FQN_SEPARATOR_CHAR);
+
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service || NO_DATA,
+      url: getServiceDetailsPath(service, ServiceCategory.DATABASE_SERVICES),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.database'),
+      value: database || NO_DATA,
+      url: getDatabaseDetailsPath(
+        getPartialNameFromTableFQN(
+          fullyQualifiedName ?? '',
+          [FqnPart.Service, FqnPart.Database],
+          FQN_SEPARATOR_CHAR
+        )
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+    {
+      name: i18next.t('label.schema'),
+      value: schema || NO_DATA,
+      url: getDatabaseSchemaDetailsPath(
+        getPartialNameFromTableFQN(
+          fullyQualifiedName ?? '',
+          [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
+          FQN_SEPARATOR_CHAR
+        )
+      ),
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    ...(isObject(storedProcedureCode)
+      ? [
+          {
+            name: i18next.t('label.language'),
+            value:
+              (storedProcedureCode as StoredProcedureCodeObject).language ??
+              NO_DATA,
+            isLink: false,
+            visible: [
+              DRAWER_NAVIGATION_OPTIONS.lineage,
+              DRAWER_NAVIGATION_OPTIONS.explore,
+            ],
+          },
+        ]
+      : []),
+  ];
+
+  return overview;
+};
+
+const getDatabaseOverview = (databaseDetails: Database) => {
+  const { owner, service, tags, usageSummary } = databaseDetails;
+
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service.fullyQualifiedName || NO_DATA,
+      url: getServiceDetailsPath(
+        service.fullyQualifiedName ?? '',
+        ServiceCategory.DATABASE_SERVICES
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+
+    {
+      name: i18next.t('label.usage'),
+      value: getUsageData(usageSummary),
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+
+  return overview;
+};
+
+const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
+  const { owner, service, tags, usageSummary, database } =
+    databaseSchemaDetails;
+
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service.fullyQualifiedName ?? NO_DATA,
+      url: getServiceDetailsPath(
+        service.fullyQualifiedName ?? '',
+        ServiceCategory.DATABASE_SERVICES
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.database'),
+      value: database.fullyQualifiedName ?? NO_DATA,
+      url: getDatabaseDetailsPath(database.fullyQualifiedName ?? ''),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.usage'),
+      value: getUsageData(usageSummary),
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+
+  return overview;
+};
+
+const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
+  const { owner, tags, serviceType } = serviceDetails;
+
+  const tier = getTierFromTableTags(tags ?? []);
+
+  const overview = [
+    {
+      name: i18next.t('label.owner'),
+      value:
+        getOwnerNameWithProfilePic(owner) ??
+        i18next.t('label.no-entity', {
+          entity: i18next.t('label.owner'),
+        }),
+      url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owner?.name),
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+
+    {
+      name: i18next.t('label.tier'),
+      value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+
+  return overview;
+};
+
 export const getEntityOverview = (
   type: string,
   entityDetail: EntityUnion
-): Array<{
-  name: string;
-  value: string | number | React.ReactNode;
-  isLink: boolean;
-  isExternal?: boolean;
-  isIcon?: boolean;
-  url?: string;
-  visible?: Array<string>;
-  dataTestId?: string;
-}> => {
-  const NO_DATA = '-';
-
+): Array<BasicEntityOverviewInfo> => {
   switch (type) {
     case ExplorePageTabs.TABLES: {
-      const {
-        fullyQualifiedName,
-        owner,
-        tags,
-        usageSummary,
-        profile,
-        columns,
-        tableType,
-      } = entityDetail as Table;
-      const [service, database, schema] = getPartialNameFromTableFQN(
-        fullyQualifiedName ?? '',
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
-        FQN_SEPARATOR_CHAR
-      ).split(FQN_SEPARATOR_CHAR);
-
-      const tier = getTierFromTableTags(tags || []);
-
-      const usage = !isNil(usageSummary?.weeklyStats?.percentileRank)
-        ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
-        : '-';
-
-      const overview = [
-        {
-          name: i18next.t('label.owner'),
-          value:
-            getOwnerNameWithProfilePic(owner) ||
-            i18next.t('label.no-entity', {
-              entity: i18next.t('label.owner'),
-            }),
-          url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.type'),
-          value: tableType || TableType.Regular,
-          isLink: false,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.service'),
-          value: service || NO_DATA,
-          url: getServiceDetailsPath(
-            service,
-            ServiceCategory.DATABASE_SERVICES
-          ),
-          isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.database'),
-          value: database || NO_DATA,
-          url: getDatabaseDetailsPath(
-            getPartialNameFromTableFQN(
-              fullyQualifiedName ?? '',
-              [FqnPart.Service, FqnPart.Database],
-              FQN_SEPARATOR_CHAR
-            )
-          ),
-          isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.schema'),
-          value: schema || NO_DATA,
-          url: getDatabaseSchemaDetailsPath(
-            getPartialNameFromTableFQN(
-              fullyQualifiedName ?? '',
-              [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
-              FQN_SEPARATOR_CHAR
-            )
-          ),
-          isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
-          isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.usage'),
-          value: usage || NO_DATA,
-          isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.query-plural'),
-          value: <QueryCount tableId={entityDetail.id || ''} />,
-          isLink: false,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.column-plural'),
-          value: columns ? columns.length : NO_DATA,
-          isLink: false,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.row-plural'),
-          value: profile && profile?.rowCount ? profile.rowCount : NO_DATA,
-          isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-      ];
-
-      return overview;
+      return getTableOverview(entityDetail as Table);
     }
 
     case ExplorePageTabs.PIPELINES: {
-      const { owner, tags, sourceUrl, service, displayName } =
-        entityDetail as Pipeline;
-      const tier = getTierFromTableTags(tags || []);
-
-      const overview = [
-        {
-          name: i18next.t('label.owner'),
-          value:
-            getOwnerNameWithProfilePic(owner) ||
-            i18next.t('label.no-entity', {
-              entity: i18next.t('label.owner'),
-            }),
-          url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: `${i18next.t('label.pipeline')} ${i18next.t(
-            'label.url-uppercase'
-          )}`,
-          dataTestId: 'pipeline-url-label',
-          value: displayName || NO_DATA,
-          url: sourceUrl,
-          isLink: true,
-          isExternal: true,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.service'),
-          value: (service?.name as string) || NO_DATA,
-          url: getServiceDetailsPath(
-            service?.name as string,
-            ServiceCategory.PIPELINE_SERVICES
-          ),
-          isLink: true,
-          isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
-          isLink: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-      ];
-
-      return overview;
+      return getPipelineOverview(entityDetail as Pipeline);
     }
+
     case ExplorePageTabs.DASHBOARDS: {
-      const { owner, tags, sourceUrl, service, displayName } =
-        entityDetail as Dashboard;
-      const tier = getTierFromTableTags(tags || []);
+      return getDashboardOverview(entityDetail as Dashboard);
+    }
 
-      const overview = [
-        {
-          name: i18next.t('label.owner'),
-          value:
-            getOwnerNameWithProfilePic(owner) ||
-            i18next.t('label.no-entity', {
-              entity: i18next.t('label.owner'),
-            }),
-          url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: `${i18next.t('label.dashboard')} ${i18next.t(
-            'label.url-uppercase'
-          )}`,
-          value: displayName || NO_DATA,
-          url: sourceUrl,
-          isLink: true,
-          isExternal: true,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.service'),
-          value: (service?.fullyQualifiedName as string) || NO_DATA,
-          url: getServiceDetailsPath(
-            service?.name as string,
-            ServiceCategory.DASHBOARD_SERVICES
-          ),
-          isExternal: false,
-          isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-
-        {
-          name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
-          isLink: false,
-          isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-      ];
-
-      return overview;
+    case ExplorePageTabs.SEARCH_INDEX: {
+      return getSearchIndexOverview(entityDetail as SearchIndexEntity);
     }
 
     case ExplorePageTabs.MLMODELS: {
-      const { algorithm, target, server, dashboard, owner } =
-        entityDetail as Mlmodel;
-
-      const overview = [
-        {
-          name: i18next.t('label.owner'),
-          value:
-            getOwnerNameWithProfilePic(owner) ||
-            i18next.t('label.no-entity', {
-              entity: i18next.t('label.owner'),
-            }),
-          url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.algorithm'),
-          value: algorithm || NO_DATA,
-          url: '',
-          isLink: false,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.target'),
-          value: target || NO_DATA,
-          url: '',
-          isLink: false,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.server'),
-          value: server || NO_DATA,
-          url: server,
-          isLink: true,
-          isExternal: true,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.dashboard'),
-          value: getEntityName(dashboard) || NO_DATA,
-          url: getDashboardDetailsPath(dashboard?.fullyQualifiedName as string),
-          isLink: true,
-          isExternal: false,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-      ];
-
-      return overview;
+      return getMlModelOverview(entityDetail as Mlmodel);
     }
     case ExplorePageTabs.CONTAINERS: {
-      const { numberOfObjects, serviceType, dataModel } =
-        entityDetail as Container;
-
-      const visible = [
-        DRAWER_NAVIGATION_OPTIONS.lineage,
-        DRAWER_NAVIGATION_OPTIONS.explore,
-      ];
-
-      const overview = [
-        {
-          name: i18next.t('label.object-plural'),
-          value: numberOfObjects,
-          isLink: false,
-          visible,
-        },
-        {
-          name: i18next.t('label.service-type'),
-          value: serviceType,
-          isLink: false,
-          visible,
-        },
-        {
-          name: i18next.t('label.column-plural'),
-          value:
-            dataModel && dataModel.columns ? dataModel.columns.length : NO_DATA,
-          isLink: false,
-          visible,
-        },
-      ];
-
-      return overview;
+      return getContainerOverview(entityDetail as Container);
     }
 
     case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
-      const {
-        owner,
-        tags,
-        service,
-        displayName,
-        dataModelType,
-        fullyQualifiedName,
-      } = entityDetail as DashboardDataModel;
-      const tier = getTierFromTableTags(tags || []);
+      return getDataModelOverview(entityDetail as DashboardDataModel);
+    }
 
-      const overview = [
-        {
-          name: i18next.t('label.owner'),
-          value:
-            getOwnerNameWithProfilePic(owner) ||
-            i18next.t('label.no-entity', {
-              entity: i18next.t('label.owner'),
-            }),
-          url: getOwnerValue(owner as EntityReference),
-          isLink: owner?.name ? true : false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: `${i18next.t('label.data-model')} ${i18next.t(
-            'label.url-uppercase'
-          )}`,
-          value: displayName || NO_DATA,
-          url: getDataModelDetailsPath(fullyQualifiedName ?? ''),
-          isLink: true,
-          visible: [
-            DRAWER_NAVIGATION_OPTIONS.lineage,
-            DRAWER_NAVIGATION_OPTIONS.explore,
-          ],
-        },
-        {
-          name: i18next.t('label.service'),
-          value: (service?.fullyQualifiedName as string) || NO_DATA,
-          url: getServiceDetailsPath(
-            service?.name as string,
-            ServiceCategory.DASHBOARD_SERVICES
-          ),
-          isExternal: false,
-          isLink: true,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
+    case ExplorePageTabs.STORED_PROCEDURE: {
+      return getStoredProcedureOverview(entityDetail as StoredProcedure);
+    }
 
-        {
-          name: i18next.t('label.tier'),
-          value: tier ? tier.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
-          isLink: false,
-          isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-        {
-          name: i18next.t('label.data-model-type'),
-          value: dataModelType,
-          isLink: false,
-          isExternal: false,
-          visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-        },
-      ];
+    case ExplorePageTabs.DATABASE: {
+      return getDatabaseOverview(entityDetail as Database);
+    }
 
-      return overview;
+    case ExplorePageTabs.DATABASE_SCHEMA: {
+      return getDatabaseSchemaOverview(entityDetail as DatabaseSchema);
+    }
+
+    case ExplorePageTabs.DATABASE_SERVICE:
+    case ExplorePageTabs.MESSAGING_SERVICE:
+    case ExplorePageTabs.DASHBOARD_SERVICE:
+    case ExplorePageTabs.ML_MODEL_SERVICE:
+    case ExplorePageTabs.PIPELINE_SERVICE:
+    case ExplorePageTabs.SEARCH_INDEX_SERVICE: {
+      return getEntityServiceOverview(entityDetail as EntityServiceUnion);
     }
 
     default:
@@ -735,11 +1109,11 @@ export const getResourceEntityFromEntityType = (entityType: string) => {
  * @param {string} searchText - The text to search for.
  * @returns An array of columns that have been searched for a specific string.
  */
-export const searchInColumns = (
-  table: Column[],
+export const searchInColumns = <T extends Column | SearchIndexField>(
+  table: T[],
   searchText: string
-): Column[] => {
-  const searchedValue: Column[] = table.reduce((searchedCols, column) => {
+): T[] => {
+  const searchedValue: T[] = table.reduce((searchedCols, column) => {
     const searchLowerCase = lowerCase(searchText);
     const isContainData =
       lowerCase(column.name).includes(searchLowerCase) ||
@@ -749,7 +1123,10 @@ export const searchInColumns = (
     if (isContainData) {
       return [...searchedCols, column];
     } else if (!isUndefined(column.children)) {
-      const searchedChildren = searchInColumns(column.children, searchText);
+      const searchedChildren = searchInColumns<T>(
+        column.children as T[],
+        searchText
+      );
       if (searchedChildren.length > 0) {
         return [
           ...searchedCols,
@@ -762,7 +1139,7 @@ export const searchInColumns = (
     }
 
     return searchedCols;
-  }, [] as Column[]);
+  }, [] as T[]);
 
   return searchedValue;
 };
@@ -815,7 +1192,7 @@ export const getFrequentlyJoinedColumns = (
       <span className="text-grey-muted m-r-xss">{columnLabel}:</span>
       <span>
         {frequentlyJoinedWithColumns.slice(0, 3).map((columnJoin, index) => (
-          <Fragment key={index}>
+          <Fragment key={columnJoin.fullyQualifiedName}>
             {index > 0 && <span className="m-r-xss">,</span>}
             <Link
               className="link-text"
@@ -838,28 +1215,26 @@ export const getFrequentlyJoinedColumns = (
           <Popover
             content={
               <div className="text-left">
-                {frequentlyJoinedWithColumns
-                  ?.slice(3)
-                  .map((columnJoin, index) => (
-                    <Fragment key={index}>
-                      <a
-                        className="link-text d-block p-y-xss"
-                        href={getTableDetailsPath(
-                          getTableFQNFromColumnFQN(
-                            columnJoin?.fullyQualifiedName
-                          ),
-                          getPartialNameFromTableFQN(
-                            columnJoin?.fullyQualifiedName,
-                            [FqnPart.Column]
-                          )
-                        )}>
-                        {getPartialNameFromTableFQN(
+                {frequentlyJoinedWithColumns?.slice(3).map((columnJoin) => (
+                  <Fragment key={columnJoin.fullyQualifiedName}>
+                    <a
+                      className="link-text d-block p-y-xss"
+                      href={getTableDetailsPath(
+                        getTableFQNFromColumnFQN(
+                          columnJoin?.fullyQualifiedName
+                        ),
+                        getPartialNameFromTableFQN(
                           columnJoin?.fullyQualifiedName,
-                          [FqnPart.Database, FqnPart.Table, FqnPart.Column]
-                        )}
-                      </a>
-                    </Fragment>
-                  ))}
+                          [FqnPart.Column]
+                        )
+                      )}>
+                      {getPartialNameFromTableFQN(
+                        columnJoin?.fullyQualifiedName,
+                        [FqnPart.Database, FqnPart.Table, FqnPart.Column]
+                      )}
+                    </a>
+                  </Fragment>
+                ))}
               </div>
             }
             placement="bottom"
@@ -871,9 +1246,6 @@ export const getFrequentlyJoinedColumns = (
     </div>
   ) : null;
 };
-
-export const getSortedTierBucketList = (buckets: Bucket[]): Bucket[] =>
-  buckets.sort((a, b) => Number(a.key.slice(-1)) - Number(b.key.slice(-1)));
 
 /**
  * Convert entity to EntityReference
@@ -927,7 +1299,7 @@ export const getEntityLinkFromType = (
       return getTableDetailsPath(fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
-      return getGlossaryTermDetailsPath(getEncodedFqn(fullyQualifiedName));
+      return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
       return getTagsDetailsPath(getEncodedFqn(fullyQualifiedName));
     case EntityType.TOPIC:
@@ -942,6 +1314,16 @@ export const getEntityLinkFromType = (
       return getContainerDetailPath(fullyQualifiedName);
     case EntityType.DATABASE:
       return getDatabaseDetailsPath(fullyQualifiedName);
+    case EntityType.DATABASE_SCHEMA:
+      return getDatabaseSchemaDetailsPath(fullyQualifiedName);
+    case EntityType.DATA_PRODUCT:
+      return getDataProductsDetailsPath(getEncodedFqn(fullyQualifiedName));
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return getDataModelDetailsPath(fullyQualifiedName);
+    case EntityType.STORED_PROCEDURE:
+      return getStoredProcedureDetailPath(fullyQualifiedName);
+    case EntityType.SEARCH_INDEX:
+      return getSearchIndexTabPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1066,14 +1448,17 @@ export const getEntityBreadcrumbs = (
   entity:
     | SearchedDataProps['data'][number]['_source']
     | DashboardDataModel
+    | StoredProcedure
     | Database
     | DatabaseSchema
+    | SearchIndexAsset
     | DataAssetsWithoutServiceField,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
   switch (entityType) {
     case EntityType.TABLE:
+    case EntityType.STORED_PROCEDURE:
       return getBreadcrumbForTable(entity as Table, includeCurrent);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
@@ -1230,6 +1615,17 @@ export const getEntityBreadcrumbs = (
         },
       ];
 
+    case EntityType.SEARCH_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.SEARCH_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.SEARCH_SERVICES)
+          ),
+        },
+      ];
+
     case EntityType.CONTAINER: {
       const data = entity as Container;
 
@@ -1239,11 +1635,35 @@ export const getEntityBreadcrumbs = (
         parents: isUndefined(data.parent) ? [] : [data.parent],
       });
     }
+
+    case EntityType.DOMAIN:
+      return [
+        {
+          name: i18next.t('label.domain-plural'),
+          url: getDomainPath(),
+        },
+      ];
+
+    case EntityType.DATA_PRODUCT: {
+      const data = entity as DataProduct;
+      if (!data.domain) {
+        return [];
+      }
+
+      return [
+        {
+          name: getEntityName(data.domain),
+          url: getDomainPath(data.domain.fullyQualifiedName),
+        },
+      ];
+    }
+
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:
     case EntityType.PIPELINE:
     case EntityType.MLMODEL:
     case EntityType.DASHBOARD_DATA_MODEL:
+    case EntityType.SEARCH_INDEX:
     default:
       return getBreadcrumbForEntitiesWithServiceOnly(
         entity as Topic,
@@ -1275,4 +1695,27 @@ export const getEntityThreadLink = (
   );
 
   return thread[0]?.entityLink;
+};
+
+/**
+ * Take entity vote and userId as input and return name for vote status type
+ * @param votes - entity votes
+ * @param userId - current user id
+ * @returns - vote status type
+ */
+export const getEntityVoteStatus = (userId: string, votes?: Votes) => {
+  if (isUndefined(votes)) {
+    return QueryVoteType.unVoted;
+  }
+
+  const upVoters = votes.upVoters ?? [];
+  const downVoters = votes.downVoters ?? [];
+
+  if (upVoters.some((user) => user.id === userId)) {
+    return QueryVoteType.votedUp;
+  } else if (downVoters.some((user) => user.id === userId)) {
+    return QueryVoteType.votedDown;
+  } else {
+    return QueryVoteType.unVoted;
+  }
 };

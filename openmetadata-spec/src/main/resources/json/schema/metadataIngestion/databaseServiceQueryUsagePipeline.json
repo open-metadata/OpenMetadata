@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceQueryUsagePipeline",
   "description": "DatabaseService Query Usage Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "databaseUsageConfigType": {
       "description": "Database Source Config Usage Pipeline type",
@@ -20,25 +21,30 @@
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process usage data.",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "title": "Query Log Duration"
     },
     "stageFileLocation": {
       "description": "Temporary file name to store the query logs before processing. Absolute file path required.",
       "type": "string",
-      "default": "/tmp/query_log"
+      "default": "/tmp/query_log",
+      "title": "Stage File Location"
     },
     "filterCondition": {
       "description": "Configuration the condition to filter the query history.",
-      "type": "string"
+      "type": "string",
+      "title": "Filter Condition"
     },
     "resultLimit": {
       "description": "Configuration to set the limit for query logs",
       "type": "integer",
-      "default": "1000"
+      "default": 1000,
+      "title": "Result Limit"
     },
     "queryLogFilePath": {
       "description": "Configuration to set the file path for query logs",
-      "type": "string"
+      "type": "string",
+      "title": "Query Log File Path"
     }
   },
   "additionalProperties": false

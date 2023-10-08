@@ -65,7 +65,7 @@ const Reaction: FC<ReactionProps> = ({
   return (
     <Button
       aria-label={reaction.reaction}
-      className={classNames('tw-mr-1 ant-btn-popover-reaction', {
+      className={classNames('m-r-sm ant-btn-popover-reaction', {
         'ant-btn-popover-isReacted': isReacted,
       })}
       data-testid="reaction-button"

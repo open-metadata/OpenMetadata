@@ -27,7 +27,6 @@ TABLEAU_DATASOURCES_QUERY = """
           name
           remoteType
         }}
-        fullyQualifiedName
         description
       }}
       workbook {{

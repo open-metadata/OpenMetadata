@@ -39,7 +39,7 @@ import org.openmetadata.schema.type.DataInsightChartDataType;
 import org.openmetadata.schema.type.DataReportIndex;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
-import org.openmetadata.service.resources.dataInsight.DataInsightChartResourceTest;
+import org.openmetadata.service.resources.datainsight.DataInsightChartResourceTest;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -147,13 +147,6 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             ADMIN_AUTH_HEADERS);
     verifyKpiResults(kpiResults, List.of(kpiResult, newKpiResult), 2);
 
-    // Replace kpi result for a date
-    KpiResult newKpiResult1 =
-        new KpiResult()
-            .withTimestamp(TestUtils.dateToTimestamp("2021-09-10"))
-            .withTargetResult(List.of(new KpiTarget().withName(KPI_TARGET.getName()).withValue("25")));
-    putKpiResult(createdKpi.getFullyQualifiedName(), newKpiResult1, ADMIN_AUTH_HEADERS);
-
     createdKpi = getEntity(createdKpi.getId(), "targetDefinition", ADMIN_AUTH_HEADERS);
     // first result should be the latest date
     kpiResults =
@@ -162,12 +155,12 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             TestUtils.dateToTimestamp("2021-09-09"),
             TestUtils.dateToTimestamp("2021-09-10"),
             ADMIN_AUTH_HEADERS);
-    verifyKpiResults(kpiResults, List.of(newKpiResult1, kpiResult), 2);
+    verifyKpiResults(kpiResults, List.of(newKpiResult, kpiResult), 2);
 
     String dateStr = "2021-09-";
     List<KpiResult> kpiResultList = new ArrayList<>();
     kpiResultList.add(kpiResult);
-    kpiResultList.add(newKpiResult1);
+    kpiResultList.add(newKpiResult);
     for (int i = 11; i <= 20; i++) {
       kpiResult =
           new KpiResult()

@@ -19,7 +19,7 @@ import {
   State,
   TagSource,
   Topic,
-} from 'generated/entity/data/topic';
+} from '../../generated/entity/data/topic';
 
 export const mockTopicDetails: Topic = {
   id: 'be3e1a5d-40fa-48ba-a420-86b8427c9d6d',

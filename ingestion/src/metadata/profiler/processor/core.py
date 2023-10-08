@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast
 
 from pydantic import ValidationError
 from sqlalchemy import Column
@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
     TableProfile,
 )
-from metadata.pii.processor import PIIProcessor
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
@@ -61,8 +60,6 @@ class MissingMetricException(Exception):
     """
 
 
-# pylint: disable=too-many-public-methods
-# Pylint error above indicates that this class needs to be refactored
 class Profiler(Generic[TMetric]):
     """
     Core Profiler.
@@ -77,7 +74,6 @@ class Profiler(Generic[TMetric]):
         self,
         *metrics: Type[TMetric],
         profiler_interface: ProfilerInterface,
-        profile_date: datetime = datetime.now(tz=timezone.utc).timestamp(),
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
     ):
@@ -93,7 +89,7 @@ class Profiler(Generic[TMetric]):
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
         self._metrics = metrics
-        self._profile_date = profile_date
+        self._profile_date = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
         self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.validate_composed_metric()
@@ -242,21 +238,35 @@ class Profiler(Generic[TMetric]):
         if (
             self.profiler_interface.table_entity.tableProfilerConfig
             and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
-        ):
+        ) or (self.include_columns):
+            # include_columns is set from the `tableConfig` of the `ProfilerProcessorConfig` in the CLI config
+            # while `self.profiler_interface.table_entity.tableProfilerConfig.includeColumns` is set from the entity
+            # definition in the metadata service. This gets set either from the UI or the profiler entity page. Config
+            # ran from the CLI takes precedence over the entity definition.
+            columns = (
+                self.include_columns
+                if self.include_columns
+                else self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+            )
+            columns = cast(List[ColumnProfilerConfig], columns)
             metric_names = next(
                 (
                     include_columns.metrics
-                    for include_columns in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+                    for include_columns in columns
                     if include_columns.columnName == column.name
                 ),
                 None,
             )
 
             if metric_names:
+                metric_names = {
+                    mtrc.lower() for mtrc in metric_names
+                }  # case insensitice
                 metrics = [
                     Metric.value
                     for Metric in Metrics
-                    if Metric.value.name() in metric_names and Metric.value in metrics
+                    if Metric.value.name().lower() in metric_names
+                    and Metric.value in metrics
                 ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
@@ -446,7 +456,6 @@ class Profiler(Generic[TMetric]):
     def process(
         self,
         generate_sample_data: Optional[bool],
-        process_pii_sensitive: Optional[bool],
     ) -> ProfilerResponse:
         """
         Given a table, we will prepare the profiler for
@@ -462,11 +471,6 @@ class Profiler(Generic[TMetric]):
             sample_data = self.generate_sample_data()
         else:
             sample_data = None
-
-        # If we also have sample data, we'll use the NER Scanner,
-        # otherwise we'll stick to the ColumnNameScanner
-        if process_pii_sensitive:
-            self.process_pii_sensitive(sample_data)
 
         profile = self.get_profile()
         self._check_profile_and_handle(profile)
@@ -495,28 +499,6 @@ class Profiler(Generic[TMetric]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
             return None
-
-    def process_pii_sensitive(self, sample_data: TableData) -> None:
-        """Read sample data to find pii sensitive columns and tag them
-        as PII sensitive data
-
-        Args:
-            sample_data (TableData): sample data
-        """
-        try:
-            pii_processor = PIIProcessor(
-                metadata=self.profiler_interface.ometa_client  # type: ignore
-            )
-            pii_processor.process(
-                sample_data,
-                self.profiler_interface.table_entity,  # type: ignore
-                self.profiler_interface.source_config.confidence,
-            )
-        except Exception as exc:
-            logger.warning(
-                f"Unexpected error while processing sample data for auto pii tagging - {exc}"
-            )
-            logger.debug(traceback.format_exc())
 
     def get_profile(self) -> CreateTableProfileRequest:
         """

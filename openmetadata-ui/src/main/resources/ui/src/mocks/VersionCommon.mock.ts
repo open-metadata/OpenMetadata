@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
 export const mockOwner = {
   id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
@@ -20,6 +20,16 @@ export const mockOwner = {
   fullyQualifiedName: 'aaron_johnson0',
   displayName: 'Aaron Johnson',
   deleted: false,
+};
+
+export const mockDomain = {
+  id: '9602ed54-451d-4539-9b08-af611533f38b',
+  type: 'domain',
+  name: 'new_domain',
+  fullyQualifiedName: 'new_domain',
+  description: 'Testing new domain',
+  displayName: 'New Domain',
+  href: 'http://localhost:8585/api/v1/domains/9602ed54-451d-4539-9b08-af611533f38b',
 };
 
 export const mockTier = {

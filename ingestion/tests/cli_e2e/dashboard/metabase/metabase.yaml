@@ -13,7 +13,7 @@ source:
       dashboardFilterPattern: {}
       chartFilterPattern: {}
       dbServiceNames:
-      - local_redshift
+      - local_redshift_metabase
 sink:
   type: metadata-rest
   config: {}

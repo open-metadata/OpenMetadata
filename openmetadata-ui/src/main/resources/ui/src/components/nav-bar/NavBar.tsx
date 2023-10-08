@@ -13,24 +13,17 @@
 
 import {
   Badge,
+  Button,
+  Col,
   Dropdown,
-  Image,
   Input,
   InputRef,
+  Popover,
+  Row,
   Select,
   Space,
-  Tooltip,
 } from 'antd';
-import { ReactComponent as DropDownIcon } from 'assets/svg/DropDown.svg';
-import { ReactComponent as Help } from 'assets/svg/ic-help.svg';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import SearchOptions from 'components/AppBar/SearchOptions';
-import Suggestions from 'components/AppBar/Suggestions';
-import BrandImage from 'components/common/BrandImage/BrandImage';
-import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import WhatsNewAlert from 'components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import { CookieStorage } from 'cookie-storage';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { debounce, upperCase } from 'lodash';
 import React, {
@@ -42,19 +35,29 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getEntityDetailLink, refreshPage } from 'utils/CommonUtils';
-import { isCommandKeyPress, Keys } from 'utils/KeyboardUtil';
 import AppState from '../../AppState';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
+import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import Logo from '../../assets/svg/logo-monogram.svg';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import SearchOptions from '../../components/AppBar/SearchOptions';
+import Suggestions from '../../components/AppBar/Suggestions';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
+import { useDomainProvider } from '../../components/Domain/DomainProvider/DomainProvider';
+import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
+import WhatsNewAlert from '../../components/Modals/WhatsNewModal/WhatsNewAlert/WhatsNewAlert.component';
 import {
   globalSearchOptions,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
+import { getEntityDetailLink, refreshPage } from '../../utils/CommonUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -64,6 +67,7 @@ import {
   languageSelectOptions,
   SupportedLocales,
 } from '../../utils/i18next/i18nextUtil';
+import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import {
   inPageSearchOptions,
   isInPageSearchAllowed,
@@ -71,10 +75,10 @@ import {
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import LegacyDropDown from '../dropdown/DropDown';
-import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
+import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
 
 const cookieStorage = new CookieStorage();
@@ -96,13 +100,15 @@ const NavBar = ({
   handleClear,
 }: NavBarProps) => {
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
-
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
   const history = useHistory();
+  const { domainOptions, activeDomain, updateActiveDomain } =
+    useDomainProvider();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -310,6 +316,11 @@ const NavBar = ({
     }
   }, [profilePicture]);
 
+  const handleDomainChange = useCallback(({ key }) => {
+    updateActiveDomain(key);
+    refreshPage();
+  }, []);
+
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
     refreshPage();
@@ -341,81 +352,123 @@ const NavBar = ({
             width={30}
           />
         </Link>
-        <div className="m-auto">
-          <Input
-            addonBefore={entitiesSelect}
-            autoComplete="off"
-            className="rounded-4  appbar-search"
-            data-testid="searchBox"
-            id="searchBox"
-            placeholder={t('message.search-for-entity-types')}
-            ref={searchRef}
-            style={{
-              height: '37px',
-            }}
-            suffix={
-              <span className="d-flex items-center">
-                <CmdKIcon />
-                <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
-                  {searchValue ? (
-                    <SVGIcons
-                      alt="icon-cancel"
-                      icon={cancelIcon}
-                      onClick={handleClear}
-                    />
-                  ) : (
-                    <SVGIcons
-                      alt="icon-search"
-                      icon={searchIcon}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleOnClick();
-                      }}
-                    />
-                  )}
-                </span>
-              </span>
+        <div
+          className="m-auto relative"
+          data-testid="navbar-search-container"
+          ref={searchContainerRef}>
+          <Popover
+            content={
+              !isTourRoute &&
+              searchValue &&
+              (isInPageSearchAllowed(pathname) ? (
+                <SearchOptions
+                  isOpen={isSearchBoxOpen}
+                  options={inPageSearchOptions(pathname)}
+                  searchText={searchValue}
+                  selectOption={handleSelectOption}
+                  setIsOpen={handleSearchBoxOpen}
+                />
+              ) : (
+                <Suggestions
+                  isOpen={isSearchBoxOpen}
+                  searchCriteria={
+                    searchCriteria === '' ? undefined : searchCriteria
+                  }
+                  searchText={suggestionSearch}
+                  setIsOpen={handleSearchBoxOpen}
+                />
+              ))
             }
-            type="text"
-            value={searchValue}
-            onBlur={() => {
-              setSearchIcon('icon-searchv1');
-              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
-            }}
-            onChange={(e) => {
-              const { value } = e.target;
-              debounceOnSearch(value);
-              handleSearchChange(value);
-            }}
-            onFocus={() => {
-              setSearchIcon('icon-searchv1color');
-              setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
-            }}
-            onKeyDown={handleKeyDown}
-          />
-          {!isTourRoute &&
-            searchValue &&
-            (isInPageSearchAllowed(pathname) ? (
-              <SearchOptions
-                isOpen={isSearchBoxOpen}
-                options={inPageSearchOptions(pathname)}
-                searchText={searchValue}
-                selectOption={handleSelectOption}
-                setIsOpen={handleSearchBoxOpen}
-              />
-            ) : (
-              <Suggestions
-                isOpen={isSearchBoxOpen}
-                searchCriteria={
-                  searchCriteria === '' ? undefined : searchCriteria
-                }
-                searchText={suggestionSearch}
-                setIsOpen={handleSearchBoxOpen}
-              />
-            ))}
+            getPopupContainer={() =>
+              searchContainerRef.current || document.body
+            }
+            open={isSearchBoxOpen}
+            overlayClassName="global-search-overlay"
+            overlayStyle={{ width: '100%', paddingTop: 0 }}
+            placement="bottomRight"
+            showArrow={false}
+            trigger={['click']}
+            onOpenChange={handleSearchBoxOpen}>
+            <Input
+              addonBefore={entitiesSelect}
+              autoComplete="off"
+              className="rounded-4  appbar-search"
+              data-testid="searchBox"
+              id="searchBox"
+              placeholder={t('message.search-for-entity-types')}
+              ref={searchRef}
+              style={{
+                height: '37px',
+              }}
+              suffix={
+                <span className="d-flex items-center">
+                  <CmdKIcon />
+                  <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
+                    {searchValue ? (
+                      <SVGIcons
+                        alt="icon-cancel"
+                        icon={cancelIcon}
+                        onClick={handleClear}
+                      />
+                    ) : (
+                      <SVGIcons
+                        alt="icon-search"
+                        icon={searchIcon}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOnClick();
+                        }}
+                      />
+                    )}
+                  </span>
+                </span>
+              }
+              type="text"
+              value={searchValue}
+              onBlur={() => {
+                setSearchIcon('icon-searchv1');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED);
+              }}
+              onChange={(e) => {
+                const { value } = e.target;
+                debounceOnSearch(value);
+                handleSearchChange(value);
+              }}
+              onFocus={() => {
+                setSearchIcon('icon-searchv1color');
+                setCancelIcon(Icons.CLOSE_CIRCLE_OUTLINED_COLOR);
+              }}
+              onKeyDown={handleKeyDown}
+            />
+          </Popover>
         </div>
-        <Space size={24}>
+
+        <Space align="center" size={24}>
+          <Dropdown
+            className="cursor-pointer"
+            menu={{
+              items: domainOptions,
+              onClick: handleDomainChange,
+            }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Row gutter={6}>
+              <Col className="flex-center">
+                <DomainIcon
+                  className="d-flex text-base-color"
+                  height={18}
+                  name="folder"
+                  width={18}
+                />
+              </Col>
+              <Col>{activeDomain}</Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
+          </Dropdown>
+
           <Dropdown
             destroyPopupOnHide
             className="cursor-pointer"
@@ -453,45 +506,50 @@ const NavBar = ({
             }}
             placement="bottomRight"
             trigger={['click']}>
-            <Space size={2}>
-              {upperCase((language || SupportedLocales.English).split('-')[0])}
-              <DropDownIcon className="m-y-xs" height={14} width={14} />
-            </Space>
+            <Row gutter={2}>
+              <Col>
+                {upperCase(
+                  (language || SupportedLocales.English).split('-')[0]
+                )}
+              </Col>
+              <Col className="flex-center">
+                <DropDownIcon height={14} width={14} />
+              </Col>
+            </Row>
           </Dropdown>
 
           <Dropdown
-            className="cursor-pointer"
+            className="cursor-pointer m-t-xss"
             menu={{ items: supportDropdown }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
             trigger={['click']}>
             <Help height={20} width={20} />
           </Dropdown>
-
-          <div className="profile-dropdown " data-testid="dropdown-profile">
-            <LegacyDropDown
-              dropDownList={profileDropdown}
-              icon={
-                <Tooltip placement="bottom" title="Profile" trigger="hover">
-                  {isImgUrlValid ? (
-                    <div className="profile-image circle tw--mr-2">
-                      <Image
-                        alt="user"
-                        preview={false}
-                        referrerPolicy="no-referrer"
-                        src={profilePicture || ''}
-                        width={24}
-                        onError={handleOnImageError}
-                      />
-                    </div>
+          <div className="profile-dropdown" data-testid="dropdown-profile">
+            <Dropdown
+              menu={{
+                items: profileDropdown,
+              }}
+              trigger={['click']}>
+              <Button
+                icon={
+                  isImgUrlValid ? (
+                    <img
+                      alt="user"
+                      className="profile-image circle"
+                      referrerPolicy="no-referrer"
+                      src={profilePicture || ''}
+                      width={24}
+                      onError={handleOnImageError}
+                    />
                   ) : (
                     <Avatar name={username} type="circle" width="24" />
-                  )}
-                </Tooltip>
-              }
-              isDropDownIconVisible={false}
-              type="link"
-            />
+                  )
+                }
+                type="text"
+              />
+            </Dropdown>
           </div>
         </Space>
       </div>

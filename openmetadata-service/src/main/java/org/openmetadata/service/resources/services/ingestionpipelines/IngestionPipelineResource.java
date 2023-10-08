@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
-import static org.openmetadata.service.resources.services.metadata.MetadataServiceResource.OPENMETADATA_SERVICE;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -29,7 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,23 +60,16 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
-import org.openmetadata.schema.metadataIngestion.MetadataToElasticSearchPipeline;
-import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -88,7 +79,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.IngestionPipelineUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 
@@ -108,19 +98,17 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClient pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private final MetadataServiceRepository metadataServiceRepository;
   static final String FIELDS = FIELD_OWNER;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
-    Entity.withHref(uriInfo, ingestionPipeline.getOwner());
+    super.addHref(uriInfo, ingestionPipeline);
     Entity.withHref(uriInfo, ingestionPipeline.getService());
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(IngestionPipeline.class, new IngestionPipelineRepository(dao), authorizer);
-    this.metadataServiceRepository = new MetadataServiceRepository(dao);
+  public IngestionPipelineResource(Authorizer authorizer) {
+    super(Entity.INGESTION_PIPELINE, authorizer);
   }
 
   @Override
@@ -130,53 +118,6 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
     repository.setPipelineServiceClient(pipelineServiceClient);
-    createIndexAndInsightPipeline(config);
-  }
-
-  private void createIndexAndInsightPipeline(OpenMetadataApplicationConfig config) {
-    // Metadata Service is created only when ES config is present
-    if (config.getElasticSearchConfiguration() != null) {
-      try {
-        EntityReference metadataService =
-            this.metadataServiceRepository
-                .getByName(null, OPENMETADATA_SERVICE, repository.getFields("id"))
-                .getEntityReference();
-        // Create Data Insights Pipeline
-        CreateIngestionPipeline createPipelineRequest =
-            new CreateIngestionPipeline()
-                .withName(DEFAULT_INSIGHT_PIPELINE)
-                .withDisplayName(DEFAULT_INSIGHT_PIPELINE)
-                .withDescription("Data Insights Pipeline")
-                .withPipelineType(PipelineType.DATA_INSIGHT)
-                .withSourceConfig(
-                    new SourceConfig()
-                        .withConfig(
-                            new MetadataToElasticSearchPipeline()
-                                .withType(
-                                    MetadataToElasticSearchPipeline.MetadataToESConfigType.METADATA_TO_ELASTIC_SEARCH)))
-                .withAirflowConfig(IngestionPipelineUtils.getDefaultAirflowConfig())
-                .withService(metadataService);
-        // Get Pipeline
-        IngestionPipeline dataInsightPipeline =
-            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-        repository.setFullyQualifiedName(dataInsightPipeline);
-        repository.initializeEntity(dataInsightPipeline);
-
-        // Create Reindex Pipeline
-        createPipelineRequest
-            .withName(DEFAULT_REINDEX_PIPELINE)
-            .withDisplayName(DEFAULT_REINDEX_PIPELINE)
-            .withDescription("Elastic Search Reindexing Pipeline")
-            .withPipelineType(PipelineType.ELASTIC_SEARCH_REINDEX);
-        // Get Pipeline
-        IngestionPipeline elasticSearchPipeline =
-            getIngestionPipeline(createPipelineRequest, "system").withProvider(ProviderType.SYSTEM);
-        repository.setFullyQualifiedName(elasticSearchPipeline);
-        repository.initializeEntity(elasticSearchPipeline);
-      } catch (Exception ex) {
-        LOG.error("[IngestionPipelineResource] Failed in Creating Reindex and Insight Pipeline", ex);
-      }
-    }
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -208,17 +149,22 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(
-              description = "Filter airflow pipelines by service fully qualified name",
+              description = "Filter Ingestion Pipelines by service fully qualified name",
               schema = @Schema(type = "string", example = "snowflakeWestCoast"))
           @QueryParam("service")
           String serviceParam,
       @Parameter(
-              description = "Filter airflow pipelines by pipeline Type",
+              description = "Filter Ingestion Pipelines by test suite fully qualified name",
+              schema = @Schema(type = "string", example = "service.db.schema.name.testSuite"))
+          @QueryParam("testSuite")
+          String testSuiteParam,
+      @Parameter(
+              description = "Filter Ingestion Pipelines by pipeline Type",
               schema = @Schema(type = "string", example = "elasticSearchReindex"))
           @QueryParam("pipelineType")
           String pipelineType,
       @Parameter(
-              description = "Filter airflow pipelines by service Type",
+              description = "Filter Ingestion Pipelines by service Type",
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
@@ -239,13 +185,13 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
-            .addQueryParam("serviceType", serviceType);
+            .addQueryParam("serviceType", serviceType)
+            .addQueryParam("testSuite", testSuiteParam);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
@@ -274,8 +220,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws IOException {
+          UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -308,8 +253,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
@@ -343,8 +287,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               description = "Ingestion version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     IngestionPipeline ingestionPipeline = super.getVersionInternal(securityContext, id, version);
     decryptOrNullify(securityContext, ingestionPipeline, false);
     return ingestionPipeline;
@@ -380,8 +323,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     IngestionPipeline ingestionPipeline = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     if (fieldsParam != null && fieldsParam.contains(FIELD_PIPELINE_STATUS)) {
       ingestionPipeline.setPipelineStatuses(repository.getLatestPipelineStatus(ingestionPipeline));
@@ -404,8 +346,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline create) {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
@@ -434,8 +375,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
     return response;
@@ -455,8 +395,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateIngestionPipeline update) {
     IngestionPipeline ingestionPipeline = getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
     unmask(ingestionPipeline);
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
@@ -484,8 +423,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Context SecurityContext securityContext)
-      throws IOException {
+      @Context SecurityContext securityContext) {
     return deployPipelineInternal(id, uriInfo, securityContext);
   }
 
@@ -541,8 +479,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Context SecurityContext securityContext)
-      throws IOException {
+      @Context SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
@@ -570,8 +507,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Context SecurityContext securityContext)
-      throws IOException {
+      @Context SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the IngestionPipeline
@@ -602,8 +538,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
-      @Context SecurityContext securityContext)
-      throws IOException {
+      @Context SecurityContext securityContext) {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline, true);
     return pipelineServiceClient.killIngestion(ingestionPipeline);
@@ -660,8 +595,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws IOException {
+          UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -684,8 +618,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -703,8 +636,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
                 @Content(mediaType = "application/json", schema = @Schema(implementation = IngestionPipeline.class)))
       })
   public Response restoreIngestionPipeline(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
@@ -727,8 +659,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           UUID id,
       @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     IngestionPipeline ingestionPipeline = getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
@@ -753,8 +684,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Parameter(description = "Fully qualified name of the ingestion pipeline", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
-      @Valid PipelineStatus pipelineStatus)
-      throws IOException {
+      @Valid PipelineStatus pipelineStatus) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
@@ -792,8 +722,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
               schema = @Schema(type = "number"))
           @NonNull
           @QueryParam("endTs")
-          Long endTs)
-      throws IOException {
+          Long endTs) {
     return repository.listPipelineStatus(fqn, startTs, endTs);
   }
 
@@ -817,8 +746,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           @PathParam("fqn")
           String fqn,
       @Parameter(description = "Id of pipeline status run", schema = @Schema(type = "string")) @PathParam("id")
-          UUID runId)
-      throws IOException {
+          UUID runId) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatus(fqn, runId);
@@ -842,15 +770,14 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the Ingestion Pipeline", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id)
-      throws IOException {
+          UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     IngestionPipeline ingestionPipeline = repository.deletePipelineStatus(id);
     return addHref(uriInfo, ingestionPipeline);
   }
 
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) throws IOException {
+  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
     return copy(new IngestionPipeline(), create, user)
@@ -865,12 +792,12 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private void unmask(IngestionPipeline ingestionPipeline) {
     repository.setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
-        repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), null, Include.NON_DELETED);
+        repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
     EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(ingestionPipeline, originalIngestionPipeline);
   }
 
   private PipelineServiceClientResponse deployPipelineInternal(
-      UUID id, UriInfo uriInfo, SecurityContext securityContext) throws IOException {
+      UUID id, UriInfo uriInfo, SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     ingestionPipeline.setOpenMetadataServerConnection(
@@ -892,7 +819,7 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
           securityContext,
           new OperationContext(entityType, MetadataOperation.VIEW_ALL),
           getResourceContextById(ingestionPipeline.getId()));
-    } catch (AuthorizationException | IOException e) {
+    } catch (AuthorizationException e) {
       ingestionPipeline.getSourceConfig().setConfig(null);
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);

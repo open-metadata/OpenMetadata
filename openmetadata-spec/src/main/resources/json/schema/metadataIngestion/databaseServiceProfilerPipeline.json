@@ -3,13 +3,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DatabaseServiceProfilerPipeline",
   "description": "DatabaseService Profiler Pipeline Configuration.",
+  "type": "object",
   "definitions": {
     "profilerConfigType": {
       "description": "Profiler Source Config Pipeline type",
       "type": "string",
-      "enum": [
-        "Profiler"
-      ],
+      "enum": ["Profiler"],
       "default": "Profiler"
     }
   },
@@ -21,49 +20,65 @@
     },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Schema Filter Pattern"
     },
     "tableFilterPattern": {
       "description": "Regex exclude tables or databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Table Filter Pattern"
     },
     "databaseFilterPattern": {
       "description": "Regex to only fetch databases that matches the pattern.",
-      "$ref": "../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Database Filter Pattern"
+    },
+    "includeViews": {
+      "description": "Optional configuration to turn off fetching metadata for views.",
+      "type": "boolean",
+      "default": true,
+      "title": "Include Views"
     },
     "processPiiSensitive": {
       "description": "Optional configuration to automatically tag columns that might contain sensitive information",
       "type": "boolean",
-      "default": false
+      "default": false,
+      "title": "Auto Tag PII"
     },
     "confidence": {
-        "description": "Set the Confidence value for which you want the column to be marked",
-        "type": "number",
-        "default": 80
+      "description": "Set the Confidence value for which you want the column to be marked",
+      "type": "number",
+      "default": 80,
+      "title": "Confidence"
     },
     "generateSampleData": {
       "description": "Option to turn on/off generating sample data.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "title": "Generate Sample Data"
     },
     "profileSample": {
       "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
       "type": "number",
-      "default": null
+      "default": null,
+      "title": "Profile Sample"
     },
     "profileSampleType": {
-      "$ref": "../entity/data/table.json#/definitions/profileSampleType"
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
+      "title": "Profile Sample Type"
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
       "type": "number",
-      "default": 5
+      "default": 5,
+      "title": "Thread Count"
     },
 
     "timeoutSeconds": {
       "description": "Profiler Timeout in Seconds",
       "type": "integer",
-      "default": 43200
+      "default": 43200,
+      "title": "Timeout (in sec.)"
     }
   },
   "additionalProperties": false

@@ -16,6 +16,9 @@
       "fullyQualifiedName": {
         "type": "text"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "keyword",
         "fields": {
@@ -43,6 +46,44 @@
       },
       "href": {
         "type": "text"
+      },
+
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
       },
       "users": {
         "properties": {

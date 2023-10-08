@@ -47,7 +47,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"GetModels": client.list_registered_models}
+    test_fn = {"GetModels": client.search_registered_models}
 
     test_connection_steps(
         metadata=metadata,

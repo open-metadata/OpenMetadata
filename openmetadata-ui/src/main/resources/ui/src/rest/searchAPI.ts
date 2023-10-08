@@ -184,14 +184,15 @@ export const rawSearchQuery = <
       : queryWithSlash
     : '';
 
+  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
+
   return APIClient.get<
     SearchResponse<
       SI extends Array<SearchIndex> ? SI[number] : SI,
       TIncludeFields
     >
-  >('/search/query', {
+  >(apiUrl, {
     params: {
-      q: `${apiQuery}${filters ? filters : ''}`,
       index: getSearchIndexParam(searchIndex),
       from: (pageNumber - 1) * pageSize,
       size: pageSize,

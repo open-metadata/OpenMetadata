@@ -28,7 +28,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -94,7 +93,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Test
-  void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_roleAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException {
     Role role = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // Patching as a non-admin should is disallowed
     String originalJson = JsonUtils.pojoToJson(role);
@@ -215,7 +214,7 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

@@ -99,11 +99,11 @@ def run_openmetadata_dag_config_migration(dir_path: str, keep_backups: bool) -> 
                     os.path.join(root, filename), "w", encoding="utf-8"
                 ) as config_file:
                     config_file.write(json.dumps(fle_data))
-                logger.info(f"File {filename} successfuly updated")
+                logger.info(f"File {filename} successfully  updated")
 
                 if keep_backups:
                     with open(
                         os.path.join(root, f"{filename}.bak"), "w", encoding="utf-8"
                     ) as bak_config_file:
                         bak_config_file.write(json.dumps(orig_fle_data))
-                        logger.info(f"Backup File {filename}.bak successfuly updated")
+                        logger.info(f"Backup File {filename}.bak successfully  updated")

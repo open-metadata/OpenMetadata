@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { TestSuite } from 'generated/tests/testSuite';
-import { Paging } from 'generated/type/paging';
 import { CurveType } from 'recharts/types/shape/Curve';
-import { ListTestCaseParams } from 'rest/testAPI';
+import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
 import {
   Column,
   ColumnProfile,
   Table,
 } from '../../generated/entity/data/table';
 import { TestCase } from '../../generated/tests/testCase';
+import { TestSuite } from '../../generated/tests/testSuite';
+import { Paging } from '../../generated/type/paging';
+import { ListTestCaseParams } from '../../rest/testAPI';
 import { DateRangeObject } from './component/TestSummary';
 
 export interface ProfilerDashboardProps {
@@ -108,7 +109,7 @@ export interface DataQualityTabProps {
   pagingData?: {
     paging: Paging;
     currentPage: number;
-    onPagingClick: (cursorValue: string | number, activePage?: number) => void;
+    onPagingClick: NextPreviousProps['pagingHandler'];
     isNumberBased?: boolean;
   };
   removeFromTestSuite?: {

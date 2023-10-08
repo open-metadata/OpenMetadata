@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Col, Divider, Row, Typography } from 'antd';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { TagLabel } from 'generated/type/tagLabel';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityUnion } from '../../../components/Explore/explore.interface';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
@@ -31,7 +31,9 @@ const SummaryTagsDescription = ({
     <>
       <Row className="m-md" gutter={[0, 8]}>
         <Col span={24}>
-          <Typography.Text className="summary-panel-section-title">
+          <Typography.Text
+            className="summary-panel-section-title"
+            data-testid="tags-header">
             {t('label.tag-plural')}
           </Typography.Text>
         </Col>
@@ -56,7 +58,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
-            data-testid="schema-header">
+            data-testid="description-header">
             {t('label.description')}
           </Typography.Text>
         </Col>

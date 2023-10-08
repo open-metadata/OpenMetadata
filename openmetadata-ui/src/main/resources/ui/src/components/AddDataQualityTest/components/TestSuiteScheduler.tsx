@@ -41,7 +41,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
         />
       </Col>
       <Col span={24}>
-        <Space className="tw-w-full tw-justify-end" size={16}>
+        <Space className="w-full justify-end" size={16}>
           <Button onClick={onCancel}>{t('label.back')}</Button>
           <Button
             data-testid="deploy-button"

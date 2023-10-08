@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.ingestion.api.closeable import Closeable
 from metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.models import StackTraceError
 from metadata.ingestion.api.status import Status
 from metadata.utils.logger import ingestion_logger
 
@@ -34,7 +35,8 @@ class ProcessorStatus(Status):
     def processed(self, record: Any):
         self.records.append(record)
 
-    def warning(self, info: Any) -> None:
+    # disabling pylint until we remove this
+    def warning(self, info: Any) -> None:  # pylint: disable=W0221
         self.warnings.append(info)
 
 
@@ -45,7 +47,13 @@ class ProfilerProcessorStatus(Status):
         self.records.append(record)
 
     def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
-        self.failed(self.entity if self.entity else "", error, stack_trace)
+        self.failed(
+            StackTraceError(
+                name=self.entity if self.entity else "",
+                error=error,
+                stack_trace=stack_trace,
+            )
+        )
 
 
 @dataclass

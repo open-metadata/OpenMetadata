@@ -13,19 +13,11 @@
 
 import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
-import { isString, startCase, uniqueId } from 'lodash';
+import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  getEntityBreadcrumbs,
-  getEntityId,
-  getEntityName,
-} from 'utils/EntityUtils';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -33,8 +25,15 @@ import {
   getEntityPlaceHolder,
   getOwnerValue,
 } from '../../../utils/CommonUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityId,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
+import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -106,7 +105,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           value: source.tier
             ? isString(source.tier)
               ? source.tier
-              : source.tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+              : getEntityName(source.tier)
             : '',
         });
       }
@@ -172,7 +171,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           )}
         </Row>
 
-        <div className="tw-pt-3">
+        <div className="p-t-sm">
           <TableDataCardBody
             description={source.description || ''}
             extraInfo={otherDetails}
@@ -180,10 +179,10 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
           />
         </div>
         {matches && matches.length > 0 ? (
-          <div className="tw-pt-2" data-testid="matches-stats">
+          <div className="p-t-xs" data-testid="matches-stats">
             <span className="text-grey-muted">{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="tw-ml-2" key={uniqueId()}>
+              <span className="m-t-xs" key={i}>
                 {`${data.value} in ${startCase(data.key)}${
                   i !== matches.length - 1 ? ',' : ''
                 }`}

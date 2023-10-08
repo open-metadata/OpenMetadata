@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
@@ -46,9 +47,11 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -72,11 +75,13 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -164,11 +169,44 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;
     }
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void get_listPipelinesFiltered(TestInfo test) throws IOException {
+
+    CreateIngestionPipeline createMessaging =
+        new CreateIngestionPipeline()
+            .withName(getEntityName(test))
+            .withPipelineType(PipelineType.METADATA)
+            .withSourceConfig(MESSAGING_METADATA_CONFIG)
+            .withService(REDPANDA_REFERENCE)
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("5 * * * *"));
+    createAndCheckEntity(createMessaging, ADMIN_AUTH_HEADERS);
+
+    CreateIngestionPipeline createDatabase = createRequest(test);
+    createAndCheckEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // If we filter by service type, we get just one
+    Map<String, String> paramsMessaging = new HashMap<>();
+    paramsMessaging.put("serviceType", "messagingService");
+    ResultList<IngestionPipeline> resList = listEntities(paramsMessaging, ADMIN_AUTH_HEADERS);
+    assertEquals(1, resList.getData().size());
+
+    Map<String, String> paramsType = new HashMap<>();
+    paramsType.put("pipelineType", "metadata");
+    ResultList<IngestionPipeline> resListMeta = listEntities(paramsType, ADMIN_AUTH_HEADERS);
+    // We get at least the 2 pipelines created here
+    assertTrue(resListMeta.getData().size() >= 2);
+
+    Map<String, String> paramsMessagingService = new HashMap<>();
+    paramsMessagingService.put("service", REDPANDA_REFERENCE.getFullyQualifiedName());
+    ResultList<IngestionPipeline> redpandaIngestionList = listEntities(paramsMessagingService, ADMIN_AUTH_HEADERS);
+    assertEquals(1, redpandaIngestionList.getData().size());
   }
 
   @Test
@@ -668,6 +706,19 @@ public class IngestionPipelineResourceTest extends EntityResourceTest<IngestionP
                 getPipelineStatusByRunId(ingestionPipeline.getFullyQualifiedName(), runId), ADMIN_AUTH_HEADERS)
             .get();
     TestUtils.readResponse(response, PipelineStatus.class, Status.NO_CONTENT.getStatusCode());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a dashboard service with owner data consumer
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createDashboardService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can an ingestion pipeline for the service
+    createEntity(
+        createRequest("ingestion").withService(service.getEntityReference()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   private IngestionPipeline updateIngestionPipeline(CreateIngestionPipeline create, Map<String, String> authHeaders)

@@ -21,18 +21,22 @@ import {
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { getAggregateFieldOptions } from 'rest/miscAPI';
-import { suggestQuery } from 'rest/searchAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
+import { suggestQuery } from '../rest/searchAPI';
 import { renderAdvanceSearchButtons } from '../utils/AdvancedSearchUtils';
+import { getCombinedQueryFilterObject } from '../utils/ExplorePage/ExplorePageUtils';
 
 const BaseConfig = AntdConfig as BasicConfig;
 
 export const SUFFIX_WILDCARD = '.*';
 
 export const COMMON_DROPDOWN_ITEMS = [
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
   {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
@@ -68,6 +72,10 @@ export const TABLE_DROPDOWN_ITEMS = [
     label: t('label.column'),
     key: 'columns.name.keyword',
   },
+  {
+    label: t('label.table-type'),
+    key: 'tableType',
+  },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [
@@ -81,10 +89,32 @@ export const DASHBOARD_DROPDOWN_ITEMS = [
   },
 ];
 
+export const DASHBOARD_DATA_MODEL_TYPE = [
+  {
+    label: t('label.data-model-type'),
+    key: 'dataModelType',
+  },
+  {
+    label: t('label.column'),
+    key: 'columns.name.keyword',
+  },
+  {
+    label: t('label.project'),
+    key: 'project.keyword',
+  },
+];
+
 export const PIPELINE_DROPDOWN_ITEMS = [
   {
     label: t('label.task'),
     key: 'tasks.displayName.keyword',
+  },
+];
+
+export const SEARCH_INDEX_DROPDOWN_ITEMS = [
+  {
+    label: t('label.field'),
+    key: 'fields.name.keyword',
   },
 ];
 
@@ -104,6 +134,10 @@ export const CONTAINER_DROPDOWN_ITEMS = [
 
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
+  {
     label: t('label.owner'),
     key: 'owner.displayName.keyword',
   },
@@ -118,6 +152,10 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
 ];
 
 export const TAG_DROPDOWN_ITEMS = [
+  {
+    label: t('label.domain'),
+    key: 'domain.displayName.keyword',
+  },
   {
     label: t('label.classification'),
     key: 'classification.name.keyword',

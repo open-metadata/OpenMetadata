@@ -11,65 +11,34 @@
  *  limitations under the License.
  */
 
-import { LOADING_STATE } from 'enums/common.enum';
-import { Connection } from 'generated/api/services/createDatabaseService';
+import { Form, Input, Typography } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import React, {
-  Reducer,
-  useCallback,
-  useMemo,
-  useReducer,
-  useState,
-} from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DBT_CLASSIFICATION_DEFAULT_VALUE,
-  DEFAULT_PARSING_TIMEOUT_LIMIT,
-  INITIAL_FILTER_PATTERN,
-  STEPS_FOR_ADD_INGESTION,
-} from '../../constants/Ingestions.constant';
-import { FilterPatternEnum } from '../../enums/filterPattern.enum';
+import IngestionWorkflowForm from '../../components/IngestionWorkflowForm/IngestionWorkflowForm';
+import { STEPS_FOR_ADD_INGESTION } from '../../constants/Ingestions.constant';
+import { LOADING_STATE } from '../../enums/common.enum';
 import { FormSubmitType } from '../../enums/form.enum';
-import { ServiceCategory } from '../../enums/service.enum';
-import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import {
   CreateIngestionPipeline,
   LogLevels,
   PipelineType,
 } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import {
-  ConfigClass,
-  ConfigType,
-  FilterPattern,
-  IngestionPipeline,
-} from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ProfileSampleType } from '../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-import {
-  DbtConfig,
-  DbtPipelineClass,
-} from '../../generated/metadataIngestion/dbtPipeline';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+
+import { IngestionWorkflowData } from '../../interface/service.interface';
 import {
   getCurrentUserId,
-  getFilterTypes,
   getIngestionFrequency,
-  reducerWithoutAction,
 } from '../../utils/CommonUtils';
-import { getSourceTypeFromConfig } from '../../utils/DBTConfigFormUtil';
-import { escapeBackwardSlashChar } from '../../utils/JSONSchemaFormUtils';
 import { getIngestionName } from '../../utils/ServiceUtils';
-import DBTConfigFormBuilder from '../common/DBTConfigFormBuilder/DBTConfigFormBuilder';
-import { DBT_SOURCES } from '../common/DBTConfigFormBuilder/DBTFormEnum';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import IngestionStepper from '../IngestionStepper/IngestionStepper.component';
 import DeployIngestionLoaderModal from '../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import {
   AddIngestionProps,
-  AddIngestionState,
-  ModifiedDbtConfig,
-} from './addIngestion.interface';
-import ConfigureIngestion from './Steps/ConfigureIngestion';
-import DataInsightMetadataToESConfigForm from './Steps/DataInsightMetadataToESConfigForm/DataInsightMetadataToESConfigForm';
-import MetadataToESConfigForm from './Steps/MetadataToESConfigForm/MetadataToESConfigForm';
+  WorkflowExtraConfig,
+} from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
 
 const AddIngestion = ({
@@ -96,12 +65,29 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-  const { sourceConfig, sourceConfigType } = useMemo(
+
+  // lazy initialization to initialize the data only once
+  const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
-      sourceConfig: data?.sourceConfig.config as ConfigClass,
-      sourceConfigType: (data?.sourceConfig.config as ConfigClass)?.type,
+      ...(data?.sourceConfig.config ?? {}),
+      name: data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      enableDebugLog: data?.loggerLevel === LogLevels.Debug,
+    })
+  );
+
+  const [scheduleInterval, setScheduleInterval] = useState(
+    () =>
+      data?.airflowConfig.scheduleInterval ??
+      getIngestionFrequency(pipelineType)
+  );
+
+  const { ingestionName, retries } = useMemo(
+    () => ({
+      ingestionName:
+        data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      retries: data?.airflowConfig.retries ?? 0,
     }),
-    []
+    [data, pipelineType, serviceData]
   );
 
   const isSettingsPipeline = useMemo(
@@ -122,492 +108,32 @@ const AddIngestion = ({
     [isSettingsPipeline]
   );
 
-  const {
-    configData,
-    usageIngestionType,
-    lineageIngestionType,
-    profilerIngestionType,
-  } = useMemo(() => {
-    return {
-      configData: (data?.sourceConfig.config as DbtPipelineClass)
-        ?.dbtConfigSource,
-      usageIngestionType: sourceConfigType ?? ConfigType.DatabaseUsage,
-      lineageIngestionType: sourceConfigType ?? ConfigType.DatabaseLineage,
-      profilerIngestionType: sourceConfigType ?? ConfigType.Profiler,
-    };
-  }, [data]);
-
-  const { isDatabaseService, isServiceTypeOpenMetadata } = useMemo(() => {
-    return {
-      isDatabaseService: serviceCategory === ServiceCategory.DATABASE_SERVICES,
-      isServiceTypeOpenMetadata:
-        serviceData.serviceType === MetadataServiceType.OpenMetadata,
-    };
-  }, [serviceCategory]);
-
-  const showDBTConfig = useMemo(() => {
-    return isDatabaseService && pipelineType === PipelineType.Dbt;
-  }, [isDatabaseService, pipelineType]);
-
-  const sourceTypeData = useMemo(
-    () => getSourceTypeFromConfig(configData as DbtConfig | undefined),
-    [configData]
-  );
-  const { database, ingestAllDatabases } = serviceData.connection
-    .config as Connection;
-
-  const initialState: AddIngestionState = useMemo(
-    () => ({
-      database,
-      saveState: 'initial',
-      showDeployModal: false,
-      ingestionName:
-        data?.name ?? getIngestionName(serviceData.name, pipelineType),
-      ingestSampleData: sourceConfig?.generateSampleData ?? true,
-      useFqnFilter: sourceConfig?.useFqnForFiltering ?? false,
-      processPii: sourceConfig?.processPiiSensitive ?? false,
-      databaseServiceNames: sourceConfig?.dbServiceNames ?? [],
-      description: data?.description ?? '',
-      repeatFrequency:
-        data?.airflowConfig.scheduleInterval ??
-        getIngestionFrequency(pipelineType),
-      showDashboardFilter: !isUndefined(sourceConfig?.dashboardFilterPattern),
-      showDatabaseFilter: Boolean(
-        database || sourceConfig?.databaseFilterPattern
-      ),
-      isDatabaseFilterDisabled: ingestAllDatabases
-        ? !ingestAllDatabases
-        : Boolean(database),
-      showSchemaFilter: !isUndefined(sourceConfig?.schemaFilterPattern),
-      showTableFilter: !isUndefined(sourceConfig?.tableFilterPattern),
-      showTopicFilter: !isUndefined(sourceConfig?.topicFilterPattern),
-      showDataModelFilter: !isUndefined(sourceConfig?.dataModelFilterPattern),
-      showChartFilter: !isUndefined(sourceConfig?.chartFilterPattern),
-      showPipelineFilter: !isUndefined(sourceConfig?.pipelineFilterPattern),
-      showMlModelFilter: !isUndefined(sourceConfig?.mlModelFilterPattern),
-      showContainerFilter: !isUndefined(sourceConfig?.containerFilterPattern),
-      dbtConfigSource: configData as ModifiedDbtConfig,
-      gcsConfigType: showDBTConfig ? sourceTypeData.gcsType : undefined,
-      chartFilterPattern:
-        sourceConfig?.chartFilterPattern ?? INITIAL_FILTER_PATTERN,
-      dbtConfigSourceType: sourceTypeData.sourceType || DBT_SOURCES.local,
-      markDeletedTables: isDatabaseService
-        ? Boolean(sourceConfig?.markDeletedTables ?? true)
-        : undefined,
-      dataModelFilterPattern:
-        sourceConfig?.dataModelFilterPattern ?? INITIAL_FILTER_PATTERN,
-      dashboardFilterPattern:
-        sourceConfig?.dashboardFilterPattern ?? INITIAL_FILTER_PATTERN,
-      containerFilterPattern:
-        sourceConfig?.containerFilterPattern ?? INITIAL_FILTER_PATTERN,
-      databaseFilterPattern: isUndefined(database)
-        ? sourceConfig?.databaseFilterPattern ?? INITIAL_FILTER_PATTERN
-        : {
-            includes: [database],
-            excludes: [],
-          },
-      markAllDeletedTables: isDatabaseService
-        ? Boolean(sourceConfig?.markAllDeletedTables ?? false)
-        : undefined,
-      markDeletedDashboards: sourceConfig?.markDeletedDashboards ?? true,
-      markDeletedTopics: sourceConfig?.markDeletedDashboards ?? true,
-      markDeletedMlModels: sourceConfig?.markDeletedDashboards ?? true,
-      markDeletedPipelines: sourceConfig?.markDeletedDashboards ?? true,
-      includeView: Boolean(sourceConfig?.includeViews),
-      includeTags: sourceConfig?.includeTags ?? true,
-      includeDataModels: sourceConfig?.includeDataModels ?? true,
-      includeOwners: Boolean(sourceConfig?.includeOwners),
-      includeLineage: Boolean(sourceConfig?.includeLineage ?? true),
-      enableDebugLog: data?.loggerLevel === LogLevels.Debug,
-      profileSample: sourceConfig?.profileSample,
-      profileSampleType:
-        sourceConfig?.profileSampleType || ProfileSampleType.Percentage,
-      threadCount: sourceConfig?.threadCount ?? 5,
-      timeoutSeconds: sourceConfig?.timeoutSeconds ?? 43200,
-      schemaFilterPattern:
-        sourceConfig?.schemaFilterPattern ?? INITIAL_FILTER_PATTERN,
-      tableFilterPattern:
-        sourceConfig?.tableFilterPattern ?? INITIAL_FILTER_PATTERN,
-      topicFilterPattern:
-        sourceConfig?.topicFilterPattern ?? INITIAL_FILTER_PATTERN,
-      pipelineFilterPattern:
-        sourceConfig?.pipelineFilterPattern ?? INITIAL_FILTER_PATTERN,
-      mlModelFilterPattern:
-        sourceConfig?.mlModelFilterPattern ?? INITIAL_FILTER_PATTERN,
-      queryLogDuration: sourceConfig?.queryLogDuration ?? 1,
-      stageFileLocation: sourceConfig?.stageFileLocation ?? '/tmp/query_log',
-      resultLimit: sourceConfig?.resultLimit ?? 1000,
-      metadataToESConfig: {
-        caCerts: sourceConfig?.caCerts,
-        regionName: sourceConfig?.regionName,
-        timeout: sourceConfig?.timeout,
-        useAwsCredentials: Boolean(sourceConfig?.useAwsCredentials),
-        useSSL: Boolean(sourceConfig?.useSSL),
-        verifyCerts: Boolean(sourceConfig?.verifyCerts),
-        batchSize: sourceConfig?.batchSize,
-        searchIndexMappingLanguage: sourceConfig?.searchIndexMappingLanguage,
-        recreateIndex: sourceConfig?.recreateIndex,
-      },
-      dbtUpdateDescriptions: sourceConfig?.dbtUpdateDescriptions ?? false,
-      confidence: sourceConfig?.confidence,
-      dbtClassificationName:
-        sourceConfig?.dbtClassificationName ?? DBT_CLASSIFICATION_DEFAULT_VALUE, // default value from Json Schema
-      parsingTimeoutLimit:
-        sourceConfig?.parsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
-      viewParsingTimeoutLimit:
-        sourceConfig?.viewParsingTimeoutLimit ?? DEFAULT_PARSING_TIMEOUT_LIMIT,
-      filterCondition: sourceConfig?.filterCondition ?? '',
-    }),
-    []
-  );
-
-  const [state, dispatch] = useReducer<
-    Reducer<AddIngestionState, Partial<AddIngestionState>>
-  >(reducerWithoutAction, initialState);
-
   const [saveState, setSaveState] = useState<LOADING_STATE>(
     LOADING_STATE.INITIAL
   );
   const [showDeployModal, setShowDeployModal] = useState(false);
 
-  const handleStateChange = useCallback(
-    (newState: Partial<AddIngestionState>) => {
-      dispatch(newState);
-    },
-    []
-  );
+  const handleDataChange = (data: IngestionWorkflowData) =>
+    setWorkflowData(data);
 
-  const handleMetadataToESConfig = (data: ConfigClass) => {
-    handleStateChange({
-      metadataToESConfig: data,
-    });
+  const handleNext = (step: number) => {
+    setActiveIngestionStep(step);
   };
 
-  const getIncludeValue = (value: Array<string>, type: FilterPatternEnum) => {
-    const pattern = getFilterTypes(type);
-
-    return handleStateChange({
-      [pattern]: {
-        ...(state[pattern] as AddIngestionState),
-        includes: value,
-      },
-    });
-  };
-  const getExcludeValue = (value: Array<string>, type: FilterPatternEnum) => {
-    const pattern = getFilterTypes(type);
-
-    return handleStateChange({
-      [pattern]: {
-        ...(state[pattern] as AddIngestionState),
-        excludes: value,
-      },
-    });
+  const handlePrev = (step: number) => {
+    setActiveIngestionStep(step);
   };
 
-  // It takes a boolean and a string, and returns a function that takes an object and returns a new
-  const handleShowFilter = (value: boolean, showFilter: string) =>
-    handleStateChange({
-      [showFilter]: value,
-    });
-
-  const handleNext = () => {
-    let nextStep;
-    if (!showDBTConfig && activeIngestionStep === 1) {
-      nextStep = activeIngestionStep + 3;
-      if (isServiceTypeOpenMetadata) {
-        nextStep = activeIngestionStep + 2;
-      }
-    } else if (showDBTConfig && activeIngestionStep === 2) {
-      nextStep = activeIngestionStep + 2;
-    } else {
-      nextStep = activeIngestionStep + 1;
-    }
-    setActiveIngestionStep(nextStep);
+  const handleSubmit = (data: IngestionWorkflowData) => {
+    setWorkflowData(data);
+    handleNext(2);
   };
 
-  const handlePrev = () => {
-    let prevStep;
-    if (!showDBTConfig && activeIngestionStep === 4) {
-      prevStep = activeIngestionStep - 3;
-      if (isServiceTypeOpenMetadata) {
-        prevStep = activeIngestionStep - 1;
-      }
-    } else if (
-      !showDBTConfig &&
-      isServiceTypeOpenMetadata &&
-      activeIngestionStep === 3
-    ) {
-      prevStep = activeIngestionStep - 2;
-    } else if (showDBTConfig && activeIngestionStep === 4) {
-      prevStep = activeIngestionStep - 2;
-    } else {
-      prevStep = activeIngestionStep - 1;
-    }
-    setActiveIngestionStep(prevStep);
-  };
-
-  const getFilterPatternData = (data: FilterPattern, isVisible: boolean) => {
-    if (!isVisible) {
-      return undefined;
-    }
-
-    const { includes, excludes } = data;
-
-    const filterPattern =
-      (!isUndefined(includes) && includes.length) ||
-      (!isUndefined(excludes) && excludes.length)
-        ? {
-            includes: includes && includes.length > 0 ? includes : undefined,
-            excludes: excludes && excludes.length > 0 ? excludes : undefined,
-          }
-        : undefined;
-
-    return filterPattern;
-  };
-
-  const getMetadataIngestionFields = () => {
-    const {
-      chartFilterPattern,
-      dataModelFilterPattern,
-      dashboardFilterPattern,
-      databaseFilterPattern,
-      databaseServiceNames,
-      includeLineage,
-      includeTags,
-      includeView,
-      includeDataModels,
-      showContainerFilter,
-      ingestSampleData,
-      markAllDeletedTables,
-      markDeletedTables,
-      markDeletedDashboards,
-      markDeletedTopics,
-      markDeletedMlModels,
-      markDeletedPipelines,
-      mlModelFilterPattern,
-      containerFilterPattern,
-      pipelineFilterPattern,
-      schemaFilterPattern,
-      showChartFilter,
-      showDashboardFilter,
-      showDataModelFilter,
-      showDatabaseFilter,
-      showMlModelFilter,
-      showPipelineFilter,
-      showSchemaFilter,
-      showTableFilter,
-      showTopicFilter,
-      tableFilterPattern,
-      topicFilterPattern,
-      useFqnFilter,
-      includeOwners,
-      viewParsingTimeoutLimit,
-    } = state;
-
-    switch (serviceCategory) {
-      case ServiceCategory.DATABASE_SERVICES: {
-        return {
-          useFqnForFiltering: useFqnFilter,
-          includeViews: includeView,
-          includeTags: includeTags,
-          databaseFilterPattern: getFilterPatternData(
-            databaseFilterPattern,
-            showDatabaseFilter
-          ),
-          schemaFilterPattern: getFilterPatternData(
-            schemaFilterPattern,
-            showSchemaFilter
-          ),
-          tableFilterPattern: getFilterPatternData(
-            tableFilterPattern,
-            showTableFilter
-          ),
-          markDeletedTables: markDeletedTables,
-          markAllDeletedTables: markAllDeletedTables,
-          type: ConfigType.DatabaseMetadata,
-          viewParsingTimeoutLimit: viewParsingTimeoutLimit,
-        };
-      }
-      case ServiceCategory.MESSAGING_SERVICES: {
-        return {
-          topicFilterPattern: getFilterPatternData(
-            topicFilterPattern,
-            showTopicFilter
-          ),
-          generateSampleData: ingestSampleData,
-          type: ConfigType.MessagingMetadata,
-          markDeletedTopics,
-        };
-      }
-      case ServiceCategory.DASHBOARD_SERVICES: {
-        return {
-          chartFilterPattern: getFilterPatternData(
-            chartFilterPattern,
-            showChartFilter
-          ),
-          dashboardFilterPattern: getFilterPatternData(
-            dashboardFilterPattern,
-            showDashboardFilter
-          ),
-          dataModelFilterPattern: getFilterPatternData(
-            dataModelFilterPattern,
-            showDataModelFilter
-          ),
-          dbServiceNames: databaseServiceNames,
-          includeOwners,
-          type: ConfigType.DashboardMetadata,
-          markDeletedDashboards,
-          includeTags,
-          includeDataModels,
-        };
-      }
-      case ServiceCategory.PIPELINE_SERVICES: {
-        return {
-          includeLineage: includeLineage,
-          pipelineFilterPattern: getFilterPatternData(
-            pipelineFilterPattern,
-            showPipelineFilter
-          ),
-          includeOwners: includeOwners,
-          dbServiceNames: databaseServiceNames,
-          type: ConfigType.PipelineMetadata,
-          markDeletedPipelines,
-          includeTags,
-        };
-      }
-      case ServiceCategory.ML_MODEL_SERVICES: {
-        return {
-          mlModelFilterPattern: getFilterPatternData(
-            mlModelFilterPattern,
-            showMlModelFilter
-          ),
-          type: ConfigType.MlModelMetadata,
-          markDeletedMlModels,
-        };
-      }
-      case ServiceCategory.STORAGE_SERVICES: {
-        return {
-          containerFilterPattern: getFilterPatternData(
-            containerFilterPattern,
-            showContainerFilter
-          ),
-          type: ConfigType.StorageMetadata,
-        };
-      }
-
-      default: {
-        return {};
-      }
-    }
-  };
-
-  const getConfigData = (type: PipelineType): ConfigClass => {
-    const {
-      databaseFilterPattern,
-      dbtConfigSource,
-      ingestSampleData,
-      metadataToESConfig,
-      profileSample,
-      profileSampleType,
-      queryLogDuration,
-      resultLimit,
-      schemaFilterPattern,
-      showDatabaseFilter,
-      showSchemaFilter,
-      showTableFilter,
-      stageFileLocation,
-      tableFilterPattern,
-      threadCount,
-      timeoutSeconds,
-      processPii,
-      confidence,
-      filterCondition,
-      parsingTimeoutLimit,
-    } = state;
-    switch (type) {
-      case PipelineType.Usage: {
-        return {
-          queryLogDuration: queryLogDuration,
-          resultLimit: resultLimit,
-          stageFileLocation: stageFileLocation,
-          type: usageIngestionType,
-          filterCondition: filterCondition,
-        };
-      }
-      case PipelineType.Lineage: {
-        return {
-          queryLogDuration: queryLogDuration,
-          resultLimit: resultLimit,
-          type: lineageIngestionType,
-          filterCondition: filterCondition,
-          parsingTimeoutLimit: parsingTimeoutLimit,
-        };
-      }
-      case PipelineType.Profiler: {
-        return {
-          databaseFilterPattern: getFilterPatternData(
-            databaseFilterPattern,
-            showDatabaseFilter
-          ),
-          schemaFilterPattern: getFilterPatternData(
-            schemaFilterPattern,
-            showSchemaFilter
-          ),
-          tableFilterPattern: getFilterPatternData(
-            tableFilterPattern,
-            showTableFilter
-          ),
-
-          type: profilerIngestionType,
-          generateSampleData: ingestSampleData,
-          profileSample: profileSample,
-          confidence: processPii ? confidence : undefined,
-          profileSampleType: profileSampleType,
-          threadCount: threadCount,
-          timeoutSeconds: timeoutSeconds,
-          processPiiSensitive: processPii,
-        };
-      }
-
-      case PipelineType.Dbt: {
-        return {
-          ...escapeBackwardSlashChar({
-            dbtConfigSource: omit(dbtConfigSource, [
-              'dbtUpdateDescriptions',
-              'dbtClassificationName',
-              'includeTags',
-            ]),
-          } as ConfigClass),
-          type: ConfigType.Dbt,
-          dbtUpdateDescriptions: dbtConfigSource?.dbtUpdateDescriptions,
-          includeTags: dbtConfigSource?.includeTags,
-          dbtClassificationName: dbtConfigSource?.dbtClassificationName,
-          databaseFilterPattern: databaseFilterPattern,
-          schemaFilterPattern: schemaFilterPattern,
-          tableFilterPattern: tableFilterPattern,
-          parsingTimeoutLimit: parsingTimeoutLimit,
-        };
-      }
-
-      case PipelineType.ElasticSearchReindex:
-      case PipelineType.DataInsight: {
-        return metadataToESConfig
-          ? {
-              ...metadataToESConfig,
-              type: ConfigType.MetadataToElasticSearch,
-            }
-          : {};
-      }
-      case PipelineType.Metadata:
-      default: {
-        return getMetadataIngestionFields();
-      }
-    }
-  };
-
-  const createNewIngestion = () => {
+  const createNewIngestion = (extraData: WorkflowExtraConfig) => {
+    const { name = '', enableDebugLog, ...rest } = workflowData ?? {};
+    const ingestionName = trim(name);
     setSaveState(LOADING_STATE.WAITING);
-    const { repeatFrequency, enableDebugLog, ingestionName } = state;
+
     // below setting is required to trigger workflow which schedule with one day or more frequency
     const date = new Date(Date.now());
     date.setUTCHours(0, 0, 0, 0); // setting time to 00:00:00
@@ -615,14 +141,15 @@ const AddIngestion = ({
 
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(repeatFrequency)
+        scheduleInterval: isEmpty(scheduleInterval)
           ? undefined
-          : repeatFrequency,
+          : scheduleInterval,
         startDate: date,
+        retries: extraData.retries,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
-      name: trim(ingestionName),
-      displayName: trim(ingestionName),
+      name: ingestionName,
+      displayName: ingestionName,
       owner: {
         id: getCurrentUserId(),
         type: 'user',
@@ -633,9 +160,7 @@ const AddIngestion = ({
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: getConfigData(
-          pipelineType
-        ) as CreateIngestionPipeline['sourceConfig']['config'],
+        config: { ...rest },
       },
     };
 
@@ -644,7 +169,7 @@ const AddIngestion = ({
       onAddIngestionSave(ingestionDetails)
         .then(() => {
           if (showSuccessScreen) {
-            handleNext();
+            handleNext(3);
           } else {
             onSuccessSave?.();
           }
@@ -659,22 +184,23 @@ const AddIngestion = ({
     }
   };
 
-  const updateIngestion = () => {
-    const { repeatFrequency, enableDebugLog } = state;
+  const updateIngestion = (extraData: WorkflowExtraConfig) => {
     if (data) {
       const updatedData: IngestionPipeline = {
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: isEmpty(repeatFrequency)
+          scheduleInterval: isEmpty(scheduleInterval)
             ? undefined
-            : repeatFrequency,
+            : scheduleInterval,
+          retries: extraData.retries,
         },
-        loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
+        loggerLevel: workflowData?.enableDebugLog
+          ? LogLevels.Debug
+          : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(data.sourceConfig.config as ConfigClass),
-            ...getConfigData(pipelineType),
+            ...(omit(workflowData, ['name', 'enableDebugLog']) ?? {}),
           },
         },
       };
@@ -686,7 +212,7 @@ const AddIngestion = ({
           .then(() => {
             setSaveState(LOADING_STATE.SUCCESS);
             if (showSuccessScreen) {
-              handleNext();
+              handleNext(3);
             } else {
               onSuccessSave?.();
             }
@@ -706,11 +232,13 @@ const AddIngestion = ({
     });
   };
 
-  const handleScheduleIntervalDeployClick = () => {
+  const handleScheduleIntervalDeployClick = (
+    extraData: WorkflowExtraConfig
+  ) => {
     if (status === FormSubmitType.ADD) {
-      createNewIngestion();
+      createNewIngestion(extraData);
     } else {
-      updateIngestion();
+      updateIngestion(extraData);
     }
   };
 
@@ -732,116 +260,75 @@ const AddIngestion = ({
 
     return (
       <span>
-        <span className="tw-mr-1 tw-font-semibold">
-          {`"${state.ingestionName}"`}
-        </span>
+        <span className="font-medium">{`"${ingestionName}"`}</span>
         <span>
           {status === FormSubmitType.ADD ? createMessage : updateMessage}
         </span>
       </span>
     );
   };
-  const getExcludedSteps = () => {
-    const excludedSteps = [];
-    if (showDBTConfig) {
-      excludedSteps.push(1);
-    } else {
-      excludedSteps.push(2);
-    }
-    if (!isServiceTypeOpenMetadata) {
-      excludedSteps.push(3);
-    }
-
-    return excludedSteps;
-  };
 
   return (
     <div data-testid="add-ingestion-container">
-      <h6 className="tw-heading tw-text-base">{heading}</h6>
+      <Typography.Title className="font-normal" level={5}>
+        {heading}
+      </Typography.Title>
 
       <IngestionStepper
         activeStep={activeIngestionStep}
-        excludeSteps={getExcludedSteps()}
+        excludeSteps={[]}
         steps={STEPS_FOR_ADD_INGESTION}
       />
 
-      <div className="tw-pt-7">
+      <div className="p-t-lg">
         {activeIngestionStep === 1 && (
-          <ConfigureIngestion
-            data={state}
-            formType={status}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleShowFilter={handleShowFilter}
-            pipelineType={pipelineType}
+          <IngestionWorkflowForm
+            okText={t('label.next')}
+            operationType={status}
+            pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
+            workflowData={workflowData}
             onCancel={handleCancelClick}
-            onChange={handleStateChange}
+            onChange={handleDataChange}
             onFocus={onFocus}
-            onNext={handleNext}
+            onSubmit={handleSubmit}
           />
         )}
 
         {activeIngestionStep === 2 && (
-          <DBTConfigFormBuilder
-            cancelText={t('label.cancel')}
-            data={state}
-            formType={status}
-            getExcludeValue={getExcludeValue}
-            getIncludeValue={getIncludeValue}
-            handleShowFilter={handleShowFilter}
-            okText={t('label.next')}
-            onCancel={handleCancelClick}
-            onChange={handleStateChange}
-            onFocus={onFocus}
-            onSubmit={handleNext}
-          />
-        )}
-
-        {activeIngestionStep === 3 &&
-          pipelineType === PipelineType.ElasticSearchReindex && (
-            <MetadataToESConfigForm
-              data={state}
-              handleMetadataToESConfig={handleMetadataToESConfig}
-              handleNext={handleNext}
-              handlePrev={handlePrev}
-              onFocus={onFocus}
-            />
-          )}
-
-        {activeIngestionStep === 3 &&
-          pipelineType === PipelineType.DataInsight && (
-            <DataInsightMetadataToESConfigForm
-              data={state}
-              handleMetadataToESConfig={handleMetadataToESConfig}
-              handleNext={handleNext}
-              handlePrev={handlePrev}
-              onFocus={onFocus}
-            />
-          )}
-
-        {activeIngestionStep === 4 && (
           <ScheduleInterval
             disabledCronChange={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
               pipelineType === PipelineType.DataInsight ? ['day'] : undefined
             }
-            repeatFrequency={state.repeatFrequency}
+            scheduleInterval={scheduleInterval}
             status={saveState}
             submitButtonLabel={
               isUndefined(data) ? t('label.add-deploy') : t('label.submit')
             }
-            onBack={handlePrev}
-            onChange={handleStateChange}
-            onDeploy={handleScheduleIntervalDeployClick}
-          />
+            onBack={() => handlePrev(1)}
+            onChange={(data) => setScheduleInterval(data)}
+            onDeploy={handleScheduleIntervalDeployClick}>
+            <Form.Item
+              className="m-t-xs"
+              colon={false}
+              initialValue={retries}
+              label={t('label.number-of-retries')}
+              name="retries">
+              <Input
+                min={0}
+                type="number"
+                onFocus={() => onFocus('root/retries')}
+              />
+            </Form.Item>
+          </ScheduleInterval>
         )}
 
-        {activeIngestionStep > 4 && handleViewServiceClick && (
+        {activeIngestionStep > 2 && handleViewServiceClick && (
           <SuccessScreen
             handleDeployClick={handleDeployClick}
             handleViewServiceClick={handleViewServiceClick}
-            name={state.ingestionName}
+            name={ingestionName}
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
@@ -852,7 +339,7 @@ const AddIngestion = ({
 
         <DeployIngestionLoaderModal
           action={ingestionAction}
-          ingestionName={state.ingestionName}
+          ingestionName={ingestionName}
           isDeployed={isIngestionDeployed}
           isIngestionCreated={isIngestionCreated}
           progress={ingestionProgress}

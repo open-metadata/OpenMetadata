@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.validation.Valid;
@@ -41,10 +40,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricsRepository;
 import org.openmetadata.service.resources.Collection;
@@ -65,19 +66,14 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
   public static final String COLLECTION_PATH = "/v1/metrics/";
   static final String FIELDS = "owner,usageSummary,domain";
 
-  public MetricsResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Metrics.class, new MetricsRepository(dao), authorizer);
+  public MetricsResource(Authorizer authorizer) {
+    super(Entity.METRICS, authorizer);
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
-  }
-
-  @Override
-  public Metrics addHref(UriInfo uriInfo, Metrics entity) {
-    return entity;
   }
 
   public static class MetricsList extends ResultList<Metrics> {
@@ -109,8 +105,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
           String before,
       @Parameter(description = "Returns list of metrics after this cursor", schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after)
-      throws IOException {
+          String after) {
     ListFilter filter = new ListFilter();
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -142,11 +137,11 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
+  @Override
   @POST
   @Operation(
       operationId = "createMetric",
@@ -159,12 +154,33 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Metrics.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics)
-      throws IOException {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.create(uriInfo, securityContext, metrics);
   }
 
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
+  }
+
+  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateMetric",
@@ -178,7 +194,7 @@ public class MetricsResource extends EntityResource<Metrics, MetricsRepository> 
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Metrics metrics) {
     addToMetrics(securityContext, metrics);
     return super.createOrUpdate(uriInfo, securityContext, metrics);
   }

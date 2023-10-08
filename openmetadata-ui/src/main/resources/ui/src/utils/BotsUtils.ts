@@ -13,9 +13,8 @@
 
 import { t } from 'i18next';
 import { AuthenticationMechanism } from '../generated/api/teams/createUser';
-
 import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
-import { getExpiryDateTimeFromTimeStamp } from './TimeUtils';
+import { formatDateTimeLong } from './date-time/DateTimeUtils';
 
 export const getJWTTokenExpiryOptions = () => {
   return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -48,7 +47,7 @@ export const getTokenExpiry = (expiry: number) => {
   const isTokenExpired = currentTimeStamp >= expiry;
 
   return {
-    tokenExpiryDate: getExpiryDateTimeFromTimeStamp(expiry),
+    tokenExpiryDate: formatDateTimeLong(expiry),
     isTokenExpired,
   };
 };

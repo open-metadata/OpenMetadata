@@ -16,12 +16,17 @@ import traceback
 from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
+from requests.utils import quote
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier
 
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
     IntervalType,
     TablePartition,
@@ -30,21 +35,30 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.life_cycle_query_mixin import (
+    LifeCycleQueryMixin,
+)
 from metadata.ingestion.source.database.snowflake.constants import (
     SNOWFLAKE_REGION_ID_MAP,
+)
+from metadata.ingestion.source.database.snowflake.models import (
+    STORED_PROC_LANGUAGE_MAP,
+    SnowflakeStoredProcedure,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_FETCH_ALL_TAGS,
@@ -54,6 +68,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
+    SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
+    SNOWFLAKE_GET_STORED_PROCEDURES,
+    SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
@@ -70,11 +87,17 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names,
     normalize_names,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureMixin,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
@@ -103,27 +126,59 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 
 
-class SnowflakeSource(CommonDbSourceService):
+class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Snowflake Source
     """
 
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    def __init__(self, config, metadata):
+        super().__init__(config, metadata)
         self.partition_details = {}
         self.schema_desc_map = {}
         self.database_desc_map = {}
 
+        self._account: Optional[str] = None
+        self._region: Optional[str] = None
+
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
+
+    @property
+    def account(self) -> Optional[str]:
+        """Query the account information"""
+        if self._account is None:
+            self._account = self._get_current_account()
+
+        return self._account
+
+    @property
+    def region(self) -> Optional[str]:
+        """
+        Query the region information
+
+        Region id can be a vanilla id like "AWS_US_WEST_2"
+        and in case of multi region group it can be like "PUBLIC.AWS_US_WEST_2"
+        in such cases this method will extract vanilla region id and return the
+        region name from constant map SNOWFLAKE_REGION_ID_MAP
+
+        for more info checkout this doc:
+            https://docs.snowflake.com/en/sql-reference/functions/current_region
+        """
+        if self._region is None:
+            raw_region = self._get_current_region()
+            if raw_region:
+                clean_region_id = raw_region.split(".")[-1]
+                self._region = SNOWFLAKE_REGION_ID_MAP.get(clean_region_id.lower())
+
+        return self._region
 
     def set_session_query_tag(self) -> None:
         """
@@ -276,7 +331,9 @@ class SnowflakeSource(CommonDbSourceService):
             return True, partition_details
         return False, None
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         if self.source_config.includeTags:
             result = []
             try:
@@ -300,8 +357,13 @@ class SnowflakeSource(CommonDbSourceService):
                         )
                     )
                 except Exception as inner_exc:
-                    logger.debug(traceback.format_exc())
-                    logger.error(f"Failed to fetch tags: {inner_exc}")
+                    yield Either(
+                        left=StackTraceError(
+                            name="Tags and Classifications",
+                            error=f"Failed to fetch tags due to [{inner_exc}]",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
             for res in result:
                 row = list(res)
@@ -313,7 +375,7 @@ class SnowflakeSource(CommonDbSourceService):
                     tags=[row[1]],
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
-                    classification_desciption="SNOWFLAKE TAG NAME",
+                    classification_description="SNOWFLAKE TAG NAME",
                 )
 
     def query_table_names_and_types(
@@ -376,39 +438,146 @@ class SnowflakeSource(CommonDbSourceService):
             logger.debug(f"Failed to fetch current account due to: {exc}")
         return None
 
-    def _clean_region_name(self, region_id: Optional[str]) -> Optional[str]:
-        """
-        Region id can be a vanilla id like "AWS_US_WEST_2"
-        and in case of multi region group it can be like "PUBLIC.AWS_US_WEST_2"
-        in such cases this method will extract vanilla region id and return the
-        region name from constant map SNOWFLAKE_REGION_ID_MAP
+    def _get_source_url_root(
+        self, database_name: Optional[str] = None, schema_name: Optional[str] = None
+    ) -> str:
+        url = (
+            f"https://app.snowflake.com/{self.region.lower()}"
+            f"/{self.account.lower()}/#/data/databases/{database_name}"
+        )
+        if schema_name:
+            url = f"{url}/schemas/{schema_name}"
 
-        for more info checkout this doc:
-            https://docs.snowflake.com/en/sql-reference/functions/current_region
-        """
-        if region_id:
-            clean_region_id = region_id.split(".")[-1]
-            return SNOWFLAKE_REGION_ID_MAP.get(clean_region_id.lower())
-        return None
+        return url
 
     def get_source_url(
         self,
-        database_name: str,
-        schema_name: str,
-        table_name: str,
-        table_type: TableType,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
         Method to get the source url for snowflake
         """
-        account = self._get_current_account()
-        region_id = self._get_current_region()
-        region_name = self._clean_region_name(region_id)
-        if account and region_name:
-            tab_type = "view" if table_type == TableType.View else "table"
-            return (
-                f"https://app.snowflake.com/{region_name.lower()}/{account.lower()}/#/"
-                f"data/databases/{database_name}/schemas"
-                f"/{schema_name}/{tab_type}/{table_name}"
-            )
+        try:
+            if self.account and self.region:
+                tab_type = "view" if table_type == TableType.View else "table"
+                url = self._get_source_url_root(
+                    database_name=database_name, schema_name=schema_name
+                )
+                if table_name:
+                    url = f"{url}/{tab_type}/{table_name}"
+                return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get source url: {exc}")
         return None
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
+        table = self.context.table
+        try:
+            life_cycle_data = self.life_cycle_query_dict(
+                query=SNOWFLAKE_LIFE_CYCLE_QUERY.format(
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                )
+            ).get(table.name.__root__)
+            if life_cycle_data:
+                life_cycle = LifeCycle(
+                    created=AccessDetails(
+                        timestamp=convert_timestamp_to_milliseconds(
+                            life_cycle_data.created_at.timestamp()
+                        )
+                    )
+                )
+                yield Either(
+                    right=OMetaLifeCycleData(entity=table, life_cycle=life_cycle)
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=table.name.__root__,
+                    error=f"Unable to get the table life cycle data for table {table.name.__root__}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
+        """List Snowflake stored procedures"""
+        if self.source_config.includeStoredProcedures:
+            results = self.engine.execute(
+                SNOWFLAKE_GET_STORED_PROCEDURES.format(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=self.context.database_schema.name.__root__,
+                )
+            ).all()
+            for row in results:
+                stored_procedure = SnowflakeStoredProcedure.parse_obj(dict(row))
+                yield stored_procedure
+
+    def yield_stored_procedure(
+        self, stored_procedure: SnowflakeStoredProcedure
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Prepare the stored procedure payload"""
+
+        try:
+            yield Either(
+                right=CreateStoredProcedureRequest(
+                    name=EntityName(__root__=stored_procedure.name),
+                    description=stored_procedure.comment,
+                    storedProcedureCode=StoredProcedureCode(
+                        language=STORED_PROC_LANGUAGE_MAP.get(
+                            stored_procedure.language
+                        ),
+                        code=stored_procedure.definition,
+                    ),
+                    databaseSchema=self.context.database_schema.fullyQualifiedName,
+                    sourceUrl=SourceUrl(
+                        __root__=self._get_source_url_root(
+                            database_name=self.context.database.name.__root__,
+                            schema_name=self.context.database_schema.name.__root__,
+                        )
+                        + f"/procedure/{stored_procedure.name}"
+                        + f"{quote(stored_procedure.signature) if stored_procedure.signature else ''}"
+                    ),
+                )
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=stored_procedure.name,
+                    error=f"Error yielding Stored Procedure [{stored_procedure.name}] due to [{exc}]",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """
+        Pick the stored procedure name from the context
+        and return the list of associated queries
+        """
+        # Only process if we actually have yield a stored procedure
+        if self.context.stored_procedure:
+            start, _ = get_start_and_end(self.source_config.queryLogDuration)
+            query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
+                start_date=start,
+                warehouse=self.service_connection.warehouse,
+                schema_name=self.context.database_schema.name.__root__,
+                database_name=self.context.database.name.__root__,
+            )
+
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+                schema_name=self.context.database_schema.name.__root__,
+                database_name=self.context.database.name.__root__,
+            )
+
+            for query_by_procedure in (
+                queries_dict.get(self.context.stored_procedure.name.__root__.lower())
+                or []
+            ):
+                yield query_by_procedure

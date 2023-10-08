@@ -8,6 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=arguments-differ
 
 """
 Interfaces with database for all database engine
@@ -40,7 +41,6 @@ from metadata.profiler.orm.functions.table_metric_construct import (
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sampler_factory import sampler_factory_
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
-from metadata.utils.dispatch import valuedispatch
 from metadata.utils.logger import profiler_interface_registry_logger
 
 logger = profiler_interface_registry_logger()
@@ -153,18 +153,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    @valuedispatch
-    def _get_metrics(self, *args, **kwargs):
-        """Generic getter method for metrics. To be used with
-        specific dispatch methods
-        """
-        logger.warning("Could not get metric. No function registered.")
-
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Table.value)
-    def _(
+    def _compute_table_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
         runner: QueryRunner,
         session,
@@ -180,7 +170,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         # pylint: disable=protected-access
-
         try:
             dialect = runner._session.get_bind().dialect.name
             row = table_metric_construct_factory.construct(
@@ -201,15 +190,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             session.rollback()
             raise RuntimeError(exc)
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Static.value)
-    def _(
+    def _compute_static_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
         runner: QueryRunner,
+        column,
         session,
-        column: Column,
         *args,
         **kwargs,
     ):
@@ -232,31 +218,23 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             return dict(row)
         except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
-                )
-                return self._compute_static_metrics_wo_sum(
-                    metrics, runner, session, column
-                )
-
+            return self._programming_error_static_metric(
+                runner, column, exc, session, metrics
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Query.value)
-    def _(
+    def _compute_query_metrics(
         self,
-        metric_type: str,
         metric: Metrics,
         runner: QueryRunner,
+        column,
         session,
-        column: Column,
         sample,
+        *args,
+        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values
@@ -267,6 +245,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
+
         try:
             col_metric = metric(column)
             metric_query = col_metric.query(sample=sample, session=session)
@@ -284,15 +263,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             handle_query_exception(msg, exc, session)
         return None
 
-    # pylint: disable=unused-argument
-    @_get_metrics.register(MetricTypes.Window.value)
-    def _(
+    def _compute_window_metrics(
         self,
-        metric_type: str,
         metrics: List[Metrics],
         runner: QueryRunner,
+        column,
         session,
-        column: Column,
         *args,
         **kwargs,
     ):
@@ -305,6 +281,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
+
         if not metrics:
             return None
         try:
@@ -312,14 +289,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
             )
         except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
-                )
-                return None
-
+            logger.info(
+                f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -327,11 +299,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return dict(row)
         return None
 
-    @_get_metrics.register(MetricTypes.System.value)
-    def _(
+    def _compute_system_metrics(
         self,
-        metric_type: str,
-        metric: Metrics,
+        metrics: Metrics,
         runner: QueryRunner,
         session,
         *args,
@@ -348,7 +318,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         try:
-            rows = metric().sql(session, conn_config=self.service_connection_config)
+            rows = metrics().sql(session, conn_config=self.service_connection_config)
             return rows
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
@@ -412,8 +382,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
 
             try:
-                row = self._get_metrics(
-                    metric_type.value,
+                row = self._get_metric_fn[metric_type.value](
                     metrics,
                     runner=runner,
                     session=session,
@@ -423,14 +392,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             except Exception as exc:
                 error = f"{column if column is not None else runner.table.__tablename__} metric_type.value: {exc}"
                 logger.error(error)
-                self.processor_status.failed_profiler(error, traceback.format_exc())
+                self.status.failed_profiler(error, traceback.format_exc())
                 row = None
 
             if column is not None:
                 column = column.name
-                self.processor_status.scanned(f"{table.__tablename__}.{column}")
+                self.status.scanned(f"{table.__tablename__}.{column}")
             else:
-                self.processor_status.scanned(table.__tablename__)
+                self.status.scanned(table.__tablename__)
 
             return row, column, metric_type.value
 
@@ -471,7 +440,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         profile_results["columns"][column].update(
                             {
                                 "name": column,
-                                "timestamp": datetime.now(tz=timezone.utc).timestamp(),
+                                "timestamp": int(
+                                    datetime.now(tz=timezone.utc).timestamp() * 1000
+                                ),
                                 **profile,
                             }
                         )
@@ -539,6 +510,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
+
+    def _programming_error_static_metric(self, runner, column, exc, _, __):
+        """
+        Override Programming Error for Static Metrics
+        """
+        logger.error(
+            f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
+        )
 
     def close(self):
         """Clean up session"""

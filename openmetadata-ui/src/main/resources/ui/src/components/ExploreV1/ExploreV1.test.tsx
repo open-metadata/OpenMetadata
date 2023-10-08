@@ -12,10 +12,10 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from 'components/Explore/exlore.mock';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { SearchIndex } from 'enums/search.enum';
 import React from 'react';
+import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../components/Explore/exlore.mock';
+import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
+import { SearchIndex } from '../../enums/search.enum';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('react-router-dom', () => ({
@@ -26,7 +26,7 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
@@ -34,14 +34,14 @@ jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('components/GlobalSearchProvider/GlobalSearchProvider', () => ({
+jest.mock('../../components/GlobalSearchProvider/GlobalSearchProvider', () => ({
   useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
   })),
 }));
 
 jest.mock(
-  'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
+  '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),
@@ -68,8 +68,11 @@ const props = {
     pipeline_search_index: 0,
     mlmodel_search_index: 0,
     container_search_index: 0,
-    glossary_search_index: 0,
+    stored_procedure_search_index: 0,
+    dashboard_data_model_search_index: 0,
+    glossary_term_search_index: 0,
     tag_search_index: 10,
+    search_entity_search_index: 9,
   },
   onChangeAdvancedSearchQuickFilters: onChangeAdvancedSearchQuickFilters,
   searchIndex: SearchIndex.TABLE as ExploreSearchIndex,

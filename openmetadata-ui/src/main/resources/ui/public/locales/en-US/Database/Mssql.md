@@ -55,9 +55,9 @@ $$section
 There are three schemes based on the user's requirement to fetch data from MSSQL:
 - **mssql+pytds**: High-performance open-source library for connecting to Microsoft SQL Server.
 - **mssql+pyodbc**: Cross-platform Python library that uses ODBC to connect to Microsoft SQL Server.
-- *mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
+- **mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
 
-If you are unsure about this setting, keep the default value.
+If you are connecting via windows authentication from a linux docker deployment please use `mssql+pymssql`. 
 
 $$
 
@@ -115,5 +115,5 @@ $$section
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
-When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TRUST_SERVER_CERTIFICATE: Yes.
+When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes.
 $$

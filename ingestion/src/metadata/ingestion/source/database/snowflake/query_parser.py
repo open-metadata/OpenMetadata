@@ -13,19 +13,17 @@ Snowflake Query parser module
 """
 from abc import ABC
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.database.snowflake.queries import (
@@ -43,14 +41,14 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: SnowflakeConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
@@ -62,6 +60,20 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.get_filters(),
         )
+
+    def check_life_cycle_query(self, query_type: Optional[str]) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        if (
+            query_type
+            and query_type.upper()
+            in self.life_cycle_filters  # pylint: disable=no-member
+        ):
+            return True
+        return False
 
     def set_session_query_tag(self) -> None:
         """

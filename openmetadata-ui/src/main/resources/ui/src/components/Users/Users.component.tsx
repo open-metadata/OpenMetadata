@@ -12,26 +12,25 @@
  */
 
 import { Col, Row, Tabs, Typography } from 'antd';
-import ActivityFeedProvider from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import SearchedData from 'components/searched-data/SearchedData';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { EntityType } from 'enums/entity.enum';
 import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import SearchedData from '../../components/searched-data/SearchedData';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import { getUserPath } from '../../constants/constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
+import { EntityType } from '../../enums/entity.enum';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
-import { userPageFilterList } from './Users.util';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
 import UserProfileImage from './UsersProfile/UserProfileImage/UserProfileImage.component';
 import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component';
@@ -106,7 +105,7 @@ const Users = ({
     () => (
       <ActivityFeedProvider user={userData.id}>
         <ActivityFeedTab
-          entityType={EntityType.USER_NAME}
+          entityType={EntityType.USER}
           fqn={username}
           onFeedUpdate={noop}
         />
@@ -175,7 +174,6 @@ const Users = ({
     followingEntities,
     ownedEntities,
     isUserEntitiesLoading,
-    userPageFilterList,
     entityDetails,
     activityFeed,
   ]);

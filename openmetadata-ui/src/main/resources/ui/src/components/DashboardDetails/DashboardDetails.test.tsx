@@ -17,13 +17,13 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { EntityTabs } from 'enums/entity.enum';
-import { ChartType } from 'generated/entity/data/chart';
-import { mockGlossaryList } from 'mocks/Glossary.mock';
-import { mockTagList } from 'mocks/Tags.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityTabs } from '../../enums/entity.enum';
+import { ChartType } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { mockGlossaryList } from '../../mocks/Glossary.mock';
+import { mockTagList } from '../../mocks/Tags.mock';
 import DashboardDetails from './DashboardDetails.component';
 import { DashboardDetailsProps } from './DashboardDetails.interface';
 
@@ -67,6 +67,7 @@ const dashboardDetailsProps: DashboardDetailsProps = {
   versionHandler: jest.fn(),
   createThread: jest.fn(),
   fetchDashboard: jest.fn(),
+  handleToggleDelete: jest.fn(),
 };
 
 const mockEntityPermissions = {
@@ -92,7 +93,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
@@ -111,7 +112,7 @@ jest.mock('../PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('components/TableTags/TableTags.component', () =>
+jest.mock('../../components/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -119,24 +120,23 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage</p>);
-});
-
 jest.mock('../FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>FeedEditor</p>);
 });
 
-jest.mock('../EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest.fn().mockReturnValue(<p data-testid="lineage">Lineage</p>);
+  }
+);
 jest.mock('../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest
     .fn()
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

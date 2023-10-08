@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -25,6 +26,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResource.BotList;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.TestUtils;
 
 public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
   public static User botUser;
@@ -113,7 +115,14 @@ public class BotResourceTest extends EntityResourceTest<Bot, CreateBot> {
 
   @Override
   public void validateCreatedEntity(Bot entity, CreateBot request, Map<String, String> authHeaders) {
-    assertReference(request.getBotUser(), entity.getBotUser());
+    if (request.getBotUser() != null) {
+      assertNotNull(entity.getBotUser());
+      TestUtils.validateEntityReference(entity.getBotUser());
+      Assertions.assertEquals(
+          request.getBotUser().toLowerCase(), entity.getBotUser().getFullyQualifiedName().toLowerCase());
+    } else {
+      Assertions.assertNull(entity.getBotUser());
+    }
   }
 
   @Override

@@ -5,7 +5,9 @@
   "description": "Create DataProduct API request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.domains.CreateDataProduct",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "description": "A unique name of the DataProduct",
@@ -23,6 +25,9 @@
       "description": "Description of the DataProduct.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "owner": {
       "description": "Owner of this DataProduct.",
       "$ref": "../../type/entityReference.json",
@@ -30,18 +35,27 @@
     },
     "domain": {
       "description": "Fully qualified name of the Domain the DataProduct belongs to.",
-      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName",
       "default": null
     },
     "experts": {
-      "description": "List of of user/login names of users who are experts in this DataProduct.",
+      "description": "List of user/login names of users who are experts in this DataProduct.",
       "type" : "array",
       "items": {
-        "type" : "string"
+        "type": "string"
       },
+      "default": null
+    },
+    "assets": {
+      "description": "Data assets collection that is part of this data product.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     }
   },
-  "required": ["id", "name", "description", "domain"],
+  "required": [
+    "name",
+    "description",
+    "domain"
+  ],
   "additionalProperties": false
 }

@@ -20,7 +20,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -55,8 +54,8 @@ import org.openmetadata.service.util.JsonUtils;
 class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
   private Table TABLE;
 
-  public static MessageDecorator<?> feedMessageFormatter = new FeedMessageDecorator();
-  public static MessageDecorator<?> slackMessageFormatter = new SlackMessageDecorator();
+  public static final MessageDecorator<?> feedMessageFormatter = new FeedMessageDecorator();
+  public static final MessageDecorator<?> slackMessageFormatter = new SlackMessageDecorator();
 
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
@@ -66,7 +65,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testFormattedMessages() throws JsonProcessingException {
+  void testFormattedMessages() {
     ChangeDescription changeDescription = new ChangeDescription();
     // Simulate updating tags of an entity from tag1 -> tag2
     FieldChange addTag = new FieldChange();
@@ -95,7 +94,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testEntityReferenceFormat() throws JsonProcessingException {
+  void testEntityReferenceFormat() {
     ChangeDescription changeDescription = new ChangeDescription().withPreviousVersion(1.0);
     // Simulate adding owner to a table
     EntityReference entityReference = new EntityReference();

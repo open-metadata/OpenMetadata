@@ -12,27 +12,28 @@
  */
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { getUserPath } from 'constants/constants';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
+import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
+import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
+import { getUserPath } from '../../../../constants/constants';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   entityDisplayName,
   getEntityField,
   getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
-} from 'utils/FeedUtils';
-import { getEntityLink } from 'utils/TableUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getDayTimeByTimeStamp,
-} from 'utils/TimeUtils';
+} from '../../../../utils/FeedUtils';
+import { getEntityLink } from '../../../../utils/TableUtils';
 import './feed-card-header-v1.style.less';
+import FeedCardHeaderName from './FeedCardHeaderName';
 
 interface FeedCardHeaderV1Props {
   about?: string;
@@ -95,23 +96,16 @@ const FeedCardHeaderV1 = ({
         </UserPopOverCard>
       )}
       <span className="feed-header-content">
-        <UserPopOverCard userName={createdBy}>
-          <span
-            className="thread-author cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTitleClickHandler(createdBy);
-            }}>
-            {createdBy}
-          </span>
-        </UserPopOverCard>
-
+        <FeedCardHeaderName
+          createdBy={createdBy}
+          onTitleClickHandler={onTitleClickHandler}
+        />
         {getFeedLinkElement}
 
         {timeStamp && (
-          <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
+          <Tooltip title={formatDateTime(timeStamp)}>
             <span className="feed-header-timestamp" data-testid="timestamp">
-              {getDayTimeByTimeStamp(timeStamp)}
+              {getRelativeTime(timeStamp)}
             </span>
           </Tooltip>
         )}

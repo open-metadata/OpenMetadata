@@ -14,18 +14,17 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
-import { getEntityDetailLink } from 'utils/CommonUtils';
 import AppState from '../../../AppState';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
+import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -34,11 +33,14 @@ import {
   TaskType,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { postThread } from '../../../rest/feedsAPI';
+import { getEntityDetailLink } from '../../../utils/CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -58,7 +60,8 @@ const UpdateDescription = () => {
   const history = useHistory();
   const [form] = useForm();
 
-  const { entityType, entityFQN } = useParams<{ [key: string]: string }>();
+  const { entityType, fqn: entityFQN } =
+    useParams<{ fqn: string; entityType: EntityType }>();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -89,7 +92,7 @@ const UpdateDescription = () => {
     return getColumnObject(
       column[0],
       getEntityColumnsDetails(entityType, entityData),
-      entityType as EntityType
+      entityType
     );
   }, [field, entityData, entityType]);
 
@@ -138,8 +141,10 @@ const UpdateDescription = () => {
         );
         history.push(
           getEntityDetailLink(
-            entityType as EntityType,
-            entityFQN,
+            entityType,
+            entityType === EntityType.TABLE
+              ? entityFQN
+              : getDecodedFqn(entityFQN),
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -149,11 +154,7 @@ const UpdateDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(
-      entityType as EntityType,
-      entityFQN as string,
-      setEntityData
-    );
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -181,6 +182,10 @@ const UpdateDescription = () => {
     setCurrentDescription(getDescription());
   }, [entityData, columnObject]);
 
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
+
   return (
     <ResizablePanels
       firstPanel={{
@@ -190,7 +195,7 @@ const UpdateDescription = () => {
           <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType as EntityType),
+                ...getBreadCrumbList(entityData, entityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -263,7 +268,7 @@ const UpdateDescription = () => {
 
                 <Form.Item>
                   <Space
-                    className="tw-w-full tw-justify-end"
+                    className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
                     <Button type="link" onClick={back}>

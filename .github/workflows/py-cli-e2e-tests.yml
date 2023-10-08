@@ -25,18 +25,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight', 'datalake_s3']
+        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'hive', 'quicksight', 'datalake_s3', 'postgres']
     environment: test
 
     steps:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -137,6 +137,10 @@ jobs:
         E2E_DATALAKE_S3_BUCKET_NAME: ${{ secrets.E2E_DATALAKE_S3_BUCKET_NAME }}
         E2E_DATALAKE_S3_PREFIX: ${{ secrets.E2E_DATALAKE_S3_PREFIX }}
         E2E_DATALAKE_S3_REGION: ${{ secrets.E2E_DATALAKE_S3_REGION }}
+        E2E_POSTGRES_USERNAME: ${{ secrets.E2E_POSTGRES_USERNAME }}
+        E2E_POSTGRES_PASSWORD: ${{ secrets.E2E_POSTGRES_PASSWORD }}
+        E2E_POSTGRES_HOSTPORT: ${{ secrets.E2E_POSTGRES_HOSTPORT }}
+        E2E_POSTGRES_DATABASE: ${{ secrets.E2E_POSTGRES_DATABASE }}
       run: |
         source env/bin/activate
         export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py

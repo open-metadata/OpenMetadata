@@ -12,27 +12,29 @@
  */
 import { Button, Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import TableDataCardBody from 'components/TableDataCardBody/TableDataCardBody';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { EntityType } from 'enums/entity.enum';
-import { OwnerType } from 'enums/user.enum';
-import { EntityReference } from 'generated/type/entityLineage';
 import { isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getEntityPlaceHolder, getOwnerValue } from 'utils/CommonUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { OwnerType } from '../../../enums/user.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import {
+  getEntityPlaceHolder,
+  getOwnerValue,
+} from '../../../utils/CommonUtils';
 import {
   getEntityBreadcrumbs,
   getEntityId,
   getEntityLinkFromType,
   getEntityName,
-} from 'utils/EntityUtils';
-import { stringToHTML } from 'utils/StringsUtils';
-import { getServiceIcon, getUsagePercentile } from 'utils/TableUtils';
+} from '../../../utils/EntityUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
+import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
+import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
+import { useTourProvider } from '../../TourProvider/TourProvider';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
@@ -59,7 +61,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
         ? source.tier
-        : source.tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)?.[1] ?? '';
+        : getEntityName(source.tier);
       const profileName =
         source.owner?.type === OwnerType.USER ? source.owner?.name : undefined;
 
@@ -118,12 +120,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <div className="d-flex gap-2 items-center">
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb titleLinks={breadcrumbs} />
+                  <TitleBreadcrumb
+                    titleLinks={breadcrumbs}
+                    widthDeductions={780}
+                  />
                 </div>
               </div>
             </Col>
           )}
-          <Col span={24}>
+          <Col data-testid={`${source.service?.name}-${source.name}`} span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text

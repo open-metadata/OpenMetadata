@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Progress, Row, Typography } from 'antd';
+import { Card, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isNil, uniqueId } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,22 +24,23 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
-import {
-  getCurrentDateTimeMillis,
-  getPastDaysDateTimeMillis,
-} from 'utils/TimeUtils';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import { axisTickFormatter } from '../../utils/ChartUtils';
 import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
 
 interface Props {
   selectedDays: number;
@@ -66,8 +66,8 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
     setIsLoading(true);
     try {
       const params = {
-        startTs: getPastDaysDateTimeMillis(selectedDays),
-        endTs: getCurrentDateTimeMillis(),
+        startTs: getEpochMillisForPastDays(selectedDays),
+        endTs: getCurrentMillis(),
         dataInsightChartName: DataInsightChartType.TotalEntitiesByType,
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
@@ -86,10 +86,6 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
       // error handled in parent
     });
   }, [selectedDays]);
-
-  const pluralize = (entity: string) => {
-    return entity + 's';
-  };
 
   return (
     <Card
@@ -118,12 +114,12 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
                   <XAxis dataKey="timestamp" />
                   <YAxis tickFormatter={(value) => axisTickFormatter(value)} />
                   <Tooltip />
-                  {entities.map((entity) => (
+                  {entities.map((entity, i) => (
                     <Area
                       dataKey={entity}
-                      fill={TOTAL_ENTITY_CHART_COLOR[entity]}
+                      fill={TOTAL_ENTITY_CHART_COLOR[i]}
                       key={entity}
-                      stroke={TOTAL_ENTITY_CHART_COLOR[entity]}
+                      stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   ))}
                 </AreaChart>
@@ -131,72 +127,13 @@ const TotalEntityInsightV1: FC<Props> = ({ selectedDays }) => {
             </div>
           </Col>
           <Col span={10}>
-            <Row>
-              <Col className="p-b-sm" span={24}>
-                <div className="d-flex justify-between">
-                  <div className="d-flex flex-col">
-                    <Typography.Text className="font-medium">
-                      {t('label.total-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                    </Typography.Text>
-                    <Typography.Text className="font-bold text-2xl">
-                      {total}
-                    </Typography.Text>
-                  </div>
-                  <div className="d-flex flex-col justify-end text-right">
-                    {Boolean(relativePercentage) && !isNil(relativePercentage) && (
-                      <Typography.Paragraph className="m-b-0">
-                        <Typography.Text
-                          className="d-block"
-                          type={relativePercentage >= 0 ? 'success' : 'danger'}>
-                          {`${
-                            relativePercentage >= 0 ? '+' : ''
-                          }${relativePercentage.toFixed(2)}%`}
-                        </Typography.Text>
-                        <Typography.Text className="d-block">
-                          {Boolean(selectedDays) &&
-                            t('label.days-change-lowercase', {
-                              days: selectedDays,
-                            })}
-                        </Typography.Text>
-                      </Typography.Paragraph>
-                    )}
-                  </div>
-                </div>
-              </Col>
-              {entities.map((entity) => {
-                const progress = (latestData[entity] / Number(total)) * 100;
-
-                return (
-                  <Col key={uniqueId()} span={24}>
-                    <Row className="m-b-xs">
-                      <Col
-                        className="d-flex justify-between items-center text-xs"
-                        md={12}
-                        sm={24}>
-                        <Typography.Paragraph className="m-b-0">
-                          {pluralize(entity)}
-                        </Typography.Paragraph>
-
-                        <Typography.Paragraph className="m-b-0">
-                          {latestData[entity]}
-                        </Typography.Paragraph>
-                      </Col>
-                      <Col md={12} sm={24}>
-                        <Progress
-                          className="p-l-xss"
-                          percent={progress}
-                          showInfo={false}
-                          size="small"
-                          strokeColor={TOTAL_ENTITY_CHART_COLOR[entity]}
-                        />
-                      </Col>
-                    </Row>
-                  </Col>
-                );
-              })}
-            </Row>
+            <TotalEntityInsightSummary
+              entities={entities}
+              latestData={latestData}
+              relativePercentage={relativePercentage}
+              selectedDays={selectedDays}
+              total={total}
+            />
           </Col>
         </Row>
       ) : (

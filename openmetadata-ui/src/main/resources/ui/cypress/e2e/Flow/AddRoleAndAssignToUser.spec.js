@@ -28,7 +28,9 @@ describe('Test Add role and assign it to the user', () => {
     cy.login();
     interceptURL('GET', '*api/v1/roles*', 'getRoles');
     interceptURL('GET', '/api/v1/users?*', 'usersPage');
-    cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+    cy.get('[data-testid="app-bar-item-settings"]')
+      .should('be.visible')
+      .click();
   });
 
   it('Create role', () => {

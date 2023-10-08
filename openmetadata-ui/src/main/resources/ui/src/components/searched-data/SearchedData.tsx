@@ -13,15 +13,15 @@
 
 import { Pagination } from 'antd';
 import classNames from 'classnames';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isNumber, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
+import ExploreSearchCard from '../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { PAGE_SIZE } from '../../constants/constants';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
@@ -119,9 +119,9 @@ const SearchedData: React.FC<SearchedDataProps> = ({
   const ResultCount = () => {
     if (showResultCount && (isFilterSelected || filter?.quickFilter)) {
       if (MAX_RESULT_HITS === totalValue) {
-        return <div className="tw-mb-1">{`About ${totalValue} results`}</div>;
+        return <div>{`About ${totalValue} results`}</div>;
       } else {
-        return <div className="tw-mb-1">{pluralize(totalValue, 'result')}</div>;
+        return <div>{pluralize(totalValue, 'result')}</div>;
       }
     } else {
       return null;
@@ -151,9 +151,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                 <>
                   <ResultCount />
                   {data.length > 0 ? (
-                    <div
-                      className="tw-grid tw-grid-rows-1 tw-grid-cols-1"
-                      data-testid="search-results">
+                    <div data-testid="search-results">
                       {searchResultCards}
                       <Pagination
                         hideOnSinglePage

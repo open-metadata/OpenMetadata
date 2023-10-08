@@ -10,19 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import i18n from 'utils/i18next/LocalUtil';
-
-export const mapAssetsSearchIndex = {
-  [EntityType.TABLE]: SearchIndex.TABLE,
-  [EntityType.PIPELINE]: SearchIndex.PIPELINE,
-  [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-  [EntityType.MLMODEL]: SearchIndex.MLMODEL,
-  [EntityType.TOPIC]: SearchIndex.TOPIC,
-  [EntityType.CONTAINER]: SearchIndex.CONTAINER,
-};
+import { AssetsUnion } from '../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const AssetsFilterOptions: Array<{
   label: string;
@@ -59,4 +50,106 @@ export const AssetsFilterOptions: Array<{
     key: EntityType.CONTAINER,
     value: SearchIndex.CONTAINER,
   },
+  {
+    label: i18n.t('label.glossary-plural'),
+    key: EntityType.GLOSSARY_TERM,
+    value: SearchIndex.GLOSSARY,
+  },
+  {
+    label: i18n.t('label.stored-procedure-plural'),
+    key: EntityType.STORED_PROCEDURE,
+    value: SearchIndex.STORED_PROCEDURE,
+  },
+  {
+    label: i18n.t('label.data-model-plural'),
+    key: EntityType.DASHBOARD_DATA_MODEL,
+    value: SearchIndex.DASHBOARD_DATA_MODEL,
+  },
+  {
+    label: i18n.t('label.database'),
+    key: EntityType.DATABASE,
+    value: SearchIndex.DATABASE,
+  },
+  {
+    label: i18n.t('label.database-schema'),
+    key: EntityType.DATABASE_SCHEMA,
+    value: SearchIndex.DATABASE_SCHEMA,
+  },
+
+  {
+    label: i18n.t('label.search-index'),
+    key: EntityType.SEARCH_INDEX,
+    value: SearchIndex.SEARCH_INDEX,
+  },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.database'),
+    }),
+    key: EntityType.DATABASE_SERVICE,
+    value: SearchIndex.DATABASE_SERVICE,
+  },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.messaging'),
+    }),
+    key: EntityType.MESSAGING_SERVICE,
+    value: SearchIndex.MESSAGING_SERVICE,
+  },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.dashboard'),
+    }),
+    key: EntityType.DASHBOARD_SERVICE,
+    value: SearchIndex.DASHBOARD_SERVICE,
+  },
+
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.pipeline'),
+    }),
+    key: EntityType.PIPELINE_SERVICE,
+    value: SearchIndex.PIPELINE_SERVICE,
+  },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.ml-model'),
+    }),
+    key: EntityType.MLMODEL_SERVICE,
+    value: SearchIndex.ML_MODEL_SERVICE,
+  },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.storage'),
+    }),
+    key: EntityType.STORAGE_SERVICE,
+    value: SearchIndex.STORAGE_SERVICE,
+  },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.search-index'),
+    }),
+    key: EntityType.SEARCH_SERVICE,
+    value: SearchIndex.SEARCH_SERVICE,
+  },
+];
+
+export const ASSETS_INDEXES = [
+  SearchIndex.TABLE,
+  SearchIndex.TOPIC,
+  SearchIndex.DASHBOARD,
+  SearchIndex.PIPELINE,
+  SearchIndex.MLMODEL,
+  SearchIndex.CONTAINER,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.DATABASE,
+  SearchIndex.DATABASE_SCHEMA,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.DATABASE_SERVICE,
+  SearchIndex.MESSAGING_SERVICE,
+  SearchIndex.DASHBOARD_SERVICE,
+  SearchIndex.ML_MODEL_SERVICE,
+  SearchIndex.PIPELINE_SERVICE,
+  SearchIndex.STORAGE_SERVICE,
+  SearchIndex.SEARCH_SERVICE,
 ];

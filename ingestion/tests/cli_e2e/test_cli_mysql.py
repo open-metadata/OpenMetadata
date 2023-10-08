@@ -20,10 +20,31 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE persons (
-            person_id int,
-            full_name varchar(255)
-        )
+        CREATE TABLE IF NOT EXISTS persons (
+        id INT NOT NULL AUTO_INCREMENT,
+        varchar_col VARCHAR(255),
+        text_col TEXT,
+        tinyint_col TINYINT,
+        smallint_col SMALLINT,
+        mediumint_col MEDIUMINT,
+        int_col INT,
+        bigint_col BIGINT,
+        float_col FLOAT(5,2),
+        double_col DOUBLE(5,2),
+        decimal_col DECIMAL(5,2),
+        date_col DATE,
+        datetime_col DATETIME,
+        timestamp_col TIMESTAMP,
+        time_col TIME,
+        year_col YEAR,
+        binary_col BINARY(3),
+        varbinary_col VARBINARY(3),
+        blob_col BLOB(3),
+        text2_col TEXT(3),
+        enum_col ENUM('value1','value2'),
+        set_col SET('value1','value2'),
+        PRIMARY KEY (id)
+        );
     """
 
     create_view_query: str = """
@@ -33,8 +54,13 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     """
 
     insert_data_queries: List[str] = [
-        "INSERT INTO persons (person_id, full_name) VALUES (1,'Peter Parker');",
-        "INSERT INTO persons (person_id, full_name) VALUES (1, 'Clark Kent');",
+        """
+            INSERT INTO persons (id, varchar_col, text_col, tinyint_col, smallint_col, mediumint_col, int_col, bigint_col, float_col, double_col, decimal_col, date_col, datetime_col, timestamp_col, time_col, year_col, binary_col,varbinary_col,blob_col,text2_col,enum_col,set_col) VALUES
+            (1,'value1','text1',1,2,3,4,5,6.1,7.2,'8.3', '2023-07-13', '2023-07-13 06:04:45', '2023-07-13 06:04:45', '06:06:45', 2023,X'010203',X'010203',X'010203','text2', 'value1','value1,value2')""",
+        """
+            INSERT INTO persons (id, varchar_col, text_col, tinyint_col, smallint_col, mediumint_col, int_col, bigint_col, float_col, double_col, decimal_col, date_col, datetime_col, timestamp_col, time_col, year_col, binary_col,varbinary_col,blob_col,text2_col,enum_col,set_col) VALUES
+            (2,'value2','text2',11,-12,-13,-14,-15,-16.1,-17.2,'18.3', '2023-09-13', '2023-09-13 06:04:45', '2023-09-13 06:10:45', '06:04:45', 2023,X'040506',X'040506',X'040506','text3', 'value2','value1');
+        """,
     ]
 
     drop_table_query: str = """
@@ -63,7 +89,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:
-        return 2
+        return 22
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -91,7 +117,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 52
+        return 60
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -99,4 +125,4 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 52
+        return 60

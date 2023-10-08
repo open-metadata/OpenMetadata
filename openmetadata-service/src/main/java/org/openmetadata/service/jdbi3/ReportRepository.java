@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Report;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,24 +24,34 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class ReportRepository extends EntityRepository<Report> {
-  public ReportRepository(CollectionDAO dao) {
-    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, dao.reportDAO(), dao, "", "");
+  public ReportRepository() {
+    super(ReportResource.COLLECTION_PATH, Entity.REPORT, Report.class, Entity.getCollectionDAO().reportDAO(), "", "");
   }
 
   @Override
   public Report setFields(Report report, Fields fields) {
     report.setService(getService(report)); // service is a default field
-    return report.withUsageSummary(
-        fields.contains("usageSummary") ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId()) : null);
+    if (report.getUsageSummary() == null) {
+      report.withUsageSummary(
+          fields.contains("usageSummary")
+              ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), report.getId())
+              : report.getUsageSummary());
+    }
+    return report;
   }
 
   @Override
-  public void prepare(Report report) {
+  public Report clearFields(Report report, Fields fields) {
+    return report.withUsageSummary(fields.contains("usageSummary") ? report.getUsageSummary() : null);
+  }
+
+  @Override
+  public void prepare(Report report, boolean update) {
     // TODO report does not have service yet
   }
 
   @Override
-  public void storeEntity(Report report, boolean update) throws IOException {
+  public void storeEntity(Report report, boolean update) {
     store(report, update);
   }
 

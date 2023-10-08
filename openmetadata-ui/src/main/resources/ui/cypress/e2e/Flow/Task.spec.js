@@ -35,7 +35,7 @@ describe('Task flow should work', () => {
     interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'taskResolve');
     interceptURL(
       'GET',
-      `/api/v1/search/query?q=*%20AND%20disabled%3Afalse&index=tag_search_index*`,
+      `/api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*`,
       'suggestTag'
     );
   });

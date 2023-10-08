@@ -13,21 +13,21 @@
 import { Layout } from 'antd';
 import { Content, Header } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import AppState from 'AppState';
-import Appbar from 'components/AppBar/Appbar';
-import LeftSidebar from 'components/MyData/LeftSidebar/LeftSidebar.component';
-import AuthenticatedAppRouter from 'components/router/AuthenticatedAppRouter';
-import { ROUTES } from 'constants/constants';
 import { isEmpty } from 'lodash';
-import SignupPage from 'pages/signup';
 import React from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
+import AppState from '../../AppState';
+import Appbar from '../../components/AppBar/Appbar';
+import LeftSidebar from '../../components/MyData/LeftSidebar/LeftSidebar.component';
+import AuthenticatedAppRouter from '../../components/router/AuthenticatedAppRouter';
+import { ROUTES } from '../../constants/constants';
+import SignUpPage from '../../pages/SignUp/SignUpPage';
 import './app-container.less';
 
 const AppContainer = () => {
   return (
     <Switch>
-      <Route exact component={SignupPage} path={ROUTES.SIGNUP}>
+      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(AppState.userDetails) && <Redirect to={ROUTES.HOME} />}
       </Route>
 

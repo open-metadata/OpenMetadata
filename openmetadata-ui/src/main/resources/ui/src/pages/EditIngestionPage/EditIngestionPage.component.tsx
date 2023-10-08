@@ -12,24 +12,18 @@
  */
 
 import { AxiosError } from 'axios';
-import AddIngestion from 'components/AddIngestion/AddIngestion.component';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import Loader from 'components/Loader/Loader';
 import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  deployIngestionPipelineById,
-  getIngestionPipelineByFqn,
-  updateIngestionPipeline,
-} from 'rest/ingestionPipelineAPI';
-import { getServiceByFQN } from 'rest/serviceAPI';
+import AddIngestion from '../../components/AddIngestion/AddIngestion.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import Loader from '../../components/Loader/Loader';
 import {
   DEPLOYED_PROGRESS_VAL,
   getServiceDetailsPath,
@@ -47,6 +41,12 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { DataObj } from '../../interface/service.interface';
+import {
+  deployIngestionPipelineById,
+  getIngestionPipelineByFqn,
+  updateIngestionPipeline,
+} from '../../rest/ingestionPipelineAPI';
+import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import {
   getBreadCrumbsArray,
@@ -59,8 +59,17 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const EditIngestionPage = () => {
   const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
-  const { ingestionFQN, ingestionType, serviceFQN, serviceCategory } =
-    useParams<{ [key: string]: string }>();
+  const {
+    ingestionFQN,
+    ingestionType,
+    fqn: serviceFQN,
+    serviceCategory,
+  } = useParams<{
+    ingestionFQN: string;
+    ingestionType: string;
+    fqn: string;
+    serviceCategory: string;
+  }>();
   const history = useHistory();
   const [serviceData, setServiceData] = useState<ServicesUpdateRequest>();
   const [ingestionData, setIngestionData] = useState<IngestionPipeline>(
@@ -259,12 +268,6 @@ const EditIngestionPage = () => {
     );
     setSlashedBreadcrumb(breadCrumbsArray);
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
-
-  useEffect(() => {
-    if (ingestionType === PipelineType.Dbt) {
-      setActiveIngestionStep(2);
-    }
-  }, [ingestionType]);
 
   const firstPanelChildren = (
     <div className="max-width-md w-9/10 service-form-container">

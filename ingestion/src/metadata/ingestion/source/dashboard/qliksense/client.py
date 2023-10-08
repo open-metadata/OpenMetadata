@@ -106,6 +106,7 @@ class QlikSenseClient:
         """
         Method to initialise websocket connection
         """
+        # pylint: disable=import-outside-toplevel
         import ssl
 
         from websocket import create_connection

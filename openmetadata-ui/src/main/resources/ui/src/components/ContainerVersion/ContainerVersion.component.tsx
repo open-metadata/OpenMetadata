@@ -13,35 +13,32 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { CustomPropertyProps } from 'components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import VersionTable from 'components/VersionTable/VersionTable.component';
-import { getVersionPathWithTab } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import {
-  ChangeDescription,
-  Column,
-  Container,
-} from 'generated/entity/data/container';
-import { TagSource } from 'generated/type/tagLabel';
 import { cloneDeep, toString } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import VersionTable from '../../components/VersionTable/VersionTable.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { getVersionPathWithTab } from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
+import {
+  ChangeDescription,
+  Column,
+} from '../../generated/entity/data/container';
+import { TagSource } from '../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
+  getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
@@ -52,6 +49,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owner,
+  domain,
   tier,
   containerFQN,
   breadCrumbList,
@@ -68,17 +66,26 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName } = useMemo(
-    () => getCommonExtraInfoForVersionDetails(changeDescription, owner, tier),
-    [changeDescription, owner, tier]
-  );
-
-  const columns = useMemo(() => {
-    const colList = cloneDeep(
-      (currentVersionData as Container).dataModel?.columns
+  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
+    useMemo(
+      () =>
+        getCommonExtraInfoForVersionDetails(
+          changeDescription,
+          owner,
+          tier,
+          domain
+        ),
+      [changeDescription, owner, tier, domain]
     );
 
-    return getColumnsDataWithVersionChanges<Column>(changeDescription, colList);
+  const columns = useMemo(() => {
+    const colList = cloneDeep(currentVersionData.dataModel?.columns);
+
+    return getColumnsDataWithVersionChanges<Column>(
+      changeDescription,
+      colList,
+      true
+    );
   }, [currentVersionData, changeDescription]);
 
   const handleTabChange = (activeKey: string) => {
@@ -118,6 +125,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const {
+    addedConstraintDiffs: addedColumnConstraintDiffs,
+    deletedConstraintDiffs: deletedColumnConstraintDiffs,
+  } = useMemo(
+    () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
+    [changeDescription]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -136,12 +151,14 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <VersionTable
+                    addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
                       containerFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
                     columns={columns}
+                    deletedColumnConstraintDiffs={deletedColumnConstraintDiffs}
                     joins={[]}
                   />
                 </Col>
@@ -175,26 +192,27 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             name={t('label.custom-property-plural')}
           />
         ),
-        children: !entityPermissions.ViewAll ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        ) : (
+        children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={
-              currentVersionData as CustomPropertyProps['entityDetails']
-            }
+            entityDetails={currentVersionData}
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
           />
         ),
       },
     ],
-    [description, containerFQN, columns, currentVersionData, entityPermissions]
+    [
+      description,
+      containerFQN,
+      columns,
+      currentVersionData,
+      entityPermissions,
+      addedColumnConstraintDiffs,
+      deletedColumnConstraintDiffs,
+    ]
   );
-
-  if (!(entityPermissions.ViewAll || entityPermissions.ViewBasic)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
 
   return (
     <>
@@ -209,8 +227,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.CONTAINER}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
                 tierDisplayName={tierDisplayName}
                 version={version}
                 onVersionClick={backHandler}
@@ -228,7 +249,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        show
         currentVersion={toString(version)}
         versionHandler={versionHandler}
         versionList={versionList}

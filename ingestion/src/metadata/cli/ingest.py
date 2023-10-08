@@ -17,9 +17,13 @@ import sys
 import traceback
 
 from metadata.config.common import load_config_file
-from metadata.ingestion.api.workflow import Workflow
 from metadata.utils.logger import cli_logger
-from metadata.utils.workflow_output_handler import WorkflowType, print_init_error
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.workflow_output_handler import (
+    WorkflowType,
+    print_init_error,
+    print_status,
+)
 
 logger = cli_logger()
 
@@ -35,7 +39,7 @@ def run_ingest(config_path: str) -> None:
     config_dict = None
     try:
         config_dict = load_config_file(config_file)
-        workflow = Workflow.create(config_dict)
+        workflow = MetadataWorkflow.create(config_dict)
         logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
@@ -44,6 +48,5 @@ def run_ingest(config_path: str) -> None:
 
     workflow.execute()
     workflow.stop()
-    workflow.print_status()
-    ret = workflow.result_status()
-    sys.exit(ret)
+    print_status(workflow)
+    workflow.raise_from_status()

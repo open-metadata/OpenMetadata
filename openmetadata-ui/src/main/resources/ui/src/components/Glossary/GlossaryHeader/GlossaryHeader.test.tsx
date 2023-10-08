@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { Glossary } from 'generated/entity/data/glossary';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import GlossaryHeader from './GlossaryHeader.component';
 
 jest.mock(
-  'components/common/UserTeamSelectableList/UserTeamSelectableList.component',
+  '../../common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => {
     return {
       UserTeamSelectableList: jest.fn().mockImplementation(({ onUpdate }) => (
@@ -40,11 +40,11 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
-jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
+jest.mock('../../Entity/EntityHeader/EntityHeader.component', () => ({
   EntityHeader: jest
     .fn()
     .mockReturnValue(<div data-testid="entity-header">EntityHeader</div>),
@@ -52,6 +52,7 @@ jest.mock('components/Entity/EntityHeader/EntityHeader.component', () => ({
 
 const mockOnUpdate = jest.fn();
 const mockOnDelete = jest.fn();
+const mockOnUpdateVote = jest.fn();
 
 describe('GlossaryHeader component', () => {
   it('should render name of Glossary', () => {
@@ -60,6 +61,7 @@ describe('GlossaryHeader component', () => {
         isGlossary
         permissions={DEFAULT_ENTITY_PERMISSION}
         selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        updateVote={mockOnUpdateVote}
         onAddGlossaryTerm={mockOnDelete}
         onDelete={mockOnDelete}
         onUpdate={mockOnUpdate}

@@ -15,6 +15,7 @@ import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.databases.TableResourceTest.assertColumns;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -43,7 +44,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateContainer;
+import org.openmetadata.schema.api.services.CreateStorageService;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -53,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.services.StorageServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResource.ContainerList;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -300,7 +304,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("0_root")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
 
@@ -402,7 +406,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     // Apply mutually exclusive tags to a table
@@ -420,7 +424,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel);
 
@@ -438,7 +442,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel1);
     assertResponse(
@@ -477,7 +481,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel);
     Container container1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
@@ -488,7 +492,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("put_complexColumnType")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(USER_WITH_DATA_CONSUMER_ROLE.getEntityReference())
+            .withOwner(DATA_CONSUMER.getEntityReference())
             .withSize(0.0)
             .withDataModel(dataModel);
     Container container2 =
@@ -587,6 +591,19 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         createdEntity.getFullyQualifiedName());
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a storage service with owner data consumer
+    StorageServiceResourceTest serviceTest = new StorageServiceResourceTest();
+    CreateStorageService createStorageService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    StorageService service = serviceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create container under it
+    createEntity(
+        createRequest("container").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+  }
+
   @Override
   public void compareEntities(Container expected, Container patched, Map<String, String> authHeaders)
       throws HttpResponseException {
@@ -657,7 +674,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertColumns(expected.getColumns(), actualDataModel.getColumns());
   }
 
-  private void assertFileFormats(List<ContainerFileFormat> expected, String actual) throws IOException {
+  private void assertFileFormats(List<ContainerFileFormat> expected, String actual) {
     List<ContainerFileFormat> actualFormats = JsonUtils.readObjects(actual, ContainerFileFormat.class);
     assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
   }

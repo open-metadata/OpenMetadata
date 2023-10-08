@@ -12,11 +12,21 @@
  */
 
 import { MenuProps } from 'antd';
-import { DropDownListItem } from '../dropdown/types';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ReactNode } from 'react';
+
+export interface DropdownOption {
+  name: ReactNode;
+  to: string;
+  disabled: boolean;
+  icon?: ReactNode;
+  isText?: boolean;
+  method?: () => void;
+}
 
 export interface NavBarProps {
   supportDropdown: MenuProps['items'];
-  profileDropdown: DropDownListItem[];
+  profileDropdown: ItemType[];
   searchValue: string;
   isTourRoute?: boolean;
   isFeatureModalOpen: boolean;

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
+import { EntityType } from '../enums/entity.enum';
 import { getEntityDeleteMessage } from './CommonUtils';
 import { getTitleCase } from './EntityUtils';
 
@@ -25,6 +25,7 @@ export const prepareEntityType = (entityType: string) => {
     EntityType.METADATA_SERVICE,
     EntityType.STORAGE_SERVICE,
     EntityType.MLMODEL_SERVICE,
+    EntityType.SEARCH_SERVICE,
   ];
 
   const dataQuality = [EntityType.TEST_SUITE, EntityType.TEST_CASE];
@@ -41,6 +42,8 @@ export const prepareEntityType = (entityType: string) => {
     return `dashboard/datamodels`;
   } else if (dataQuality.includes(entityType as EntityType)) {
     return `dataQuality/${entityType}s`;
+  } else if (entityType === EntityType.SEARCH_INDEX) {
+    return `searchIndexes`;
   } else if (entityType === EntityType.SUBSCRIPTION) {
     return `events/${entityType}s`;
   } else {

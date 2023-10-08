@@ -55,7 +55,13 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
     def get_excludes_datamodels(self) -> List[str]:
         return []
 
-    def expected_entities(self) -> int:
+    def expected_datamodels(self) -> int:
+        return 0
+
+    def expected_datamodel_lineage(self) -> int:
+        return 0
+
+    def expected_dashboards_and_charts(self) -> int:
         return 6
 
     def expected_lineage(self) -> int:
@@ -64,14 +70,8 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
     def expected_tags(self) -> int:
         return 0
 
-    def expected_not_included_entities(self) -> int:
-        return 6
-
-    def expected_not_included_sink_entities(self) -> int:
-        return 12
-
     def expected_filtered_mix(self) -> int:
         return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 5
+        return 6

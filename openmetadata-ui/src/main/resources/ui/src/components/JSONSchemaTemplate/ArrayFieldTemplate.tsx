@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import Icon, { PlusOutlined } from '@ant-design/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -27,7 +26,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
 
   return (
     <Fragment>
-      <div className="d-flex tw-justify-between tw-items-center">
+      <div className="d-flex justify-between items-center">
         <label className="control-label">{title}</label>
         {canAdd && (
           <Button
@@ -47,25 +46,19 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
       </div>
       {items.map((element, index) => (
         <div
-          className={classNames('d-flex tw-items-center tw-w-full', {
-            'tw-mt-2': index > 0,
+          className={classNames('d-flex items-center w-full', {
+            'm-t-sm': index > 0,
           })}
           key={`${element.key}-${index}`}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <button
-              className="focus:tw-outline-none tw-w-7 tw-ml-3"
-              type="button"
+            <Icon
+              className="w-7 h-0 m-l-sm"
+              component={DeleteIcon}
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
-              }}>
-              <SVGIcons
-                alt="delete"
-                icon={Icons.DELETE}
-                title={t('label.delete')}
-                width="16px"
-              />
-            </button>
+              }}
+            />
           )}
         </div>
       ))}

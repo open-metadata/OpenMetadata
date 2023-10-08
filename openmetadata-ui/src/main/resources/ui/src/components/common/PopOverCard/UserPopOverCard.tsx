@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Button, Popover, Space } from 'antd';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, {
@@ -22,14 +22,15 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
+import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
+import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
@@ -44,9 +45,9 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const getData = () => {
-    const userdetails = AppState.userDataProfiles[userName];
-    if (userdetails) {
-      setUserData(userdetails);
+    const userDetails = AppState.userDataProfiles[userName];
+    if (userDetails) {
+      setUserData(userDetails);
       setIsLoading(false);
     } else {
       if (type === 'user') {
@@ -68,21 +69,24 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const teams = getNonDeletedTeams(userData.teams ?? []);
 
     return teams?.length ? (
-      <p className="m-t-xs">
-        <SVGIcons alt="icon" className="w-4" icon={Icons.TEAMS_GREY} />
-        <span className="m-r-xs m-l-xss align-middle font-medium">
-          {t('label.team-plural')}
-        </span>
-        <span className="d-flex flex-wrap m-t-xss">
-          {teams.map((team, i) => (
+      <div className="m-t-xs">
+        <p className="d-flex items-center">
+          <IconTeams height={16} width={16} />
+          <span className="m-r-xs m-l-xss align-middle font-medium">
+            {t('label.team-plural')}
+          </span>
+        </p>
+
+        <p className="d-flex flex-wrap m-t-xss">
+          {teams.map((team) => (
             <span
-              className="bg-grey rounded-4 p-x-xs text-grey-body text-xs"
-              key={i}>
+              className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss"
+              key={team.id}>
               {team?.displayName ?? team?.name}
             </span>
           ))}
-        </span>
-      </p>
+        </p>
+      </div>
     ) : null;
   };
 
@@ -91,24 +95,29 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const isAdmin = userData?.isAdmin;
 
     return roles?.length ? (
-      <p className="m-t-xs">
-        <SVGIcons alt="icon" className="w-4" icon={Icons.USERS} />
-        <span className="m-r-xs m-l-xss align-middle font-medium">
-          {t('label.role-plural')}
-        </span>
+      <div className="m-t-xs">
+        <p className="d-flex items-center">
+          <IconUsers height={16} width={16} />
+          <span className="m-r-xs m-l-xss align-middle font-medium">
+            {t('label.role-plural')}
+          </span>
+        </p>
+
         <span className="d-flex flex-wrap m-t-xss">
           {isAdmin && (
-            <span className="bg-grey rounded-4 p-x-xs text-xs">
+            <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss">
               {TERM_ADMIN}
             </span>
           )}
-          {roles.map((role, i) => (
-            <span className="bg-grey rounded-4 p-x-xs text-xs" key={i}>
+          {roles.map((role) => (
+            <span
+              className="bg-grey rounded-4 p-x-xs text-xs m-b-xss"
+              key={role.id}>
               {role?.displayName ?? role?.name}
             </span>
           ))}
         </span>
-      </p>
+      </div>
     ) : null;
   };
 
@@ -117,25 +126,24 @@ const UserPopOverCard: FC<Props> = ({ children, userName, type = 'user' }) => {
     const displayName = getEntityName(userData as unknown as EntityReference);
 
     return (
-      <div className="d-flex">
-        <div className="m-r-xs">
-          <ProfilePicture id="" name={userName} width="24" />
-        </div>
+      <Space align="center">
+        <ProfilePicture id="" name={userName} width="24" />
         <div className="self-center">
-          <button
-            className="text-info"
+          <Button
+            className="text-info p-0"
+            type="link"
             onClick={(e) => {
               e.stopPropagation();
               onTitleClickHandler(getUserPath(name));
             }}>
             <span className="font-medium m-r-xs">{displayName}</span>
-          </button>
+          </Button>
           {displayName !== name ? (
             <span className="text-grey-muted">{name}</span>
           ) : null}
           {isEmpty(userData) && <span>{userName}</span>}
         </div>
-      </div>
+      </Space>
     );
   };
 

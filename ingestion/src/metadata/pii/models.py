@@ -12,7 +12,6 @@
 PII processing models
 """
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -23,5 +22,5 @@ class TagType(Enum):
 
 
 class TagAndConfidence(BaseModel):
-    tag: Optional[TagType]
+    tag_fqn: str
     confidence: float

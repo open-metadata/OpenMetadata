@@ -15,7 +15,7 @@ import {
   MOCKED_GLOSSARY_TERMS_1,
   MOCKED_GLOSSARY_TERMS_TREE,
   MOCKED_GLOSSARY_TERMS_TREE_1,
-} from 'mocks/Glossary.mock';
+} from '../mocks/Glossary.mock';
 import {
   buildTree,
   formatRelatedTermOptions,

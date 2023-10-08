@@ -158,7 +158,7 @@ def get_columns(
         # tds_version 4.2 does not support NVARCHAR(MAX)
         computed_definition = sql.cast(computed_cols.c.definition, NVARCHAR(4000))
 
-    s = (  # pylint: disable=invalid-name
+    s = (
         sql.select(
             columns,
             computed_definition,
@@ -166,16 +166,14 @@ def get_columns(
             identity_cols.c.is_identity,
             identity_cols.c.seed_value,
             identity_cols.c.increment_value,
-            extended_properties.c.value,
+            sql.cast(extended_properties.c.value, NVARCHAR(4000)).label("comment"),
         )
         .where(whereclause)
         .select_from(join)
         .order_by(columns.c.ordinal_position)
     )
 
-    c = connection.execution_options(  # pylint:disable=invalid-name
-        future_result=True
-    ).execute(s)
+    c = connection.execution_options(future_result=True).execute(s)
 
     cols = []
     for row in c.mappings():
@@ -192,7 +190,7 @@ def get_columns(
         is_identity = row[identity_cols.c.is_identity]
         identity_start = row[identity_cols.c.seed_value]
         identity_increment = row[identity_cols.c.increment_value]
-        comment = row[extended_properties.c.value]
+        comment = row["comment"]
 
         coltype = self.ischema_names.get(type_, None)
 

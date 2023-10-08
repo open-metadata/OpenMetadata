@@ -30,13 +30,7 @@ on:
       - "bootstrap/**"
 
 jobs:
-  test:
+  maven-mysql-ci:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-        node-version:
-          - 16.x
     steps:
       - run: 'echo "Step is not required"'

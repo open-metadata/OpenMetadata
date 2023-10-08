@@ -9,7 +9,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
-import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -19,14 +19,16 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
-import org.openmetadata.service.security.policyevaluator.SubjectCache;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -62,7 +64,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following owners from the List.",
       examples = {"matchAnyOwnerName('Owner1', 'Owner2')"},
       paramInputType = SPECIFIC_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyOwnerName(String... ownerNameList) throws IOException {
+  public boolean matchAnyOwnerName(String... ownerNameList) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -70,14 +72,14 @@ public class AlertsRuleEvaluator {
     EntityReference ownerReference = entity.getOwner();
     if (ownerReference != null) {
       if (USER.equals(ownerReference.getType())) {
-        User user = SubjectCache.getSubjectContext(ownerReference.getId()).getUser();
+        User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);
         for (String name : ownerNameList) {
           if (user.getName().equals(name)) {
             return true;
           }
         }
       } else if (TEAM.equals(ownerReference.getType())) {
-        Team team = SubjectCache.getTeam(ownerReference.getId());
+        Team team = Entity.getEntity(Entity.TEAM, ownerReference.getId(), "", Include.NON_DELETED);
         for (String name : ownerNameList) {
           if (team.getName().equals(name)) {
             return true;
@@ -94,12 +96,16 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following entityName from the List.",
       examples = {"matchAnyEntityFqn('Name1', 'Name')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityFqn(String... entityNames) throws IOException {
+  public boolean matchAnyEntityFqn(String... entityNames) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
     EntityInterface entity = getEntity(changeEvent);
     for (String name : entityNames) {
+      if (changeEvent.getEntityType().equals(TEST_CASE)
+          && (MessageParser.EntityLink.parse(((TestCase) entity).getEntityLink()).getEntityFQN().equals(name))) {
+        return true;
+      }
       if (entity.getFullyQualifiedName().equals(name)) {
         return true;
       }
@@ -113,7 +119,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityId(String... entityIds) throws IOException {
+  public boolean matchAnyEntityId(String... entityIds) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -159,7 +165,14 @@ public class AlertsRuleEvaluator {
       // in case the entity is not test case return since the filter doesn't apply
       return true;
     }
-    for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
+
+    // we need to handle both fields updated and fields added
+    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
+    if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
+      fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
+    }
+
+    for (FieldChange fieldChange : fieldChanges) {
       if (fieldChange.getName().equals("testCaseResult") && fieldChange.getNewValue() != null) {
         TestCaseResult testCaseResult = (TestCaseResult) fieldChange.getNewValue();
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
@@ -239,7 +252,7 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
-  public static EntityInterface getEntity(ChangeEvent event) throws IOException {
+  public static EntityInterface getEntity(ChangeEvent event) {
     Class<? extends EntityInterface> entityClass = Entity.getEntityClassFromType(event.getEntityType());
     if (entityClass != null) {
       EntityInterface entity;

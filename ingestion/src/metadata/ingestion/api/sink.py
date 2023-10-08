@@ -31,7 +31,8 @@ class SinkStatus(Status):
     def records_written(self, record: str) -> None:
         self.records.append(record)
 
-    def warning(self, info: Any) -> None:
+    # Disable pylint until this is removed
+    def warning(self, info: Any) -> None:  # pylint: disable=W0221
         self.warnings.append(info)
 
 

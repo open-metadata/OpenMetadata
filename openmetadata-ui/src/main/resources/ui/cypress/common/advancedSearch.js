@@ -171,7 +171,7 @@ export const goToAdvanceSearch = () => {
     'explorePage'
   );
   // Navigate to explore page
-  cy.get('[data-testid="appbar-item-explore"]')
+  cy.get('[data-testid="app-bar-item-explore"]')
     .should('exist')
     .and('be.visible')
     .click();
@@ -287,7 +287,7 @@ export const addOwner = (ownerName) => {
   cy.get('[data-testid="edit-owner"]').click();
 
   verifyResponseStatusCode('@waitForTeams', 200);
-  interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+  interceptURL('GET', '/api/v1/users?limit=25&isBot=false', 'getUsers');
 
   cy.get('.ant-tabs [id*=tab-users]').click();
   verifyResponseStatusCode('@getUsers', 200);

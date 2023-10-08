@@ -13,12 +13,6 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import { TableProfilerTab } from 'components/ProfilerDashboard/profilerDashboard.interface';
-import SingleColumnProfile from 'components/TableProfiler/Component/SingleColumnProfile';
-import TableProfilerChart from 'components/TableProfiler/Component/TableProfilerChart';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { CreateTestCase } from 'generated/api/tests/createTestCase';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -31,12 +25,13 @@ import {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { createExecutableTestSuite, createTestCase } from 'rest/testAPI';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import { TableProfilerTab } from '../../components/ProfilerDashboard/profilerDashboard.interface';
+import SingleColumnProfile from '../../components/TableProfiler/Component/SingleColumnProfile';
+import TableProfilerChart from '../../components/TableProfiler/Component/TableProfilerChart';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import { getTableTabPath } from '../../constants/constants';
 import {
-  allowedServiceForOperationGraph,
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../constants/profiler.constant';
@@ -44,9 +39,13 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { OwnerType } from '../../enums/user.enum';
+import { CreateTestCase } from '../../generated/api/tests/createTestCase';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { createExecutableTestSuite, createTestCase } from '../../rest/testAPI';
 import { getCurrentUserId } from '../../utils/CommonUtils';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SuccessScreen from '../common/success-screen/SuccessScreen';
 import TitleBreadcrumb from '../common/title-breadcrumb/title-breadcrumb.component';
@@ -61,7 +60,8 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   table,
 }: AddDataQualityTestProps) => {
-  const { entityTypeFQN, dashboardType } = useParams<Record<string, string>>();
+  const { entityTypeFQN, dashboardType } =
+    useParams<{ entityTypeFQN: string; dashboardType: string }>();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;
   const history = useHistory();
@@ -169,9 +169,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const successMessage = isNewTestSuite ? undefined : (
         <span>
-          <span className="tw-mr-1 tw-font-semibold">{`"${
-            testCaseRes?.name ?? t('label.test-case')
-          }"`}</span>
+          <span className="font-medium">
+            {`"${testCaseRes?.name ?? t('label.test-case')}"`}{' '}
+          </span>
           <span>
             {`${t('message.has-been-created-successfully')}.`}
             &nbsp;
@@ -232,10 +232,6 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         <TableProfilerChart
           dateRangeObject={DEFAULT_RANGE_DATA}
           entityFqn={entityTypeFQN}
-          showOperationGraph={
-            table.serviceType &&
-            allowedServiceForOperationGraph.includes(table.serviceType)
-          }
         />
       )}
       {isColumnFqn && (

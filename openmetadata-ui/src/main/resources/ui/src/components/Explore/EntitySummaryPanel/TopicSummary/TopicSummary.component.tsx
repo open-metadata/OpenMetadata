@@ -12,28 +12,23 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { getTeamAndUserDetailsPath } from 'constants/constants';
-import { ClientErrors } from 'enums/axios.enum';
 import { isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTopicByFqn } from 'rest/topicsAPI';
-import { getTagValue } from 'utils/CommonUtils';
+import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
+import { getTopicByFqn } from '../../../../rest/topicsAPI';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getOwnerNameWithProfilePic,
-} from 'utils/EntityUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
+} from '../../../../utils/EntityUtils';
+import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -75,35 +70,27 @@ function TopicSummary({
 
     return {
       value:
-        getOwnerNameWithProfilePic(owner) ||
+        getOwnerNameWithProfilePic(owner) ??
         t('label.no-entity', {
           entity: t('label.owner'),
         }),
-      url: getTeamAndUserDetailsPath(owner?.name || ''),
-      isLink: owner?.name ? true : false,
+      url: getTeamAndUserDetailsPath(owner?.name ?? ''),
+      isLink: !isEmpty(owner?.name),
     };
   }, [entityDetails, topicDetails]);
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', [
-        'tags',
-        'owner',
-      ]);
+      const res = await getTopicByFqn(
+        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
+        ['tags', 'owner']
+      );
 
       const { partitions, messageSchema } = res;
 
       setTopicDetails({ ...entityDetails, partitions, messageSchema });
     } catch (error) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status !== ClientErrors.FORBIDDEN) {
-        showErrorToast(
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.topic-lowercase'),
-            entityName: entityDetails.name,
-          })
-        );
-      }
+      // Error
     }
   }, [entityDetails]);
 
@@ -169,43 +156,11 @@ function TopicSummary({
         </Row>
         <Divider className="m-y-xs" />
 
-        {!isExplore ? (
-          <>
-            <SummaryTagsDescription
-              entityDetail={entityDetails}
-              tags={tags ? tags : []}
-            />
-            <Divider className="m-y-xs" />
-          </>
-        ) : (
-          <>
-            <Row className="m-md" gutter={[0, 8]}>
-              <Col span={24}>
-                <Typography.Text
-                  className="summary-panel-section-title"
-                  data-testid="profiler-header">
-                  {t('label.tag-plural')}
-                </Typography.Text>
-              </Col>
-
-              <Col className="flex-grow" span={24}>
-                {entityDetails.tags && entityDetails.tags.length > 0 ? (
-                  <TagsViewer
-                    sizeCap={2}
-                    tags={(entityDetails.tags || []).map((tag) =>
-                      getTagValue(tag)
-                    )}
-                  />
-                ) : (
-                  <Typography.Text className="text-grey-body">
-                    {t('label.no-tags-added')}
-                  </Typography.Text>
-                )}
-              </Col>
-            </Row>
-            <Divider className="m-y-xs" />
-          </>
-        )}
+        <SummaryTagsDescription
+          entityDetail={entityDetails}
+          tags={tags ?? entityDetails.tags ?? []}
+        />
+        <Divider className="m-y-xs" />
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>

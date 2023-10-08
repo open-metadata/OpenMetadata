@@ -13,7 +13,7 @@ Databricks lineage module
 """
 import traceback
 from datetime import datetime
-from typing import Iterator, Optional
+from typing import Iterator
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.databricks.query_parser import (
@@ -30,7 +30,7 @@ class DatabricksLineageLegacySource(DatabricksQueryParserSource, LineageSource):
     Databricks Lineage Legacy Source
     """
 
-    def yield_table_query(self) -> Optional[Iterator[TableQuery]]:
+    def yield_table_query(self) -> Iterator[TableQuery]:
         data = self.client.list_query_history(
             start_date=self.start,
             end_date=self.end,

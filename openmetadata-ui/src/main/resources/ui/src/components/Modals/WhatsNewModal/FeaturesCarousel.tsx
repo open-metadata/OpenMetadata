@@ -22,9 +22,9 @@ const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
     <div className="feature-carousal-container">
       <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">
         {data.map((d) => (
-          <div className="tw-px-1" key={uniqueId()}>
-            <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
-            <div className="tw-text-sm tw-mb-3">
+          <div className="p-x-xss" key={uniqueId()}>
+            <p className="text-sm font-medium mb-2">{d.title}</p>
+            <div className="text-sm m-b-xs">
               <RichTextEditorPreviewer
                 enableSeeMoreVariant={false}
                 markdown={d.description}
@@ -33,11 +33,11 @@ const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
             <div>
               {d.path ? (
                 d.isImage ? (
-                  <img alt="feature" className="tw-w-full" src={d.path} />
+                  <img alt="feature" className="w-full" src={d.path} />
                 ) : (
                   <iframe
                     allowFullScreen
-                    className="tw-w-full"
+                    className="w-full"
                     frameBorder={0}
                     height={457}
                     src={d.path}

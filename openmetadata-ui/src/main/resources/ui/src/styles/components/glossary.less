@@ -96,6 +96,14 @@
     font-size: 16px;
     font-weight: 500;
   }
+  .activity-feed-tab {
+    .center-container,
+    .right-container {
+      overflow-x: hidden;
+      overflow-y: auto;
+      height: @glossary-page-tab-height;
+    }
+  }
 }
 
 .tag-button-container {
@@ -166,4 +174,12 @@
 .glossary-content-container {
   height: @glossary-page-height;
   overflow-y: auto;
+}
+
+.glossary-richtext-editor .toastui-editor,
+.edit-glossary-modal .toastui-editor {
+  min-height: 150px !important; // overriding inline style
+  .ProseMirror {
+    min-height: 150px;
+  }
 }

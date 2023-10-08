@@ -21,14 +21,13 @@ from metadata.generated.schema.entity.data.topic import TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.kinesis.models import (
     KinesisArgs,
     KinesisData,
@@ -49,6 +48,7 @@ from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+MAX_MESSAGE_SIZE = 1_000_000
 
 
 class KinesisSource(MessagingServiceSource):
@@ -57,25 +57,23 @@ class KinesisSource(MessagingServiceSource):
     topics metadata from Kinesis Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
         self.kinesis = self.connection
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: KinesisConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, KinesisConnection):
             raise InvalidSourceException(
                 f"Expected KinesisConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_stream_names_list(self) -> List[str]:
-        """
-        Get the list of all the streams
-        """
+        """Get the list of all the streams"""
         all_topics, has_more_topics, args = [], True, KinesisArgs(Limit=100)
         while has_more_topics:
             try:
@@ -91,9 +89,7 @@ class KinesisSource(MessagingServiceSource):
         return all_topics
 
     def get_topic_list(self) -> Iterable[BrokerTopicDetails]:
-        """
-        Method to yeild topic details
-        """
+        """Method to yield topic details"""
         all_topics = self.get_stream_names_list()
         for topic_name in all_topics:
             try:
@@ -110,12 +106,16 @@ class KinesisSource(MessagingServiceSource):
 
     def yield_topic(
         self, topic_details: BrokerTopicDetails
-    ) -> Iterable[CreateTopicRequest]:
-        """
-        Method to yield the create topic request
-        """
+    ) -> Iterable[Either[CreateTopicRequest]]:
+        """Method to yield the create topic request"""
         try:
             logger.info(f"Fetching topic details {topic_details.topic_name}")
+
+            source_url = (
+                f"https://{self.service_connection.awsConfig.awsRegion}.console.aws.amazon.com/kinesis/home"
+                f"?region={self.service_connection.awsConfig.awsRegion}#/streams/details/"
+                f"{topic_details.topic_name}/monitoring"
+            )
 
             topic = CreateTopicRequest(
                 name=topic_details.topic_name,
@@ -124,16 +124,19 @@ class KinesisSource(MessagingServiceSource):
                 retentionTime=self._compute_retention_time(
                     topic_details.topic_metadata.summary
                 ),
-                maximumMessageSize=self._get_max_message_size(),
+                maximumMessageSize=MAX_MESSAGE_SIZE,
+                sourceUrl=source_url,
             )
-            self.register_record(topic_request=topic)
-            yield topic
+            yield Either(right=topic)
 
         except Exception as exc:
-            error = f"Unexpected exception to yield topic [{topic_details}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(topic_details.topic_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Unexpected exception to yield topic [{topic_details}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def get_topic_name(self, topic_details: BrokerTopicDetails) -> str:
         return topic_details.topic_name
@@ -145,10 +148,6 @@ class KinesisSource(MessagingServiceSource):
                 summary.StreamDescriptionSummary.RetentionPeriodHours * 3600000
             )
         return float(retention_time)
-
-    def _get_max_message_size(self) -> int:
-        # max message size supported by Kinesis is 1MB and is not configurable
-        return 1000000
 
     def _get_topic_details(self, topic_name: str) -> Optional[KinesisSummaryModel]:
         try:
@@ -189,22 +188,25 @@ class KinesisSource(MessagingServiceSource):
     def yield_topic_sample_data(
         self, topic_details: BrokerTopicDetails
     ) -> Iterable[OMetaTopicSampleData]:
-        """
-        Method to Get Sample Data of Messaging Entity
-        """
+        """Method to Get Sample Data of Messaging Entity"""
         try:
             if self.context.topic and self.generate_sample_data:
-                yield OMetaTopicSampleData(
-                    topic=self.context.topic,
-                    sample_data=self._get_sample_data(
-                        topic_details.topic_name,
-                        topic_details.topic_metadata.partitions,
-                    ),
+                yield Either(
+                    right=OMetaTopicSampleData(
+                        topic=self.context.topic,
+                        sample_data=self._get_sample_data(
+                            topic_details.topic_name,
+                            topic_details.topic_metadata.partitions,
+                        ),
+                    )
                 )
         except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=topic_details.topic_name,
+                    error=f"Error while yielding topic sample data for topic: {topic_details.topic_name} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def _get_sample_data(self, topic_name, partitions) -> TopicSampleData:

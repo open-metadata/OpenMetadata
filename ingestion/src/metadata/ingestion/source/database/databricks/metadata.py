@@ -13,13 +13,11 @@
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.legacy.metadata import (
     DatabricksLegacySource,
 )
@@ -38,7 +36,7 @@ class DatabricksSource:
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatabricksConnection):
@@ -46,5 +44,5 @@ class DatabricksSource:
                 f"Expected DatabricksConnection, but got {connection}"
             )
         if not connection.useUnityCatalog:
-            return DatabricksLegacySource(config, metadata_config)
-        return DatabricksUnityCatalogSource(config, metadata_config)
+            return DatabricksLegacySource(config, metadata)
+        return DatabricksUnityCatalogSource(config, metadata)

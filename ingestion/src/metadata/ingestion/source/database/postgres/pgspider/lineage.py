@@ -12,7 +12,7 @@
 """
 PGSpider lineage module
 """
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Iterator
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import (
@@ -21,6 +21,7 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
@@ -73,7 +74,7 @@ def get_lineage_from_multi_tenant_table(
     metadata: OpenMetadata,
     connection: any,
     service_name: str,
-) -> Optional[Iterator[AddLineageRequest]]:
+) -> Iterator[Either[AddLineageRequest]]:
 
     """
     For PGSpider, firstly, get list of multi-tenant tables.

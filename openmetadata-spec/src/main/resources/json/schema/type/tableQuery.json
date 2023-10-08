@@ -11,6 +11,14 @@
           "description": "SQL query",
           "type": "string"
         },
+        "query_type": {
+          "description": "SQL query type",
+          "type": "string"
+        },
+        "exclude_usage": {
+          "description": "Flag to check if query is to be excluded while processing usage",
+          "type": "boolean"
+        },
         "userName": {
           "description": "Name of the user that executed the SQL query",
           "type": "string"

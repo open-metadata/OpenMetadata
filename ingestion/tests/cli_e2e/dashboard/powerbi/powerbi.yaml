@@ -17,7 +17,7 @@ source:
       dashboardFilterPattern: {}
       chartFilterPattern: {}
       dbServiceNames:
-      - local_redshift
+      - local_redshift_powerbi
 sink:
   type: metadata-rest
   config: {}

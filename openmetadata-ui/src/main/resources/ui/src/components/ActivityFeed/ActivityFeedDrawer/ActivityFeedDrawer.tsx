@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Drawer } from 'antd';
+import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
-import Loader from 'components/Loader/Loader';
-import { ThreadType } from 'generated/api/feed/createThread';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../../components/Loader/Loader';
+import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Thread } from '../../../generated/entity/feed/thread';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -70,20 +70,19 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       {isDrawerLoading ? (
         <Loader />
       ) : (
-        <div className="m-t-md" id="feed-panel">
-          <FeedPanelBodyV1
-            isOpenInDrawer
-            showThread
-            feed={selectedThread as Thread}
-            hidePopover={false}
-          />
-          <ActivityFeedEditor
-            buttonClass="tw-mr-4"
-            className="tw-ml-5 tw-mr-2 tw-mb-2"
-            focused={focusReplyEditor}
-            onSave={onSave}
-          />
-        </div>
+        <Row gutter={[16, 16]} id="feed-panel">
+          <Col span={24}>
+            <FeedPanelBodyV1
+              isOpenInDrawer
+              showThread
+              feed={selectedThread as Thread}
+              hidePopover={false}
+            />
+          </Col>
+          <Col span={24}>
+            <ActivityFeedEditor focused={focusReplyEditor} onSave={onSave} />
+          </Col>
+        </Row>
       )}
     </Drawer>
   );

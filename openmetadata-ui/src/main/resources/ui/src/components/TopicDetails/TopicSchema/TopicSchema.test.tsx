@@ -36,30 +36,17 @@ const mockProps: TopicSchemaFieldsProps = {
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
   entityFqn: 'topic.fqn',
-  entityFieldThreads: [
-    {
-      entityLink:
-        '#E::topic::sample_kafka.address_book::messageSchema::schemaFields::AddressBook::description>',
-      count: 1,
-      entityField: 'messageSchema::schemaFields::AddressBook::description',
-    },
-  ],
   onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('utils/TagsUtils', () => ({
+jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/GlossaryUtils', () => ({
+jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
-}));
-
-jest.mock('../../../utils/TopicSchema.utils', () => ({
-  updateFieldTags: jest.fn(),
-  updateFieldDescription: jest.fn(),
 }));
 
 jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () =>
@@ -79,7 +66,7 @@ jest.mock(
   })
 );
 
-jest.mock('components/TableTags/TableTags.component', () =>
+jest.mock('../../TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -87,7 +74,7 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
+jest.mock('../../common/error-with-placeholder/ErrorPlaceHolder', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -95,7 +82,7 @@ jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('components/schema-editor/SchemaEditor', () =>
+jest.mock('../../schema-editor/SchemaEditor', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -115,7 +102,7 @@ describe('Topic Schema', () => {
     expect(schemaFields).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(10);
+    expect(rows).toHaveLength(20);
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
@@ -146,13 +133,13 @@ describe('Topic Schema', () => {
     expect(singleRowExpandIcon).toBeNull();
 
     // order_id is child of nested row, so should be null initially
-    expect(screen.queryByText('order_id')).toBeNull();
+    expect(await screen.findByText('order_id')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(expandIcon);
     });
 
-    expect(await screen.findByText('order_id')).toBeInTheDocument();
+    expect(screen.queryByText('order_id')).toBeNull();
   });
 
   it('On edit description button click modal editor should render', async () => {

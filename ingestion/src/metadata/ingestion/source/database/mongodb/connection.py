@@ -59,13 +59,13 @@ def test_connection(
 
     holder = SchemaHolder()
 
-    def test_get_databases(client: MongoClient, holder: SchemaHolder):
-        for database in client.list_database_names():
-            holder.database = database
+    def test_get_databases(client_: MongoClient, holder_: SchemaHolder):
+        for database in client_.list_database_names():
+            holder_.database = database
             break
 
-    def test_get_collections(client: MongoClient, holder: SchemaHolder):
-        database = client.get_database(holder.database)
+    def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
+        database = client_.get_database(holder_.database)
         database.list_collection_names()
 
     test_fn = {

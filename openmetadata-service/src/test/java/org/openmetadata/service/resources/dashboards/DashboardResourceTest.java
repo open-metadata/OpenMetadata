@@ -19,6 +19,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -146,7 +147,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
 
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
-    // When domain is not set for a Dashboard service, carry it forward from the dashbaord
+    // When domain is not set for a Dashboard service, carry it forward from the dashboard
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
@@ -154,6 +155,19 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // Create a dashboard without domain and ensure it inherits domain from the parent
     CreateDashboard create = createRequest("dashboard").withService(service.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a dashboard service with owner data consumer
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createDashboardService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create dashboard under it
+    createEntity(
+        createRequest("dashboard").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override
@@ -212,7 +226,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   public void compareEntities(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {}
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;
     }

@@ -14,7 +14,7 @@ Common NoSQL source methods.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from pandas import json_normalize
 
@@ -22,26 +22,31 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    QueryByProcedure,
+)
 from metadata.utils import fqn
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
+from metadata.utils.datalake.datalake_utils import get_columns
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
@@ -57,14 +62,13 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     Database metadata from NoSQL source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.connection_obj = get_connection(self.service_connection)
         self.test_connection()
@@ -85,15 +89,20 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         yield self.service_connection.__dict__.get("databaseName") or DEFAULT_DATABASE
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
 
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName.__root__,
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(database_name=database_name),
+            )
         )
 
     @abstractmethod
@@ -124,15 +133,21 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
 
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName.__root__,
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                ),
+            )
         )
 
     @abstractmethod
@@ -185,7 +200,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -195,32 +210,75 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
             df = json_normalize(list(data), sep=COMPLEX_COLUMN_SEPARATOR)
-            columns = DatalakeSource.get_columns(df)
+            columns = get_columns(df)
             table_request = CreateTableRequest(
                 name=table_name,
                 tableType=table_type,
                 columns=columns,
                 tableConstraints=None,
                 databaseSchema=self.context.database_schema.fullyQualifiedName.__root__,
+                sourceUrl=self.get_source_url(
+                    database_name=self.context.database.name.__root__,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    table_type=table_type,
+                ),
             )
 
-            yield table_request
+            yield Either(right=table_request)
             self.register_record(table_request=table_request)
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_name,
+                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         views are not supported with NoSQL
         """
         yield from []
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         tags are not supported with NoSQL
+        """
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
+
+    def get_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        table_name: Optional[str] = None,
+        table_type: Optional[TableType] = None,
+    ) -> Optional[str]:
+        """
+        By default the source url is not supported for
         """
 
     def close(self):

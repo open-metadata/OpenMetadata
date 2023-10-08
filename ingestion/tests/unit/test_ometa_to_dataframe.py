@@ -10,6 +10,7 @@
 #  limitations under the License.
 
 """Test Ometa Dataframe utility tests"""
+import os
 import unittest
 from unittest.mock import patch
 
@@ -22,11 +23,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 
 from .topology.database.test_datalake import mock_datalake_config
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 resp_parquet_file = (
-    pq.ParquetFile("ingestion/tests/unit/test_ometa_to_dataframe.parquet")
+    pq.ParquetFile(os.path.join(ROOT_DIR, "test_ometa_to_dataframe.parquet"))
     .read()
     .to_pandas()
 )
@@ -66,6 +70,7 @@ class TestStringMethods(unittest.TestCase):
                         id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
                         type="databaseSchema",
                     ),
+                    fileFormat=SupportedTypes.PARQUET.value,
                 ),
                 client=None,
                 profile_sample_config=None,
@@ -99,6 +104,7 @@ class TestStringMethods(unittest.TestCase):
                             id="cec14ccf-123f-4271-8c90-0ae54cc4227e",
                             type="databaseSchema",
                         ),
+                        fileFormat=None,
                     ),
                     client=None,
                     profile_sample_config=None,

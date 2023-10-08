@@ -12,28 +12,31 @@
  */
 
 import { Button, Col, Input, Row, Space, Typography } from 'antd';
-import AppState from 'AppState';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import ChangePasswordForm from 'components/Users/ChangePasswordForm';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
-import {
-  ChangePasswordRequest,
-  RequestType,
-} from 'generated/auth/changePasswordRequest';
-import { EntityReference } from 'generated/entity/type';
-import { AuthProvider } from 'generated/settings/settings';
-import { useAuth } from 'hooks/authHooks';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { changePassword } from 'rest/auth-API';
-import { getEntityName } from 'utils/EntityUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import AppState from '../../../../AppState';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { useAuthContext } from '../../../../components/authentication/auth-provider/AuthProvider';
+import DescriptionV1 from '../../../../components/common/description/DescriptionV1';
+import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
+import ChangePasswordForm from '../../../../components/Users/ChangePasswordForm';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
+import { EntityType } from '../../../../enums/entity.enum';
+import {
+  ChangePasswordRequest,
+  RequestType,
+} from '../../../../generated/auth/changePasswordRequest';
+import { EntityReference } from '../../../../generated/entity/type';
+import { AuthProvider } from '../../../../generated/settings/settings';
+import { useAuth } from '../../../../hooks/authHooks';
+import { changePassword } from '../../../../rest/auth-API';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
 const UserProfileDetails = ({
@@ -41,7 +44,7 @@ const UserProfileDetails = ({
   updateUserDetails,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
-  const { username } = useParams<{ [key: string]: string }>();
+  const { fqn: username } = useParams<{ fqn: string }>();
 
   const { isAdminUser } = useAuth();
   const { authConfig } = useAuthContext();

@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -50,6 +51,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
 public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
+  private final DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
 
   public ChartResourceTest() {
     super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS);
@@ -167,13 +169,24 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a dashboard service, carry it forward from the chart
-    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createService = serviceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
     DashboardService service = serviceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create a chart without domain and ensure it inherits domain from the parent
     CreateChart create = createRequest("chart").withService(service.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create dashboard service with owner data consumer
+    CreateDashboardService createDashboardService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create chart under it
+    createEntity(
+        createRequest("chart").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override
@@ -229,7 +242,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

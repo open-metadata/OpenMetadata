@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import PageHeader from 'components/header/PageHeader.component';
-import { isEmpty, uniqueId } from 'lodash';
+import { isEmpty, round } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+import PageHeader from '../../components/header/PageHeader.component';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -37,15 +36,16 @@ import {
 import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
-  TIER_BAR_COLOR_MAP,
-  TIER_DATA,
+  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../../generated/dataInsight/dataInsightChartResult';
+import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
 import {
   axisTickFormatter,
   updateActiveChartFilter,
@@ -55,21 +55,24 @@ import {
   getGraphDataByTierType,
   renderLegend,
 } from '../../utils/DataInsightUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './DataInsightDetail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
+import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;
+  tierTags: { tags: Tag[]; isLoading: boolean };
 }
 
-const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
+const TierInsight: FC<Props> = ({ chartFilter, selectedDays, tierTags }) => {
   const [totalEntitiesByTier, setTotalEntitiesByTier] =
     useState<DataInsightChartResult>();
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
@@ -88,8 +91,17 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
         dataReportIndex: DataReportIndex.EntityReportDataIndex,
       };
       const response = await getAggregateChartData(params);
+      const updatedRes = response.data?.map((data) => {
+        const currentTier = tierTags.tags.find(
+          (value) => value.fullyQualifiedName === data.entityTier
+        );
 
-      setTotalEntitiesByTier(response);
+        return {
+          ...data,
+          entityTier: getEntityName(currentTier) || data.entityTier,
+        };
+      });
+      setTotalEntitiesByTier({ ...response, data: updatedRes });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -110,8 +122,10 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
   };
 
   useEffect(() => {
-    fetchTotalEntitiesByTier();
-  }, [chartFilter]);
+    if (!tierTags.isLoading) {
+      fetchTotalEntitiesByTier();
+    }
+  }, [chartFilter, tierTags]);
 
   return (
     <Card
@@ -132,7 +146,10 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
       {data.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
           <Col span={DI_STRUCTURE.leftContainerSpan}>
-            <ResponsiveContainer debounce={1} minHeight={400}>
+            <ResponsiveContainer
+              debounce={1}
+              id={`${DataInsightChartType.TotalEntitiesByTier}-graph`}
+              minHeight={400}>
               <LineChart data={data} margin={BAR_CHART_MARGIN}>
                 <CartesianGrid
                   stroke={GRAPH_BACKGROUND_COLOR}
@@ -146,7 +163,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                 <Legend
                   align="left"
                   content={(props) =>
-                    renderLegend(props as LegendProps, activeKeys, true)
+                    renderLegend(props as LegendProps, activeKeys)
                   }
                   layout="horizontal"
                   verticalAlign="top"
@@ -155,7 +172,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                   onMouseEnter={handleLegendMouseEnter}
                   onMouseLeave={handleLegendMouseLeave}
                 />
-                {tiers.map((tier) => (
+                {tiers.map((tier, i) => (
                   <Line
                     dataKey={tier}
                     hide={
@@ -164,7 +181,7 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
                         : false
                     }
                     key={tier}
-                    stroke={TIER_BAR_COLOR_MAP[tier]}
+                    stroke={TOTAL_ENTITY_CHART_COLOR[i]}
                     strokeOpacity={
                       isEmpty(activeMouseHoverKey) ||
                       tier === activeMouseHoverKey
@@ -180,30 +197,27 @@ const TierInsight: FC<Props> = ({ chartFilter, selectedDays }) => {
           <Col span={DI_STRUCTURE.rightContainerSpan}>
             <Row gutter={DI_STRUCTURE.rightRowGutter}>
               <Col span={24}>
-                <Typography.Paragraph
-                  className="data-insight-label-text"
-                  style={{ marginBottom: '4px' }}>
-                  {`${t('label.assigned-entity', {
-                    entity: t('label.tier'),
-                  })} %`}
-                </Typography.Paragraph>
                 <DataInsightProgressBar
                   changeInValue={relativePercentage}
                   className="m-b-md"
                   duration={selectedDays}
+                  label={`${t('label.assigned-entity', {
+                    entity: t('label.tier'),
+                  })} %`}
                   progress={Number(total)}
                   showLabel={false}
                 />
               </Col>
-              {tiers.map((tiers) => {
+              {tiers.map((tiers, i) => {
                 return (
-                  <Col key={uniqueId()} span={24}>
-                    <DataInsightProgressBar
-                      showEndValueAsLabel
+                  <Col key={tiers} span={24}>
+                    <EntitySummaryProgressBar
+                      entity={tiers}
+                      label={round(latestData[tiers] || 0, 2) + '%'}
+                      latestData={latestData}
+                      pluralize={false}
                       progress={latestData[tiers]}
-                      showLabel={false}
-                      startValue={Number(latestData[tiers] || 0).toFixed(2)}
-                      successValue={TIER_DATA[tiers as keyof typeof TIER_DATA]}
+                      strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                     />
                   </Col>
                 );

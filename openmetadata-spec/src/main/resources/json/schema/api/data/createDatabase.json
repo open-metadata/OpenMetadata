@@ -49,9 +49,17 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
+    "sourceUrl": {
+      "description": "Source URL of database.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Database belongs to.",
       "type": "string"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
     }
   },
   "required": ["name", "service"],

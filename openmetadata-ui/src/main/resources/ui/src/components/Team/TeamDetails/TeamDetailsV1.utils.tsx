@@ -13,14 +13,14 @@
 
 import { t } from 'i18next';
 import { Team } from '../../../generated/entity/teams/team';
-import { filterEntityAssets } from '../../../utils/EntityUtils';
 import { TeamsPageTab } from './team.interface';
 
 export const getTabs = (
   currentTeam: Team,
   isGroupType: boolean,
   isOrganization: boolean,
-  teamsCount: number
+  teamsCount: number,
+  assetsCount: number
 ) => {
   const tabs = {
     teams: {
@@ -35,7 +35,7 @@ export const getTabs = (
     },
     assets: {
       name: t('label.asset-plural'),
-      count: filterEntityAssets(currentTeam?.owns || []).length,
+      count: assetsCount,
       key: TeamsPageTab.ASSETS,
     },
     roles: {

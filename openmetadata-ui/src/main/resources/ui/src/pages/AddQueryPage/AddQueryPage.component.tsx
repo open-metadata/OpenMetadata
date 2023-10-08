@@ -13,48 +13,50 @@
 import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { AsyncSelect } from 'components/AsyncSelect/AsyncSelect';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import {
-  getTableTabPath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from 'constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import { CSMode } from 'enums/codemirror.enum';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { OwnerType } from 'enums/user.enum';
-import { CreateQuery } from 'generated/api/data/createQuery';
-import { Table } from 'generated/entity/data/table';
 import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { postQuery } from 'rest/queryAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getCurrentUserId } from 'utils/CommonUtils';
-import { getEntityBreadcrumbs, getEntityName } from 'utils/EntityUtils';
-import { getCurrentDateTimeStamp } from 'utils/TimeUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { AsyncSelect } from '../../components/AsyncSelect/AsyncSelect';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  getTableTabPath,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { OwnerType } from '../../enums/user.enum';
+import { CreateQuery } from '../../generated/api/data/createQuery';
+import { Table } from '../../generated/entity/data/table';
+import { searchData } from '../../rest/miscAPI';
+import { postQuery } from '../../rest/queryAPI';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import {
+  getCurrentUserId,
+  getPartialNameFromFQN,
+} from '../../utils/CommonUtils';
+import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
+import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
   const { t } = useTranslation();
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [description, setDescription] = useState<string>('');
-  const [sqlQuery, setSqlQuery] = useState<string>('');
   const [table, setTable] = useState<Table>();
   const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
   const [isSaving, setIsSaving] = useState(false);
@@ -133,7 +135,7 @@ const AddQueryPage = () => {
     history.back();
   };
 
-  const handleSubmit: FormProps['onFinish'] = async (values) => {
+  const handleSubmit: FormProps['onFinish'] = async (values): Promise<void> => {
     const updatedValues: CreateQuery = {
       ...values,
       description: isEmpty(description) ? undefined : description,
@@ -151,7 +153,8 @@ const AddQueryPage = () => {
           type: EntityType.TABLE,
         })),
       ],
-      queryDate: getCurrentDateTimeStamp(),
+      queryDate: getCurrentMillis(),
+      service: getPartialNameFromFQN(datasetFQN, ['service']),
     };
 
     try {
@@ -214,15 +217,14 @@ const AddQueryPage = () => {
                         field: t('label.sql-uppercase-query'),
                       }),
                     },
-                  ]}>
+                  ]}
+                  trigger="onChange">
                   <SchemaEditor
                     className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
                     mode={{ name: CSMode.SQL }}
                     options={{
                       readOnly: false,
                     }}
-                    value={sqlQuery}
-                    onChange={(value) => setSqlQuery(value)}
                   />
                 </Form.Item>
                 <Form.Item
@@ -241,6 +243,7 @@ const AddQueryPage = () => {
                   name="queryUsedIn">
                   <AsyncSelect
                     api={fetchTableEntity}
+                    data-testid="query-used-in"
                     mode="multiple"
                     options={initialOptions}
                     placeholder={t('label.please-select-entity', {

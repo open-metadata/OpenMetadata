@@ -12,52 +12,49 @@
  */
 
 import { AxiosError } from 'axios';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { TeamsPageTab } from 'components/Team/TeamDetails/team.interface';
-import TeamDetailsV1 from 'components/Team/TeamDetails/TeamDetailsV1';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import { AssetsDataType } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import {
-  createTeam,
-  getTeamByName,
-  getTeams,
-  patchTeamDetail,
-} from 'rest/teamsAPI';
-import { getUsers, updateUserDetail } from 'rest/userAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../AppState';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { TeamsPageTab } from '../../components/Team/TeamDetails/team.interface';
+import TeamDetailsV1 from '../../components/Team/TeamDetails/TeamDetailsV1';
+import { ASSETS_INDEXES } from '../../constants/Assets.constants';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
 import {
   INITIAL_PAGING_VALUE,
-  LIST_SIZE,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
 import { Paging } from '../../generated/type/paging';
-import { useAuth } from '../../hooks/authHooks';
 import { SearchResponse } from '../../interface/search.interface';
-import { formatUsersResponse, SearchEntityHits } from '../../utils/APIUtils';
+import { searchData } from '../../rest/miscAPI';
+import {
+  createTeam,
+  getTeamByName,
+  getTeams,
+  patchTeamDetail,
+} from '../../rest/teamsAPI';
+import { getUsers, updateUserDetail } from '../../rest/userAPI';
+import { formatUsersResponse } from '../../utils/APIUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -65,9 +62,7 @@ const TeamsPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
-  const { isAuthDisabled } = useAuthContext();
-  const { fqn } = useParams<{ [key: string]: string }>();
+  const { fqn } = useParams<{ fqn: string }>();
   const [currentFqn, setCurrentFqn] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
@@ -82,11 +77,7 @@ const TeamsPage = () => {
   const [userSearchValue, setUserSearchValue] = useState<string>('');
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [assets, setAssets] = useState<AssetsDataType>({
-    data: [],
-    total: 0,
-    currPage: 1,
-  });
+  const [assets, setAssets] = useState<number>(0);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
 
   const [entityPermissions, setEntityPermissions] =
@@ -114,6 +105,11 @@ const TeamsPage = () => {
 
     return isGroupType ? TeamsPageTab.USERS : TeamsPageTab.TEAMS;
   }, [activeTab, isGroupType]);
+
+  const hasViewPermission = useMemo(
+    () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
+    [entityPermissions]
+  );
 
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
@@ -220,7 +216,12 @@ const TeamsPage = () => {
     loadPage = true
   ) => {
     loadPage && setIsDataLoading((isDataLoading) => ++isDataLoading);
-    getUsers('teams,roles', PAGE_SIZE_MEDIUM, { team, ...paging })
+    getUsers({
+      fields: 'teams,roles',
+      limit: PAGE_SIZE_BASE,
+      team: getDecodedFqn(team),
+      ...paging,
+    })
       .then((res) => {
         if (res.data) {
           setUsers(res.data);
@@ -257,50 +258,34 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAssets = () => {
+  const fetchAssets = async () => {
     if (selectedTeam.id && isGroupType) {
-      searchData(
-        ``,
-        assets.currPage,
-        LIST_SIZE,
-        `owner.id:${selectedTeam.id}`,
-        '',
-        '',
-        myDataSearchIndex
-      )
-        .then((res) => {
-          const hits = res?.data?.hits?.hits as SearchEntityHits;
-          if (hits?.length > 0) {
-            const total = res.data.hits.total.value;
-            setAssets({
-              data: hits,
-              total,
-              currPage: assets.currPage,
-            });
-          } else {
-            const total = 0;
-            setAssets({
-              data: [],
-              total,
-              currPage: assets.currPage,
-            });
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(
-            err,
-            t('server.entity-fetch-error', {
-              entity: t('label.team-asset-plural'),
-            })
-          );
-        });
+      try {
+        const res = await searchData(
+          ``,
+          0,
+          0,
+          `owner.id:${selectedTeam.id}`,
+          '',
+          '',
+          ASSETS_INDEXES
+        );
+        const total = res?.data?.hits?.total.value ?? 0;
+        setAssets(total);
+      } catch (error) {
+        // Error
+      }
     }
   };
 
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(name, ['owner', 'parents'], 'all');
+      const data = await getTeamByName(
+        name,
+        ['owner', 'parents', 'profile'],
+        'all'
+      );
 
       setSelectedTeam(data);
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -380,7 +365,7 @@ const TeamsPage = () => {
     searchData(
       text,
       currentPage,
-      PAGE_SIZE_MEDIUM,
+      PAGE_SIZE_BASE,
       `(teams.id:${selectedTeam?.id})`,
       '',
       '',
@@ -401,46 +386,33 @@ const TeamsPage = () => {
       .finally(() => setIsDataLoading((isDataLoading) => --isDataLoading));
   };
 
-  const updateTeamHandler = (updatedData: Team) => {
+  const updateTeamHandler = async (updatedData: Team) => {
     const jsonPatch = compare(selectedTeam, updatedData);
 
-    return new Promise<void>((resolve, reject) => {
-      patchTeamDetail(selectedTeam.id, jsonPatch)
-        .then((res) => {
-          if (res) {
-            setSelectedTeam((previous) => ({
-              ...previous,
-              ...res,
-              owner: res.owner ?? undefined,
-            }));
-            resolve();
-          } else {
-            throw t('server.unexpected-response');
-          }
+    try {
+      const res = await patchTeamDetail(selectedTeam.id, jsonPatch);
+      setSelectedTeam(res);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.team'),
         })
-        .catch((error: AxiosError) => {
-          showErrorToast(
-            error,
-            t('server.entity-updating-error', {
-              entity: t('label.team'),
-            })
-          );
-          reject();
-        });
-    });
+      );
+    }
   };
 
-  const userPagingHandler = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const userPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (userSearchValue) {
-      setCurrentUserPage(cursorValue as number);
-      searchUsers(userSearchValue, cursorValue as number);
-    } else {
-      setCurrentUserPage(activePage as number);
+      setCurrentUserPage(currentPage);
+      searchUsers(userSearchValue, currentPage);
+    } else if (cursorType) {
+      setCurrentUserPage(currentPage);
       getCurrentTeamUsers(selectedTeam.name, {
-        [cursorValue]: userPaging[cursorValue as keyof Paging] as string,
+        [cursorType]: userPaging[cursorType] as string,
       });
     }
   };
@@ -586,19 +558,8 @@ const TeamsPage = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  const handleAssetsPaginate = (page: string | number) => {
-    setAssets((pre) => ({ ...pre, currPage: page as number }));
-  };
-
   useEffect(() => {
-    fetchAssets();
-  }, [assets.currPage]);
-
-  useEffect(() => {
-    if (
-      (entityPermissions.ViewAll || entityPermissions.ViewBasic) &&
-      currentFqn !== fqn
-    ) {
+    if (hasViewPermission && currentFqn !== fqn) {
       if (fqn) {
         fetchTeamBasicDetails(fqn, true);
       }
@@ -619,9 +580,7 @@ const TeamsPage = () => {
   }, [selectedTeam, currentTab]);
 
   useEffect(() => {
-    const hasPermission =
-      entityPermissions.ViewAll || entityPermissions.ViewBasic;
-    if (!isPageLoading && hasPermission && fqn) {
+    if (!isPageLoading && hasViewPermission && fqn) {
       fetchTeamAdvancedDetails(fqn);
       fetchAllTeamsBasicDetails(fqn);
     }
@@ -637,54 +596,56 @@ const TeamsPage = () => {
     return <Loader />;
   }
 
-  return entityPermissions.ViewAll || entityPermissions.ViewBasic ? (
+  if (!hasViewPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
+  if (isEmpty(selectedTeam)) {
+    return <ErrorPlaceHolder />;
+  }
+
+  return (
     <>
-      {isEmpty(selectedTeam) ? (
-        <ErrorPlaceHolder />
-      ) : (
-        <TeamDetailsV1
-          afterDeleteAction={afterDeleteAction}
-          assets={assets}
-          childTeams={allTeam}
-          currentTeam={selectedTeam}
-          currentTeamUserPage={currentUserPage}
-          currentTeamUsers={users}
-          descriptionHandler={descriptionHandler}
-          entityPermissions={entityPermissions}
-          handleAddTeam={handleAddTeam}
-          handleAddUser={addUsersToTeam}
-          handleCurrentUserPage={handleCurrentUserPage}
-          handleJoinTeamClick={handleJoinTeamClick}
-          handleLeaveTeamClick={handleLeaveTeamClick}
-          handleTeamUsersSearchAction={handleUsersSearchAction}
-          hasAccess={isAuthDisabled || isAdminUser}
-          isDescriptionEditable={isDescriptionEditable}
-          isFetchingAdvancedDetails={isFetchingAdvancedDetails}
-          isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
-          isTeamMemberLoading={isDataLoading}
-          parentTeams={parentTeams}
-          removeUserFromTeam={removeUserFromTeam}
-          showDeletedTeam={showDeletedTeam}
-          teamUserPaging={userPaging}
-          teamUserPagingHandler={userPagingHandler}
-          teamUsersSearchText={userSearchValue}
-          updateTeamHandler={updateTeamHandler}
-          onAssetsPaginate={handleAssetsPaginate}
-          onDescriptionUpdate={onDescriptionUpdate}
-          onShowDeletedTeamChange={toggleShowDeletedTeam}
-          onTeamExpand={fetchAllTeamsAdvancedDetails}
+      <TeamDetailsV1
+        afterDeleteAction={afterDeleteAction}
+        assetsCount={assets}
+        childTeams={allTeam}
+        currentTeam={selectedTeam}
+        currentTeamUserPage={currentUserPage}
+        currentTeamUsers={users}
+        descriptionHandler={descriptionHandler}
+        entityPermissions={entityPermissions}
+        handleAddTeam={handleAddTeam}
+        handleAddUser={addUsersToTeam}
+        handleCurrentUserPage={handleCurrentUserPage}
+        handleJoinTeamClick={handleJoinTeamClick}
+        handleLeaveTeamClick={handleLeaveTeamClick}
+        handleTeamUsersSearchAction={handleUsersSearchAction}
+        isDescriptionEditable={isDescriptionEditable}
+        isFetchingAdvancedDetails={isFetchingAdvancedDetails}
+        isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
+        isTeamMemberLoading={isDataLoading}
+        parentTeams={parentTeams}
+        removeUserFromTeam={removeUserFromTeam}
+        showDeletedTeam={showDeletedTeam}
+        teamUserPaging={userPaging}
+        teamUserPagingHandler={userPagingHandler}
+        teamUsersSearchText={userSearchValue}
+        updateTeamHandler={updateTeamHandler}
+        onDescriptionUpdate={onDescriptionUpdate}
+        onShowDeletedTeamChange={toggleShowDeletedTeam}
+        onTeamExpand={fetchAllTeamsAdvancedDetails}
+      />
+      {selectedTeam.teamType && (
+        <AddTeamForm
+          isLoading={isLoading}
+          parentTeamType={selectedTeam.teamType}
+          visible={isAddingTeam}
+          onCancel={() => setIsAddingTeam(false)}
+          onSave={(data) => createNewTeam(data)}
         />
       )}
-
-      <AddTeamForm
-        isLoading={isLoading}
-        visible={isAddingTeam}
-        onCancel={() => setIsAddingTeam(false)}
-        onSave={(data) => createNewTeam(data as Team)}
-      />
     </>
-  ) : (
-    <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
   );
 };
 

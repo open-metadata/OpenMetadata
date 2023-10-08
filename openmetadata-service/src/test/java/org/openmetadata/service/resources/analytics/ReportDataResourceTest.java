@@ -1,35 +1,51 @@
 package org.openmetadata.service.resources.analytics;
 
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
+import static org.openmetadata.schema.type.DataReportIndex.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.Response;
+import org.elasticsearch.client.RestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.analytics.EntityReportData;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.analytics.ReportDataResource.ReportDataResultList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
-public class ReportDataResourceTest extends OpenMetadataApplicationTest {
+class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
+  public static final String JSON_QUERY =
+      "{\"query\":{\"bool\":{\"filter\":{\"script\":{\"script\":"
+          + "{\"source\":\"doc['timestamp'].value.toLocalDate() == LocalDate.parse(params.now);\",\"lang\":\"painless\",\"params\":{\"now\":\"%s\"}}}}}}}";
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void report_data_admin_200() throws HttpResponseException, ParseException {
+  void report_data_admin_200() throws ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -47,6 +63,13 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     ResultList<ReportData> reportDataList =
         getReportData("2022-10-10", "2022-10-12", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
+      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 1);
+    }
+
+    assertNotEquals(0, reportDataList.getData().size());
   }
 
   @Test
@@ -83,7 +106,7 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     ReportData reportData =
         new ReportData()
-            .withTimestamp(TestUtils.dateToTimestamp("2022-10-11"))
+            .withTimestamp(TestUtils.dateToTimestamp("2022-10-13"))
             .withReportDataType(ReportData.ReportDataType.ENTITY_REPORT_DATA)
             .withData(entityReportData);
 
@@ -92,6 +115,84 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
     ResultList<ReportData> reportDataList =
         getReportData(
             "2022-10-10", "2022-10-12", ReportData.ReportDataType.ENTITY_REPORT_DATA, INGESTION_BOT_AUTH_HEADERS);
+
+    assertNotEquals(0, reportDataList.getData().size());
+  }
+
+  @Test
+  void delete_endpoint_200() throws ParseException, IOException {
+    List<ReportData> createReportDataList = new ArrayList<>();
+
+    // create some entity report data
+    EntityReportData entityReportData =
+        new EntityReportData()
+            .withEntityType("table")
+            .withEntityTier("Tier.Tier1")
+            .withCompletedDescriptions(1)
+            .withEntityCount(11);
+    ReportData reportData1 =
+        new ReportData()
+            .withTimestamp(new Date(122, 9, 15, 10, 10, 10).getTime())
+            .withReportDataType(ReportData.ReportDataType.ENTITY_REPORT_DATA)
+            .withData(entityReportData);
+
+    // create some web analytic user activity report data
+    WebAnalyticUserActivityReportData webAnalyticUserActivityReportData =
+        new WebAnalyticUserActivityReportData()
+            .withUserId(UUID.randomUUID())
+            .withUserName("testUser")
+            .withLastSession(TestUtils.dateToTimestamp("2022-10-13"));
+    ReportData reportData2 =
+        new ReportData()
+            .withTimestamp(new Date(122, 9, 15, 10, 10, 10).getTime())
+            .withReportDataType(ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA)
+            .withData(webAnalyticUserActivityReportData);
+
+    createReportDataList.add(reportData1);
+    createReportDataList.add(reportData2);
+
+    for (ReportData reportData : createReportDataList) {
+      postReportData(reportData, INGESTION_BOT_AUTH_HEADERS);
+    }
+
+    // check we have our data
+    ResultList<ReportData> entityReportDataList =
+        getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+    ResultList<ReportData> webAnalyticsReportDataList =
+        getReportData(
+            "2022-10-15",
+            "2022-10-16",
+            ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+            ADMIN_AUTH_HEADERS);
+    assertNotEquals(0, entityReportDataList.getData().size());
+    assertNotEquals(0, webAnalyticsReportDataList.getData().size());
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      List<String> indices = new ArrayList<>();
+      indices.add(ENTITY_REPORT_DATA_INDEX.value());
+      indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.value());
+      for (String index : indices) {
+        String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+        assertDocumentCountEquals(jsonQuery, index, 1);
+      }
+    }
+
+    // delete the entity report data and check that it has been deleted
+    deleteReportData(ReportData.ReportDataType.ENTITY_REPORT_DATA.value(), "2022-10-15", ADMIN_AUTH_HEADERS);
+    entityReportDataList =
+        getReportData("2022-10-15", "2022-10-16", ReportData.ReportDataType.ENTITY_REPORT_DATA, ADMIN_AUTH_HEADERS);
+    assertEquals(0, entityReportDataList.getData().size());
+    if (RUN_ELASTIC_SEARCH_TESTCASES) {
+      // Check document has been deleted from elasticsearch
+      String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
+    }
+    webAnalyticsReportDataList =
+        getReportData(
+            "2022-10-15",
+            "2022-10-16",
+            ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+            ADMIN_AUTH_HEADERS);
+    assertNotEquals(0, webAnalyticsReportDataList.getData().size());
   }
 
   public void postReportData(ReportData reportData, Map<String, String> authHeader) throws HttpResponseException {
@@ -107,5 +208,31 @@ public class ReportDataResourceTest extends OpenMetadataApplicationTest {
     target = target.queryParam("endTs", TestUtils.dateToTimestamp(endDate));
     target = target.queryParam("reportDataType", reportDataType);
     return TestUtils.get(target, ReportDataResultList.class, authHeader);
+  }
+
+  private void deleteReportData(String reportDataType, String date, Map<String, String> authHeader)
+      throws HttpResponseException {
+    String path = String.format("/%s/%s", reportDataType, date);
+    WebTarget target = getResource(collectionName).path(path);
+    TestUtils.delete(target, authHeader);
+  }
+
+  private JsonNode runSearchQuery(String query, String index) throws IOException {
+    RestClient searchClient = getSearchClient();
+    Response response;
+    Request request = new Request("POST", String.format("/%s/_search", index));
+    request.setJsonEntity(query);
+    try {
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+    return new ObjectMapper().readTree(response.getEntity().getContent());
+  }
+
+  private void assertDocumentCountEquals(String query, String index, Integer count) throws IOException {
+    JsonNode json = runSearchQuery(query, index);
+    Integer docCount = json.get("hits").get("total").get("value").asInt();
+    assertEquals(count, docCount);
   }
 }

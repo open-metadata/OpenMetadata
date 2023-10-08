@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Module for sqlalchmey dialect utils
+Module for sqlalchemy dialect utils
 """
 
 from typing import Dict, Optional, Tuple

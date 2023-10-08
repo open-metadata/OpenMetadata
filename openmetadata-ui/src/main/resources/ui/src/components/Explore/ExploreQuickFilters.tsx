@@ -13,21 +13,23 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { SearchIndex } from 'enums/search.enum';
-import { isEqual, isString, uniqWith } from 'lodash';
+import { isEqual, isString, isUndefined, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
-import { QueryFilterInterface } from 'pages/explore/ExplorePage.interface';
 import Qs from 'qs';
-import React, { FC, useCallback, useMemo, useState } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getAggregateFieldOptions } from 'rest/miscAPI';
-import { getTags } from 'rest/tagAPI';
-import { getCombinedQueryFilterObject } from 'utils/ExplorePage/ExplorePageUtils';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
 } from '../../constants/AdvancedSearch.constants';
+import { TIER_FQN_KEY } from '../../constants/explore.constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
+import { getAggregateFieldOptions } from '../../rest/miscAPI';
+import { getTags } from '../../rest/tagAPI';
 import { getOptionsFromAggregationBucket } from '../../utils/AdvancedSearchUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -81,7 +83,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     let buckets: Bucket[] = [];
 
-    if (aggregations?.[key] && key !== 'tier.tagFQN') {
+    if (aggregations?.[key] && key !== TIER_FQN_KEY) {
       buckets = aggregations[key].buckets;
     } else {
       const [res, tierTags] = await Promise.all([
@@ -91,14 +93,14 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           '',
           JSON.stringify(combinedQueryFilter)
         ),
-        key === 'tier.tagFQN'
+        key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier' })
           : Promise.resolve(null),
       ]);
 
       buckets = res.data.aggregations[`sterms#${key}`].buckets;
 
-      if (key === 'tier.tagFQN' && tierTags) {
+      if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
           const bucketItem = buckets.find(
             (item) => item.key === option.fullyQualifiedName
@@ -106,7 +108,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
           return {
             key: option.fullyQualifiedName ?? '',
-            label: option.name,
+            label: getEntityName(option),
             count: bucketItem?.doc_count ?? 0,
           };
         });
@@ -148,7 +150,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
         return;
       }
-      if (aggregations?.[key] && key !== 'tier.tagFQN') {
+      if (aggregations?.[key] && key !== TIER_FQN_KEY) {
         const res = await getAggregateFieldOptions(
           index,
           key,
@@ -158,7 +160,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
         const buckets = res.data.aggregations[`sterms#${key}`].buckets;
         setOptions(uniqWith(getOptionsFromAggregationBucket(buckets), isEqual));
-      } else if (key === 'tier.tagFQN') {
+      } else if (key === TIER_FQN_KEY) {
         const filteredOptions = tierOptions?.filter((option) => {
           return option.label.toLowerCase().includes(value.toLowerCase());
         });
@@ -171,25 +173,43 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
   };
 
+  useEffect(() => {
+    const tierField = fields.find((value) => value.key === TIER_FQN_KEY);
+    if (tierField?.value?.length && isUndefined(tierOptions)) {
+      fetchDefaultOptions(index, TIER_FQN_KEY);
+    }
+  }, [fields]);
+
   return (
     <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
-      {fields.map((field) => (
-        <SearchDropdown
-          highlight
-          fixedOrderOptions={field.key === 'tier.tagFQN'}
-          isSuggestionsLoading={isOptionsLoading}
-          key={field.key}
-          label={field.label}
-          options={options || []}
-          searchKey={field.key}
-          selectedKeys={field.value || []}
-          onChange={(updatedValues) => {
-            onFieldValueSelect({ ...field, value: updatedValues });
-          }}
-          onGetInitialOptions={getInitialOptions}
-          onSearch={getFilterOptions}
-        />
-      ))}
+      {fields.map((field) => {
+        const selectedKeys =
+          field.key === TIER_FQN_KEY && options?.length
+            ? field.value?.map((value) => {
+                return (
+                  options?.find((option) => option.key === value.key) ?? value
+                );
+              })
+            : field.value;
+
+        return (
+          <SearchDropdown
+            highlight
+            fixedOrderOptions={field.key === TIER_FQN_KEY}
+            isSuggestionsLoading={isOptionsLoading}
+            key={field.key}
+            label={field.label}
+            options={options ?? []}
+            searchKey={field.key}
+            selectedKeys={selectedKeys ?? []}
+            onChange={(updatedValues) => {
+              onFieldValueSelect({ ...field, value: updatedValues });
+            }}
+            onGetInitialOptions={getInitialOptions}
+            onSearch={getFilterOptions}
+          />
+        );
+      })}
     </Space>
   );
 };

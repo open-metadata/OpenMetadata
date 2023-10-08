@@ -15,6 +15,10 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
@@ -22,9 +26,10 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterAll;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -32,7 +37,9 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
@@ -66,10 +73,25 @@ public class SubjectContextTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(User.class, Entity.USER, mock(UserRepository.class), null);
-    Entity.registerEntity(Team.class, Entity.TEAM, mock(TeamRepository.class), null);
-    Entity.registerEntity(Policy.class, Entity.POLICY, mock(PolicyRepository.class), null);
-    Entity.registerEntity(Role.class, Entity.ROLE, mock(RoleRepository.class), null);
+    UserRepository userRepository = mock(UserRepository.class);
+    Entity.registerEntity(User.class, Entity.USER, userRepository);
+    Mockito.when(userRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.USER, i.getArgument(1))));
+
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
+    Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
+
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
+    Mockito.when(roleRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.ROLE, i.getArgument(1))));
+
+    PolicyRepository policyRepository = mock(PolicyRepository.class);
+    Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository);
+    Mockito.when(policyRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
+        .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.POLICY, i.getArgument(1))));
 
     // Create team hierarchy:
     //                           team1
@@ -108,20 +130,13 @@ public class SubjectContextTest {
     userRoles = getRoles("user");
     List<EntityReference> userRolesRef = toEntityReferences(userRoles);
     user = new User().withName("user").withRoles(userRolesRef).withTeams(List.of(team111.getEntityReference()));
-    SubjectCache.USER_CACHE.put("user", new SubjectContext(user));
-  }
-
-  @AfterAll
-  public static void tearDown() {
-    SubjectCache.cleanUp();
-    PolicyCache.cleanUp();
-    RoleCache.cleanUp();
+    EntityRepository.CACHE_WITH_NAME.put(new ImmutablePair<>(Entity.USER, "user"), user);
   }
 
   @Test
   void testPolicyIterator() {
     // Check iteration order of the policies without resourceOwner
-    SubjectContext subjectContext = SubjectCache.getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
     Iterator<PolicyContext> policyContextIterator = subjectContext.getPolicies(null);
     List<String> expectedUserPolicyOrder = new ArrayList<>();
     expectedUserPolicyOrder.addAll(getPolicyListFromRoles(userRoles)); // First polices associated with user roles
@@ -134,7 +149,7 @@ public class SubjectContextTest {
     assertPolicyIterator(expectedUserPolicyOrder, policyContextIterator);
 
     // Check iteration order of policies with team13 as the resource owner
-    subjectContext = SubjectCache.getSubjectContext(user.getName());
+    subjectContext = SubjectContext.getSubjectContext(user.getName());
     policyContextIterator = subjectContext.getPolicies(team13.getEntityReference());
     List<String> expectedUserAndTeam13PolicyOrder = new ArrayList<>();
     expectedUserAndTeam13PolicyOrder.addAll(expectedUserPolicyOrder);
@@ -142,7 +157,7 @@ public class SubjectContextTest {
     assertPolicyIterator(expectedUserAndTeam13PolicyOrder, policyContextIterator);
 
     // Check iteration order of policies with team131 as the resource owner
-    subjectContext = SubjectCache.getSubjectContext(user.getName());
+    subjectContext = SubjectContext.getSubjectContext(user.getName());
     policyContextIterator = subjectContext.getPolicies(team131.getEntityReference());
     // Roles & policies are inherited from resource owner team131
     List<String> expectedUserAndTeam131PolicyOrder = new ArrayList<>();
@@ -154,7 +169,7 @@ public class SubjectContextTest {
 
   @Test
   void testUserInHierarchy() {
-    SubjectContext subjectContext = SubjectCache.getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
     //
     // Now test given user is part of team hierarchy
     //
@@ -168,7 +183,7 @@ public class SubjectContextTest {
 
   @Test
   void testResourceIsTeamAsset() {
-    SubjectContext subjectContext = SubjectCache.getSubjectContext(user.getName());
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(user.getName());
 
     //
     // Given entity owner "user", ensure isTeamAsset is true for teams 111, 11, 12, 1 and not for 13
@@ -197,7 +212,7 @@ public class SubjectContextTest {
       String name = prefix + "_role_" + i;
       List<EntityReference> policies = toEntityReferences(getPolicies(name));
       Role role = new Role().withName(name).withId(UUID.randomUUID()).withPolicies(policies);
-      RoleCache.CACHE_WITH_ID.put(role.getId(), role);
+      EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.ROLE, role.getId()), role);
       roles.add(role);
     }
     return roles;
@@ -209,7 +224,7 @@ public class SubjectContextTest {
       String name = prefix + "_policy_" + i;
       Policy policy = new Policy().withName(name).withId(UUID.randomUUID()).withRules(getRules(name));
       policies.add(policy);
-      PolicyCache.CACHE.put(policy.getId(), PolicyCache.getRules(policy));
+      EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.POLICY, policy.getId()), policy);
     }
     return policies;
   }
@@ -264,7 +279,7 @@ public class SubjectContextTest {
             .withDefaultRoles(toEntityReferences(roles))
             .withPolicies(toEntityReferences(policies))
             .withParents(parentList);
-    SubjectCache.TEAM_CACHE_WITH_ID.put(team.getId(), team);
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.TEAM, team.getId()), team);
     return team;
   }
 

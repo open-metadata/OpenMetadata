@@ -23,13 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.api.configuration.LogoConfiguration;
-import org.openmetadata.schema.api.data.CreateContainer;
-import org.openmetadata.schema.api.data.CreateDashboard;
-import org.openmetadata.schema.api.data.CreateGlossary;
-import org.openmetadata.schema.api.data.CreateGlossaryTerm;
-import org.openmetadata.schema.api.data.CreatePipeline;
-import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.data.*;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
@@ -57,6 +51,7 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.pipelines.PipelineResourceTest;
+import org.openmetadata.service.resources.searchindex.SearchIndexResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
@@ -140,6 +135,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     ContainerResourceTest containerResourceTest = new ContainerResourceTest();
     CreateContainer createContainer = containerResourceTest.createRequest(test);
     containerResourceTest.createEntity(createContainer, ADMIN_AUTH_HEADERS);
+
+    SearchIndexResourceTest SearchIndexResourceTest = new SearchIndexResourceTest();
+    CreateSearchIndex createSearchIndex = SearchIndexResourceTest.createRequest(test);
+    SearchIndexResourceTest.createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
 
     GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
     CreateGlossary createGlossary = glossaryResourceTest.createRequest(test);

@@ -33,6 +33,11 @@ export const MOCK_QUERIES = [
       ],
       previousVersion: 0.2,
     },
+    service: {
+      id: '51286e5d-0590-457b-a1ec-bc53c1effa1ee',
+      type: 'databaseService',
+      fullyQualifiedName: 'redshift',
+    },
     owner: {
       id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
       type: 'user',
@@ -193,6 +198,11 @@ export const MOCK_QUERIES = [
       fieldsUpdated: [],
       fieldsDeleted: [],
       previousVersion: 0.1,
+    },
+    service: {
+      id: '44c71a8d-130a-4857-aa88-23bf7e371d5ee',
+      type: 'databaseService',
+      fullyQualifiedName: 'redshift',
     },
     votes: {
       upVotes: 1,

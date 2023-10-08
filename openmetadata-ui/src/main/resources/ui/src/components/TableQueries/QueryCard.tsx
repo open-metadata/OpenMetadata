@@ -12,28 +12,33 @@
  */
 
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import { getTableTabPath, getUserPath, PIPE_SYMBOL } from 'constants/constants';
-import { QUERY_DATE_FORMAT, QUERY_LINE_HEIGHT } from 'constants/Query.constant';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
-import { parseSearchParams } from 'utils/Query/QueryUtils';
-import { getQueryPath } from 'utils/RouterUtils';
-import { getFormattedDateFromSeconds } from 'utils/TimeUtils';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { ReactComponent as ExitFullScreen } from '../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../assets/svg/full-screen.svg';
+import { ReactComponent as CopyIcon } from '../../assets/svg/icon-copy.svg';
+import { getTableTabPath, PIPE_SYMBOL } from '../../constants/constants';
+import {
+  QUERY_DATE_FORMAT,
+  QUERY_LINE_HEIGHT,
+} from '../../constants/Query.constant';
 import { CSMode } from '../../enums/codemirror.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { useClipboard } from '../../hooks/useClipBoard';
+import { customFormatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { parseSearchParams } from '../../utils/Query/QueryUtils';
+import { getQueryPath } from '../../utils/RouterUtils';
 import SchemaEditor from '../schema-editor/SchemaEditor';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
-import { ReactComponent as ExitFullScreen } from '/assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '/assets/svg/full-screen.svg';
-import { ReactComponent as CopyIcon } from '/assets/svg/icon-copy.svg';
 
 const { Text } = Typography;
 
@@ -42,7 +47,6 @@ const QueryCard: FC<QueryCardProp> = ({
   className,
   query,
   selectedId,
-  tableId,
   onQuerySelection,
   onQueryUpdate,
   permission,
@@ -50,7 +54,7 @@ const QueryCard: FC<QueryCardProp> = ({
   afterDeleteAction,
 }: QueryCardProp) => {
   const { t } = useTranslation();
-  const { datasetFQN } = useParams<{ datasetFQN: string }>();
+  const { fqn: datasetFQN } = useParams<{ fqn: string }>();
   const location = useLocation();
   const history = useHistory();
   const { onCopyToClipBoard } = useClipboard(query.query);
@@ -64,10 +68,11 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
+  const [selectedTables, setSelectedTables] = useState<DefaultOptionType[]>();
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
-    const queryDate = getFormattedDateFromSeconds(
+    const queryDate = customFormatDateTime(
       query.queryDate || 0,
       QUERY_DATE_FORMAT
     );
@@ -99,13 +104,30 @@ const QueryCard: FC<QueryCardProp> = ({
 
   const updateSqlQuery = async () => {
     setSqlQuery((pre) => ({ ...pre, isLoading: true }));
-    if (query.query !== sqlQuery.query) {
-      const updatedData = {
-        ...query,
-        query: sqlQuery.query,
-      };
+
+    const updatedData = {
+      ...query,
+      query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
+      queryUsedIn: isUndefined(selectedTables)
+        ? query.queryUsedIn
+        : selectedTables.map((option) => {
+            const existingTable = query.queryUsedIn?.find(
+              (table) => table.id === option.value
+            );
+
+            return (
+              existingTable ?? {
+                id: (option.value as string) ?? '',
+                displayName: option.label as string,
+                type: EntityType.TABLE,
+              }
+            );
+          }),
+    };
+    if (query.query !== sqlQuery.query || !isUndefined(selectedTables)) {
       await onQueryUpdate(updatedData, 'query');
     }
+
     setSqlQuery((pre) => ({ ...pre, isLoading: false }));
     setIsEditMode(false);
   };
@@ -123,13 +145,13 @@ const QueryCard: FC<QueryCardProp> = ({
     } else {
       history.push({
         search: Qs.stringify({ ...searchFilter, query: query.id }),
-        pathname: getQueryPath(datasetFQN, query.id || ''),
+        pathname: getQueryPath(datasetFQN, query.id ?? ''),
       });
     }
   };
 
   const handleCardClick = () => {
-    onQuerySelection && onQuerySelection(query);
+    onQuerySelection?.(query);
   };
 
   return (
@@ -158,16 +180,7 @@ const QueryCard: FC<QueryCardProp> = ({
               {duration && (
                 <>
                   <Text>{duration}</Text>
-                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
                 </>
-              )}
-              {query.updatedBy && (
-                <Text>
-                  {`${t('label.by-lowercase')} `}
-                  <Link to={getUserPath(query.updatedBy)}>
-                    {query.updatedBy}
-                  </Link>
-                </Text>
               )}
             </Space>
           }
@@ -217,7 +230,11 @@ const QueryCard: FC<QueryCardProp> = ({
           </div>
           <Row align="middle" className="p-y-xs border-top">
             <Col className="p-y-0.5 p-l-md" span={16}>
-              <QueryUsedByOtherTable query={query} tableId={tableId} />
+              <QueryUsedByOtherTable
+                isEditMode={isEditMode}
+                query={query}
+                onChange={(value) => setSelectedTables(value)}
+              />
             </Col>
             <Col span={8}>
               {isEditMode && (

@@ -32,10 +32,13 @@ const reactOnFeed = (feedSelector, reaction) => {
       cy.get('[data-testid="add-reactions"]').click();
     });
   });
-
-  cy.get(
-    `#reaction-popover [data-testid="reaction-button"][title="${reaction}"]`
-  ).click();
+  cy.get('.ant-popover-inner-content')
+    .should('be.visible')
+    .then(() => {
+      cy.get(
+        `#reaction-popover [data-testid="reaction-button"][title="${reaction}"]`
+      ).click();
+    });
 };
 
 describe('Activity feed', () => {
@@ -52,7 +55,7 @@ describe('Activity feed', () => {
       '/api/v1/search/query?q=**teamType:Group&from=0&size=15&index=team_search_index',
       'getTeams'
     );
-    interceptURL('GET', '/api/v1/users?&isBot=false&limit=15', 'getUsers');
+    interceptURL('GET', '/api/v1/users?*', 'getUsers');
     const value = SEARCH_ENTITY_TABLE.table_4;
     const OWNER = 'admin';
     interceptURL('PATCH', `/api/v1/${value.entity}/*`, 'patchOwner');
@@ -130,6 +133,31 @@ describe('Activity feed', () => {
     });
   });
 
+  it('Remove Emoji reaction from feed', () => {
+    // remove reaction for latest feed
+    [
+      'thumbsUp',
+      'thumbsDown',
+      'laugh',
+      'hooray',
+      'confused',
+      'heart',
+      'eyes',
+      'rocket',
+    ].map((reaction) =>
+      reactOnFeed(
+        '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child',
+        reaction
+      )
+    );
+
+    // Verify if reaction is working or not
+    cy.get('[data-testid="message-container"]')
+      .eq(1)
+      .find('[data-testid="feed-reaction-container"]')
+      .should('not.exist');
+  });
+
   it('User should be able to reply to feed', () => {
     interceptURL('GET', '/api/v1/feed/*', 'fetchFeed');
     cy.get(
@@ -151,7 +179,7 @@ describe('Activity feed', () => {
     interceptURL(
       'GET',
       // eslint-disable-next-line max-len
-      '/api/v1/search/suggest?q=dim_add&index=dashboard_search_index%2Ctable_search_index%2Ctopic_search_index%2Cpipeline_search_index%2Cmlmodel_search_index%2Ccontainer_search_index%2Cglossary_search_index%2Ctag_search_index',
+      '/api/v1/search/suggest?q=dim_add&index=dashboard_search_index%2Ctable_search_index%2Ctopic_search_index%2Cpipeline_search_index%2Cmlmodel_search_index%2Ccontainer_search_index%2Cstored_procedure_search_index%2Cdashboard_data_model_search_index%2Cglossary_search_index%2Ctag_search_index%2Csearch_entity_index',
       'suggestAsset'
     );
 
@@ -162,7 +190,7 @@ describe('Activity feed', () => {
       '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
     ).as('editor');
     cy.get('@editor').click();
-    cy.get('@editor').type('Cypress has replied here. Thanks! @aa');
+    cy.get('@editor').type('Cypress has replied here. Thanks! @aaron_johnson0');
 
     verifyResponseStatusCode('@suggestUser', 200);
     cy.get('[data-value="@aaron_johnson0"]').click();
@@ -197,6 +225,11 @@ describe('Activity feed', () => {
 
   it('Mention should work for the feed reply', () => {
     interceptURL('GET', '/api/v1/feed/*', 'fetchFeed');
+    interceptURL(
+      'GET',
+      '/api/v1/feed?filterType=MENTIONS&userId=*',
+      'mentionsFeed'
+    );
     cy.get(
       '[data-testid="activity-feed-widget"] [data-testid="message-container"]:first-child'
     ).within(() => {
@@ -222,7 +255,6 @@ describe('Activity feed', () => {
     ).as('editor');
     cy.get('@editor').click();
     cy.get('@editor').type('Can you resolve this thread for me? @admin');
-    // verifyResponseStatusCode('@suggestUser', 200);
     cy.get('[data-value="@admin"]').click();
 
     cy.get('[data-testid="send-button"]')
@@ -244,7 +276,7 @@ describe('Activity feed', () => {
     cy.get('[data-testid="activity-feed-widget"]')
       .contains('@Mentions')
       .click();
-
+    verifyResponseStatusCode('@mentionsFeed', 200);
     // Verify mentioned thread should be there int he mentioned tab
     cy.get(
       '[data-testid="message-container"] > .activity-feed-card [data-testid="viewer-container"]'

@@ -17,13 +17,13 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { pagingObject } from 'constants/constants';
-import { Team } from 'generated/entity/teams/team';
-import { User } from 'generated/entity/teams/user';
-import { MOCK_MARKETING_TEAM } from 'mocks/Teams.mock';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
+import { pagingObject } from '../../../../constants/constants';
+import { Team } from '../../../../generated/entity/teams/team';
+import { User } from '../../../../generated/entity/teams/user';
+import { MOCK_MARKETING_TEAM } from '../../../../mocks/Teams.mock';
 import { UserTab } from './UserTab.component';
 import { UserTabProps } from './UserTab.interface';
 
@@ -42,30 +42,39 @@ const props: UserTabProps = {
   currentPage: 1,
   onRemoveUser: jest.fn().mockResolvedValue('removed'),
 };
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-});
-jest.mock('components/common/next-previous/NextPrevious', () => {
+jest.mock(
+  '../../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
+  }
+);
+jest.mock('../../../../components/common/next-previous/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
-jest.mock('components/common/searchbar/Searchbar', () => {
+jest.mock('../../../../components/common/searchbar/Searchbar', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
 });
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('components/common/entityPageInfo/ManageButton/ManageButton', () => {
-  return jest.fn().mockImplementation(() => <div>ManageButton</div>);
-});
-jest.mock('components/Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest.fn().mockImplementation(({ onConfirm }) => (
-    <div data-testid="confirmation-modal">
-      <button onClick={onConfirm}>confirm</button>
-    </div>
-  ));
-});
 jest.mock(
-  'components/common/UserSelectableList/UserSelectableList.component',
+  '../../../../components/common/entityPageInfo/ManageButton/ManageButton',
+  () => {
+    return jest.fn().mockImplementation(() => <div>ManageButton</div>);
+  }
+);
+jest.mock(
+  '../../../../components/Modals/ConfirmationModal/ConfirmationModal',
+  () => {
+    return jest.fn().mockImplementation(({ onConfirm }) => (
+      <div data-testid="confirmation-modal">
+        <button onClick={onConfirm}>confirm</button>
+      </div>
+    ));
+  }
+);
+jest.mock(
+  '../../../../components/common/UserSelectableList/UserSelectableList.component',
   () => ({
     UserSelectableList: jest
       .fn()
@@ -109,8 +118,8 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(await screen.findByText('Loader')).toBeInTheDocument();
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).toBeInTheDocument();
     expect(
       await screen.findByTestId('user-selectable-list')
     ).toBeInTheDocument();
@@ -118,10 +127,10 @@ describe('UserTab', () => {
     expect(await screen.findByText('Searchbar')).toBeInTheDocument();
   });
 
-  it('Pagination should visible if total value is greater then 15', async () => {
+  it('Pagination should visible if total value is greater then 25', async () => {
     render(
       <BrowserRouter>
-        <UserTab {...props} paging={{ total: 16 }} />
+        <UserTab {...props} paging={{ total: 26 }} />
       </BrowserRouter>
     );
 

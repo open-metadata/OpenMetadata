@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -398,6 +399,19 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     assertDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a MlModel service with owner data consumer
+    MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
+    CreateMlModelService createMlModelService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    MlModelService service = serviceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create MlModel under it
+    createEntity(
+        createRequest("MlModel").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
+  }
+
   @Override
   public MlModel validateGetWithDifferentFields(MlModel model, boolean byName) throws HttpResponseException {
     // .../models?fields=owner
@@ -500,7 +514,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

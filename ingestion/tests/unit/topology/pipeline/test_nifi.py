@@ -217,5 +217,5 @@ class NifiUnitTest(TestCase):
         )
 
     def test_pipelines(self):
-        pipline = list(self.nifi.yield_pipeline(EXPECTED_NIFI_DETAILS))[0]
+        pipline = list(self.nifi.yield_pipeline(EXPECTED_NIFI_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES

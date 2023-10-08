@@ -22,10 +22,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -46,18 +44,18 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -74,23 +72,19 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "glossaryTerms", order = 7) // Initialized after Glossary, Classification, and Tags
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
-  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount,domain";
+  static final String FIELDS = "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
-    term.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, term.getId()));
+    super.addHref(uriInfo, term);
     Entity.withHref(uriInfo, term.getGlossary());
     Entity.withHref(uriInfo, term.getParent());
-    Entity.withHref(uriInfo, term.getChildren());
     Entity.withHref(uriInfo, term.getRelatedTerms());
-    Entity.withHref(uriInfo, term.getReviewers());
-    Entity.withHref(uriInfo, term.getOwner());
-    Entity.withHref(uriInfo, term.getDomain());
     return term;
   }
 
-  public GlossaryTermResource(CollectionDAO dao, Authorizer authorizer) {
-    super(GlossaryTerm.class, new GlossaryTermRepository(dao), authorizer);
+  public GlossaryTermResource(Authorizer authorizer) {
+    super(Entity.GLOSSARY_TERM, authorizer);
   }
 
   @Override
@@ -156,8 +150,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     // TODO make this common implementation
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
@@ -167,12 +160,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     EntityReference glossary = null;
     if (glossaryIdParam != null) {
       glossary = repository.getGlossary(glossaryIdParam);
-      fqn = EntityInterfaceUtil.quoteName(glossary.getName());
+      fqn = glossary.getName();
     }
 
     // Filter by glossary parent term
     if (parentTermParam != null) {
-      GlossaryTerm parentTerm = repository.get(uriInfo, parentTermParam, Fields.EMPTY_FIELDS);
+      GlossaryTerm parentTerm = repository.find(parentTermParam, Include.NON_DELETED);
       fqn = parentTerm.getFullyQualifiedName();
 
       // Ensure parent glossary term belongs to the glossary
@@ -219,8 +212,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -253,8 +245,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
   }
 
@@ -273,8 +264,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -301,8 +291,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               description = "glossary term version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -319,8 +308,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create) {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, term);
   }
@@ -345,8 +333,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -363,10 +350,30 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateGlossaryTerm create) {
     GlossaryTerm term = getGlossaryTerm(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, term);
+  }
+
+  @PUT
+  @Path("/{id}/vote")
+  @Operation(
+      operationId = "updateVoteForEntity",
+      summary = "Update Vote for a Entity",
+      description = "Update vote for a Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response updateVote(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
+      @Valid VoteRequest request) {
+    return repository.updateVote(securityContext.getUserPrincipal().getName(), id, request).toResponse();
   }
 
   @DELETE
@@ -389,8 +396,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -413,8 +419,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the glossary term", schema = @Schema(type = "string"))
           @PathParam("fqn")
-          String fqn)
-      throws IOException {
+          String fqn) {
     return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
   }
 
@@ -431,24 +436,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = GlossaryTerm.class)))
       })
   public Response restoreTable(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) throws IOException {
+  private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
+        .withStyle(create.getStyle())
         .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(
-            getEntityReferences(
-                Entity.USER,
-                create.getReviewers() == null
-                    ? create.getReviewers()
-                    : create.getReviewers().stream().map(EntityInterfaceUtil::quoteName).collect(Collectors.toList())))
+        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());

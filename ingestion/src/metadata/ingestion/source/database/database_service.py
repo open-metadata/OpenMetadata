@@ -12,7 +12,7 @@
 Base class for ingesting database services
 """
 from abc import ABC, abstractmethod
-from typing import Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Inspector
@@ -21,14 +21,24 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataModel,
     Table,
+    TableConstraint,
     TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -42,11 +52,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.source import Source
+from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
-from metadata.ingestion.models.delete_entity import delete_entity_from_source
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -54,6 +65,7 @@ from metadata.ingestion.models.topology import (
     create_source_context,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
+from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
@@ -92,7 +104,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        post_process=["yield_view_lineage", "yield_table_constraints"],
+        post_process=["yield_view_lineage"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -112,8 +124,7 @@ class DatabaseServiceTopology(ServiceTopology):
             NodeStage(
                 type_=OMetaTagAndClassification,
                 context="tags",
-                processor="yield_tag_details",
-                ack_sink=False,
+                processor="yield_database_schema_tag_details",
                 nullable=True,
                 cache_all=True,
             ),
@@ -124,17 +135,57 @@ class DatabaseServiceTopology(ServiceTopology):
                 consumer=["database_service", "database"],
             ),
         ],
-        children=["table"],
+        children=["table", "stored_procedure"],
         post_process=["mark_tables_as_deleted"],
     )
     table = TopologyNode(
         producer="get_tables_name_and_type",
         stages=[
             NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_table_tag_details",
+                nullable=True,
+                cache_all=True,
+            ),
+            NodeStage(
                 type_=Table,
                 context="table",
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
+            ),
+            NodeStage(
+                type_=OMetaLifeCycleData,
+                processor="yield_life_cycle_data",
+                nullable=True,
+            ),
+        ],
+    )
+    stored_procedure = TopologyNode(
+        producer="get_stored_procedures",
+        stages=[
+            NodeStage(
+                type_=StoredProcedure,
+                context="stored_procedure",
+                processor="yield_stored_procedure",
+                consumer=["database_service", "database", "database_schema"],
+            ),
+        ],
+        children=["stored_procedure_queries"],
+    )
+    stored_procedure_queries = TopologyNode(
+        producer="get_stored_procedure_queries",
+        stages=[
+            NodeStage(
+                type_=AddLineageRequest,
+                processor="yield_procedure_lineage",
+                context="stored_procedure_query_lineage",  # Used to flag if the query has had processed lineage
+                nullable=True,
+            ),
+            NodeStage(
+                type_=Query,
+                processor="yield_procedure_query",
+                nullable=True,
             ),
         ],
     )
@@ -161,14 +212,18 @@ class DatabaseServiceSource(
     context = create_source_context(topology)
 
     def prepare(self):
-        pass
+        """By default, there is no preparation needed"""
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
 
-    def yield_create_request_database_service(self, config: WorkflowSource):
-        yield self.metadata.get_create_service_from_source(
-            entity=DatabaseService, config=config
+    def yield_create_request_database_service(
+        self, config: WorkflowSource
+    ) -> Iterable[Either[CreateDatabaseServiceRequest]]:
+        yield Either(
+            right=self.metadata.get_create_service_from_source(
+                entity=DatabaseService, config=config
+            )
         )
 
     @abstractmethod
@@ -193,7 +248,9 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -204,7 +261,7 @@ class DatabaseServiceSource(
     @abstractmethod
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink.
@@ -213,14 +270,32 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each schema
         """
 
-    def yield_tag_details(
+    def yield_table_tags(
+        self, table_name_and_type: Tuple[str, TableType]
+    ) -> Iterable[Either[CreateTableRequest]]:
+        """
+        From topology. To be run for each table
+        """
+
+    def yield_table_tag_details(
+        self, table_name_and_type: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each table
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_table_tags(table_name_and_type) or []
+
+    def yield_database_schema_tag_details(
         self, schema_name: str
-    ) -> Iterable[OMetaTagAndClassification]:
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each schema
         """
@@ -228,31 +303,56 @@ class DatabaseServiceSource(
             yield from self.yield_tag(schema_name) or []
 
     @abstractmethod
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
         From topology.
         Parses view definition to get lineage information
         """
 
-    def yield_table_constraints(self) -> Optional[Iterable[OMetaTableConstraints]]:
+    def update_table_constraints(
+        self, table_constraints: List[TableConstraint], foreign_columns: []
+    ) -> List[TableConstraint]:
         """
-        From topology.
         process the table constraints of all tables
-        by default no need to process table constraints
-        specially for non SQA sources
+        transform SQLAlchemy returned foreign_columns into list of TableConstraint.
         """
-        yield from []
 
     @abstractmethod
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[CreateTableRequest]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink.
 
         Also, update the self.inspector value to the current db.
         """
+
+    @abstractmethod
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """List stored procedures to process"""
+
+    @abstractmethod
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Process the stored procedure information"""
+
+    @abstractmethod
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """List the queries associated to a stored procedure"""
+
+    @abstractmethod
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Process the stored procedure query"""
+
+    @abstractmethod
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Add procedure lineage from its query"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
@@ -268,7 +368,7 @@ class DatabaseServiceSource(
 
         tag_labels = []
         for tag_and_category in self.context.tags or []:
-            if tag_and_category.fqn.__root__ == entity_fqn:
+            if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
                     tag_name=tag_and_category.tag_request.name.__root__,
@@ -327,40 +427,6 @@ class DatabaseServiceSource(
         )
 
         self.database_source_state.add(table_fqn)
-        self.status.scanned(table_fqn)
-
-    def fetch_all_schema_and_delete_tables(self):
-        """
-        Fetch all schemas and delete tables
-        """
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.config.serviceName,
-            database_name=self.context.database.name.__root__,
-        )
-        schema_list = self.metadata.list_all_entities(
-            entity=DatabaseSchema, params={"database": database_fqn}
-        )
-        for schema in schema_list:
-            yield from delete_entity_from_source(
-                metadata=self.metadata,
-                entity_type=Table,
-                entity_source_state=self.database_source_state,
-                mark_deleted_entity=self.source_config.markDeletedTables,
-                params={"databaseSchema": schema.fullyQualifiedName.__root__},
-            )
-
-        # Delete the schema
-        yield from delete_entity_from_source(
-            metadata=self.metadata,
-            entity_type=DatabaseSchema,
-            entity_source_state=list(
-                self._get_filtered_schema_names(return_fqn=True, add_to_status=False)
-            ),
-            mark_deleted_entity=self.source_config.markDeletedTables,
-            params={"database": database_fqn},
-        )
 
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
@@ -390,24 +456,23 @@ class DatabaseServiceSource(
             logger.info(
                 f"Mark Deleted Tables set to True. Processing database [{self.context.database.name.__root__}]"
             )
-            # If markAllDeletedTables is True, all tables Which are not in FilterPattern will be deleted
-            if self.source_config.markAllDeletedTables:
-                yield from self.fetch_all_schema_and_delete_tables()
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
 
-            # If markAllDeletedTables is False (Default), Only delete tables which are deleted from the datasource
-            else:
-                schema_fqn_list = self._get_filtered_schema_names(
-                    return_fqn=True, add_to_status=False
+            for schema_fqn in schema_fqn_list:
+                yield from delete_entity_from_source(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    entity_source_state=self.database_source_state,
+                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    params={"database": schema_fqn},
                 )
 
-                for schema_fqn in schema_fqn_list:
-                    yield from delete_entity_from_source(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        entity_source_state=self.database_source_state,
-                        mark_deleted_entity=self.source_config.markDeletedTables,
-                        params={"database": schema_fqn},
-                    )
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)

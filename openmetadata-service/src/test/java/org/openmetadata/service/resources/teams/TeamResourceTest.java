@@ -54,7 +54,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -248,23 +247,22 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     Team div2 = createWithParents("div2", DIVISION, bu1.getEntityReference());
     Team dep3 = createWithParents("dep3", DEPARTMENT, div2.getEntityReference());
 
-    // Ensure parent has all the newly created children
+    // Ensure organization has all the newly created children
     ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,parents", ADMIN_AUTH_HEADERS);
     assertEntityReferences(new ArrayList<>(List.of(bu1.getEntityReference())), ORG_TEAM.getChildren());
 
-    // Ensure parent has all the newly created children
+    // Ensure bu1 has all the newly created children
     bu1 = getEntity(bu1.getId(), "children", ADMIN_AUTH_HEADERS);
     assertEntityReferences(new ArrayList<>(List.of(div2.getEntityReference())), bu1.getChildren());
 
     div2 = getEntity(div2.getId(), "children", ADMIN_AUTH_HEADERS);
     assertEntityReferences(new ArrayList<>(List.of(dep3.getEntityReference())), div2.getChildren());
 
-    // Recursive delete parent Team bu1
+    // Recursively soft delete bu1 and children
     deleteAndCheckEntity(bu1, true, false, ADMIN_AUTH_HEADERS);
 
-    Double expectedVersion = EntityUtil.nextVersion(div2.getVersion());
-
     // Validate that the entity version is updated after soft delete
+    Double expectedVersion = EntityUtil.nextVersion(div2.getVersion());
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("include", Include.DELETED.value());
 
@@ -289,7 +287,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
-  void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException {
     // Create team without any attributes
     Team team = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     // Patching as a non-admin should be disallowed
@@ -498,7 +496,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     queryParams.put("parentTeam", ORGANIZATION_NAME);
     teams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertTrue(teams.getData().stream().anyMatch(t -> t.getName().equals("t1")));
-    t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).collect(Collectors.toList()).get(0);
+    t1 = teams.getData().stream().filter(t -> t.getName().equals("t1")).toList().get(0);
     assertEquals(3, t1.getChildrenCount());
     assertEquals(0, t1.getUserCount());
 
@@ -924,7 +922,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

@@ -15,19 +15,19 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { Col, Input, Modal, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { isEmpty } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getPolicies, getRoles } from 'rest/rolesAPIV1';
-import { getEntityName } from 'utils/EntityUtils';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Loader from '../../../components/Loader/Loader';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getPolicies, getRoles } from '../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './AddAttributeModal.less';
 
@@ -98,7 +98,7 @@ const AddAttributeModal: FC<Props> = ({
     }
   };
 
-  const handleValuSelect = (id: string) => {
+  const handleValueSelect = (id: string) => {
     const isAdded = selectedValues.includes(id);
     if (isAdded) {
       setSelectedValues((prev) => prev.filter((v) => v !== id));
@@ -177,7 +177,7 @@ const AddAttributeModal: FC<Props> = ({
                 data-testid="policy-row"
                 gutter={[16, 16]}
                 key={option.id}
-                onClick={() => handleValuSelect(option.id)}>
+                onClick={() => handleValueSelect(option.id)}>
                 <Col span={6}>{getEntityName(option)}</Col>
                 <Col span={16}>
                   <RichTextEditorPreviewer

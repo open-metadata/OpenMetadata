@@ -19,7 +19,7 @@ export const visitServiceDetailsPage = (service, verifyHeader = true) => {
     'api/v1/teams/name/Organization?fields=*',
     'getSettingsPage'
   );
-  cy.get('[data-testid="appbar-item-settings"]').should('be.visible').click();
+  cy.get('[data-testid="app-bar-item-settings"]').should('be.visible').click();
 
   verifyResponseStatusCode('@getSettingsPage', 200);
   // Services page

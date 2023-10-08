@@ -17,10 +17,9 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Card, Col, Row, Space, Tooltip } from 'antd';
-import { StorageServiceType } from 'generated/entity/services/storageService';
+import Input from 'antd/lib/input/Input';
 import { get, isEmpty, isNull, isObject } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
-import { getStorageServiceConfig } from 'utils/StorageServiceUtils';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../../constants/Services.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { DashboardServiceType } from '../../generated/entity/services/dashboardService';
@@ -29,6 +28,8 @@ import { MessagingServiceType } from '../../generated/entity/services/messagingS
 import { MetadataServiceType } from '../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../../generated/entity/services/searchService';
+import { StorageServiceType } from '../../generated/entity/services/storageService';
 import { ConfigData } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -36,6 +37,8 @@ import { getMessagingConfig } from '../../utils/MessagingServiceUtils';
 import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
+import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
+import { getStorageServiceConfig } from '../../utils/StorageServiceUtils';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
@@ -171,7 +174,7 @@ const ServiceConnectionDetails = ({
         return (
           <Col key={key} span={12}>
             <Row>
-              <Col span={8}>
+              <Col className="d-flex items-center" span={8}>
                 <Space size={0}>
                   <p className="text-grey-muted m-0">{key || title}:</p>
                   <Tooltip
@@ -179,16 +182,16 @@ const ServiceConnectionDetails = ({
                     title={description}
                     trigger="hover">
                     <InfoCircleOutlined
-                      className="tw-mx-1"
+                      className="m-x-xss"
                       style={{ color: '#C4C4C4' }}
                     />
                   </Tooltip>
                 </Space>
               </Col>
               <Col span={16}>
-                <input
+                <Input
                   readOnly
-                  className="w-full tw-outline-none"
+                  className="w-full border-none"
                   type={format !== 'password' ? 'text' : 'password'}
                   value={value}
                 />
@@ -235,6 +238,12 @@ const ServiceConnectionDetails = ({
       case EntityType.STORAGE_SERVICE:
         setSchema(
           getStorageServiceConfig(serviceFQN as StorageServiceType).schema
+        );
+
+        break;
+      case EntityType.SEARCH_SERVICE:
+        setSchema(
+          getSearchServiceConfig(serviceFQN as SearchServiceType).schema
         );
     }
   }, [serviceCategory, serviceFQN]);

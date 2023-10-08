@@ -63,12 +63,7 @@ export default class EntityLink {
    * @returns entity field
    */
   static getEntityField(entityLink: string) {
-    const entityType = this.getEntityType(entityLink);
-    if (entityType === 'table') {
-      return this.split(entityLink)[2];
-    }
-
-    return this.split(entityLink)[-1];
+    return this.split(entityLink).pop();
   }
 
   /**
@@ -109,7 +104,11 @@ export default class EntityLink {
    * @param string entityFqn
    * @returns entityLink
    */
-  static getEntityLink(entityType: string, entityFqn: string) {
+  static getEntityLink(entityType: string, entityFqn: string, field?: string) {
+    if (field) {
+      return `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${entityFqn}${ENTITY_LINK_SEPARATOR}${field}>`;
+    }
+
     return `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${entityFqn}>`;
   }
 }

@@ -35,19 +35,17 @@ STL_QUERY = """
         sti."database",
         sti."schema",
         sti."table",
-        sq.text,
         DATE_TRUNC('second', data.starttime) AS starttime
     FROM
         data
         INNER JOIN  pg_catalog.svv_table_info sti ON data.tbl = sti.table_id
-        INNER JOIN pg_catalog.stl_querytext sq ON data.query = sq.query
     where
         sti."database" = '{database}' AND
        	sti."schema" = '{schema}' AND
         "rows" != 0 AND
         DATE(data.starttime) >= CURRENT_DATE - 1
-    GROUP BY 2,3,4,5,6
-    ORDER BY 6 DESC
+    GROUP BY 2,3,4,5
+    ORDER BY 5 DESC
 """
 
 
@@ -73,7 +71,7 @@ def get_query_results(
             database_name=row.database,
             schema_name=row.schema,
             table_name=row.table,
-            query_text=row.text,
+            query_text=None,
             query_type=operation,
             timestamp=row.starttime,
             rows=row.rows,

@@ -16,13 +16,12 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { Configuration } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { LoginCallback } from '@okta/okta-react';
-import appState from 'AppState';
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosRequestConfig } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { compare } from 'fast-json-patch';
-import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import { observer } from 'mobx-react';
+import Qs from 'qs';
 import React, {
   ComponentType,
   createContext,
@@ -30,19 +29,31 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
-import axiosClient from 'rest/index';
-import { fetchAuthenticationConfig, fetchAuthorizerConfig } from 'rest/miscAPI';
-import { getLoggedInUser, updateUserDetail } from 'rest/userAPI';
+import AppState from '../../../AppState';
 import { NO_AUTH } from '../../../constants/auth.constants';
-import { REDIRECT_PATHNAME, ROUTES } from '../../../constants/constants';
+import {
+  ACTIVE_DOMAIN_STORAGE_KEY,
+  DEFAULT_DOMAIN_VALUE,
+  REDIRECT_PATHNAME,
+  ROUTES,
+} from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/axios.enum';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
+import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { AuthType, User } from '../../../generated/entity/teams/user';
+import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
+import axiosClient from '../../../rest';
+import {
+  fetchAuthenticationConfig,
+  fetchAuthorizerConfig,
+} from '../../../rest/miscAPI';
+import { getLoggedInUser, updateUserDetail } from '../../../rest/userAPI';
 import {
   extractDetailsFromToken,
   getAuthConfig,
@@ -72,8 +83,6 @@ import Auth0Callback from '../callbacks/Auth0Callback/Auth0Callback';
 import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
 import BasicAuthProvider from './basic-auth.provider';
 import OktaAuthProvider from './okta-auth-provider';
-
-import { AuthProvider as AuthProviderEnum } from 'generated/settings/settings';
 interface AuthProviderProps {
   childComponentType: ComponentType;
   children: ReactNode;
@@ -123,6 +132,14 @@ export const AuthProvider = ({
   let silentSignInRetries = 0;
   const handleUserCreated = (isUser: boolean) => setIsUserCreated(isUser);
 
+  const userConfig = useMemo(
+    () =>
+      getUserManagerConfig({
+        ...(authConfig as Record<string, string>),
+      }),
+    [authConfig]
+  );
+
   const onLoginHandler = () => {
     setLoading(true);
     authenticatorRef.current?.invokeLogin();
@@ -135,7 +152,7 @@ export const AuthProvider = ({
     authenticatorRef.current?.invokeLogout();
 
     // reset the user details on logout
-    appState.updateUserDetails({} as User);
+    AppState.updateUserDetails({} as User);
 
     // remove analytics session on logout
     removeSession();
@@ -144,7 +161,7 @@ export const AuthProvider = ({
     localState.removeRefreshToken();
 
     setLoading(false);
-  }, [timeoutId, appState]);
+  }, [timeoutId, AppState]);
 
   const onRenewIdTokenHandler = () => {
     return authenticatorRef.current?.renewIdToken();
@@ -164,15 +181,15 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login
    */
   function storeRedirectPath() {
-    cookieStorage.setItem(REDIRECT_PATHNAME, appState.getUrlPathname(), {
+    cookieStorage.setItem(REDIRECT_PATHNAME, AppState.getUrlPathname(), {
       expires: getUrlPathnameExpiry(),
       path: '/',
     });
   }
 
   const resetUserDetails = (forceLogout = false) => {
-    appState.updateUserDetails({} as User);
-    appState.updateUserPermissions([]);
+    AppState.updateUserDetails({} as User);
+    AppState.updateUserPermissions([]);
     localState.removeOidcToken();
     setIsUserAuthenticated(false);
     setLoadingIndicator(false);
@@ -189,7 +206,7 @@ export const AuthProvider = ({
     getLoggedInUser(userAPIQueryFields)
       .then((res) => {
         if (res) {
-          appState.updateUserDetails(res);
+          AppState.updateUserDetails(res);
         } else {
           resetUserDetails();
         }
@@ -218,13 +235,13 @@ export const AuthProvider = ({
     updateUserDetail(existingData.id, jsonPatch)
       .then((res) => {
         if (res) {
-          appState.updateUserDetails({ ...existingData, ...res });
+          AppState.updateUserDetails({ ...existingData, ...res });
         } else {
           throw t('server.unexpected-response');
         }
       })
       .catch((error: AxiosError) => {
-        appState.updateUserDetails(existingData);
+        AppState.updateUserDetails(existingData);
         showErrorToast(
           error,
           t('server.entity-updating-error', {
@@ -347,7 +364,7 @@ export const AuthProvider = ({
           if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
-            appState.updateUserDetails(res);
+            AppState.updateUserDetails(res);
           }
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -356,9 +373,9 @@ export const AuthProvider = ({
       })
       .catch((err) => {
         if (err && err.response && err.response.status === 404) {
-          appState.updateNewUser(user.profile);
-          appState.updateUserDetails({} as User);
-          appState.updateUserPermissions([]);
+          AppState.updateNewUser(user.profile);
+          AppState.updateUserDetails({} as User);
+          AppState.updateUserPermissions([]);
           setIsSigningIn(true);
           history.push(ROUTES.SIGNUP);
         } else {
@@ -386,6 +403,42 @@ export const AuthProvider = ({
 
         break;
     }
+  };
+
+  const withDomainFilter = (config: AxiosRequestConfig) => {
+    const activeDomain =
+      localStorage.getItem(ACTIVE_DOMAIN_STORAGE_KEY) ?? DEFAULT_DOMAIN_VALUE;
+    const isGetRequest = config.method === 'get';
+    const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
+    const currentPath = window.location.pathname;
+
+    // Do not intercept requests from domains page
+    if (currentPath.includes('/domain')) {
+      return config;
+    }
+
+    if (isGetRequest && hasActiveDomain) {
+      // Filter ES Query
+      if (config.url?.includes('/search/query')) {
+        // Parse and update the query parameter
+        const queryParams = Qs.parse(config.url.split('?')[1]);
+        const domainStatement = `(domain.fullyQualifiedName:${activeDomain})`;
+        queryParams.q = queryParams.q ?? '';
+        queryParams.q += isEmpty(queryParams.q)
+          ? domainStatement
+          : ` AND ${domainStatement}`;
+
+        // Update the URL with the modified query parameter
+        config.url = `${config.url.split('?')[0]}?${Qs.stringify(queryParams)}`;
+      } else {
+        config.params = {
+          ...config.params,
+          domain: activeDomain,
+        };
+      }
+    }
+
+    return config;
   };
 
   /**
@@ -416,7 +469,7 @@ export const AuthProvider = ({
         }
       }
 
-      return config;
+      return withDomainFilter(config);
     });
 
     // Axios response interceptor for statusCode 401,403
@@ -558,9 +611,7 @@ export const AuthProvider = ({
           <OidcAuthenticator
             childComponentType={childComponentType}
             ref={authenticatorRef}
-            userConfig={getUserManagerConfig({
-              ...(authConfig as Record<string, string>),
-            })}
+            userConfig={userConfig}
             onLoginFailure={handleFailedLogin}
             onLoginSuccess={handleSuccessfulLogin}
             onLogoutSuccess={handleSuccessfulLogout}>
@@ -599,14 +650,14 @@ export const AuthProvider = ({
   }, []);
 
   useEffect(() => {
-    appState.updateAuthState(isAuthDisabled);
+    AppState.updateAuthState(isAuthDisabled);
   }, [isAuthDisabled]);
 
   useEffect(() => {
     return history.listen((location) => {
-      if (!isAuthDisabled && !appState.userDetails) {
+      if (!isAuthDisabled && !AppState.userDetails) {
         if (
-          (location.pathname === ROUTES.SIGNUP && isEmpty(appState.newUser)) ||
+          (location.pathname === ROUTES.SIGNUP && isEmpty(AppState.newUser)) ||
           (!location.pathname.includes(ROUTES.CALLBACK) &&
             location.pathname !== ROUTES.SAML_CALLBACK &&
             location.pathname !== ROUTES.HOME &&
@@ -622,7 +673,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     if (isProtectedRoute(location.pathname)) {
-      appState.updateUrlPathname(location.pathname);
+      AppState.updateUrlPathname(location.pathname);
     }
   }, [location.pathname]);
 

@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.resources.Collection;
@@ -83,14 +82,15 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @Override
   public Role addHref(UriInfo uriInfo, Role role) {
+    super.addHref(uriInfo, role);
     Entity.withHref(uriInfo, role.getPolicies());
     Entity.withHref(uriInfo, role.getTeams());
     Entity.withHref(uriInfo, role.getUsers());
     return role;
   }
 
-  public RoleResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Role.class, new RoleRepository(collectionDAO), authorizer);
+  public RoleResource(Authorizer authorizer) {
+    super(Entity.ROLE, authorizer);
   }
 
   @Override
@@ -159,8 +159,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
     ListFilter filter = new ListFilter(include);
@@ -189,8 +188,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
 
@@ -222,8 +220,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -255,8 +252,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -283,8 +279,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
               description = "Role version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     return super.getVersionInternal(securityContext, id, version);
   }
 
@@ -301,8 +296,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, role);
   }
@@ -320,8 +314,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdateRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateRole createRole) {
     Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, role);
   }
@@ -346,8 +339,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -368,8 +360,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the role", schema = @Schema(type = "UUID")) @PathParam("id") UUID id) {
     // A role has a strong relationship with a policy. Recursively delete the policy that the role contains, to avoid
     // leaving a dangling policy without a role.
     return delete(uriInfo, securityContext, id, true, hardDelete);
@@ -392,8 +383,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name)
-      throws IOException {
+      @Parameter(description = "Name of the role", schema = @Schema(type = "string")) @PathParam("name") String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -410,12 +400,11 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = Role.class)))
       })
   public Response restoreRole(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private Role getRole(CreateRole create, String user) throws IOException {
+  private Role getRole(CreateRole create, String user) {
     if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
@@ -424,6 +413,6 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   public static EntityReference getRole(String roleName) {
     RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
-    return roleRepository.getDao().findEntityReferenceByName(roleName);
+    return roleRepository.getReferenceByName(roleName, Include.NON_DELETED);
   }
 }

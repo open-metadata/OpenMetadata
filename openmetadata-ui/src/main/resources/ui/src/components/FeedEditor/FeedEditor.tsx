@@ -18,13 +18,13 @@ import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
-  HTMLAttributes,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
 import ReactQuill, { Quill } from 'react-quill';
 import {
@@ -34,8 +34,10 @@ import {
 } from '../../constants/Feeds.constants';
 import { HTMLToMarkdown, matcher } from '../../utils/FeedUtils';
 import { insertMention, insertRef } from '../../utils/QuillUtils';
+import { getEntityIcon } from '../../utils/TableUtils';
 import { editorRef } from '../common/rich-text-editor/RichTextEditor.interface';
 import './FeedEditor.css';
+import { FeedEditorProp } from './FeedEditor.interface';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register('modules/emoji', Emoji);
@@ -44,16 +46,6 @@ const Delta = Quill.import('delta');
 const strikethrough = (_node: any, delta: typeof Delta) => {
   return delta.compose(new Delta().retain(delta.length(), { strike: true }));
 };
-
-interface FeedEditorProp extends HTMLAttributes<HTMLDivElement> {
-  defaultValue?: string;
-  editorClass?: string;
-  className?: string;
-  placeHolder?: string;
-  onChangeHandler?: (value: string) => void;
-  onSave?: () => void;
-  focused?: boolean;
-}
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
   (
@@ -107,6 +99,45 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
           source: matcher,
           showDenotationChar: false,
           renderLoading: () => `${t('label.loading')}...`,
+          renderItem: (item: Record<string, any>) => {
+            if (!item.type) {
+              return `<div class="d-flex gap-2"> 
+                ${item.avatarEle}
+                <span class="d-flex items-center truncate w-56">${item.name}</span>
+              </div>`;
+            }
+
+            const breadcrumbsData = item.breadcrumbs
+              ? item.breadcrumbs
+                  .map((obj: { name: string }) => obj.name)
+                  .join('/')
+              : '';
+
+            const breadcrumbEle = breadcrumbsData
+              ? `<div class="d-flex flex-wrap">
+                  <span class="text-grey-muted truncate w-max-200 text-xss">${breadcrumbsData}</span>
+                </div>`
+              : '';
+
+            const icon = ReactDOMServer.renderToString(
+              getEntityIcon(item.type)
+            );
+
+            const typeSpan = !breadcrumbEle
+              ? `<span class="text-grey-muted text-xs">${item.type}</span>`
+              : '';
+
+            return `<div class="d-flex items-center gap-2">
+              <div class="flex-center mention-icon-image">${icon}</div>
+              <div>
+                ${breadcrumbEle}
+                <div class="d-flex flex-col">
+                  ${typeSpan}
+                  <span class="font-medium truncate w-56">${item.name}</span>
+                </div>
+              </div>
+            </div>`;
+          },
         },
         markdownOptions: {},
         clipboard: {

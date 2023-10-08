@@ -12,10 +12,6 @@
  */
 
 import { Popover } from 'antd';
-import { EntityUnion } from 'components/Explore/explore.interface';
-import ExploreSearchCard from 'components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from 'components/Loader/Loader';
-import { Include } from 'generated/type/include';
 import React, {
   FC,
   HTMLAttributes,
@@ -23,23 +19,34 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-import { getDashboardByFqn } from 'rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from 'rest/databaseAPI';
-import { getGlossariesByName, getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getMlModelByFQN } from 'rest/mlModelAPI';
-import { getPipelineByFqn } from 'rest/pipelineAPI';
-import { getContainerByFQN } from 'rest/storageAPI';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
-import { getTopicByFqn } from 'rest/topicsAPI';
-import { getTableFQNFromColumnFQN } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from 'utils/StringsUtils';
 import AppState from '../../../AppState';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
+import { Include } from '../../../generated/type/include';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
+import { getDataModelDetailsByFQN } from '../../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import {
+  getGlossariesByName,
+  getGlossaryTermByFQN,
+} from '../../../rest/glossaryAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getContainerByFQN } from '../../../rest/storageAPI';
+import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
+import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
+import { EntityUnion } from '../../Explore/explore.interface';
+import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../Loader/Loader';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
@@ -52,7 +59,7 @@ const PopoverContent: React.FC<{
   entityType: string;
 }> = ({ entityFQN, entityType }) => {
   const [entityData, setEntityData] = useState<EntityUnion>({} as EntityUnion);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const getData = useCallback(() => {
     const setEntityDetails = (entityDetail: EntityUnion) => {
@@ -117,6 +124,25 @@ const PopoverContent: React.FC<{
 
         break;
 
+      case EntityType.DASHBOARD_DATA_MODEL:
+        promise = getDataModelDetailsByFQN(entityFQN, fields);
+
+        break;
+
+      case EntityType.STORED_PROCEDURE:
+        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+
+        break;
+      case EntityType.DOMAIN:
+        promise = getDomainByName(entityFQN, 'owner');
+
+        break;
+
+      case EntityType.DATA_PRODUCT:
+        promise = getDataProductByName(entityFQN, 'owner,domain');
+
+        break;
+
       default:
         break;
     }
@@ -134,6 +160,8 @@ const PopoverContent: React.FC<{
         .finally(() => {
           setLoading(false);
         });
+    } else {
+      setLoading(false);
     }
   }, [entityType, entityFQN]);
 
@@ -141,6 +169,7 @@ const PopoverContent: React.FC<{
     const entityData = AppState.entityData[entityFQN];
     if (entityData) {
       setEntityData(entityData);
+      setLoading(false);
     } else {
       getData();
     }
@@ -151,7 +180,7 @@ const PopoverContent: React.FC<{
   }, [entityFQN]);
 
   if (loading) {
-    return <Loader />;
+    return <Loader size="small" />;
   }
 
   return (

@@ -11,19 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Space, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Input, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createBotWithPut } from 'rest/botsAPI';
-import {
-  createUserWithPut,
-  getAuthMechanismForBotUser,
-  getRoles,
-} from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import { TERM_ADMIN } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -34,8 +29,14 @@ import {
   AuthenticationMechanism,
   AuthType,
 } from '../../generated/entity/teams/user';
+import { createBotWithPut } from '../../rest/botsAPI';
+import {
+  createUserWithPut,
+  getAuthMechanismForBotUser,
+  getRoles,
+} from '../../rest/userAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Description from '../common/description/Description';
 import InheritedRolesCard from '../common/InheritedRolesCard/InheritedRolesCard.component';
@@ -46,7 +47,8 @@ import AuthMechanism from './AuthMechanism';
 import AuthMechanismForm from './AuthMechanismForm';
 import { BotsDetailProps } from './BotDetails.interfaces';
 import './BotDetails.style.less';
-import DisplayNameComponent from './DisplayNameComponent/DisplayNameComponent.component';
+
+import { ReactComponent as IconBotProfile } from '../../assets/svg/bot-profile.svg';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -54,7 +56,6 @@ const BotDetails: FC<BotsDetailProps> = ({
   updateBotsDetails,
   revokeTokenHandler,
   botPermission,
-  onEmailChange,
   updateUserDetails,
 }) => {
   const [displayName, setDisplayName] = useState(botData.displayName);
@@ -196,24 +197,66 @@ const BotDetails: FC<BotsDetailProps> = ({
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
               <div className="d-flex flex-col">
-                <SVGIcons
-                  alt="bot-profile"
-                  icon={Icons.BOT_PROFILE}
-                  width="280px"
-                />
+                <IconBotProfile widths="280px" />
 
                 <Space className="p-b-md" direction="vertical" size={8}>
-                  <DisplayNameComponent
-                    displayName={displayName}
-                    displayNamePermission={displayNamePermission}
-                    editAllPermission={editAllPermission}
-                    handleDisplayNameChange={handleDisplayNameChange}
-                    isDisplayNameEdit={isDisplayNameEdit}
-                    setIsDisplayNameEdit={(value: boolean) =>
-                      setIsDisplayNameEdit(value)
-                    }
-                    onDisplayNameChange={onDisplayNameChange}
-                  />
+                  <div className="mt-4 w-full d-flex">
+                    {isDisplayNameEdit ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          className="w-full"
+                          data-testid="displayName"
+                          id="displayName"
+                          name="displayName"
+                          placeholder={t('label.display-name')}
+                          value={displayName}
+                          onChange={onDisplayNameChange}
+                        />
+                        <div className="flex justify-end" data-testid="buttons">
+                          <Button
+                            className="text-sm mr-1"
+                            data-testid="cancel-displayName"
+                            icon={<CloseOutlined />}
+                            size="small"
+                            type="primary"
+                            onMouseDown={() => setIsDisplayNameEdit(false)}
+                          />
+
+                          <Button
+                            className="text-sm mr-1"
+                            data-testid="save-displayName"
+                            icon={<CheckOutlined />}
+                            size="small"
+                            type="primary"
+                            onClick={handleDisplayNameChange}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <Space>
+                        {displayName ? (
+                          <Typography.Title className="display-name" level={5}>
+                            {displayName}
+                          </Typography.Title>
+                        ) : (
+                          <Typography.Text className="text-grey-muted">
+                            {t('label.add-entity', {
+                              entity: t('label.display-name'),
+                            })}
+                          </Typography.Text>
+                        )}
+                        {(displayNamePermission || editAllPermission) && (
+                          <Button
+                            className="p-0"
+                            data-testid="edit-displayName"
+                            icon={<EditIcon width={16} />}
+                            type="text"
+                            onClick={() => setIsDisplayNameEdit(true)}
+                          />
+                        )}
+                      </Space>
+                    )}
+                  </div>
                   <Description
                     description={botData.description || ''}
                     entityName={getEntityName(botData)}
@@ -296,17 +339,13 @@ const BotDetails: FC<BotsDetailProps> = ({
               {isAuthMechanismEdit ? (
                 <AuthMechanismForm
                   authenticationMechanism={authenticationMechanism}
-                  botData={botData}
-                  botUser={botUserData}
                   isUpdating={isUpdating}
                   onCancel={() => setIsAuthMechanismEdit(false)}
-                  onEmailChange={onEmailChange}
                   onSave={handleAuthMechanismUpdate}
                 />
               ) : (
                 <AuthMechanism
                   authenticationMechanism={authenticationMechanism}
-                  botUser={botUserData}
                   hasPermission={editAllPermission}
                   onEdit={handleAuthMechanismEdit}
                   onTokenRevoke={() => setIsRevokingToken(true)}
@@ -316,11 +355,8 @@ const BotDetails: FC<BotsDetailProps> = ({
           ) : (
             <AuthMechanismForm
               authenticationMechanism={{} as AuthenticationMechanism}
-              botData={botData}
-              botUser={botUserData}
               isUpdating={isUpdating}
               onCancel={() => setIsAuthMechanismEdit(false)}
-              onEmailChange={onEmailChange}
               onSave={handleAuthMechanismUpdate}
             />
           )}

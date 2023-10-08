@@ -11,22 +11,8 @@
  *  limitations under the License.
  */
 
-import AppState from 'AppState';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import DataModelDetails from 'components/DataModels/DataModelDetails.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { CreateThread } from 'generated/api/feed/createThread';
-import { DashboardDataModel } from 'generated/entity/data/dashboardDataModel';
-import { Include } from 'generated/type/include';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
@@ -39,25 +25,44 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import AppState from '../../AppState';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import DataModelDetails from '../../components/DataModels/DataModelDetails.component';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
+import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Include } from '../../generated/type/include';
 import {
   addDataModelFollower,
   getDataModelsByName,
   patchDataModelDetails,
   removeDataModelFollower,
-} from 'rest/dataModelsAPI';
-import { postThread } from 'rest/feedsAPI';
-import { getCurrentUserId, getEntityMissingError } from 'utils/CommonUtils';
-import { getSortedDataModelColumnTags } from 'utils/DataModelsUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+  updateDataModelVotes,
+} from '../../rest/dataModelsAPI';
+import { postThread } from '../../rest/feedsAPI';
+import {
+  getCurrentUserId,
+  getEntityMissingError,
+} from '../../utils/CommonUtils';
+import { getSortedDataModelColumnTags } from '../../utils/DataModelsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { dashboardDataModelFQN } =
-    useParams<{ dashboardDataModelFQN: string }>();
+  const { fqn: dashboardDataModelFQN } = useParams<{ fqn: string }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
@@ -93,7 +98,7 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
-        ResourceEntity.CONTAINER,
+        ResourceEntity.DASHBOARD_DATA_MODEL,
         dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);
@@ -125,7 +130,7 @@ const DataModelsPage = () => {
     try {
       const response = await getDataModelsByName(
         dashboardDataModelFQN,
-        'owner,tags,followers',
+        'owner,tags,followers,votes',
         Include.All
       );
       setDataModelData(response);
@@ -226,28 +231,19 @@ const DataModelsPage = () => {
     [dataModelData, dataModelData?.owner]
   );
 
-  const handleUpdateTier = async (updatedTier?: string) => {
+  const handleUpdateTier = async (updatedTier?: Tag) => {
     try {
-      if (updatedTier) {
-        const { tags: newTags, version } = await handleUpdateDataModelData({
-          ...(dataModelData as DashboardDataModel),
-          tags: [
-            ...getTagsWithoutTier(dataModelData?.tags ?? []),
-            {
-              tagFQN: updatedTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-              source: TagSource.Classification,
-            },
-          ],
-        });
+      const tags = updateTierTag(dataModelData?.tags ?? [], updatedTier);
+      const { tags: newTags, version } = await handleUpdateDataModelData({
+        ...(dataModelData as DashboardDataModel),
+        tags,
+      });
 
-        setDataModelData((prev) => ({
-          ...(prev as DashboardDataModel),
-          tags: newTags,
-          version,
-        }));
-      }
+      setDataModelData((prev) => ({
+        ...(prev as DashboardDataModel),
+        tags: newTags,
+        version,
+      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -289,6 +285,39 @@ const DataModelsPage = () => {
     }
   };
 
+  const handleToggleDelete = () => {
+    setDataModelData((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDataModelVotes(id, data);
+      const details = await getDataModelsByName(
+        dashboardDataModelFQN,
+        'owner,tags,followers,votes',
+        Include.All
+      );
+      setDataModelData(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const updateDataModelDetailsState = useCallback((data) => {
+    const updatedData = data as DashboardDataModel;
+
+    setDataModelData((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
   useEffect(() => {
     if (hasViewPermission) {
       fetchDataModelDetails(dashboardDataModelFQN);
@@ -324,11 +353,14 @@ const DataModelsPage = () => {
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
       handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
+      handleToggleDelete={handleToggleDelete}
       handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
       handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
+      updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}
+      onUpdateVote={updateVote}
     />
   );
 };

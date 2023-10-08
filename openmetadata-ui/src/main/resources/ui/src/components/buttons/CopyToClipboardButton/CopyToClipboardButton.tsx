@@ -12,10 +12,10 @@
  */
 
 import { Button, PopoverProps, Tooltip } from 'antd';
-import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
-import { useClipboard } from 'hooks/useClipBoard';
 import React, { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
+import { useClipboard } from '../../../hooks/useClipBoard';
 
 interface Props {
   copyText: string;
@@ -43,9 +43,7 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
       open={hasCopied}
       placement={position}
       title={
-        <span
-          className="tw-text-xs tw-font-medium tw-italic"
-          data-testid="copy-success">
+        <span className="text-xs font-medium" data-testid="copy-success">
           {t('message.copied-to-clipboard')}
         </span>
       }

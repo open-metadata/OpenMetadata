@@ -2,7 +2,6 @@ package org.openmetadata.csv;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.LINE_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.recordToString;
@@ -41,7 +40,7 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class), null);
+    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
   }
 
   @Test
@@ -60,27 +59,6 @@ public class EntityCsvTest {
     assertSummary(importResult, Status.ABORTED, 1, 0, 1);
     assertNull(importResult.getImportResultsCsv());
     assertEquals(TestCsv.invalidHeader("h1*,h2,h3", ",h2,h3"), importResult.getAbortReason());
-  }
-
-  @Test
-  void test_validateCsvInvalidRecords() throws IOException {
-    // Invalid record 2 - Missing required value in h1
-    // Invalid record 3 - Record with only two fields instead of 3
-    List<String> records = listOf(",2,3", "1,2", "1,2,3");
-    String csv = createCsv(CSV_HEADERS, records);
-
-    TestCsv testCsv = new TestCsv();
-    CsvImportResult importResult = testCsv.importCsv(csv, true);
-    assertSummary(importResult, Status.PARTIAL_SUCCESS, 4, 2, 2);
-
-    String[] expectedRecords = {
-      CsvUtil.recordToString(EntityCsv.getResultHeaders(CSV_HEADERS)),
-      getFailedRecord(",2,3", TestCsv.fieldRequired(0)),
-      getFailedRecord("1,2", TestCsv.invalidFieldCount(3, 2)),
-      getSuccessRecord("1,2,3", ENTITY_CREATED)
-    };
-
-    assertRows(importResult, expectedRecords);
   }
 
   public static void assertSummary(

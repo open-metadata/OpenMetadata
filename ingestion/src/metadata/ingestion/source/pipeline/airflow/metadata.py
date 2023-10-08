@@ -30,9 +30,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
     AirflowConnection,
 )
@@ -40,10 +37,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import get_xlets_from_dag
 from metadata.ingestion.source.pipeline.airflow.models import (
     AirflowDag,
@@ -84,20 +84,20 @@ class AirflowSource(PipelineServiceSource):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
-        super().__init__(config, metadata_config)
+        super().__init__(config, metadata)
         self._session = None
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirflowConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(
                 f"Expected AirflowConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @property
     def session(self) -> Session:
@@ -191,7 +191,7 @@ class AirflowSource(PipelineServiceSource):
 
     def yield_pipeline_status(
         self, pipeline_details: AirflowDagDetails
-    ) -> OMetaPipelineStatus:
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         try:
             dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
@@ -224,15 +224,19 @@ class AirflowSource(PipelineServiceSource):
                         ),
                         timestamp=dag_run.execution_date.timestamp(),
                     )
-                    yield OMetaPipelineStatus(
-                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                        pipeline_status=pipeline_status,
+                    yield Either(
+                        right=OMetaPipelineStatus(
+                            pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                            pipeline_status=pipeline_status,
+                        )
                     )
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Wild error trying to extract status from DAG {pipeline_details.dag_id} - {exc}."
-                " Skipping status ingestion."
+            yield Either(
+                left=StackTraceError(
+                    name=f"{pipeline_details.dag_id} Pipeline Status",
+                    error=f"Wild error trying to extract status from DAG {pipeline_details.dag_id} - {exc}.",
+                    stack_trace=traceback.format_exc(),
+                )
             )
 
     def get_pipelines_list(self) -> Iterable[AirflowDagDetails]:
@@ -339,7 +343,7 @@ class AirflowSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[CreatePipelineRequest]:
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a DAG into a Pipeline Entity
         :param pipeline_details: SerializedDAG from airflow metadata DB
@@ -364,26 +368,40 @@ class AirflowSource(PipelineServiceSource):
                 owner=self.get_owner(pipeline_details.owners),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
-            yield pipeline_request
+            yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
         except TypeError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error building DAG information from {pipeline_details}. There might be Airflow version"
-                f" incompatibilities - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.dag_id,
+                    error=(
+                        f"Error building DAG information from {pipeline_details}. There might be Airflow version"
+                        f" incompatibilities - {err}"
+                    ),
+                    stack_trace=traceback.format_exc(),
+                )
             )
         except ValidationError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error building pydantic model for {pipeline_details} - {err}"
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.dag_id,
+                    error=f"Error building pydantic model for {pipeline_details} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
             )
+
         except Exception as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Wild error ingesting pipeline {pipeline_details} - {err}")
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.dag_id,
+                    error=f"Wild error ingesting pipeline {pipeline_details} - {err}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirflowDagDetails
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse xlets and add lineage between Pipelines and Tables
         :param pipeline_details: SerializedDAG from airflow metadata DB
@@ -398,7 +416,8 @@ class AirflowSource(PipelineServiceSource):
         lineage_details = LineageDetails(
             pipeline=EntityReference(
                 id=self.context.pipeline.id.__root__, type="pipeline"
-            )
+            ),
+            source=LineageSource.PipelineLineage,
         )
 
         xlets = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
@@ -420,7 +439,7 @@ class AirflowSource(PipelineServiceSource):
                                     lineageDetails=lineage_details,
                                 )
                             )
-                            yield lineage
+                            yield Either(right=lineage)
                         else:
                             logger.warning(
                                 f"Could not find Table [{to_fqn}] from "

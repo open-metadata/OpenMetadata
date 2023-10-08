@@ -27,6 +27,9 @@
       "description": "Description of the Data Product.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
@@ -48,13 +51,17 @@
       "$ref": "../../type/entityReference.json"
     },
     "experts": {
-      "description": "List of of users who are experts for this Data Product.",
+      "description": "List of users who are experts for this Data Product.",
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
     },
     "domain": {
       "description": "Domain or sub-domain to which this Data Product belongs to.",
       "$ref": "../../type/entityReference.json"
+    },
+    "assets": {
+      "description": "Data assets collection that is part of this data product.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

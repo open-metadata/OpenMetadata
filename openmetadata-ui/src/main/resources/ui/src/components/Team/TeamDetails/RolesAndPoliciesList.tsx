@@ -16,10 +16,10 @@ import Table, { ColumnsType } from 'antd/lib/table';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
@@ -64,7 +64,7 @@ const ListEntities = ({
 
           return (
             <Link
-              className="hover:tw-underline tw-cursor-pointer"
+              className="cursor-pointer"
               data-testid="entity-name"
               to={link}>
               {getEntityName(record)}

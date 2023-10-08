@@ -14,48 +14,47 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import { containerVersionMockProps } from '../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
 
 const mockPush = jest.fn();
 
 jest.mock(
-  'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
-  CustomPropertyTable: jest
-    .fn()
-    .mockImplementation(() => <div>CustomPropertyTable</div>),
-}));
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: jest
+      .fn()
+      .mockImplementation(() => <div>CustomPropertyTable</div>),
+  })
+);
 
-jest.mock('components/common/description/DescriptionV1', () =>
+jest.mock('../../components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock(
+  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
+  () => jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
-jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () =>
-  jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
-);
-
-jest.mock('components/VersionTable/VersionTable.component', () =>
+jest.mock('../../components/VersionTable/VersionTable.component', () =>
   jest.fn().mockImplementation(() => <div>VersionTable</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
@@ -117,37 +116,6 @@ describe('ContainerVersion tests', () => {
     expect(versionTable).toBeNull();
   });
 
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <ContainerVersion
-          {...containerVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-    const loader = screen.queryByText('Loader');
-    const dataAssetsVersionHeader = screen.queryByText(
-      'DataAssetsVersionHeader'
-    );
-    const schemaTabLabel = screen.queryByText('label.schema');
-    const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
-    const versionTable = screen.queryByText('VersionTable');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(loader).toBeNull();
-    expect(entityVersionTimeLine).toBeNull();
-    expect(dataAssetsVersionHeader).toBeNull();
-    expect(schemaTabLabel).toBeNull();
-    expect(customPropertyTabLabel).toBeNull();
-    expect(versionTable).toBeNull();
-  });
-
   it('Should update url on click of tab', async () => {
     await act(async () => {
       render(<ContainerVersion {...containerVersionMockProps} />);
@@ -168,34 +136,5 @@ describe('ContainerVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/container/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
-  });
-
-  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
-    await act(async () => {
-      render(
-        <ContainerVersion
-          {...containerVersionMockProps}
-          entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />
-      );
-    });
-
-    const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
-    );
-    const versionTable = screen.getByText('VersionTable');
-    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
-
-    expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(versionTable).toBeInTheDocument();
-    expect(errorPlaceHolder).toBeNull();
-
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
-
-    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });

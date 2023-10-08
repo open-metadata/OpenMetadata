@@ -12,32 +12,31 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Searchbar from 'components/common/searchbar/Searchbar';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import DataQualityTab from 'components/ProfilerDashboard/component/DataQualityTab';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { TestCase } from 'generated/tests/testCase';
-import { Paging } from 'generated/type/paging';
-import {
-  SearchHitBody,
-  TestCaseSearchSource,
-} from 'interface/search.interface';
-import { isString } from 'lodash';
 import { PagingResponse } from 'Models';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import QueryString from 'qs';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
-import { searchQuery } from 'rest/searchAPI';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { TestCase } from '../../../generated/tests/testCase';
+import {
+  SearchHitBody,
+  TestCaseSearchSource,
+} from '../../../interface/search.interface';
+import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   getListTestCase,
   getTestCaseById,
   ListTestCaseParams,
-} from 'rest/testAPI';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import Searchbar from '../../common/searchbar/Searchbar';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import DataQualityTab from '../../ProfilerDashboard/component/DataQualityTab';
 import { DataQualitySearchParams } from '../DataQuality.interface';
 
 export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
@@ -93,6 +92,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       const response = await getListTestCase({
         ...params,
         fields: 'testDefinition,testCaseResult,testSuite',
+        orderByLastExecutionDate: true,
       });
       setTestCase(response);
     } catch (error) {
@@ -156,21 +156,21 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       setIsLoading(false);
     }
   };
-  const handlePagingClick = (
-    cursorValue: string | number,
-    activePage?: number
-  ) => {
+  const handlePagingClick = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
     if (searchValue) {
-      searchTestCases(cursorValue as number);
+      searchTestCases(currentPage);
     } else {
       const { paging } = testCase;
-      if (isString(cursorValue)) {
+      if (cursorType) {
         fetchTestCases({
-          [cursorValue]: paging?.[cursorValue as keyof Paging],
+          [cursorType]: paging?.[cursorType],
         });
       }
     }
-    activePage && setCurrentPage(activePage);
+    setCurrentPage(currentPage);
   };
 
   useEffect(() => {

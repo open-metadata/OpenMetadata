@@ -19,13 +19,13 @@ import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postFeedById, postThread } from 'rest/feedsAPI';
 import AppState from '../../../../AppState';
 import {
   CreateThread,
   ThreadType,
 } from '../../../../generated/api/feed/createThread';
 import { Post } from '../../../../generated/entity/feed/thread';
+import { postFeedById, postThread } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -60,10 +60,11 @@ const AnnouncementDrawer: FC<Props> = ({
 
   const title = (
     <Space
-      className="tw-justify-between"
+      align="start"
+      className="justify-between"
       data-testid="title"
       style={{ width: '100%' }}>
-      <Typography.Text className="tw-font-medium">
+      <Typography.Text className="font-medium break-all">
         {t('label.announcement-on-entity', { entity: entityName })}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
@@ -117,7 +118,7 @@ const AnnouncementDrawer: FC<Props> = ({
           title={title}
           width={576}
           onClose={onClose}>
-          <div className="d-flex tw-justify-end">
+          <div className="d-flex justify-end">
             <Tooltip
               title={!createPermission && t('message.no-permission-to-view')}>
               <Button
@@ -131,7 +132,7 @@ const AnnouncementDrawer: FC<Props> = ({
           </div>
 
           <ActivityThreadPanelBody
-            className="tw-p-0"
+            className="p-0"
             createThread={createThread}
             deletePostHandler={deletePostHandler}
             editAnnouncementPermission={createPermission}

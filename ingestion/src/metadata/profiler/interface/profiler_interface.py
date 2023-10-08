@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column
 from typing_extensions import Self
@@ -36,7 +36,9 @@ from metadata.ingestion.api.processor import ProfilerProcessorStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
+from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.partition import get_partition_details
 
 
@@ -64,19 +66,27 @@ class ProfilerInterface(ABC):
         self.source_config = source_config
         self.service_connection_config = service_connection_config
         self.connection = get_connection(self.service_connection_config)
-        self.processor_status = ProfilerProcessorStatus()
+        self.status = ProfilerProcessorStatus()
         try:
             fqn = self.table_entity.fullyQualifiedName
         except AttributeError:
-            self.processor_status.entity = None
+            self.status.entity = None
         else:
-            self.processor_status.entity = fqn.__root__ if fqn else None
+            self.status.entity = fqn.__root__ if fqn else None
         self.profile_sample_config = profile_sample_config
         self.profile_query = sample_query
         self.partition_details = (
             table_partition_config if not self.profile_query else None
         )
         self.timeout_seconds = timeout_seconds
+
+        self._get_metric_fn = {
+            MetricTypes.Table.value: self._compute_table_metrics,
+            MetricTypes.Static.value: self._compute_static_metrics,
+            MetricTypes.Query.value: self._compute_query_metrics,
+            MetricTypes.Window.value: self._compute_window_metrics,
+            MetricTypes.System.value: self._compute_system_metrics,
+        }
 
     @abstractmethod
     def _get_sampler(self):
@@ -222,7 +232,57 @@ class ProfilerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def _get_metrics(self, *args, **kwargs):
+    def _compute_table_metrics(
+        self,
+        metrics: List[Metrics],
+        runner,
+        *args,
+        **kwargs,
+    ):
+        """Get metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _compute_static_metrics(
+        self,
+        metrics: List[Metrics],
+        runner,
+        *args,
+        **kwargs,
+    ):
+        """Get metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _compute_query_metrics(
+        self,
+        metric: Metrics,
+        runner,
+        *args,
+        **kwargs,
+    ):
+        """Get metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _compute_window_metrics(
+        self,
+        metrics: List[Metrics],
+        runner: QueryRunner,
+        *args,
+        **kwargs,
+    ):
+        """Get metrics"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def _compute_system_metrics(
+        self,
+        metrics: Metrics,
+        runner,
+        *args,
+        **kwargs,
+    ):
         """Get metrics"""
         raise NotImplementedError
 

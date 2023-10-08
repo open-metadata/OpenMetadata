@@ -24,8 +24,10 @@ REDSHIFT_SQL_STATEMENT = textwrap.dedent(
      WHERE userid > 1
           {filters}
           -- Filter out all automated & cursor queries
+          AND label NOT IN ('maintenance', 'metrics', 'health')
           AND querytxt NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
           AND querytxt NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND userid <> 1
           AND aborted = 0
           AND starttime >= '{start_time}'
           AND starttime < '{end_time}'
@@ -274,3 +276,80 @@ REDSHIFT_GET_ALL_RELATIONS = """
     where 1 {schema_clause} {table_clause}
     ORDER BY "relkind", "schema_oid", "schema";
     """
+
+
+REDSHIFT_GET_STORED_PROCEDURES = textwrap.dedent(
+    """
+SELECT
+    p.proname as name,
+    b.usename as owner,
+    p.prosrc as definition
+FROM
+    pg_catalog.pg_namespace n
+JOIN pg_catalog.pg_proc_info p ON
+    pronamespace = n.oid
+join pg_catalog.pg_user b on
+    b.usesysid = p.proowner
+where nspname = '{schema_name}'
+    and p.proowner <> 1;
+    """
+)
+
+
+REDSHIFT_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
+    """
+with SP_HISTORY as (
+    select
+        query as procedure_id,
+        querytxt as procedure_text,
+        starttime as procedure_start_time,
+        endtime as procedure_end_time,
+        pid as procedure_session_id
+    from SVL_STORED_PROC_CALL
+    where database = '{database_name}'
+      and aborted = 0
+      and starttime >= '{start_date}'
+),
+Q_HISTORY as (
+    select
+        query as query_id,
+        querytxt as query_text,
+        case
+            when querytxt ilike '%%MERGE%%' then 'MERGE'
+            when querytxt ilike '%%UPDATE%%' then 'UPDATE'
+            when querytxt ilike '%%CREATE%%AS%%' then 'CREATE_TABLE_AS_SELECT'
+            when querytxt ilike '%%INSERT%%' then 'INSERT'
+        else 'UNKNOWN' end query_type,
+        pid as query_session_id,
+        starttime as query_start_time,
+        endtime as query_end_time,
+        userid as query_user_name
+    from STL_QUERY q
+    join pg_catalog.pg_user b
+      on b.usesysid = q.userid
+    where label not in ('maintenance', 'metrics', 'health')
+      and querytxt not like '/* {{"app": "OpenMetadata", %%}} */%%'
+      and querytxt not like '/* {{"app": "dbt", %%}} */%%'
+      and database = '{database_name}'
+      and starttime >= '{start_date}'
+      and userid <> 1
+)
+select
+    sp.procedure_id,
+    sp.procedure_text,
+    sp.procedure_start_time,
+    sp.procedure_end_time,
+    q.query_id,
+    q.query_text,
+    q.query_type,
+    q.query_start_time,
+    q.query_end_time,
+    q.query_user_name
+from SP_HISTORY sp
+  join Q_HISTORY q
+    on sp.procedure_session_id = q.query_session_id
+   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time 
+   and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
+order by procedure_start_time DESC
+    """
+)

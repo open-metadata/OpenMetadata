@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -56,17 +55,13 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/services/messagingServices")
@@ -79,15 +74,8 @@ public class MessagingServiceResource
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owner,domain";
 
-  @Override
-  public MessagingService addHref(UriInfo uriInfo, MessagingService service) {
-    service.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, service.getId()));
-    Entity.withHref(uriInfo, service.getOwner());
-    return service;
-  }
-
-  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MessagingService.class, new MessagingServiceRepository(dao), authorizer, ServiceType.MESSAGING);
+  public MessagingServiceResource(Authorizer authorizer) {
+    super(Entity.MESSAGING_SERVICE, authorizer, ServiceType.MESSAGING);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -116,6 +104,9 @@ public class MessagingServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
           @DefaultValue("10")
           @Min(0)
@@ -133,12 +124,8 @@ public class MessagingServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    ListFilter filter = new ListFilter(include);
-    ResultList<MessagingService> messagingServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
+          Include include) {
+    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET
@@ -169,8 +156,7 @@ public class MessagingServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     MessagingService messagingService = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     return decryptOrNullify(securityContext, messagingService);
   }
@@ -204,10 +190,8 @@ public class MessagingServiceResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    MessagingService messagingService =
-        getByNameInternal(uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), fieldsParam, include);
+          Include include) {
+    MessagingService messagingService = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     return decryptOrNullify(securityContext, messagingService);
   }
 
@@ -228,8 +212,7 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
-      @Valid TestConnectionResult testConnectionResult)
-      throws IOException {
+      @Valid TestConnectionResult testConnectionResult) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     MessagingService service = repository.addTestConnectionResult(id, testConnectionResult);
@@ -251,8 +234,8 @@ public class MessagingServiceResource
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
 
     List<Object> versions =
@@ -262,7 +245,7 @@ public class MessagingServiceResource
                   try {
                     MessagingService messagingService = JsonUtils.readValue((String) json, MessagingService.class);
                     return JsonUtils.pojoToJson(decryptOrNullify(securityContext, messagingService));
-                  } catch (IOException e) {
+                  } catch (Exception e) {
                     return json;
                   }
                 })
@@ -295,8 +278,7 @@ public class MessagingServiceResource
               description = "messaging service version number in the form `major`" + ".`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
-          String version)
-      throws IOException {
+          String version) {
     MessagingService messagingService = super.getVersionInternal(securityContext, id, version);
     return decryptOrNullify(securityContext, messagingService);
   }
@@ -315,8 +297,7 @@ public class MessagingServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService create) {
     MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
@@ -337,8 +318,7 @@ public class MessagingServiceResource
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService update)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateMessagingService update) {
     MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
@@ -365,8 +345,7 @@ public class MessagingServiceResource
                       examples = {
                         @ExampleObject("[" + "{op:remove, path:/a}," + "{op:add, path: /b, value: val}" + "]")
                       }))
-          JsonPatch patch)
-      throws IOException {
+          JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -391,8 +370,8 @@ public class MessagingServiceResource
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id") UUID id)
-      throws IOException {
+      @Parameter(description = "Id of the messaging service", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
@@ -416,8 +395,7 @@ public class MessagingServiceResource
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(description = "Name of the messaging service", schema = @Schema(type = "string")) @PathParam("name")
-          String name)
-      throws IOException {
+          String name) {
     return deleteByName(uriInfo, securityContext, name, false, hardDelete);
   }
 
@@ -435,12 +413,11 @@ public class MessagingServiceResource
                 @Content(mediaType = "application/json", schema = @Schema(implementation = MessagingService.class)))
       })
   public Response restoreMessagingService(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private MessagingService getService(CreateMessagingService create, String user) throws IOException {
+  private MessagingService getService(CreateMessagingService create, String user) {
     return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
         .withServiceType(create.getServiceType());

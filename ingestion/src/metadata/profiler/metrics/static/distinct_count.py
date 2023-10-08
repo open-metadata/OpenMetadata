@@ -41,15 +41,22 @@ class DistinctCount(StaticMetric):
 
     @_label
     def fn(self):
+        """
+        Distinct Count metric for Sqlalchemy connectors
+        """
         return func.count(distinct(CountFn(column(self.col.name, self.col.type))))
 
     def df_fn(self, dfs=None):
+        """
+        Distinct Count metric for Datalake
+        """
         from collections import Counter  # pylint: disable=import-outside-toplevel
 
         try:
             counter = Counter()
             for df in dfs:
-                counter.update(df[self.col.name].dropna().to_list())
+                df_col_value = df[self.col.name].dropna().to_list()
+                counter.update(df_col_value)
             return len(counter.keys())
         except Exception as err:
             logger.debug(

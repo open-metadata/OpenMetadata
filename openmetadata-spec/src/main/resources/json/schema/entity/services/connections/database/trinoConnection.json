@@ -37,11 +37,17 @@
       "description": "Username to connect to Trino. This user should have privileges to read all the metadata in Trino.",
       "type": "string"
     },
-    "password": {
-      "title": "Password",
-      "description": "Password to connect to Trino.",
-      "type": "string",
-      "format": "password"
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./common/basicAuth.json"
+        },
+        {
+          "$ref": "./common/jwtAuth.json"
+        }
+      ]
     },
     "hostPort": {
       "title": "Host and Port",
@@ -61,14 +67,6 @@
     "proxies": {
       "title": "Proxies",
       "description": "Proxies for the connection to Trino data source",
-      "type": "object",
-      "additionalProperties": {
-        "type": "string"
-      }
-    },
-    "params": {
-      "title": "URL Parameters",
-      "description": "URL parameters for connection to the Trino data source",
       "type": "object",
       "additionalProperties": {
         "type": "string"

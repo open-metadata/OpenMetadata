@@ -12,7 +12,7 @@
 Airbyte source to extract metadata
 """
 
-from typing import Iterable, Optional
+from typing import Iterable
 
 from pydantic import BaseModel
 
@@ -25,9 +25,6 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
 )
@@ -36,9 +33,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
@@ -73,14 +73,14 @@ class AirbyteSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AirbyteConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AirbyteConnection):
             raise InvalidSourceException(
                 f"Expected AirbyteConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_connections_jobs(self, connection: dict, connection_url: str):
         """
@@ -96,7 +96,7 @@ class AirbyteSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: AirbytePipelineDetails
-    ) -> Iterable[CreatePipelineRequest]:
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Connection into a Pipeline Entity
         :param pipeline_details: pipeline_details object from airbyte
@@ -116,12 +116,12 @@ class AirbyteSource(PipelineServiceSource):
             ),
             service=self.context.pipeline_service.fullyQualifiedName.__root__,
         )
-        yield pipeline_request
+        yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
 
     def yield_pipeline_status(
         self, pipeline_details: AirbytePipelineDetails
-    ) -> Optional[OMetaPipelineStatus]:
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         """
         Method to get task & pipeline status
         """
@@ -156,14 +156,16 @@ class AirbyteSource(PipelineServiceSource):
                     taskStatus=task_status,
                     timestamp=attempt["createdAt"],
                 )
-                yield OMetaPipelineStatus(
-                    pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
-                    pipeline_status=pipeline_status,
+                yield Either(
+                    right=OMetaPipelineStatus(
+                        pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
+                        pipeline_status=pipeline_status,
+                    )
                 )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirbytePipelineDetails
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Parse all the stream available in the connection and create a lineage between them
         :param pipeline_details: pipeline_details object from airbyte
@@ -215,14 +217,17 @@ class AirbyteSource(PipelineServiceSource):
             lineage_details = LineageDetails(
                 pipeline=EntityReference(
                     id=self.context.pipeline.id.__root__, type="pipeline"
-                )
+                ),
+                source=LineageSource.PipelineLineage,
             )
 
-            yield AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=from_entity.id, type="table"),
-                    toEntity=EntityReference(id=to_entity.id, type="table"),
-                    lineageDetails=lineage_details,
+            yield Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(id=from_entity.id, type="table"),
+                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                        lineageDetails=lineage_details,
+                    )
                 )
             )
 

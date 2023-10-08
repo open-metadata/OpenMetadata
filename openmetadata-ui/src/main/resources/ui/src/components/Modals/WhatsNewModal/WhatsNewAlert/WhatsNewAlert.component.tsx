@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { Affix, Button, Card, Space, Typography } from 'antd';
-import { ReactComponent as CloseIcon } from 'assets/svg/close.svg';
-import { ReactComponent as RocketIcon } from 'assets/svg/rocket.svg';
-import { ROUTES } from 'constants/constants';
 import { CookieStorage } from 'cookie-storage';
-import { useAuth } from 'hooks/authHooks';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { Transi18next } from 'utils/CommonUtils';
-import { WhatsNewModal } from '..';
+import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
+import { ReactComponent as RocketIcon } from '../../../../assets/svg/rocket.svg';
+import { ROUTES } from '../../../../constants/constants';
+import { useAuth } from '../../../../hooks/authHooks';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
+import WhatsNewModal from '../WhatsNewModal';
 import '../WhatsNewModal.styles.less';
 import { getReleaseVersionExpiry } from '../WhatsNewModal.util';
 

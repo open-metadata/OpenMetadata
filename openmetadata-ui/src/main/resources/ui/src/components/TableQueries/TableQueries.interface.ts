@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
-import { Query } from 'generated/entity/data/query';
-import { EntityReference } from 'generated/type/entityReference';
+import { DefaultOptionType } from 'antd/lib/select';
 import { HTMLAttributes } from 'react';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { Query } from '../../generated/entity/data/query';
+import { EntityReference } from '../../generated/type/entityReference';
 
 export enum QueryVoteType {
   'votedUp' = 'votedUp',
@@ -36,7 +37,6 @@ export interface QueryCardProp extends HTMLAttributes<HTMLDivElement> {
   isExpanded: boolean;
   query: Query;
   selectedId?: string;
-  tableId?: string;
   permission: OperationPermission;
   onQuerySelection?: (query: Query) => void;
   onQueryUpdate: (updatedQuery: Query, key: keyof Query) => Promise<void>;
@@ -51,7 +51,8 @@ export type QueryUsedByTable = {
 
 export interface QueryUsedByOtherTableProps {
   query: Query;
-  tableId?: string;
+  isEditMode: boolean;
+  onChange: (value: DefaultOptionType[]) => void;
 }
 
 export interface QueryFiltersProps {

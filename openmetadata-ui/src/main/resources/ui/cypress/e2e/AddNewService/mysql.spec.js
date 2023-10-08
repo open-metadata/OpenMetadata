@@ -26,7 +26,7 @@ import {
 } from '../../constants/constants';
 
 const serviceType = 'Mysql';
-const serviceName = `${serviceType}-ct-test-${uuid()}`;
+const serviceName = `${serviceType}.ct%test-${uuid()}`;
 const tableName = TEAM_ENTITY;
 const description = `This is ${tableName} description`;
 
@@ -39,14 +39,15 @@ describe('MySQL Ingestion', () => {
     goToAddNewServicePage(SERVICE_TYPE.Database);
 
     const addIngestionInput = () => {
-      cy.get('[data-testid="schema-filter-pattern-checkbox"]')
-        .invoke('show')
-        .trigger('mouseover')
-        .check();
-      cy.get('[data-testid="filter-pattern-includes-schema"]')
+      cy.get('#root\\/schemaFilterPattern\\/includes')
         .scrollIntoView()
-        .should('be.visible')
         .type(`${Cypress.env('mysqlDatabaseSchema')}{enter}`);
+    };
+
+    const viewIngestionInput = () => {
+      cy.get('.ant-select-selection-item-content')
+        .scrollIntoView()
+        .contains(`${Cypress.env('mysqlDatabaseSchema')}`);
     };
 
     testServiceCreationAndIngestion({
@@ -55,6 +56,7 @@ describe('MySQL Ingestion', () => {
       addIngestionInput,
       serviceName,
       serviceCategory: SERVICE_TYPE.Database,
+      viewIngestionInput,
     });
   });
 

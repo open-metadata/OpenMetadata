@@ -96,7 +96,7 @@
       "pattern": "^(?U)<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$"
     },
     "entityName": {
-      "description": "Name that identifies a entity.",
+      "description": "Name that identifies an entity.",
       "type": "string",
       "minLength": 1,
       "maxLength": 128,
@@ -135,7 +135,7 @@
     },
     "providerType": {
       "javaType": "org.openmetadata.schema.type.ProviderType",
-      "description": "Type of provider of an entity. Some entities are provided by the `system`. Some are are entities created and provided by the `user`. Typically `system` provide entities can't be deleted and can only be disabled.",
+      "description": "Type of provider of an entity. Some entities are provided by the `system`. Some are entities created and provided by the `user`. Typically `system` provide entities can't be deleted and can only be disabled.",
       "type": "string",
       "enum": ["system", "user"],
       "default": "user"
@@ -156,6 +156,23 @@
       "description": "Source Url of the respective entity.",
       "type" : "string",
       "format": "url"
+    },
+    "style": {
+      "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.type.Style",
+      "properties": {
+        "color": {
+          "description": "Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.",
+          "type": "string"
+        },
+        "iconURL": {
+          "description": "An icon to associate with GlossaryTerm, Tag, Domain or Data Product.",
+          "type" : "string",
+          "format": "url"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

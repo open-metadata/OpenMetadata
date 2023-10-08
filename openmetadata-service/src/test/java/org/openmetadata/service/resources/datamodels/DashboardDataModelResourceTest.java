@@ -20,6 +20,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -37,13 +38,16 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -115,6 +119,20 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
   }
 
+  @Test
+  void testInheritedPermissionFromParent(TestInfo test) throws IOException {
+    // Create a dashboard service with owner data consumer
+    DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
+    CreateDashboardService createDashboardService =
+        serviceTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+    DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create dashboard data model under it
+    createEntity(
+        createRequest("dashboardModel").withService(service.getFullyQualifiedName()),
+        authHeaders(DATA_CONSUMER.getName()));
+  }
+
   @Override
   @Execution(ExecutionMode.CONCURRENT)
   public DashboardDataModel validateGetWithDifferentFields(DashboardDataModel dashboardDataModel, boolean byName)
@@ -176,7 +194,7 @@ public class DashboardDataModelResourceTest extends EntityResourceTest<Dashboard
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
   }
 }

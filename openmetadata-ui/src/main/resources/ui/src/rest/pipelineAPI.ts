@@ -13,26 +13,29 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 import { ListTestCaseResultsParams } from './testAPI';
 
+const BASE_URL = '/pipelines';
+
 export const getPipelineVersions = async (id: string) => {
-  const url = `/pipelines/${id}/versions`;
+  const url = `${BASE_URL}/${id}/versions`;
 
   const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
 export const getPipelineVersion = async (id: string, version: string) => {
-  const url = `/pipelines/${id}/versions/${version}`;
+  const url = `${BASE_URL}/${id}/versions/${version}`;
 
   const response = await APIClient.get<Pipeline>(url);
 
@@ -48,7 +51,7 @@ export const getPipelines = async (
   const response = await APIClient.get<{
     data: ServicePageData[];
     paging: Paging;
-  }>(`/pipelines`, {
+  }>(`${BASE_URL}`, {
     params: {
       service,
       fields,
@@ -64,7 +67,7 @@ export const getPipelineDetails = (
   id: string,
   arrQueryFields: string
 ): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/pipelines/${id}`, arrQueryFields);
+  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
 
   return APIClient.get(url);
 };
@@ -74,7 +77,7 @@ export const getPipelineByFqn = async (
   arrQueryFields: string | string[]
 ) => {
   const url = getURLWithQueryFields(
-    `/pipelines/name/${fqn}`,
+    `${BASE_URL}/name/${fqn}`,
     arrQueryFields,
     'include=all'
   );
@@ -94,7 +97,7 @@ export const addFollower = async (pipelineID: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/pipelines/${pipelineID}/followers`, userId, configOptions);
+  >(`${BASE_URL}/${pipelineID}/followers`, userId, configOptions);
 
   return response.data;
 };
@@ -109,7 +112,7 @@ export const removeFollower = async (pipelineID: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`/pipelines/${pipelineID}/followers/${userId}`, configOptions);
+  >(`${BASE_URL}/${pipelineID}/followers/${userId}`, configOptions);
 
   return response.data;
 };
@@ -120,7 +123,7 @@ export const patchPipelineDetails = async (id: string, data: Operation[]) => {
   };
 
   const response = await APIClient.patch<Operation[], AxiosResponse<Pipeline>>(
-    `/pipelines/${id}`,
+    `${BASE_URL}/${id}`,
     data,
     configOptions
   );
@@ -132,7 +135,7 @@ export const getPipelineStatus = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `/pipelines/${fqn}/status`;
+  const url = `${BASE_URL}/${fqn}/status`;
 
   const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
     url,
@@ -146,9 +149,18 @@ export const restorePipeline = async (id: string) => {
   const response = await APIClient.put<
     RestoreRequestType,
     AxiosResponse<Pipeline>
-  >('/pipelines/restore', {
+  >(`${BASE_URL}/restore`, {
     id,
   });
+
+  return response.data;
+};
+
+export const updatePipelinesVotes = async (id: string, data: QueryVote) => {
+  const response = await APIClient.put<QueryVote, AxiosResponse<Pipeline>>(
+    `${BASE_URL}/${id}/vote`,
+    data
+  );
 
   return response.data;
 };

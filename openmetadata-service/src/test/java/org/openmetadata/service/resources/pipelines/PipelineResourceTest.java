@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -336,22 +337,15 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             ADMIN_AUTH_HEADERS);
     verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
-    // Replace pipeline status for a date
-    PipelineStatus newPipelineStatus1 =
-        new PipelineStatus()
-            .withExecutionStatus(StatusType.Pending)
-            .withTimestamp(TestUtils.dateToTimestamp("2022-01-16"))
-            .withTaskStatus(taskStatus);
-    putResponse = putPipelineStatusData(pipeline.getFullyQualifiedName(), newPipelineStatus1, ADMIN_AUTH_HEADERS);
     // Validate put response
-    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus1);
+    verifyPipelineStatus(putResponse.getPipelineStatus(), newPipelineStatus);
     pipelineStatues =
         getPipelineStatues(
             pipeline.getFullyQualifiedName(),
             TestUtils.dateToTimestamp("2022-01-15"),
             TestUtils.dateToTimestamp("2022-01-16"),
             ADMIN_AUTH_HEADERS);
-    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus1), 2);
+    verifyPipelineStatuses(pipelineStatues, List.of(pipelineStatus, newPipelineStatus), 2);
 
     String dateStr = "2021-09-";
     List<PipelineStatus> pipelineStatusList = new ArrayList<>();
@@ -552,6 +546,19 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     // Create a pipeline without domain and ensure it inherits domain from the parent
     CreatePipeline create = createRequest("pipeline").withService(service.getFullyQualifiedName());
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  @Test
+  void testInheritedPermissionFromParent() throws IOException {
+    // Create a pipeline service with owner data consumer
+    PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
+    CreatePipelineService createPipelineService =
+        serviceTest.createRequest("testInheritedPermissions").withOwner(DATA_CONSUMER.getEntityReference());
+    PipelineService service = serviceTest.createEntity(createPipelineService, ADMIN_AUTH_HEADERS);
+
+    // Data consumer as an owner of the service can create pipeline under it
+    createEntity(
+        createRequest("pipeline").withService(service.getFullyQualifiedName()), authHeaders(DATA_CONSUMER.getName()));
   }
 
   @Override

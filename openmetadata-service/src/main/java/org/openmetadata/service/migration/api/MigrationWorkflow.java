@@ -1,79 +1,122 @@
 package org.openmetadata.service.migration.api;
 
+import java.io.File;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.MigrationDAO;
-import org.openmetadata.service.migration.Migration;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 public class MigrationWorkflow {
-  private final List<MigrationStep> migrations;
+  private List<MigrationProcess> migrations;
+
+  private final String nativeSQLScriptRootPath;
+  private final ConnectionType connectionType;
+  private final String extensionSQLScriptRootPath;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
+
   private final boolean forceMigrations;
 
-  public MigrationWorkflow(Jdbi jdbi, List<MigrationStep> migrationSteps, boolean forceMigrations) {
+  public MigrationWorkflow(
+      Jdbi jdbi,
+      String nativeSQLScriptRootPath,
+      ConnectionType connectionType,
+      String extensionSQLScriptRootPath,
+      boolean forceMigrations) {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
     this.forceMigrations = forceMigrations;
+    this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
+    this.connectionType = connectionType;
+    this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
+  }
+
+  public void loadMigrations() {
     // Sort Migration on the basis of version
-    migrationSteps.sort(Comparator.comparing(MigrationStep::getMigrationVersion));
-
+    List<MigrationFile> availableMigrations =
+        getMigrationFiles(nativeSQLScriptRootPath, connectionType, extensionSQLScriptRootPath);
     // Filter Migrations to Be Run
-    this.migrations = filterAndGetMigrationsToRun(migrationSteps);
+    this.migrations = filterAndGetMigrationsToRun(availableMigrations);
   }
 
-  public static void validateMigrationsForServer(Jdbi jdbi, List<MigrationStep> migrations) {
+  public void validateMigrationsForServer() {
     if (!migrations.isEmpty()) {
-      migrations.sort(Comparator.comparing(MigrationStep::getMigrationVersion));
-      String maxMigration = migrations.get(migrations.size() - 1).getMigrationVersion();
-      Optional<String> lastMigratedServer = Migration.lastMigratedServer(jdbi);
-      if (lastMigratedServer.isEmpty()) {
-        throw new IllegalStateException(
-            "Could not validate Server migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
-      } else {
-        if (lastMigratedServer.get().compareTo(maxMigration) < 0) {
-          throw new IllegalStateException(
-              "There are pending migrations to be run on the database."
-                  + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
-                  + " You can find more information on upgrading OpenMetadata at"
-                  + " https://docs.open-metadata.org/deployment/upgrade ");
-        }
-      }
-    } else {
-      LOG.info("No Server Migration Files Found in the system.");
+      throw new IllegalStateException(
+          "There are pending migrations to be run on the database."
+              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+              + " You can find more information on upgrading OpenMetadata at"
+              + " https://docs.open-metadata.org/deployment/upgrade ");
     }
   }
 
-  private List<MigrationStep> filterAndGetMigrationsToRun(List<MigrationStep> migrations) {
-    LOG.debug("Filtering Server Migrations");
-    String maxMigration = migrations.get(migrations.size() - 1).getMigrationVersion();
-    List<MigrationStep> result = new ArrayList<>();
+  public List<MigrationFile> getMigrationFiles(
+      String nativeSQLScriptRootPath, ConnectionType connectionType, String extensionSQLScriptRootPath) {
+    List<MigrationFile> availableOMNativeMigrations =
+        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType);
 
-    for (MigrationStep step : migrations) {
-      String checksum = migrationDAO.getVersionMigrationChecksum(String.valueOf(step.getMigrationVersion()));
-      if (checksum != null) {
-        // Version Exist on DB this was run
-        if (maxMigration.compareTo(step.getMigrationVersion()) < 0) {
-          // This a new Step file
-          result.add(step);
-        } else if (forceMigrations || !checksum.equals(step.getFileUuid())) {
-          // This migration step was ran already, if checksum is equal this step can be ignored
-          LOG.warn(
-              "[Migration Workflow] You are changing an older Migration File. This is not advised. Add your changes to latest Migrations.");
-          result.add(step);
-        }
-      } else {
-        // Version does not exist on DB, this step was not run
-        result.add(step);
-      }
+    // If we only have OM migrations, return them
+    if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
+      return availableOMNativeMigrations;
     }
-    return result;
+
+    // Otherwise, fetch the extension migrations and sort the executions
+    List<MigrationFile> availableExtensionMigrations =
+        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType);
+
+    /*
+     If we create migrations version as:
+       - OpenMetadata: 1.1.0, 1.1.1, 1.2.0
+       - Extension: 1.1.0-extension, 1.2.0-extension
+     The end result will be 1.1.0, 1.1.0-extension, 1.1.1, 1.2.0, 1.2.0-extension
+    */
+    return Stream.concat(availableOMNativeMigrations.stream(), availableExtensionMigrations.stream())
+        .sorted()
+        .collect(Collectors.toList());
+  }
+
+  public List<MigrationFile> getMigrationFilesFromPath(String path, ConnectionType connectionType) {
+    return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
+        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType))
+        .sorted()
+        .collect(Collectors.toList());
+  }
+
+  private List<MigrationProcess> filterAndGetMigrationsToRun(List<MigrationFile> availableMigrations) {
+    LOG.debug("Filtering Server Migrations");
+    Optional<String> previousMaxMigration = migrationDAO.getMaxServerMigrationVersion();
+    List<MigrationFile> applyMigrations;
+    if (previousMaxMigration.isPresent() && !forceMigrations) {
+      applyMigrations =
+          availableMigrations.stream()
+              .filter(migration -> migration.biggerThan(previousMaxMigration.get()))
+              .collect(Collectors.toList());
+    } else {
+      applyMigrations = availableMigrations;
+    }
+    List<MigrationProcess> processes = new ArrayList<>();
+    try {
+      for (MigrationFile file : applyMigrations) {
+        file.parseSQLFiles();
+        String clazzName = file.getMigrationProcessClassName();
+        MigrationProcess process =
+            (MigrationProcess) Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+        processes.add(process);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to list and add migrations to run due to ", e);
+    }
+    return processes;
   }
 
   @SuppressWarnings("unused")
@@ -83,48 +126,47 @@ public class MigrationWorkflow {
     try (Handle transactionHandler = jdbi.open()) {
       LOG.info("[MigrationWorkflow] WorkFlow Started");
       try {
-
-        for (MigrationStep step : migrations) {
+        for (MigrationProcess process : migrations) {
           // Initialise Migration Steps
           LOG.info(
-              "[MigrationStep] Initialized, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          step.initialize(transactionHandler);
+              "[MigrationProcess] Initialized, Version: {}, DatabaseType: {}, FileName: {}",
+              process.getVersion(),
+              process.getDatabaseConnectionType(),
+              process.getMigrationsPath());
+          process.initialize(transactionHandler);
 
           LOG.info(
-              "[MigrationStep] Running PreDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          step.preDDL();
+              "[MigrationProcess] Running Schema Changes, Version: {}, DatabaseType: {}, FileName: {}",
+              process.getVersion(),
+              process.getDatabaseConnectionType(),
+              process.getSchemaChangesFilePath());
+          process.runSchemaChanges();
 
           LOG.info("[MigrationStep] Transaction Started");
 
           // Run Database Migration for all the Migration Steps
           LOG.info(
-              "[MigrationStep] Running DataMigration, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          step.runDataMigration();
+              "[MigrationProcess] Running Data Migrations, Version: {}, DatabaseType: {}, FileName: {}",
+              process.getVersion(),
+              process.getDatabaseConnectionType(),
+              process.getSchemaChangesFilePath());
+          process.runDataMigration();
 
           // Run Database Migration for all the Migration Steps
           LOG.info(
-              "[MigrationStep] Running TransactionalPostDataSQLs, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          step.postDDL();
+              "[MigrationProcess] Running Post DDL Scripts, Version: {}, DatabaseType: {}, FileName: {}",
+              process.getVersion(),
+              process.getDatabaseConnectionType(),
+              process.getPostDDLScriptFilePath());
+          process.runPostDDLScripts();
 
           // Handle Migration Closure
           LOG.info(
               "[MigrationStep] Update Migration Status, Version: {}, DatabaseType: {}, FileName: {}",
-              step.getMigrationVersion(),
-              step.getDatabaseConnectionType(),
-              step.getMigrationFileName());
-          updateMigrationStepInDB(step);
+              process.getVersion(),
+              process.getDatabaseConnectionType(),
+              process.getMigrationsPath());
+          updateMigrationStepInDB(process);
         }
 
       } catch (Exception e) {
@@ -145,8 +187,8 @@ public class MigrationWorkflow {
     // 2. Commit Transaction on completion
   }
 
-  public void updateMigrationStepInDB(MigrationStep step) {
-    migrationDAO.upsertServerMigration(step.getMigrationVersion(), step.getMigrationFileName(), step.getFileUuid());
+  public void updateMigrationStepInDB(MigrationProcess step) {
+    migrationDAO.upsertServerMigration(step.getVersion(), step.getMigrationsPath(), UUID.randomUUID().toString());
   }
 
   public void migrateSearchIndexes() {}

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AddLineage } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import APIClient from './index';
 
@@ -23,6 +24,12 @@ export const getLineageByFQN = async (
   const response = await APIClient.get<EntityLineage>(
     `/lineage/${type}/name/${fqn}?upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`
   );
+
+  return response.data;
+};
+
+export const updateLineageEdge = async (edge: AddLineage) => {
+  const response = await APIClient.put<AddLineage>(`/lineage`, edge);
 
   return response.data;
 };

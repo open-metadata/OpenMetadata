@@ -23,50 +23,53 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
-import AppState from 'AppState';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ActivityFeedCardV1 from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
-import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AssigneeList from 'components/common/AssigneeList/AssigneeList';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TaskOperation } from 'constants/Feeds.constants';
 import { compare } from 'fast-json-patch';
-import { TaskType } from 'generated/api/feed/createThread';
-import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
-import { TagLabel } from 'generated/type/tagLabel';
-import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
-import Assignees from 'pages/TasksPage/shared/Assignees';
-import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
-import TagsTask from 'pages/TasksPage/shared/TagsTask';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import AppState from '../../../AppState';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import ActivityFeedCardV1 from '../../../components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
+import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { TaskOperation } from '../../../constants/Feeds.constants';
+import { TaskType } from '../../../generated/api/feed/createThread';
+import {
+  TaskDetails,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { useAuth } from '../../../hooks/authHooks';
+import Assignees from '../../../pages/TasksPage/shared/Assignees';
+import DescriptionTask from '../../../pages/TasksPage/shared/DescriptionTask';
+import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import {
   Option,
   TaskAction,
   TaskActionMode,
-} from 'pages/TasksPage/TasksPage.interface';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { updateTask, updateThread } from 'rest/feedsAPI';
-import EntityLink from 'utils/EntityLink';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityFQN } from 'utils/FeedUtils';
+} from '../../../pages/TasksPage/TasksPage.interface';
+import { updateTask, updateThread } from '../../../rest/feedsAPI';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
 import {
   fetchOptions,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
-} from 'utils/TasksUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../utils/TasksUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
 
 export const TaskTab = ({
   taskThread,
@@ -141,6 +144,8 @@ export const TaskTab = ({
 
   const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
 
+  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+
   const getTaskLinkElement = entityCheck && (
     <Typography.Text className="font-medium text-md" data-testid="task-title">
       <span>{`#${taskDetails?.id} `}</span>
@@ -165,7 +170,7 @@ export const TaskTab = ({
   };
 
   const onTaskResolve = () => {
-    if (isEmpty(taskDetails?.suggestion)) {
+    if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
         t('message.field-text-is-required', {
           fieldText: isTaskTags
@@ -183,7 +188,10 @@ export const TaskTab = ({
 
       updateTaskData(tagsData as TaskDetails);
     } else {
-      const data = { newValue: taskDetails?.suggestion };
+      const newValue = isTaskGlossaryApproval
+        ? 'approved'
+        : taskDetails?.suggestion;
+      const data = { newValue: newValue };
       updateTaskData(data as TaskDetails);
     }
   };
@@ -234,29 +242,63 @@ export const TaskTab = ({
   };
 
   const onTaskReject = () => {
-    if (comment && taskDetails?.id) {
-      updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
-        comment,
-      } as unknown as TaskDetails)
-        .then(() => {
-          showSuccessToast(t('server.task-closed-successfully'));
-          rest.onAfterClose?.();
-        })
-        .catch((err: AxiosError) => showErrorToast(err));
-    } else {
+    if (!isTaskGlossaryApproval && isEmpty(comment)) {
       showErrorToast(t('server.task-closed-without-comment'));
+
+      return;
     }
+
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
+      comment: updatedComment,
+    } as unknown as TaskDetails)
+      .then(() => {
+        showSuccessToast(t('server.task-closed-successfully'));
+        rest.onAfterClose?.();
+      })
+      .catch((err: AxiosError) => showErrorToast(err));
   };
+
+  const approvalWorkflowActions = useMemo(() => {
+    return (
+      <Space
+        className="m-t-sm items-end w-full"
+        data-testid="task-cta-buttons"
+        size="small">
+        {(isCreator || hasEditAccess) && (
+          <>
+            <Button data-testid="reject-task" onClick={onTaskReject}>
+              {t('label.reject')}
+            </Button>
+            {hasEditAccess && (
+              <Button
+                data-testid="approve-task"
+                type="primary"
+                onClick={onTaskResolve}>
+                {t('label.approve')}
+              </Button>
+            )}
+          </>
+        )}
+      </Space>
+    );
+  }, [taskDetails, onTaskResolve, hasEditAccess, isCreator]);
 
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
       return null;
     }
 
+    const taskType = taskDetails?.type ?? '';
+
+    if (isTaskGlossaryApproval) {
+      return approvalWorkflowActions;
+    }
+
     const parsedSuggestion = [
       'RequestDescription',
       'UpdateDescription',
-    ].includes(taskDetails?.type ?? '')
+    ].includes(taskType)
       ? taskDetails?.suggestion
       : JSON.parse(taskDetails?.suggestion || '[]');
 
@@ -270,9 +312,8 @@ export const TaskTab = ({
         )}
         {hasEditAccess ? (
           <>
-            {['RequestDescription', 'RequestTag'].includes(
-              taskDetails?.type ?? ''
-            ) && isEmpty(parsedSuggestion) ? (
+            {['RequestDescription', 'RequestTag'].includes(taskType) &&
+            isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>
@@ -310,7 +351,9 @@ export const TaskTab = ({
     handleMenuItemClick,
     taskAction,
     isTaskClosed,
+    isTaskGlossaryApproval,
     isCreator,
+    approvalWorkflowActions,
   ]);
 
   const initialFormValue = useMemo(() => {

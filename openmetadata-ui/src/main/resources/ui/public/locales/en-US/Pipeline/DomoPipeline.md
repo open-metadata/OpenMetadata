@@ -14,6 +14,8 @@ $$section
 ### Client ID $(id="clientId")
 
 Client ID for Domo. Further information can be found [here](https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#how-to-find-clientid).
+
+This needs to be informed together with the `Secret Token` and is used to extract metadata from Domo's official API.
 $$
 
 $$section
@@ -26,6 +28,8 @@ $$section
 ### Access Token $(id="accessToken")
 
 Access token to connect to Domo. Further information can be found [here](https://docs.open-metadata.org/connectors/database/domo-database/troubleshoot#where-to-find-accesstoken).
+
+This is required to automate metadata extraction directly from the instance for endpoints not supported by the API, such as Cards or Pipeline Runs.
 $$
 
 $$section
@@ -35,7 +39,7 @@ API Host to connect your Domo instance. By default: `api.domo.com`.
 $$
 
 $$section
-### Sandbox Domain $(id="sandboxDomain")
+### Instance Domain $(id="instanceDomain")
 
-Connection to your Sandbox Domain. For example `https://<your>.domo.com`.
+URL to connect to your Domo instance UI. For example `https://<your>.domo.com`.
 $$

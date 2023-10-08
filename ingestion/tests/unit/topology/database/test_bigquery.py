@@ -15,7 +15,7 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -53,13 +53,17 @@ EXPECTED_URL = "https://console.cloud.google.com/bigquery?project=random-project
 
 class BigqueryUnitTest(TestCase):
     @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
     )
     @patch(
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
     )
-    def __init__(self, methodName, set_project_id, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
+    def __init__(
+        self, methodName, get_connection, set_project_id, test_connection
+    ) -> None:
         super().__init__(methodName)
+        get_connection.return_value = Mock()
         test_connection.return_value = False
         set_project_id.return_value = False
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bq_config)

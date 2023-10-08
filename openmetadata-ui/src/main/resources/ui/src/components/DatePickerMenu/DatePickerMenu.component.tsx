@@ -14,21 +14,24 @@
 import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { DateRangeObject } from 'components/ProfilerDashboard/component/TestSummary';
-import {
-  DEFAULT_SELECTED_RANGE,
-  PROFILER_FILTER_RANGE,
-} from 'constants/profiler.constant';
 import { isUndefined } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getDaysCount, getTimestampLabel } from 'utils/DatePickerMenuUtils';
-import {
-  getCurrentDateTimeStamp,
-  getPastDatesTimeStampFromCurrentDate,
-} from 'utils/TimeUtils';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/DropDown.svg';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
+import {
+  DEFAULT_SELECTED_RANGE,
+  PROFILER_FILTER_RANGE,
+} from '../../constants/profiler.constant';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
+import {
+  getDaysCount,
+  getTimestampLabel,
+} from '../../utils/DatePickerMenuUtils';
 import './DatePickerMenu.style.less';
 
 interface DatePickerMenuProps {
@@ -57,9 +60,9 @@ function DatePickerMenu({
     dateStrings
   ) => {
     if (values) {
-      const startTs = values[0]?.set({ h: 0, m: 0 }).utc().unix() ?? 0;
+      const startTs = (values[0]?.set({ h: 0, m: 0 }).utc().unix() ?? 0) * 1000;
 
-      const endTs = values[1]?.set({ h: 23, m: 59 }).utc().unix() ?? 0;
+      const endTs = (values[1]?.set({ h: 23, m: 59 }).utc().unix() ?? 0) * 1000;
 
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
 
@@ -87,9 +90,9 @@ function DatePickerMenu({
 
     const selectedNumberOfDays = filterRange.days;
     const keyString = key as keyof typeof PROFILER_FILTER_RANGE;
-    const startTs = getPastDatesTimeStampFromCurrentDate(selectedNumberOfDays);
+    const startTs = getEpochMillisForPastDays(selectedNumberOfDays);
 
-    const endTs = getCurrentDateTimeStamp();
+    const endTs = getCurrentMillis();
 
     setSelectedTimeRange(PROFILER_FILTER_RANGE[keyString].title);
     setSelectedTimeRangeKey(keyString);

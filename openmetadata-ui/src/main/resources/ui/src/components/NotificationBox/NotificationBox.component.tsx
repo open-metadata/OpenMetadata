@@ -13,21 +13,21 @@
 
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { EntityTabs } from 'enums/entity.enum';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFeedsWithFilter } from 'rest/feedsAPI';
 import AppState from '../../AppState';
+import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getUserPath,
   NOTIFICATION_READ_TIMER,
 } from '../../constants/constants';
+import { EntityTabs } from '../../enums/entity.enum';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
+import { getFeedsWithFilter } from '../../rest/feedsAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -168,7 +168,7 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
-          className="tw-min-h-64"
+          className="h-min-64"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">
@@ -181,7 +181,7 @@ const NotificationBox = ({
           }
           itemLayout="vertical"
           renderItem={(item) => (
-            <List.Item className="hover:tw-bg-body-hover tw-cursor-pointer">
+            <List.Item className="notification-dropdown-list-btn cursor-pointer">
               {item}
             </List.Item>
           )}
@@ -192,9 +192,9 @@ const NotificationBox = ({
   );
 
   return (
-    <div className="bg-white tw-border tw-border-gray-100 tw-rounded d-flex flex-col tw-justify-between tw-shadow-lg notification-box">
+    <div className="notification-box">
       <Typography.Title
-        className="tw-px-4 tw-pt-3 tw-pb-1"
+        className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
         level={5}>
         {t('label.notification-plural')}
@@ -213,7 +213,7 @@ const NotificationBox = ({
         {tabsInfo.map(({ name, key }) => (
           <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
             {isLoading ? (
-              <div className="tw-h-64 d-flex tw-items-center tw-justify-center">
+              <div className="h-64 d-flex items-center justify-center">
                 <Loader size="small" />
               </div>
             ) : (

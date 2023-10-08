@@ -16,27 +16,6 @@
   height: 100vh;
 }
 
-.profile-image {
-  display: inline-block;
-  height: 24px;
-  width: 24px;
-}
-
-.profile-image svg,
-.profile-image img {
-  display: inline-block;
-}
-
-.profile-image.circle svg,
-.profile-image.circle img {
-  border-radius: 50%;
-}
-
-.profile-image.square svg,
-.profile-image.square img {
-  border-radius: 4px;
-}
-
 .teams-dropdown {
   height: 36px;
   background-color: transparent !important;
@@ -72,7 +51,7 @@
   display: flex;
 }
 
-.svg-icon:not(.tw-hidden) {
+.svg-icon:not(.hidden) {
   display: inline-block;
 }
 
@@ -271,11 +250,9 @@
 }
 
 /* Editor CSS */
-.editor-wrapper:not(.tw-max-h-none) {
+
+.editor-wrapper:not(.max-h-none) {
   max-height: calc(100vh - 10rem);
-  /* border: 1px #8e8e8e solid;
-  border-radius: 4px;
-  padding: 10px; */
 }
 
 .editor-wrapper code,

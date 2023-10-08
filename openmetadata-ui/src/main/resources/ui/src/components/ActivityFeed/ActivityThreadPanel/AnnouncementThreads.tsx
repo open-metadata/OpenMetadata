@@ -116,11 +116,9 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             {postLength > 0 ? (
               <div data-testid="replies-container">
                 {postLength > 1 ? (
-                  <div className="tw-ml-9 tw-my-2">
-                    {Boolean(lastPost) && (
-                      <div className="tw-filter-seperator" />
-                    )}
-                    <div className="d-flex tw-my-4">
+                  <div>
+                    {Boolean(lastPost) && <div />}
+                    <div className="d-flex ">
                       <FeedCardFooter
                         isFooterVisible
                         lastReplyTimeStamp={lastPost?.postTs}
@@ -135,7 +133,6 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
                 <div data-testid="latest-reply">
                   <ActivityFeedCard
                     isEntityFeed
-                    className="tw-ml-9"
                     feed={lastPost as Post}
                     feedType={thread.type || ThreadType.Conversation}
                     task={thread}
@@ -149,11 +146,7 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
             ) : null}
             {selectedThreadId === thread.id ? (
               <div data-testid="quick-reply-editor">
-                <ActivityFeedEditor
-                  buttonClass="tw-mr-4"
-                  className="tw-ml-5 tw-mr-2 tw-mb-6"
-                  onSave={postFeed}
-                />
+                <ActivityFeedEditor onSave={postFeed} />
               </div>
             ) : null}
           </Card>
@@ -167,12 +160,10 @@ const AnnouncementThreads: FC<ActivityThreadListProp> = ({
       {getAnnouncements(activeAnnouncements)}
       {Boolean(inActiveAnnouncements.length) && (
         <>
-          <Typography.Text
-            className="tw-block tw-mt-4 tw-font-medium"
-            data-testid="inActive-announcements">
+          <Typography.Text data-testid="inActive-announcements">
             {t('label.inactive-announcement-plural')}
           </Typography.Text>
-          <Divider className="tw-mb-4 tw-mt-2" />
+          <Divider />
         </>
       )}
 

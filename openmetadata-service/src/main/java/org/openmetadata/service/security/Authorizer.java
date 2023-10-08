@@ -13,10 +13,8 @@
 
 package org.openmetadata.service.security;
 
-import java.io.IOException;
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -26,7 +24,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 public interface Authorizer {
 
   /** Initialize the authorizer */
-  void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi);
+  void init(OpenMetadataApplicationConfig openMetadataApplicationConfig);
 
   /** Returns a list of operations that the authenticated user (subject) can perform */
   List<ResourcePermission> listPermissions(SecurityContext securityContext, String user);
@@ -36,11 +34,10 @@ public interface Authorizer {
 
   /** Returns a list of operations that the authenticated user (subject) can perform on a given resource */
   ResourcePermission getPermission(
-      SecurityContext securityContext, String user, ResourceContextInterface resourceContext) throws IOException;
+      SecurityContext securityContext, String user, ResourceContextInterface resourceContext);
 
   void authorize(
-      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext)
-      throws IOException;
+      SecurityContext securityContext, OperationContext operationContext, ResourceContextInterface resourceContext);
 
   void authorizeAdmin(SecurityContext securityContext);
 

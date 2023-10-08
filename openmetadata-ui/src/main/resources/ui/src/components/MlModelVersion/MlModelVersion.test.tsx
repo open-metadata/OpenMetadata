@@ -14,7 +14,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
 import {
   mlModelVersionMockProps,
   mockMlModelDetails,
@@ -24,41 +23,46 @@ import MlModelVersion from './MlModelVersion.component';
 const mockPush = jest.fn();
 
 jest.mock(
-  'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
-  CustomPropertyTable: jest
-    .fn()
-    .mockImplementation(() => <div>CustomPropertyTable</div>),
-}));
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: jest
+      .fn()
+      .mockImplementation(() => <div>CustomPropertyTable</div>),
+  })
+);
 
-jest.mock('components/common/description/DescriptionV1', () =>
+jest.mock('../../components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('components/EntityVersionTimeLine/EntityVersionTimeLine', () =>
-  jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
+jest.mock(
+  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
+  () => jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
 
-jest.mock('components/VersionTable/VersionTable.component', () =>
+jest.mock('../../components/VersionTable/VersionTable.component', () =>
   jest.fn().mockImplementation(() => <div>VersionTable</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
@@ -114,35 +118,6 @@ describe('MlModelVersion tests', () => {
     expect(customPropertyTabLabel).toBeNull();
   });
 
-  it('Should display ErrorPlaceholder if no viewing permission', async () => {
-    await act(async () => {
-      render(
-        <MlModelVersion
-          {...mlModelVersionMockProps}
-          entityPermissions={DEFAULT_ENTITY_PERMISSION}
-        />
-      );
-    });
-
-    const errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-    const loader = screen.queryByText('Loader');
-    const dataAssetsVersionHeader = screen.queryByText(
-      'DataAssetsVersionHeader'
-    );
-    const featureTabLabel = screen.queryByText('label.feature-plural');
-    const customPropertyTabLabel = screen.queryByText(
-      'label.custom-property-plural'
-    );
-    const entityVersionTimeLine = screen.queryByText('EntityVersionTimeLine');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
-    expect(loader).toBeNull();
-    expect(entityVersionTimeLine).toBeNull();
-    expect(dataAssetsVersionHeader).toBeNull();
-    expect(featureTabLabel).toBeNull();
-    expect(customPropertyTabLabel).toBeNull();
-  });
-
   it('No data placeholder should be displayed if no mlFeatures are present in the mlModel data', async () => {
     await act(async () => {
       render(
@@ -178,32 +153,5 @@ describe('MlModelVersion tests', () => {
     expect(mockPush).toHaveBeenCalledWith(
       '/mlmodel/mlflow_svc.eta_predictions/versions/0.3/custom_properties'
     );
-  });
-
-  it('Should display ErrorPlaceholder in Custom Property tab if no "viewAll" permission', async () => {
-    await act(async () => {
-      render(
-        <MlModelVersion
-          {...mlModelVersionMockProps}
-          entityPermissions={{ ...DEFAULT_ENTITY_PERMISSION, ViewBasic: true }}
-        />
-      );
-    });
-
-    const customPropertyTabLabel = screen.getByText(
-      'label.custom-property-plural'
-    );
-    let errorPlaceHolder = screen.queryByText('ErrorPlaceHolder');
-
-    expect(customPropertyTabLabel).toBeInTheDocument();
-    expect(errorPlaceHolder).toBeNull();
-
-    await act(async () => {
-      userEvent.click(customPropertyTabLabel);
-    });
-
-    errorPlaceHolder = screen.getByText('ErrorPlaceHolder');
-
-    expect(errorPlaceHolder).toBeInTheDocument();
   });
 });

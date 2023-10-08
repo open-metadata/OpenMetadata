@@ -24,14 +24,14 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: activeTab })),
 }));
 
-jest.mock('components/containers/PageLayoutV1', () =>
+jest.mock('../../components/containers/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
 );
-jest.mock('components/MyData/LeftSidebar/LeftSidebar.component', () =>
+jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('components/DataInsightDetail/DataInsightSummary', () =>
+jest.mock('../../components/DataInsightDetail/DataInsightSummary', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -39,7 +39,7 @@ jest.mock('components/DataInsightDetail/DataInsightSummary', () =>
     )
 );
 
-jest.mock('components/DataInsightDetail/DescriptionInsight', () =>
+jest.mock('../../components/DataInsightDetail/DescriptionInsight', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -47,21 +47,21 @@ jest.mock('components/DataInsightDetail/DescriptionInsight', () =>
     )
 );
 
-jest.mock('components/DataInsightDetail/OwnerInsight', () =>
+jest.mock('../../components/DataInsightDetail/OwnerInsight', () =>
   jest.fn().mockReturnValue(<div data-testid="owner-insight">OwnerInsight</div>)
 );
 
-jest.mock('components/DataInsightDetail/TierInsight', () =>
+jest.mock('../../components/DataInsightDetail/TierInsight', () =>
   jest.fn().mockReturnValue(<div data-testid="tier-insight">TierInsight</div>)
 );
 
-jest.mock('components/DataInsightDetail/TopActiveUsers', () =>
+jest.mock('../../components/DataInsightDetail/TopActiveUsers', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="top-active-user">TopActiveUsers</div>)
 );
 
-jest.mock('components/DataInsightDetail/TopViewEntities', () =>
+jest.mock('../../components/DataInsightDetail/TopViewEntities', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -69,7 +69,7 @@ jest.mock('components/DataInsightDetail/TopViewEntities', () =>
     )
 );
 
-jest.mock('components/DataInsightDetail/TotalEntityInsight', () =>
+jest.mock('../../components/DataInsightDetail/TotalEntityInsight', () =>
   jest
     .fn()
     .mockReturnValue(
@@ -81,21 +81,21 @@ jest.mock('../../utils/DataInsightUtils', () => ({
   getTeamFilter: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('components/DataInsightDetail/DailyActiveUsersChart', () =>
+jest.mock('../../components/DataInsightDetail/DailyActiveUsersChart', () =>
   jest
     .fn()
     .mockReturnValue(
       <div data-testid="daily-active-users">DailyActiveUsersChart</div>
     )
 );
-jest.mock('components/DataInsightDetail/PageViewsByEntitiesChart', () =>
+jest.mock('../../components/DataInsightDetail/PageViewsByEntitiesChart', () =>
   jest
     .fn()
     .mockReturnValue(
       <div data-testid="entities-page-views">PageViewsByEntitiesChart</div>
     )
 );
-jest.mock('components/DataInsightDetail/KPIChart', () =>
+jest.mock('../../components/DataInsightDetail/KPIChart', () =>
   jest.fn().mockReturnValue(<div data-testid="kpi-chart">KPIChart</div>)
 );
 
@@ -107,7 +107,7 @@ jest.mock('./DataInsightLeftPanel', () =>
   jest.fn().mockReturnValue(<div data-testid="left-panel">Left panel</div>)
 );
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       dataInsightChart: {
@@ -126,8 +126,8 @@ describe('Test DataInsightPage Component', () => {
 
     const container = screen.getByTestId('data-insight-container');
     const insightSummary = screen.getByTestId('data-insight-summary');
-    const descriptionInsight = screen.getByTestId('description-insight');
-    const ownerInsight = screen.getByTestId('owner-insight');
+    const descriptionInsight = screen.getAllByTestId('description-insight');
+    const ownerInsight = screen.getAllByTestId('owner-insight');
     const tierInsight = screen.getByTestId('tier-insight');
 
     const totalEntityInsight = screen.getByTestId('total-entity-insight');
@@ -135,8 +135,8 @@ describe('Test DataInsightPage Component', () => {
     expect(container).toBeInTheDocument();
 
     expect(insightSummary).toBeInTheDocument();
-    expect(descriptionInsight).toBeInTheDocument();
-    expect(ownerInsight).toBeInTheDocument();
+    expect(descriptionInsight).toHaveLength(2);
+    expect(ownerInsight).toHaveLength(2);
     expect(tierInsight).toBeInTheDocument();
 
     expect(totalEntityInsight).toBeInTheDocument();

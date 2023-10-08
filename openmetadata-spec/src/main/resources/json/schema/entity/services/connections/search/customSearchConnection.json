@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/customSearchConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomSearchConnection",
+  "description": "Custom Search Service connection to build a source that is not supported by OpenMetadata yet.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.CustomSearchConnection",
+  "definitions": {
+    "customSearchType": {
+      "title": "Service Type",
+      "description": "Custom search service type",
+      "type": "string",
+      "enum": ["CustomSearch"],
+      "default": "CustomSearch"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Custom search service type",
+      "$ref": "#/definitions/customSearchType",
+      "default": "CustomSearch"
+    },
+    "sourcePythonClass": {
+      "title": "Source Python Class Name",
+      "description": "Source Python Class Name to instantiated by the ingestion workflow",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["type"]
+}

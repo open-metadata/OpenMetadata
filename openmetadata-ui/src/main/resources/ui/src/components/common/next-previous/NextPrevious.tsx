@@ -11,58 +11,65 @@
  *  limitations under the License.
  */
 
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
-import React, { FC, useEffect, useState } from 'react';
+import {
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  DownOutlined,
+} from '@ant-design/icons';
+import { Button, Dropdown } from 'antd';
+import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
-import { Paging } from '../../../generated/type/paging';
-
-interface Prop {
-  paging: Paging;
-  pagingHandler: (cursorValue: string | number, activePage?: number) => void;
-  totalCount: number;
-  pageSize: number;
-  currentPage: number;
-  isNumberBased?: boolean;
-}
+import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
 const computeTotalPages = (pSize: number, total: number) => {
   return Math.ceil(total / pSize);
 };
 
-const NextPrevious: FC<Prop> = ({
+const NextPrevious: FC<NextPreviousProps> = ({
   paging,
   pagingHandler,
-  totalCount,
   pageSize,
   isNumberBased = false,
-  currentPage,
-}: Prop) => {
+  currentPage = 1,
+  ...pagingProps
+}: NextPreviousProps) => {
   const { t } = useTranslation();
-  const [activePage, setActivePage] = useState(1);
+  const {
+    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+    onShowSizeChange,
+  } = (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = () => {
-    setActivePage(activePage + 1);
     if (isNumberBased) {
-      pagingHandler(activePage + 1);
+      pagingHandler({ currentPage: currentPage + 1 });
     } else {
-      pagingHandler(CursorType.AFTER, activePage + 1);
+      pagingHandler({
+        cursorType: CursorType.AFTER,
+        currentPage: currentPage + 1,
+      });
     }
   };
 
   const onPreviousHandler = () => {
-    setActivePage(activePage - 1);
     if (isNumberBased) {
-      pagingHandler(activePage - 1);
+      pagingHandler({ currentPage: currentPage - 1 });
     } else {
-      pagingHandler(CursorType.BEFORE, activePage - 1);
+      pagingHandler({
+        cursorType: CursorType.BEFORE,
+        currentPage: currentPage - 1,
+      });
     }
   };
 
   const computePrevDisableState = () => {
     if (isNumberBased) {
-      return activePage === 1;
+      return currentPage === 1;
     } else {
       return paging.before ? false : true;
     }
@@ -70,22 +77,16 @@ const NextPrevious: FC<Prop> = ({
 
   const computeNextDisableState = () => {
     if (isNumberBased) {
-      const totalPages = computeTotalPages(pageSize, totalCount);
+      const totalPages = computeTotalPages(pageSize, paging.total);
 
-      return activePage === totalPages;
+      return currentPage === totalPages;
     } else {
       return paging.after ? false : true;
     }
   };
 
-  useEffect(() => {
-    setActivePage(currentPage);
-  }, [currentPage]);
-
   return (
-    <div
-      className="tw-my-4 d-flex tw-justify-center tw-items-center tw-gap-2"
-      data-testid="pagination">
+    <div className="flex-center gap-3" data-testid="pagination">
       <Button
         ghost
         className="hover-button text-sm flex-center"
@@ -96,11 +97,9 @@ const NextPrevious: FC<Prop> = ({
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
-      <span
-        className="tw-px-2"
-        data-testid="page-indicator">{`${activePage}/${computeTotalPages(
+      <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
         pageSize,
-        totalCount
+        paging.total
       )} Page`}</span>
       <Button
         ghost
@@ -112,6 +111,22 @@ const NextPrevious: FC<Prop> = ({
         <span> {t('label.next')}</span>
         <ArrowRightOutlined />
       </Button>
+      {onShowSizeChange && (
+        <Dropdown
+          menu={{
+            items: pageSizeOptions.map((size) => ({
+              label: `${size} / Page`,
+              value: size,
+              key: size,
+              onClick: () => onShowSizeChange(size),
+            })),
+          }}>
+          <Button onClick={(e) => e.preventDefault()}>
+            {`${pageSize} / Page`}
+            <DownOutlined />
+          </Button>
+        </Dropdown>
+      )}
     </div>
   );
 };

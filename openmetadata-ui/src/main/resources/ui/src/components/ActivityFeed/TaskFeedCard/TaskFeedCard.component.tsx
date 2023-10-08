@@ -13,41 +13,43 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import AssigneeList from 'components/common/AssigneeList/AssigneeList';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { Post, Thread, ThreadTaskStatus } from 'generated/entity/feed/thread';
 import { isEmpty, isUndefined, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getNameFromFQN } from 'utils/CommonUtils';
-import EntityLink from 'utils/EntityLink';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
+import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import {
-  getEntityFieldDisplay,
+  Post,
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../../utils/EntityLink';
+import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from 'utils/FeedUtils';
-import { getTaskDetailPath } from 'utils/TasksUtils';
-import {
-  getDateTimeFromMilliSeconds,
-  getDayTimeByTimeStamp,
-} from 'utils/TimeUtils';
+} from '../../../utils/FeedUtils';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
-import { ReactComponent as ThreadIcon } from '/assets/svg/thread.svg';
 
 interface TaskFeedCardProps {
   post: Post;
   feed: Thread;
   className?: string;
   showThread?: boolean;
-  isEntityFeed?: boolean;
   isOpenInDrawer?: boolean;
   isActive?: boolean;
   isForFeedTab?: boolean;
@@ -58,7 +60,6 @@ const TaskFeedCard = ({
   post,
   feed,
   className = '',
-  isEntityFeed = false,
   showThread = true,
   isActive,
   hidePopover = false,
@@ -114,34 +115,27 @@ const TaskFeedCard = ({
 
       <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
       <span className="m-x-xss">{t('label.for-lowercase')}</span>
-      {isEntityFeed ? (
-        <span className="tw-heading" data-testid="headerText-entityField">
-          {getEntityFieldDisplay(feed.about)}
-        </span>
-      ) : (
-        <>
-          {isForFeedTab ? null : (
-            <>
-              <span className="p-r-xss">{entityType}</span>
-              <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-                <Link
-                  className="break-all"
-                  data-testid="entitylink"
-                  to={prepareFeedLink(entityType, entityFQN)}
-                  onClick={(e) => e.stopPropagation()}>
-                  {getNameFromFQN(entityFQN)}
-                </Link>
-              </EntityPopOverCard>
-            </>
-          )}
 
-          {!isEmpty(taskField) ? (
-            <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
-              {taskField}
-            </span>
-          ) : null}
+      {isForFeedTab ? null : (
+        <>
+          <span className="p-r-xss">{entityType}</span>
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Link
+              className="break-all"
+              data-testid="entitylink"
+              to={prepareFeedLink(entityType, entityFQN)}
+              onClick={(e) => e.stopPropagation()}>
+              {getNameFromFQN(entityFQN)}
+            </Link>
+          </EntityPopOverCard>
         </>
       )}
+
+      {!isEmpty(taskField) ? (
+        <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
+          {taskField}
+        </span>
+      ) : null}
     </Typography.Text>
   );
 
@@ -176,9 +170,9 @@ const TaskFeedCard = ({
               </UserPopOverCard>
               {t('message.created-this-task-lowercase')}
               {timeStamp && (
-                <Tooltip title={getDateTimeFromMilliSeconds(timeStamp)}>
+                <Tooltip title={formatDateTime(timeStamp)}>
                   <span className="p-l-xss" data-testid="timestamp">
-                    {getDayTimeByTimeStamp(timeStamp)}
+                    {getRelativeTime(timeStamp)}
                   </span>
                 </Tooltip>
               )}

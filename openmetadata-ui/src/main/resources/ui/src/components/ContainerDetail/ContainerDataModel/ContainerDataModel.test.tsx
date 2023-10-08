@@ -20,8 +20,8 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Column } from 'generated/entity/data/container';
 import React from 'react';
+import { Column } from '../../../generated/entity/data/container';
 import ContainerDataModel from './ContainerDataModel';
 
 const props = {
@@ -85,38 +85,41 @@ const props = {
   onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('utils/TagsUtils', () => ({
+jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn(() => Promise.resolve([])),
   getTagsHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/GlossaryUtils', () => ({
+jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermsList: jest.fn(() => Promise.resolve([])),
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('utils/TableTags/TableTags.utils', () => ({
+jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
+  ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
   getFilterTags: jest.fn().mockReturnValue({
     Classification: [],
     Glossary: [],
   }),
 }));
 
-jest.mock('utils/ContainerDetailUtils', () => ({
+jest.mock('../../../utils/ContainerDetailUtils', () => ({
   updateContainerColumnDescription: jest.fn(),
   updateContainerColumnTags: jest.fn(),
 }));
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="description-preview">Description Preview</div>
-    )
+jest.mock(
+  '../../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () =>
+    jest
+      .fn()
+      .mockReturnValue(
+        <div data-testid="description-preview">Description Preview</div>
+      )
 );
 
 jest.mock(
-  'components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
   () => ({
     ModalWithMarkdownEditor: jest
       .fn()
@@ -124,7 +127,7 @@ jest.mock(
   })
 );
 
-jest.mock('components/TableTags/TableTags.component', () =>
+jest.mock('../../../components/TableTags/TableTags.component', () =>
   jest
     .fn()
     .mockImplementation(() => (
@@ -132,12 +135,14 @@ jest.mock('components/TableTags/TableTags.component', () =>
     ))
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceHolder</div>
-    ))
+jest.mock(
+  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="error-placeholder">ErrorPlaceHolder</div>
+      ))
 );
 
 describe('ContainerDataModel', () => {

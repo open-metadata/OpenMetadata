@@ -75,6 +75,7 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 /ingestion/coverage.xml
 /ingestion/ci-coverage.xml
 /ingestion/junit/*
+/ingestion/tests/e2e/artifacts/*
 openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 openmetadata-ui/src/main/resources/ui/test-report.xml
 
@@ -85,6 +86,7 @@ openmetadata-ui/src/main/resources/ui/cypress/fixtures
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
 
 #UI - Generated TS
 openmetadata-ui/src/main/resources/ui/src/generated

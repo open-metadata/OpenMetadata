@@ -33,7 +33,7 @@ import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class Fernet {
-  private static Fernet instance = new Fernet();
+  private static final Fernet instance = new Fernet();
   private String fernetKey;
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";

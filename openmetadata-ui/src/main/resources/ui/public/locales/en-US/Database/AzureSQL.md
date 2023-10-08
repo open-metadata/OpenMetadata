@@ -64,6 +64,11 @@ In case of Docker or Kubernetes deployments, this driver comes out of the box wi
 $$
 
 $$section
+### Ingest All Databases $(id="ingestAllDatabases")
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
+$$
+
+$$section
 ### Connection Options $(id="connectionOptions")
 
 Additional connection options to build the URL that can be sent to service during the connection.

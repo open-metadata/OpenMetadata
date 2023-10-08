@@ -10,18 +10,20 @@
 #  limitations under the License.
 """Azure SQL source module"""
 
+import traceback
+from typing import Iterable
+
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
-)
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mssql.utils import (
@@ -29,10 +31,15 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_table_comment,
     get_view_definition,
 )
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
     get_all_view_definitions,
 )
+
+logger = ingestion_logger()
 
 ischema_names.update(
     {
@@ -68,11 +75,49 @@ class AzuresqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AzureSQLConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, AzureSQLConnection):
             raise InvalidSourceException(
                 f"Expected AzureSQLConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
+
+    def get_database_names(self) -> Iterable[str]:
+
+        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.__root__.config.database
+            self.set_inspector(database_name=configured_db)
+            yield configured_db
+        else:
+            results = self.connection.execute(
+                "SELECT name FROM master.sys.databases order by name"
+            )
+            for res in results:
+                row = list(res)
+                new_database = row[0]
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.database_service.name.__root__,
+                    database_name=new_database,
+                )
+
+                if filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    database_fqn
+                    if self.source_config.useFqnForFiltering
+                    else new_database,
+                ):
+                    self.status.filter(database_fqn, "Database Filtered Out")
+                    continue
+
+                try:
+                    self.set_inspector(database_name=new_database)
+                    yield new_database
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.error(
+                        f"Error trying to connect to database {new_database}: {exc}"
+                    )

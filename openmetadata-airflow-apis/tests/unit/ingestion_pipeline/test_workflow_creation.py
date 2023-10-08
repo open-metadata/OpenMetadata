@@ -33,8 +33,6 @@ from openmetadata_managed_apis.workflows.ingestion.usage import (
     build_usage_workflow_config,
 )
 
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -66,13 +64,13 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.data_quality import TestSuiteWorkflow
+from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 
 
 def mock_set_ingestion_pipeline_status(self, state):
@@ -174,7 +172,9 @@ class OMetaServiceTest(TestCase):
         )
 
     @patch.object(
-        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+        MetadataWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
     )
     def test_ingestion_workflow(self):
         """
@@ -205,7 +205,9 @@ class OMetaServiceTest(TestCase):
         parse_workflow_config_gracefully(config)
 
     @patch.object(
-        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+        MetadataWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
     )
     def test_usage_workflow(self):
         """
@@ -238,7 +240,9 @@ class OMetaServiceTest(TestCase):
         parse_workflow_config_gracefully(config)
 
     @patch.object(
-        Workflow, "set_ingestion_pipeline_status", mock_set_ingestion_pipeline_status
+        MetadataWorkflow,
+        "set_ingestion_pipeline_status",
+        mock_set_ingestion_pipeline_status,
     )
     def test_lineage_workflow(self):
         """

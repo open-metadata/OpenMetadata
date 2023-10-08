@@ -26,6 +26,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
     SupersetDatasource,
 )
 from metadata.utils.logger import ometa_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ometa_logger()
 
@@ -38,12 +39,14 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     def __init__(self, config: SupersetConnection):
         self.config = config
         self.service_connection = self.config
+        get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
         self.generated_auth_token = None
@@ -85,12 +88,14 @@ class SupersetAPIClient:
     def __init__(self, config: SupersetConnection):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
+        get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
             base_url=config.hostPort,
             api_version="api/v1",
             auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
 
@@ -176,7 +181,7 @@ class SupersetAPIClient:
                 return chart_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+            logger.warning("Failed to fetch the charts list")
         return SupersetChart()
 
     def fetch_charts_with_id(self, chart_id: str):
@@ -200,7 +205,7 @@ class SupersetAPIClient:
                 return datasource_list
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the dashboard list")
+            logger.warning("Failed to fetch the datasource list")
 
         return SupersetDatasource()
 

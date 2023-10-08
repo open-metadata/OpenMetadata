@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { PipelineServiceType } from 'generated/entity/data/pipeline';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
+import { PipelineVersionProp } from '../components/PipelineVersion/PipelineVersion.interface';
+import { PipelineServiceType } from '../generated/entity/data/pipeline';
+import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
+  mockDomain,
   mockOwner,
   mockTier,
   mockVersionHandler,
   mockVersionList,
-} from 'mocks/VersionCommon.mock';
-import { PipelineVersionProp } from '../components/PipelineVersion/PipelineVersion.interface';
+} from '../mocks/VersionCommon.mock';
 
 const mockDescriptionChangeDiff = {
   fieldsAdded: [],
@@ -113,6 +114,7 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   currentVersionData: mockPipelineData,
   isVersionLoading: false,
   owner: mockOwner,
+  domain: mockDomain,
   tier: mockTier,
   slashedPipelineName: [],
   topicFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',

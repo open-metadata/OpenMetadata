@@ -19,6 +19,7 @@ import java.security.Principal;
 import java.util.Map;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.SecurityContext;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
@@ -27,7 +28,8 @@ public final class SecurityUtil {
 
   private SecurityUtil() {}
 
-  public static String getUserName(Principal principal) {
+  public static String getUserName(SecurityContext securityContext) {
+    Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
   }
 

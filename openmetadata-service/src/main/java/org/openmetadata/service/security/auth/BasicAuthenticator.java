@@ -31,7 +31,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_E
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.time.Instant;
@@ -43,7 +42,6 @@ import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
@@ -63,10 +61,10 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -75,7 +73,7 @@ import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.TokenUtil;
 
 @Slf4j
@@ -91,9 +89,9 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private boolean isSelfSignUpAvailable;
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, Jdbi jdbi) {
-    this.userRepository = new UserRepository(jdbi.onDemand(CollectionDAO.class));
-    this.tokenRepository = new TokenRepository(jdbi.onDemand(CollectionDAO.class));
+  public void init(OpenMetadataApplicationConfig config) {
+    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache(config);
     SmtpSettings smtpSettings = config.getSmtpSettings();
@@ -103,7 +101,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User registerUser(RegistrationRequest newRegistrationRequest) throws IOException {
+  public User registerUser(RegistrationRequest newRegistrationRequest) {
     if (isSelfSignUpAvailable) {
       String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
       String[] tokens = newRegistrationRequest.getEmail().split("@");
@@ -127,7 +125,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) throws IOException {
+  public void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
     EmailVerificationToken emailVerificationToken = (EmailVerificationToken) tokenRepository.findByToken(emailToken);
     User registeredUser =
         userRepository.get(null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
@@ -147,12 +145,12 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     userRepository.createOrUpdate(uriInfo, registeredUser);
 
     // deleting the entry for the token from the Database
-    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
   }
 
   @Override
   public void resendRegistrationToken(UriInfo uriInfo, User registeredUser) throws IOException {
-    tokenRepository.deleteTokenByUserAndType(registeredUser.getId().toString(), EMAIL_VERIFICATION.toString());
+    tokenRepository.deleteTokenByUserAndType(registeredUser.getId(), EMAIL_VERIFICATION.toString());
     sendEmailVerification(uriInfo, registeredUser);
   }
 
@@ -195,7 +193,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throw new CustomExceptionMessage(424, EMAIL_SENDING_ISSUE);
     }
     // don't persist tokens delete existing
-    tokenRepository.deleteTokenByUserAndType(user.getId().toString(), PASSWORD_RESET.toString());
+    tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
     tokenRepository.insertToken(resetToken);
   }
 
@@ -227,7 +225,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     userRepository.createOrUpdate(uriInfo, storedUser);
 
     // delete the user's all password reset token as well , since already updated
-    tokenRepository.deleteTokenByUserAndType(storedUser.getId().toString(), PASSWORD_RESET.toString());
+    tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
 
     // Update user about Password Change
     try {
@@ -271,7 +269,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     storedBasicAuthMechanism.setPassword(newHashedPassword);
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
-    RestUtil.PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
+    PutResponse<User> response = userRepository.createOrUpdate(uriInfo, storedUser);
     // remove login/details from cache
     loginAttemptCache.recordSuccessfulLogin(userName);
 
@@ -319,7 +317,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) throws JsonProcessingException {
+  public RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
     // just delete the existing token
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
     // save Refresh Token in Database
@@ -329,7 +327,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public JwtResponse getNewAccessToken(TokenRefreshRequest request) throws IOException {
+  public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
       throw new BadRequestException("Token Cannot be Null or Empty String");
     }
@@ -368,8 +366,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest)
-      throws JsonProcessingException {
+  public RefreshToken validateAndReturnNewRefresh(UUID currentUserId, TokenRefreshRequest tokenRefreshRequest) {
     String requestRefreshToken = tokenRefreshRequest.getRefreshToken();
     RefreshToken storedRefreshToken = (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {

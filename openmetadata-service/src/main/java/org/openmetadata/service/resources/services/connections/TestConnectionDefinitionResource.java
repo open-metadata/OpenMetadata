@@ -31,13 +31,11 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionDefinit
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -53,15 +51,8 @@ public class TestConnectionDefinitionResource
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
   static final String FIELDS = "owner";
 
-  @Override
-  public TestConnectionDefinition addHref(UriInfo uriInfo, TestConnectionDefinition testConnectionDefinition) {
-    testConnectionDefinition.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, testConnectionDefinition.getId()));
-    Entity.withHref(uriInfo, testConnectionDefinition.getOwner());
-    return testConnectionDefinition;
-  }
-
-  public TestConnectionDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestConnectionDefinition.class, new TestConnectionDefinitionRepository(dao), authorizer);
+  public TestConnectionDefinitionResource(Authorizer authorizer) {
+    super(Entity.TEST_CONNECTION_DEFINITION, authorizer);
   }
 
   @Override
@@ -70,7 +61,7 @@ public class TestConnectionDefinitionResource
         repository.getEntitiesFromSeedData(".*json/data/testConnections/.*\\.json$");
 
     for (TestConnectionDefinition testConnectionDefinition : testConnectionDefinitions) {
-      repository.prepareInternal(testConnectionDefinition);
+      repository.prepareInternal(testConnectionDefinition, true);
       testConnectionDefinition.setId(UUID.randomUUID());
       testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
       testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
@@ -129,8 +120,7 @@ public class TestConnectionDefinitionResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     ListFilter filter = new ListFilter(include);
 
     return super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -166,8 +156,7 @@ public class TestConnectionDefinitionResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
   }
 
@@ -202,8 +191,7 @@ public class TestConnectionDefinitionResource
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
+          Include include) {
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 }

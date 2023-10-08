@@ -21,6 +21,7 @@ import {
   Space,
   Switch,
   TreeSelect,
+  Typography,
 } from 'antd';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
@@ -28,9 +29,6 @@ import { Col, Row } from 'antd/lib/grid';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { CSMode } from 'enums/codemirror.enum';
-import { PartitionIntervalType } from 'generated/api/data/createTable';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
 import React, {
   Reducer,
@@ -41,7 +39,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTableProfilerConfig, putTableProfileConfig } from 'rest/tableAPI';
+import SchemaEditor from '../../../components/schema-editor/SchemaEditor';
 import {
   DEFAULT_INCLUDE_PROFILE,
   INTERVAL_TYPE_OPTIONS,
@@ -52,10 +50,16 @@ import {
   SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL,
   TIME_BASED_PARTITION,
 } from '../../../constants/profiler.constant';
+import { CSMode } from '../../../enums/codemirror.enum';
+import { PartitionIntervalType } from '../../../generated/api/data/createTable';
 import {
   ProfileSampleType,
   TableProfilerConfig,
 } from '../../../generated/entity/data/table';
+import {
+  getTableProfilerConfig,
+  putTableProfileConfig,
+} from '../../../rest/tableAPI';
 import { reducerWithoutAction } from '../../../utils/CommonUtils';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -471,7 +475,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           </Form>
         </Col>
         <Col data-testid="sql-editor-container" span={24}>
-          <p className="tw-mb-1.5">
+          <p className="m-b-xs">
             {t('label.profile-sample-type', {
               type: t('label.query'),
             })}{' '}
@@ -489,11 +493,13 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <p className="tw-mb-4">{t('message.enable-column-profile')}</p>
-          <p className="tw-text-xs tw-mb-1.5">{t('label.exclude')}:</p>
+          <Typography.Paragraph>
+            {t('message.enable-column-profile')}
+          </Typography.Paragraph>
+          <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
             allowClear
-            className="tw-w-full"
+            className="w-full"
             data-testid="exclude-column-select"
             mode="tags"
             options={selectOptions}
@@ -521,8 +527,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
             <List name="includeColumns">
               {(fields, { add, remove }) => (
                 <>
-                  <div className="d-flex tw-items-center tw-mb-1.5">
-                    <p className="w-form-label tw-text-xs tw-mr-3">
+                  <div className="d-flex items-center m-b-xss">
+                    <p className="w-form-label text-xs m-r-xs">
                       {`${t('label.include')}:`}
                     </p>
                     <Button
@@ -535,8 +541,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   </div>
                   <div
                     className={classNames({
-                      'tw-max-h-40 tw-overflow-y-auto':
-                        state?.includeCol.length > 1,
+                      'h-max-40 overflow-y-auto': state?.includeCol.length > 1,
                     })}
                     data-testid="include-column-container">
                     {fields.map(({ key, name, ...restField }) => (
@@ -799,7 +804,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                   <List name="partitionValues">
                     {(fields, { add, remove }) => (
                       <>
-                        <div className="flex items-center tw-mb-1.5">
+                        <div className="flex items-center m-b-xs">
                           <p className="w-form-label text-xs m-r-sm">
                             {`${t('label.value')}:`}
                           </p>

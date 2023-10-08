@@ -11,39 +11,13 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Table, Tabs, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Col, Row, Space, Switch, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import Loader from 'components/Loader/Loader';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { LabelType } from 'generated/entity/data/table';
-import { Include } from 'generated/type/include';
-import { State, TagSource } from 'generated/type/tagLabel';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined, toString } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
+import QueryString from 'qs';
 import React, {
   FunctionComponent,
   useCallback,
@@ -53,57 +27,85 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
+import { default as appState } from '../../AppState';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import Searchbar from '../../components/common/searchbar/Searchbar';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import Loader from '../../components/Loader/Loader';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  getDatabaseDetailsPath,
+  getExplorePath,
+  getVersionPathWithTab,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  pagingObject,
+} from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { CreateThread } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Database } from '../../generated/entity/data/database';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
+import { TagSource } from '../../generated/type/tagLabel';
+import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
   restoreDatabase,
-} from 'rest/databaseAPI';
-import { getFeedCount, postThread } from 'rest/feedsAPI';
-import { handleDataAssetAfterDeleteAction } from 'utils/Assets/AssetsUtils';
-import { getEntityMissingError } from 'utils/CommonUtils';
-import { default as appState } from '../../AppState';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getExplorePath,
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  pagingObject,
-} from '../../constants/constants';
-import { EntityField } from '../../constants/Feeds.constants';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { Database } from '../../generated/entity/data/database';
-import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { EntityReference } from '../../generated/entity/teams/user';
-import { UsageDetails } from '../../generated/type/entityUsage';
-import { Paging } from '../../generated/type/paging';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityThreadLink,
-} from '../../utils/EntityUtils';
-import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+  updateDatabaseVotes,
+} from '../../rest/databaseAPI';
+import { getFeedCount, postThread } from '../../rest/feedsAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { getEntityMissingError } from '../../utils/CommonUtils';
+import { getDatabaseSchemaTable } from '../../utils/DatabaseDetails.utils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-  getUsagePercentile,
-} from '../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
 
-  const { databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ databaseFQN: string; tab: EntityTabs }>();
+    return searchData.schema as string | undefined;
+  }, [location.search]);
+
+  const { fqn: databaseFQN, tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ fqn: string; tab: EntityTabs }>();
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
   const [database, setDatabase] = useState<Database>({} as Database);
@@ -134,6 +136,8 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const history = useHistory();
   const isMounting = useRef(true);
+
+  const { version: currentVersion } = useMemo(() => database, [database]);
 
   const tier = getTierTags(database?.tags ?? []);
   const tags = getTagsWithoutTier(database?.tags ?? []);
@@ -189,9 +193,43 @@ const DatabaseDetails: FunctionComponent = () => {
     });
   };
 
+  const searchSchema = async (
+    searchValue: string,
+    pageNumber = INITIAL_PAGING_VALUE
+  ) => {
+    setSchemaDataLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${searchValue}*`,
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [{ term: { 'database.fullyQualifiedName': databaseFQN } }],
+            },
+          },
+        },
+        searchIndex: SearchIndex.DATABASE_SCHEMA,
+        includeDeleted: showDeletedSchemas,
+        trackTotalHits: true,
+      });
+      const data = response.hits.hits.map((schema) => schema._source);
+      const total = response.hits.total.value;
+      setSchemaData(data);
+      setSchemaPaging({ total });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setSchemaDataLoading(false);
+    }
+  };
+
   const fetchDatabaseSchemasAndDBTModels = () => {
     setIsLoading(true);
-    Promise.allSettled([fetchDatabaseSchemas()]).finally(() => {
+    Promise.allSettled([
+      searchValue ? searchSchema(searchValue) : fetchDatabaseSchemas(),
+    ]).finally(() => {
       setIsLoading(false);
     });
   };
@@ -221,7 +259,11 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(databaseFQN, ['owner', 'tags'], Include.All)
+    getDatabaseDetailsByFQN(
+      databaseFQN,
+      ['owner', 'tags', 'domain', 'votes'],
+      Include.All
+    )
       .then((res) => {
         if (res) {
           const { description, id, name, serviceType } = res;
@@ -265,7 +307,7 @@ const DatabaseDetails: FunctionComponent = () => {
       try {
         const response = await saveUpdatedDatabaseData(updatedDatabaseDetails);
         if (response) {
-          setDatabase(updatedDatabaseDetails);
+          setDatabase(response);
           setDescription(updatedHTML);
           getEntityFeedCount();
         } else {
@@ -293,18 +335,25 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const databaseSchemaPagingHandler = (
-    cursorType: string | number,
-    activePage?: number
-  ) => {
-    const pagingString = `&${cursorType}=${
-      databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
-    }`;
-    setSchemaDataLoading(true);
-    fetchDatabaseSchemas(pagingString).finally(() => {
-      setSchemaDataLoading(false);
-    });
-    setCurrentPage(activePage ?? 1);
+  const databaseSchemaPagingHandler = ({
+    cursorType,
+    currentPage,
+  }: PagingHandlerParams) => {
+    if (cursorType) {
+      if (isString(cursorType)) {
+        const pagingString = `&${cursorType}=${
+          databaseSchemaPaging[cursorType as keyof typeof databaseSchemaPaging]
+        }`;
+        setSchemaDataLoading(true);
+        fetchDatabaseSchemas(pagingString).finally(() => {
+          setSchemaDataLoading(false);
+        });
+        setCurrentPage(currentPage);
+      } else {
+        setCurrentPage(cursorType);
+        searchValue && searchSchema(searchValue, cursorType);
+      }
+    }
   };
 
   const settingsUpdateHandler = async (data: Database) => {
@@ -389,67 +438,9 @@ const DatabaseDetails: FunctionComponent = () => {
     appState.inPageSearchText = '';
   }, []);
 
-  const tableColumn: ColumnsType<DatabaseSchema> = useMemo(
-    () => [
-      {
-        title: t('label.schema-name'),
-        dataIndex: 'name',
-        key: 'name',
-        render: (_, record: DatabaseSchema) => (
-          <Link
-            to={
-              record.fullyQualifiedName
-                ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
-                : ''
-            }>
-            {getEntityName(record)}
-          </Link>
-        ),
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.description') })}
-            </span>
-          ),
-      },
-      {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        width: 120,
-        render: (text: EntityReference) => getEntityName(text) || '--',
-      },
-      {
-        title: t('label.usage'),
-        dataIndex: 'usageSummary',
-        key: 'usageSummary',
-        width: 120,
-        render: (text: UsageDetails) =>
-          getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
-      },
-    ],
-    []
-  );
-
   const handleUpdateTier = useCallback(
-    (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(database?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(database?.tags ?? []);
+    (newTier?: Tag) => {
+      const tierTag = updateTierTag(database?.tags ?? [], newTier);
       const updatedTableDetails = {
         ...database,
         tags: tierTag,
@@ -493,63 +484,46 @@ const DatabaseDetails: FunctionComponent = () => {
             .map((selTag) => selTag.tagFQN)
             .includes(tag?.tagFQN as string)
         ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
+      const newTags = createTagObject(
+        selectedTags.filter((tag) => {
           return !prevTags
             ?.map((prevTag) => prevTag.tagFQN)
             .includes(tag.tagFQN);
         })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
       await onTagUpdate([...prevTags, ...newTags]);
     }
   };
 
-  const databaseTable = useMemo(() => {
-    return (
-      <Col span={24}>
-        <Table
-          bordered
-          columns={tableColumn}
-          data-testid="database-databaseSchemas"
-          dataSource={schemaData}
-          loading={{
-            spinning: schemaDataLoading,
-            indicator: <Loader size="small" />,
-          }}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-        {Boolean(
-          !isNil(databaseSchemaPaging.after) ||
-            !isNil(databaseSchemaPaging.before)
-        ) && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={PAGE_SIZE}
-            paging={databaseSchemaPaging}
-            pagingHandler={databaseSchemaPagingHandler}
-            totalCount={databaseSchemaPaging.total}
-          />
-        )}
-      </Col>
-    );
-  }, [
-    schemaDataLoading,
-    schemaData,
-    tableColumn,
-    databaseSchemaPaging,
-    currentPage,
-    databaseSchemaPagingHandler,
-  ]);
+  const databaseTable = useMemo(
+    () =>
+      getDatabaseSchemaTable(
+        schemaData,
+        schemaDataLoading,
+        databaseSchemaPaging,
+        currentPage,
+        databaseSchemaPagingHandler,
+        Boolean(searchSchema)
+      ),
+    [
+      schemaData,
+      schemaDataLoading,
+      databaseSchemaPaging,
+      currentPage,
+      databaseSchemaPagingHandler,
+      searchSchema,
+    ]
+  );
+
+  const handleToggleDelete = () => {
+    setDatabase((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return { ...prev, deleted: !prev?.deleted };
+    });
+  };
 
   const handleRestoreDatabase = useCallback(async () => {
     try {
@@ -560,7 +534,7 @@ const DatabaseDetails: FunctionComponent = () => {
         }),
         2000
       );
-      getDetailsByFQN();
+      handleToggleDelete();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -576,6 +550,18 @@ const DatabaseDetails: FunctionComponent = () => {
     setCurrentPage(INITIAL_PAGING_VALUE);
   }, []);
 
+  const versionHandler = useCallback(() => {
+    currentVersion &&
+      history.push(
+        getVersionPathWithTab(
+          EntityType.DATABASE,
+          databaseFQN,
+          toString(currentVersion),
+          EntityTabs.SCHEMA
+        )
+      );
+  }, [currentVersion, databaseFQN]);
+
   const editTagsPermission = useMemo(
     () =>
       (databasePermission.EditTags || databasePermission.EditAll) &&
@@ -589,6 +575,34 @@ const DatabaseDetails: FunctionComponent = () => {
       !database.deleted,
     [databasePermission, database]
   );
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? handleToggleDelete : history.push('/'),
+    []
+  );
+
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Database;
+
+    setDatabase((data) => ({
+      ...(data ?? updatedData),
+      version: updatedData.version,
+    }));
+  }, []);
+
+  const onSchemaSearch = (value: string) => {
+    history.push({
+      search: QueryString.stringify({
+        schema: isEmpty(value) ? undefined : value,
+      }),
+    });
+    if (value) {
+      searchSchema(value);
+    } else {
+      fetchDatabaseSchemas();
+    }
+  };
 
   const tabs = useMemo(
     () => [
@@ -609,10 +623,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
                     description={description}
-                    entityFieldThreads={getEntityFieldThreadCounts(
-                      EntityField.DESCRIPTION,
-                      entityFieldThreadCount
-                    )}
                     entityFqn={databaseFQN}
                     entityName={databaseName}
                     entityType={EntityType.DATABASE}
@@ -626,8 +636,19 @@ const DatabaseDetails: FunctionComponent = () => {
                   />
                 </Col>
                 <Col span={24}>
-                  <Row justify="end">
-                    <Col className="p-x-xss">
+                  <Row>
+                    <Col span={12}>
+                      <Searchbar
+                        removeMargin
+                        placeholder={t('label.search-for-type', {
+                          type: t('label.schema'),
+                        })}
+                        searchValue={searchValue}
+                        typingInterval={500}
+                        onSearch={onSchemaSearch}
+                      />
+                    </Col>
+                    <Col className="flex items-center justify-end" span={12}>
                       <Switch
                         checked={showDeletedSchemas}
                         data-testid="show-deleted"
@@ -650,7 +671,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={databaseFQN}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -661,7 +681,6 @@ const DatabaseDetails: FunctionComponent = () => {
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
                   entityFqn={databaseFQN}
-                  entityThreadLink={getEntityThreadLink(entityFieldThreadCount)}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -695,6 +714,27 @@ const DatabaseDetails: FunctionComponent = () => {
           </ActivityFeedProvider>
         ),
       },
+
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable
+            entityType={EntityType.DATABASE}
+            handleExtensionUpdate={settingsUpdateHandler}
+            hasEditAccess={databasePermission.ViewAll}
+            hasPermission={
+              databasePermission.EditAll || databasePermission.EditCustomFields
+            }
+            isVersionView={false}
+          />
+        ),
+      },
     ],
     [
       tags,
@@ -715,6 +755,20 @@ const DatabaseDetails: FunctionComponent = () => {
       handleShowDeletedSchemas,
     ]
   );
+
+  const updateVote = async (data: QueryVote, id: string) => {
+    try {
+      await updateDatabaseVotes(id, data);
+      const details = await getDatabaseDetailsByFQN(
+        databaseFQN,
+        ['owner', 'tags', 'votes'],
+        Include.All
+      );
+      setDatabase(details);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   useEffect(() => {
     fetchDatabaseSchemas();
@@ -743,7 +797,8 @@ const DatabaseDetails: FunctionComponent = () => {
           <Col className="p-x-lg" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
-              afterDeleteAction={handleDataAssetAfterDeleteAction}
+              afterDeleteAction={afterDeleteAction}
+              afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
               permissions={databasePermission}
@@ -751,6 +806,8 @@ const DatabaseDetails: FunctionComponent = () => {
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreDatabase}
               onTierUpdate={handleUpdateTier}
+              onUpdateVote={updateVote}
+              onVersionClick={versionHandler}
             />
           </Col>
           <Col span={24}>

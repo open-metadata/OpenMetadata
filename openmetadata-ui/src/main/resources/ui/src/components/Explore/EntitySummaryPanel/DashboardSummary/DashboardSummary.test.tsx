@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import {
   mockDashboardEntityDetails,
   mockFetchChartsResponse,
@@ -25,6 +25,10 @@ jest.mock('../SummaryList/SummaryList.component', () =>
   jest
     .fn()
     .mockImplementation(() => <div data-testid="SummaryList">SummaryList</div>)
+);
+
+jest.mock('../CommonEntitySummaryInfo/CommonEntitySummaryInfo', () =>
+  jest.fn().mockImplementation(() => <div>testCommonEntitySummaryInfo</div>)
 );
 
 jest.mock('../../../../utils/DashboardDetailsUtils', () => ({
@@ -39,24 +43,18 @@ describe('DashboardSummary component tests', () => {
       });
     });
 
-    const dashboardUrlLabel = screen.getByText(
-      'label.dashboard label.url-uppercase'
+    const commonEntitySummaryInfo = screen.getByText(
+      'testCommonEntitySummaryInfo'
     );
-    const dashboardUrlValue = screen.getByTestId('dashboard-url-value');
-    const dashboardLinkName = screen.getByTestId('dashboard-link-name');
     const chartsHeader = screen.getByTestId('charts-header');
     const summaryList = screen.getAllByTestId('SummaryList');
 
-    expect(dashboardLinkName).toBeInTheDocument();
-    expect(dashboardUrlLabel).toBeInTheDocument();
-    expect(dashboardUrlValue).toContainHTML(mockDashboardEntityDetails.name);
+    expect(commonEntitySummaryInfo).toBeInTheDocument();
     expect(chartsHeader).toBeInTheDocument();
     expect(summaryList).toHaveLength(2);
   });
 
   it('Component should render properly, when loaded in the Lineage page.', async () => {
-    const labels = ['label.service-label', 'label.tier-label'];
-
     await act(async () => {
       const { debug } = render(
         <DashboardSummary
@@ -71,53 +69,20 @@ describe('DashboardSummary component tests', () => {
       debug();
     });
 
-    const dashboardUrlLabel = screen.getByText(
-      'label.dashboard label.url-uppercase'
-    );
     const ownerLabel = screen.queryByTestId('label.owner-label');
-
-    const sourceUrl = screen.getAllByTestId('dashboard-url-value');
-
+    const commonEntitySummaryInfo = screen.getByText(
+      'testCommonEntitySummaryInfo'
+    );
     const tags = screen.getByText('label.tag-plural');
     const description = screen.getByText('label.description');
     const noDataFound = screen.getByText('label.no-data-found');
-    const dashboardLink = screen.getAllByTestId('dashboard-link-name');
-    const dashboardValue = screen.getAllByTestId('dashboard-url-value');
-
-    labels.forEach((label) =>
-      expect(screen.getByTestId(label)).toBeInTheDocument()
-    );
 
     expect(ownerLabel).not.toBeInTheDocument();
 
-    expect(sourceUrl[0]).toBeInTheDocument();
-    expect(dashboardLink[0]).toBeInTheDocument();
-    expect(dashboardValue[0]).toBeInTheDocument();
+    expect(commonEntitySummaryInfo).toBeInTheDocument();
 
     expect(tags).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(noDataFound).toBeInTheDocument();
-
-    expect(dashboardUrlLabel).toBeInTheDocument();
-  });
-
-  it('If the dashboard url is not present in dashboard details, "-" should be displayed as dashboard url value', async () => {
-    await act(async () => {
-      render(
-        <DashboardSummary
-          entityDetails={{
-            ...mockDashboardEntityDetails,
-            sourceUrl: undefined,
-          }}
-        />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-
-      const dashboardUrlValue = screen.getByTestId('dashboard-url-value');
-
-      expect(dashboardUrlValue).toContainHTML('-');
-    });
   });
 });

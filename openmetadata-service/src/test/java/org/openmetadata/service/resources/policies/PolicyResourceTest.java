@@ -40,7 +40,6 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -133,7 +132,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public void compareEntities(Policy expected, Policy updated, Map<String, String> authHeaders) {}
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
@@ -367,7 +366,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
               .filter(rd -> rd.getName().equals(entity))
               .findFirst()
               .orElse(null);
-      assertNotNull(resourceDescriptor);
+      assertNotNull(resourceDescriptor, String.format("Resource descriptor not found for entity %s", entity));
     }
   }
 
@@ -411,7 +410,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @Test
-  void test_roles_policies_scenarios() throws HttpResponseException, JsonProcessingException {
+  void test_roles_policies_scenarios() throws HttpResponseException {
     //
     // Create a team hierarchy:
     // - Organization has Team1 with user1 and Team2 with user2
@@ -520,7 +519,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   }
 
   @SuppressWarnings("unchecked")
-  private void testScenario(int index, Object[] scenario) throws HttpResponseException, JsonProcessingException {
+  private void testScenario(int index, Object[] scenario) throws HttpResponseException {
     Team team = (Team) scenario[0];
     Policy policy = (Policy) scenario[1];
     List<User> allowedUsers = (List<User>) scenario[2];
@@ -587,13 +586,13 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     return new Rule().withName(name).withResources(resources).withOperations(operations).withEffect(effect);
   }
 
-  private void addTeamPolicy(Team team, Policy policy) throws JsonProcessingException, HttpResponseException {
+  private void addTeamPolicy(Team team, Policy policy) throws HttpResponseException {
     String json = JsonUtils.pojoToJson(team);
     team.setPolicies(listOf(policy.getEntityReference()));
     TEAM_TEST.patchEntity(team.getId(), json, team, ADMIN_AUTH_HEADERS);
   }
 
-  private void removeTeamPolicy(Team team) throws JsonProcessingException, HttpResponseException {
+  private void removeTeamPolicy(Team team) throws HttpResponseException {
     String json = JsonUtils.pojoToJson(team);
     team.setPolicies(null);
     TEAM_TEST.patchEntity(team.getId(), json, team, ADMIN_AUTH_HEADERS);

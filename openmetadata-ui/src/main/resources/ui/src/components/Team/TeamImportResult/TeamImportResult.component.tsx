@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Table, Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { ReactComponent as FailBadgeIcon } from 'assets/svg/fail-badge.svg';
-import { ReactComponent as SuccessBadgeIcon } from 'assets/svg/success-badge.svg';
-import Loader from 'components/Loader/Loader';
-import { Status } from 'generated/type/csvImportResult';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { parseCSV } from 'utils/EntityImport/EntityImportUtils';
+import { ReactComponent as FailBadgeIcon } from '../../../assets/svg/fail-badge.svg';
+import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
+import Table from '../../../components/common/Table/Table';
+import { Status } from '../../../generated/type/csvImportResult';
+import { parseCSV } from '../../../utils/EntityImport/EntityImportUtils';
 import {
   TeamCSVRecord,
   TeamImportResultProps,
@@ -209,16 +209,13 @@ export const TeamImportResult = ({
     parseCsvFile();
   }, [csvImportResult.importResultsCsv]);
 
-  if (loading) {
-    return <Loader />;
-  }
-
   return (
     <Table
       bordered
       columns={columns}
       data-testid="import-result-table"
       dataSource={parsedRecords}
+      loading={loading}
       pagination={false}
       rowKey="name*"
       scroll={{ x: true }}

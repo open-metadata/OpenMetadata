@@ -14,14 +14,17 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import functools
+import json
 import traceback
-from typing import Generic, List, Optional, Type, TypeVar
+from typing import Generic, List, Optional, Set, Type, TypeVar
 
 from pydantic import BaseModel
+from requests.utils import quote
 
 from metadata.generated.schema.api.createEventPublisherJob import (
     CreateEventPublisherJob,
 )
+from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.system.eventPublisherJob import EventPublisherResult
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.utils.elasticsearch import ES_INDEX_MAP
@@ -41,7 +44,10 @@ class ESMixin(Generic[T]):
 
     client: REST
 
-    fqdn_search = "/search/query?q=fullyQualifiedName:{fqn}&from={from_}&size={size}&index={index}"
+    fqdn_search = (
+        "/search/fieldQuery?fieldName=fullyQualifiedName&fieldValue={fqn}&from={from_}"
+        "&size={size}&index={index}"
+    )
 
     @functools.lru_cache(maxsize=512)
     def _search_es_entity(
@@ -138,4 +144,39 @@ class ESMixin(Generic[T]):
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.debug(f"Failed to fetch reindex job status due to {err}")
+            return None
+
+    @staticmethod
+    def get_query_with_lineage_filter(service_name: str) -> str:
+        query_lineage_filter = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"processedLineage": True}},
+                        {"term": {"service.name.keyword": service_name}},
+                    ]
+                }
+            }
+        }
+        return quote(json.dumps(query_lineage_filter))
+
+    @functools.lru_cache(maxsize=12)
+    def es_get_queries_with_lineage(self, service_name: str) -> Optional[Set[str]]:
+        """Get a set of query checksums that have already been processed for lineage"""
+        try:
+            resp = self.client.get(
+                f"/search/query?q=&index={ES_INDEX_MAP[Query.__name__]}"
+                "&include_source_fields=checksum&include_source_fields="
+                f"processedLineage&query_filter={self.get_query_with_lineage_filter(service_name)}"
+            )
+            return {elem["_source"]["checksum"] for elem in resp["hits"]["hits"]}
+
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get queries from ES due to [{err}]")
+            return None
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None

@@ -17,32 +17,27 @@ from abc import ABC
 from datetime import datetime
 from typing import Iterable, Optional
 
-from packaging import version
 from sqlalchemy.engine.base import Engine
 
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
-from metadata.ingestion.source.database.postgres.queries import (
-    POSTGRES_GET_DATABASE,
-    POSTGRES_GET_SERVER_VERSION,
+from metadata.ingestion.source.database.postgres.queries import POSTGRES_GET_DATABASE
+from metadata.ingestion.source.database.postgres.utils import (
+    get_postgres_time_column_name,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
-
-INCOMPATIBLE_POSTGRES_VERSION = "13.0"
 
 
 class PostgresQueryParserSource(QueryParserSource, ABC):
@@ -52,22 +47,22 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
 
     filters: str
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         # Postgres does not allow retrieval of data older than 7 days
         # Update start and end based on this
         duration = min(self.source_config.queryLogDuration, 6)
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: PostgresConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_sql_statement(self, *_) -> str:
         """
@@ -77,37 +72,8 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         return self.sql_stmt.format(
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.get_filters(),
-            time_column_name=self.get_postgres_time_column_name(),
+            time_column_name=get_postgres_time_column_name(engine=self.engine),
         )
-
-    def get_postgres_version(self) -> Optional[str]:
-        """
-        return the postgres version in major.minor.patch format
-        """
-        try:
-            results = self.engine.execute(POSTGRES_GET_SERVER_VERSION)
-            for res in results:
-                version_string = str(res[0])
-                opening_parenthesis_index = version_string.find("(")
-                if opening_parenthesis_index != -1:
-                    return version_string[:opening_parenthesis_index].strip()
-                return version_string
-        except Exception as err:
-            logger.warning(f"Unable to fetch the Postgres Version - {err}")
-            logger.debug(traceback.format_exc())
-        return None
-
-    def get_postgres_time_column_name(self) -> str:
-        """
-        Return the correct column name for the time column based on postgres version
-        """
-        time_column_name = "total_exec_time"
-        postgres_version = self.get_postgres_version()
-        if postgres_version and version.parse(postgres_version) < version.parse(
-            INCOMPATIBLE_POSTGRES_VERSION
-        ):
-            time_column_name = "total_time"
-        return time_column_name
 
     def get_table_query(self) -> Iterable[TableQuery]:
         try:

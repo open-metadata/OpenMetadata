@@ -22,7 +22,6 @@ export interface BotsDetailProps extends HTMLAttributes<HTMLDivElement> {
   botPermission: OperationPermission;
   updateBotsDetails: (data: Partial<User>) => Promise<void>;
   revokeTokenHandler: () => void;
-  onEmailChange: () => void;
   updateUserDetails: (data: Partial<User>) => Promise<void>;
 }
 

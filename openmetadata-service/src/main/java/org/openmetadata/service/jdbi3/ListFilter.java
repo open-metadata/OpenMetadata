@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -55,7 +56,9 @@ public class ListFilter {
     condition = addCondition(condition, getWebhookCondition(tableName));
     condition = addCondition(condition, getWebhookTypeCondition(tableName));
     condition = addCondition(condition, getTestCaseCondition());
-    condition = addCondition(condition, getTestSuiteCondition());
+    condition = addCondition(condition, getTestSuiteTypeCondition());
+    condition = addCondition(condition, getTestSuiteFQNCondition());
+    condition = addCondition(condition, getDomainCondition());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -83,6 +86,23 @@ public class ListFilter {
   public String getServiceCondition(String tableName) {
     String service = queryParams.get("service");
     return service == null ? "" : getFqnPrefixCondition(tableName, EntityInterfaceUtil.quoteName(service));
+  }
+
+  public String getTestSuiteFQNCondition() {
+    String testSuiteName = queryParams.get("testSuite");
+    return testSuiteName == null
+        ? ""
+        : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
+  }
+
+  private String getDomainCondition() {
+    String domainId = getQueryParam("domainId");
+    return domainId == null
+        ? ""
+        : String.format(
+            "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND "
+                + "relation=10))",
+            domainId);
   }
 
   public String getParentCondition(String tableName) {
@@ -158,7 +178,7 @@ public class ListFilter {
     return addCondition(condition1, condition2);
   }
 
-  private String getTestSuiteCondition() {
+  private String getTestSuiteTypeCondition() {
     String testSuiteType = getQueryParam("testSuiteType");
 
     if (testSuiteType == null) {
@@ -197,17 +217,22 @@ public class ListFilter {
 
   private String getPipelineTypePrefixCondition(String tableName, String pipelineType) {
     pipelineType = escape(pipelineType);
+    String inCondition = getInConditionFromString(pipelineType);
     if (DatasourceConfig.getInstance().isMySQL()) {
       return tableName == null
           ? String.format(
-              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s'", pipelineType)
+              "JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)", inCondition)
           : String.format(
-              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) = '%s%%'",
-              tableName, pipelineType);
+              "%s.JSON_UNQUOTE(JSON_EXTRACT(ingestion_pipeline_entity.json, '$.pipelineType')) IN (%s)",
+              tableName, inCondition);
     }
     return tableName == null
-        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' = '%s'", pipelineType)
-        : String.format("%s.json->>'pipelineType' = '%s%%'", tableName, pipelineType);
+        ? String.format("ingestion_pipeline_entity.json->>'pipelineType' IN (%s)", inCondition)
+        : String.format("%s.json->>'pipelineType' IN (%s)", tableName, inCondition);
+  }
+
+  private String getInConditionFromString(String condition) {
+    return Arrays.stream(condition.split(",")).map(s -> String.format("'%s'", s)).collect(Collectors.joining(","));
   }
 
   private String getCategoryPrefixCondition(String tableName, String category) {

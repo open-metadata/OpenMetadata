@@ -112,3 +112,15 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
     if len(timestamp) < 13:  # check for ms timestamp
         return int(timestamp)
     return float(timestamp) / 1000
+
+
+def convert_timestamp_to_milliseconds(timestamp: int) -> int:
+    """convert timestamp to milliseconds
+    Args:
+        timestamp (int):
+    Retunrs:
+        int
+    """
+    if len(str(timestamp)) == 13:
+        return timestamp
+    return timestamp * 1000

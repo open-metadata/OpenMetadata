@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
-from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
 from metadata.generated.schema.analytics.webAnalyticEventData import (
     WebAnalyticEventData,
 )
@@ -174,3 +174,24 @@ class DataInsightMixin:
         """
         event_type_value = event_type.value
         self.client.delete(f"/analytics/web/events/{event_type_value}/{tmsp}/collect")
+
+    def delete_report_data_at_date(
+        self, report_data_type: ReportDataType, date: str
+    ) -> None:
+        """Delete report data at a specific date for a specific report data type
+
+        Args:
+            report_data_type (ReportDataType): report date type to delete
+            date (str): date for which to delete the report data
+        """
+        self.client.delete(
+            f"/analytics/dataInsights/data/{report_data_type.value}/{date}"
+        )
+
+    def delete_report_data(self, report_data_type: ReportDataType) -> None:
+        """Delete report data for a specific report data type
+
+        Args:
+            report_data_type (ReportDataType): report date type to delete
+        """
+        self.client.delete(f"/analytics/dataInsights/data/{report_data_type.value}")

@@ -19,6 +19,7 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
@@ -45,6 +46,7 @@ public class ClassConverterFactoryTest {
         GCPCredentials.class,
         TableauConnection.class,
         TestServiceConnectionRequest.class,
+        TrinoConnection.class,
         Workflow.class
       })
   void testClassConverterIsSet(Class<?> clazz) {
@@ -53,6 +55,6 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testClassConvertedMapIsNotModified() {
-    assertEquals(17, ClassConverterFactory.getConverterMap().size());
+    assertEquals(18, ClassConverterFactory.getConverterMap().size());
   }
 }

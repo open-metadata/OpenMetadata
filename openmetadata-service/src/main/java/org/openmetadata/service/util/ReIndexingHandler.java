@@ -13,7 +13,8 @@
 
 package org.openmetadata.service.util;
 
-import java.io.IOException;
+import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -30,7 +31,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +43,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
@@ -53,7 +53,7 @@ public class ReIndexingHandler {
   private static ReIndexingHandler instance;
   private static volatile boolean initialized = false;
   private static CollectionDAO dao;
-  private static SearchClient searchClient;
+  private static SearchRepository searchRepository;
   private static ExecutorService threadScheduler;
   private static final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
   private static BlockingQueue<Runnable> taskQueue;
@@ -64,10 +64,10 @@ public class ReIndexingHandler {
     return instance;
   }
 
-  public static void initialize(SearchClient client, CollectionDAO daoObject) {
+  public static void initialize(SearchRepository client) {
     if (!initialized) {
-      searchClient = client;
-      dao = daoObject;
+      searchRepository = client;
+      dao = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       taskQueue = new ArrayBlockingQueue<>(5);
       threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
       instance = new ReIndexingHandler();
@@ -118,7 +118,7 @@ public class ReIndexingHandler {
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
         // Create Job
-        SearchIndexWorkflow job = new SearchIndexWorkflow(dao, searchClient, jobData);
+        SearchIndexWorkflow job = new SearchIndexWorkflow(searchRepository, jobData);
         threadScheduler.submit(job);
         REINDEXING_JOB_MAP.put(jobData.getId(), job);
         return jobData;
@@ -169,7 +169,7 @@ public class ReIndexingHandler {
     REINDEXING_JOB_MAP.remove(jobId);
   }
 
-  public EventPublisherJob getJob(UUID jobId) throws IOException {
+  public EventPublisherJob getJob(UUID jobId) {
     SearchIndexWorkflow job = REINDEXING_JOB_MAP.get(jobId);
     if (job == null) {
       String recordString =
@@ -179,7 +179,7 @@ public class ReIndexingHandler {
     return REINDEXING_JOB_MAP.get(jobId).getJobData();
   }
 
-  public EventPublisherJob getLatestJob() throws IOException {
+  public EventPublisherJob getLatestJob() {
     List<SearchIndexWorkflow> activeJobs = new ArrayList<>(REINDEXING_JOB_MAP.values());
     if (!activeJobs.isEmpty()) {
       return activeJobs.get(activeJobs.size() - 1).getJobData();
@@ -189,11 +189,11 @@ public class ReIndexingHandler {
     }
   }
 
-  public List<EventPublisherJob> getAllJobs() throws IOException {
+  public List<EventPublisherJob> getAllJobs() {
     List<EventPublisherJob> result = new ArrayList<>();
     List<SearchIndexWorkflow> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
     List<EventPublisherJob> activeEventPubJob =
-        activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).collect(Collectors.toList());
+        activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).toList();
     List<EventPublisherJob> jobsFromDatabase =
         JsonUtils.readObjects(
             dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION), EventPublisherJob.class);

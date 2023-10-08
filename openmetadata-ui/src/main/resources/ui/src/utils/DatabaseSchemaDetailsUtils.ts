@@ -14,4 +14,4 @@
 import { TabSpecificField } from '../enums/entity.enum';
 
 export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.USAGE_SUMMARY}`;
+${TabSpecificField.USAGE_SUMMARY}, ${TabSpecificField.DOMAIN}`;

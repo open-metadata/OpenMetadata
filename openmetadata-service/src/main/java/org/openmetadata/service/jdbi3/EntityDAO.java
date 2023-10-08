@@ -19,8 +19,6 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -29,7 +27,6 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -39,6 +36,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
@@ -125,7 +123,7 @@ public interface EntityDAO<T extends EntityInterface> {
   void updateFqnInternal(@Define("mySqlUpdate") String mySqlUpdate, @Define("postgresUpdate") String postgresUpdate);
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id <cond>")
-  String findById(@Define("table") String table, @Bind("id") String id, @Define("cond") String cond);
+  String findById(@Define("table") String table, @BindUUID("id") UUID id, @Define("cond") String cond);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name <cond>")
   String findByName(
@@ -241,7 +239,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("offset") int offset);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
-  boolean exists(@Define("table") String table, @Bind("id") String id);
+  boolean exists(@Define("table") String table, @BindUUID("id") UUID id);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE <nameColumnHash> = :fqnHash)")
   boolean existsByName(
@@ -250,14 +248,14 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindFQN("fqnHash") String fqnHash);
 
   @SqlUpdate("DELETE FROM <table> WHERE id = :id")
-  int delete(@Define("table") String table, @Bind("id") String id);
+  int delete(@Define("table") String table, @BindUUID("id") UUID id);
 
   /** Default methods that interfaces with implementation. Don't override */
-  default void insert(EntityInterface entity, String fqn) throws JsonProcessingException {
+  default void insert(EntityInterface entity, String fqn) {
     insert(getTableName(), getNameHashColumn(), fqn, JsonUtils.pojoToJson(entity));
   }
 
-  default void insert(String nameHash, EntityInterface entity, String fqn) throws JsonProcessingException {
+  default void insert(String nameHash, EntityInterface entity, String fqn) {
     insert(getTableName(), nameHash, fqn, JsonUtils.pojoToJson(entity));
   }
 
@@ -265,7 +263,7 @@ public interface EntityDAO<T extends EntityInterface> {
     update(getTableName(), getNameHashColumn(), fqn, id.toString(), json);
   }
 
-  default void update(EntityInterface entity) throws JsonProcessingException {
+  default void update(EntityInterface entity) {
     update(
         getTableName(),
         getNameHashColumn(),
@@ -274,7 +272,7 @@ public interface EntityDAO<T extends EntityInterface> {
         JsonUtils.pojoToJson(entity));
   }
 
-  default void update(String nameHashColumn, EntityInterface entity) throws JsonProcessingException {
+  default void update(String nameHashColumn, EntityInterface entity) {
     update(
         getTableName(),
         nameHashColumn,
@@ -294,11 +292,11 @@ public interface EntityDAO<T extends EntityInterface> {
     return include == Include.DELETED ? " AND deleted = TRUE" : "";
   }
 
-  default T findEntityById(UUID id, Include include) throws IOException {
-    return jsonToEntity(findById(getTableName(), id.toString(), getCondition(include)), id.toString());
+  default T findEntityById(UUID id, Include include) {
+    return jsonToEntity(findById(getTableName(), id, getCondition(include)), id);
   }
 
-  default T findEntityById(UUID id) throws IOException {
+  default T findEntityById(UUID id) {
     return findEntityById(id, Include.NON_DELETED);
   }
 
@@ -316,34 +314,14 @@ public interface EntityDAO<T extends EntityInterface> {
     return jsonToEntity(findByName(getTableName(), nameHashColumn, fqn, getCondition(include)), fqn);
   }
 
-  default T jsonToEntity(String json, String identity) throws IOException {
+  default T jsonToEntity(String json, Object identity) {
     Class<T> clz = getEntityClass();
     T entity = json != null ? JsonUtils.readValue(json, clz) : null;
     if (entity == null) {
       String entityType = Entity.getEntityTypeFromClass(clz);
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, identity.toString()));
     }
     return entity;
-  }
-
-  default EntityReference findEntityReferenceById(UUID id) throws IOException {
-    return findEntityById(id).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceByName(String fqn) {
-    return findEntityByName(fqn).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceById(UUID id, Include include) throws IOException {
-    return findEntityById(id, include).getEntityReference();
-  }
-
-  default EntityReference findEntityReferenceByName(String fqn, Include include) {
-    return findEntityByName(fqn, include).getEntityReference();
-  }
-
-  default String findJsonById(UUID id, Include include) {
-    return findById(getTableName(), id.toString(), getCondition(include));
   }
 
   default String findJsonByFqn(String fqn, Include include) {
@@ -385,7 +363,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default void exists(UUID id) {
-    if (!exists(getTableName(), id.toString())) {
+    if (!exists(getTableName(), id)) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, id));
     }
@@ -398,7 +376,7 @@ public interface EntityDAO<T extends EntityInterface> {
     }
   }
 
-  default int delete(String id) {
+  default int delete(UUID id) {
     int rowsDeleted = delete(getTableName(), id);
     if (rowsDeleted <= 0) {
       String entityType = Entity.getEntityTypeFromClass(getEntityClass());

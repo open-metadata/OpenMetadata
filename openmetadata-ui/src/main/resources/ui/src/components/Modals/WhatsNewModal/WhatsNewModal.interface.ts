@@ -17,4 +17,7 @@ export type WhatsNewModalProps = {
   visible: boolean;
 };
 
-export type ToggleType = 'features' | 'change-log';
+export enum ToggleType {
+  FEATURES = 'features',
+  CHANGE_LOG = 'change-log',
+}

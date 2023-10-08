@@ -24,13 +24,11 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.quickSightConnection import (
     QuickSightConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.quicksight.models import DataSourceResp
@@ -41,7 +39,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # BoundLimit for MaxResults = MaxResults >= 0 and MaxResults <= 100
-QUICKSIGHT_MAXRESULTS = 100
+QUICKSIGHT_MAX_RESULTS = 100
 
 
 class QuicksightSource(DashboardServiceSource):
@@ -52,8 +50,8 @@ class QuicksightSource(DashboardServiceSource):
     config: WorkflowSource
     metadata: OpenMetadata
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.aws_account_id = self.service_connection.awsAccountId
         self.dashboard_url = None
         self.aws_region = (
@@ -61,18 +59,18 @@ class QuicksightSource(DashboardServiceSource):
         )
         self.default_args = {
             "AwsAccountId": self.aws_account_id,
-            "MaxResults": QUICKSIGHT_MAXRESULTS,
+            "MaxResults": QUICKSIGHT_MAX_RESULTS,
         }
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: QuickSightConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, QuickSightConnection):
             raise InvalidSourceException(
                 f"Expected QuickSightConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _check_pagination(self, listing_method, entity_key) -> Optional[List]:
         entity_summary_list = []
@@ -127,7 +125,7 @@ class QuicksightSource(DashboardServiceSource):
 
     def yield_dashboard(
         self, dashboard_details: dict
-    ) -> Iterable[CreateDashboardRequest]:
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -147,19 +145,13 @@ class QuicksightSource(DashboardServiceSource):
             ],
             service=self.context.dashboard_service.fullyQualifiedName.__root__,
         )
-        yield dashboard_request
+        yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
 
     def yield_dashboard_chart(
         self, dashboard_details: Any
-    ) -> Optional[Iterable[CreateChartRequest]]:
-        """Get chart method
-
-        Args:
-            dashboard_details:
-        Returns:
-            Iterable[CreateChartRequest]
-        """
+    ) -> Iterable[Either[CreateChartRequest]]:
+        """Get chart method"""
         # Each dashboard is guaranteed to have at least one sheet, which represents
         # a chart in the context of QuickSight
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/quicksight.html#QuickSight.Client.describe_dashboard
@@ -176,22 +168,27 @@ class QuicksightSource(DashboardServiceSource):
                     f"https://{self.aws_region}.quicksight.aws.amazon.com/sn/dashboards"
                     f'/{dashboard_details.get("DashboardId")}'
                 )
-                yield CreateChartRequest(
-                    name=chart["SheetId"],
-                    displayName=chart["Name"],
-                    chartType=ChartType.Other.value,
-                    sourceUrl=self.dashboard_url,
-                    service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                yield Either(
+                    right=CreateChartRequest(
+                        name=chart["SheetId"],
+                        displayName=chart["Name"],
+                        chartType=ChartType.Other.value,
+                        sourceUrl=self.dashboard_url,
+                        service=self.context.dashboard_service.fullyQualifiedName.__root__,
+                    )
                 )
-                self.status.scanned(chart["Name"])
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error creating chart [{chart}]: {exc}")
-                continue
+                yield Either(
+                    left=StackTraceError(
+                        name="Chart",
+                        error=f"Error creating chart [{chart}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_dashboard_lineage_details(  # pylint: disable=too-many-locals
         self, dashboard_details: dict, db_service_name: str
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
         """
@@ -228,15 +225,17 @@ class QuicksightSource(DashboardServiceSource):
                             schema_name=data_source_relational_table["Schema"],
                             table_name=data_source_relational_table["Name"],
                         )
-                    except KeyError as err:
-                        logger.error(err)
-                        continue
-                    except ValidationError as err:
-                        logger.error(
-                            f"{err} - error while trying to fetch lineage data source"
+                    except (KeyError, ValidationError) as err:
+                        yield Either(
+                            left=StackTraceError(
+                                name="Lineage",
+                                error=(
+                                    "Error to yield dashboard lineage details for DB service"
+                                    f" name [{db_service_name}]: {err}"
+                                ),
+                                stack_trace=traceback.format_exc(),
+                            )
                         )
-                        logger.debug(traceback.format_exc())
-                        continue
 
                     schema_name = data_source_resp.schema_name
                     table_name = data_source_resp.table_name
@@ -289,7 +288,10 @@ class QuicksightSource(DashboardServiceSource):
                                 to_entity=to_entity, from_entity=from_entity
                             )
         except Exception as exc:  # pylint: disable=broad-except
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}"
+            yield Either(
+                left=StackTraceError(
+                    name="Lineage",
+                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
             )

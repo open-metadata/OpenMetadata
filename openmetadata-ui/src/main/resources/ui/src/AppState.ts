@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { EntityUnion } from 'components/Explore/explore.interface';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { action, makeAutoObservable } from 'mobx';
 import { ClientAuth, NewUser } from 'Models';
 import { reactLocalStorage } from 'reactjs-localstorage';
+import { EntityUnion } from './components/Explore/explore.interface';
 import { LOCALSTORAGE_USER_PROFILES } from './constants/constants';
 import { ResourcePermission } from './generated/entity/policies/accessControl/resourcePermission';
 import {
@@ -44,6 +44,7 @@ class AppState {
     id: string;
     name: string;
     profile: ImageList['image512'];
+    displayName?: string;
   }> = [];
   userProfilePicsLoading: Array<{
     id: string;
@@ -68,6 +69,7 @@ class AppState {
       getAllTeams: action,
       getAllPermissions: action,
       getUserProfilePic: action,
+      getUserDisplayName: action,
       updateUserProfilePic: action,
       loadUserProfilePics: action,
       getProfilePicsLoading: action,
@@ -120,7 +122,8 @@ class AppState {
   updateUserProfilePic(
     id?: string,
     username?: string,
-    profile?: ImageList['image512']
+    profile?: ImageList['image512'],
+    displayName?: string
   ) {
     if (!id && !username) {
       return;
@@ -140,6 +143,7 @@ class AppState {
         id: id || '',
         name: username || '',
         profile,
+        displayName,
       },
     ];
 
@@ -233,6 +237,19 @@ class AppState {
     });
 
     return data?.profile;
+  }
+
+  getUserDisplayName(id?: string, username?: string) {
+    const data = this.userProfilePics.find((item) => {
+      // compare id only if present
+      if (item.id && id) {
+        return item.id === id;
+      } else {
+        return item.name === username;
+      }
+    });
+
+    return data?.displayName;
   }
 
   getAllUserProfilePics() {

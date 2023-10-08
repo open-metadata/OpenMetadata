@@ -13,7 +13,7 @@ Databricks Unity Catalog Source source methods.
 """
 import json
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -22,6 +22,10 @@ from databricks.sdk.service.catalog import TableConstraintList
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createStoredProcedure import (
+    CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -37,22 +41,22 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.table_metadata import OMetaTableConstraints
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    QueryByProcedure,
+)
 from metadata.ingestion.source.database.databricks.connection import get_connection
 from metadata.ingestion.source.database.databricks.models import (
     ColumnJson,
@@ -68,7 +72,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-# pylint: disable=invalid-name,not-callable
+
+# pylint: disable=not-callable
 @classmethod
 def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
     return cls(
@@ -86,15 +91,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
     the unity catalog source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.context.table_views = []
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection: DatabricksConnection = (
             self.config.serviceConnection.__root__.config
         )
@@ -104,14 +108,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatabricksConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -148,19 +152,26 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                         continue
                     yield catalog.name
                 except Exception as exc:
-                    error = f"Unexpected exception to get database name [{catalog.name}]: {exc}"
-                    logger.debug(traceback.format_exc())
-                    logger.warning(error)
-                    self.status.failed(catalog.name, error, traceback.format_exc())
+                    self.status.failed(
+                        StackTraceError(
+                            name=catalog.name,
+                            error=f"Unexpected exception to get database name [{catalog.name}]: {exc}",
+                            stack_trace=traceback.format_exc(),
+                        )
+                    )
 
-    def yield_database(self, database_name: str) -> Iterable[CreateDatabaseRequest]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
-        yield CreateDatabaseRequest(
-            name=database_name,
-            service=self.context.database_service.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseRequest(
+                name=database_name,
+                service=self.context.database_service.fullyQualifiedName,
+            )
         )
 
     def get_database_schema_names(self) -> Iterable[str]:
@@ -187,21 +198,26 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                     continue
                 yield schema.name
             except Exception as exc:
-                error = f"Unexpected exception to get database schema [{schema.name}]: {exc}"
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(schema.name, error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=schema.name,
+                        error=f"Unexpected exception to get database schema [{schema.name}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_database_schema(
         self, schema_name: str
-    ) -> Iterable[CreateDatabaseSchemaRequest]:
+    ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        yield CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=self.context.database.fullyQualifiedName,
+        yield Either(
+            right=CreateDatabaseSchemaRequest(
+                name=schema_name,
+                database=self.context.database.fullyQualifiedName,
+            )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
@@ -248,14 +264,17 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 self.context.table_data = table
                 yield table_name, table_type
             except Exception as exc:
-                error = f"Unexpected exception to get table [{table.Name}]: {exc}"
-                logger.debug(traceback.format_exc())
-                logger.warning(error)
-                self.status.failed(table.Name, error, traceback.format_exc())
+                self.status.failed(
+                    StackTraceError(
+                        name=table.Name,
+                        error=f"Unexpected exception to get table [{table.Name}]: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
+                )
 
     def yield_table(
         self, table_name_and_type: Tuple[str, str]
-    ) -> Iterable[Optional[CreateTableRequest]]:
+    ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -267,6 +286,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         table_constraints = None
         try:
             columns = self.get_columns(table.columns)
+            (
+                primary_constraints,
+                foreign_constraints,
+            ) = self.get_table_constraints(table.table_constraints)
+
+            table_constraints = self.update_table_constraints(
+                primary_constraints, foreign_constraints
+            )
 
             table_request = CreateTableRequest(
                 name=table_name,
@@ -276,7 +303,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 tableConstraints=table_constraints,
                 databaseSchema=self.context.database_schema.fullyQualifiedName,
             )
-            yield table_request
+            yield Either(right=table_request)
 
             if table_type == TableType.View or table.view_definition:
                 self.context.table_views.append(
@@ -291,21 +318,26 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                     )
                 )
 
-            self.add_table_constraint_to_context(table.table_constraints)
             self.register_record(table_request=table_request)
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(traceback.format_exc())
-            logger.warning(error)
-            self.status.failed(table_name, error, traceback.format_exc())
+            yield Either(
+                left=StackTraceError(
+                    name=table_name,
+                    error=f"Unexpected exception to yield table [{table_name}]: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def add_table_constraint_to_context(self, constraints: TableConstraintList) -> None:
+    def get_table_constraints(
+        self, constraints: TableConstraintList
+    ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:
         """
         Function to handle table constraint for the current table and add it to context
         """
+
+        primary_constraints = []
+        foreign_constraints = []
         if constraints and constraints.table_constraints:
-            primary_constraints = []
-            foreign_constraints = []
             for constraint in constraints.table_constraints:
                 if constraint.primary_key_constraint:
                     primary_constraints.append(
@@ -322,26 +354,18 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                             parent_table=constraint.foreign_key_constraint.parent_table,
                         )
                     )
-            self.table_constraints.append(
-                OMetaTableConstraints(
-                    table=self.context.table,
-                    foreign_constraints=foreign_constraints,
-                    constraints=primary_constraints,
-                )
-            )
+        return primary_constraints, foreign_constraints
 
-    def _get_foreign_constraints(
-        self, table_constraints: OMetaTableConstraints
-    ) -> List[TableConstraint]:
+    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
         """
 
-        foreign_constraints = []
-        for constraint in table_constraints.foreign_constraints:
+        table_constraints = []
+        for column in foreign_columns:
             referred_column_fqns = []
-            ref_table_fqn = constraint["parent_table"]
+            ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
             referred_table = fqn.search_table_from_es(
@@ -352,36 +376,42 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 service_name=self.context.database_service.name.__root__,
             )
             if referred_table:
-                for column in constraint["parent_columns"]:
-                    col_fqn = get_column_fqn(table_entity=referred_table, column=column)
+                for parent_column in column.parent_columns:
+                    col_fqn = get_column_fqn(
+                        table_entity=referred_table, column=parent_column
+                    )
                     if col_fqn:
                         referred_column_fqns.append(col_fqn)
-            foreign_constraints.append(
+            else:
+                continue
+
+            table_constraints.append(
                 TableConstraint(
                     constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=constraint["child_columns"],
+                    columns=column.child_columns,
                     referredColumns=referred_column_fqns,
                 )
             )
 
-        return foreign_constraints
+        return table_constraints
 
-    def yield_table_constraints(self) -> Optional[Iterable[OMetaTableConstraints]]:
+    def update_table_constraints(
+        self, table_constraints, foreign_columns
+    ) -> List[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
         """
-        for table_constraints in self.table_constraints:
-            foreign_constraints = self._get_foreign_constraints(table_constraints)
-            if foreign_constraints:
-                if table_constraints.constraints:
-                    table_constraints.constraints.extend(foreign_constraints)
-                else:
-                    table_constraints.constraints = foreign_constraints
-            yield table_constraints
+        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        if foreign_table_constraints:
+            if table_constraints:
+                table_constraints.extend(foreign_table_constraints)
+            else:
+                table_constraints = foreign_table_constraints
+        return table_constraints
 
     def prepare(self):
-        pass
+        """Nothing to prepare"""
 
     def add_complex_datatype_descriptions(
         self, column: Column, column_json: ColumnJson
@@ -421,7 +451,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 f"Unable to add description to complex datatypes for column [{column.name}]: {exc}"
             )
 
-    def get_columns(self, column_data: List[ColumnInfo]) -> Optional[Iterable[Column]]:
+    def get_columns(self, column_data: List[ColumnInfo]) -> Iterable[Column]:
         # process table regular columns info
 
         for column in column_data:
@@ -440,7 +470,7 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
             )
             yield parsed_column
 
-    def yield_view_lineage(self) -> Optional[Iterable[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.table_views if v.view_definition is not None
@@ -452,8 +482,31 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
                 connection_type=self.service_connection.type.value,
             )
 
-    def yield_tag(self, schema_name: str) -> Iterable[OMetaTagAndClassification]:
-        pass
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """No tags being processed"""
+
+    def get_stored_procedures(self) -> Iterable[Any]:
+        """Not implemented"""
+
+    def yield_stored_procedure(
+        self, stored_procedure: Any
+    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+        """Not implemented"""
+
+    def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
+        """Not Implemented"""
+
+    def yield_procedure_query(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[CreateQueryRequest]]:
+        """Not implemented"""
+
+    def yield_procedure_lineage(
+        self, query_by_procedure: QueryByProcedure
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Not implemented"""
 
     def close(self):
-        pass
+        """Nothing to close"""

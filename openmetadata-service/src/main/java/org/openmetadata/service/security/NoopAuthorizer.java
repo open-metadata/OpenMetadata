@@ -13,12 +13,10 @@
 
 package org.openmetadata.service.security;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -31,12 +29,12 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
   @Override
-  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig, Jdbi jdbi) {
+  public void init(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     addAnonymousUser();
   }
 
@@ -76,7 +74,7 @@ public class NoopAuthorizer implements Authorizer {
               .withUpdatedBy(username)
               .withUpdatedAt(System.currentTimeMillis());
       addOrUpdateUser(user);
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to create anonymous user {}", username, e);
     }
   }
@@ -84,9 +82,9 @@ public class NoopAuthorizer implements Authorizer {
   private void addOrUpdateUser(User user) {
     try {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      RestUtil.PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
       LOG.debug("Added anonymous user entry: {}", addedUser);
-    } catch (IOException exception) {
+    } catch (Exception exception) {
       // In HA set up the other server may have already added the user.
       LOG.debug("Caught exception ", exception);
       LOG.debug("Anonymous user entry: {} already exists.", user);

@@ -17,8 +17,10 @@ import {
 } from '../../common/common';
 import {
   SEARCH_ENTITY_DASHBOARD,
+  SEARCH_ENTITY_DATA_MODEL,
   SEARCH_ENTITY_MLMODEL,
   SEARCH_ENTITY_PIPELINE,
+  SEARCH_ENTITY_STORED_PROCEDURE,
   SEARCH_ENTITY_TABLE,
   SEARCH_ENTITY_TOPIC,
 } from '../../constants/constants';
@@ -33,10 +35,28 @@ const FOLLOWING_ENTITIES = [
   SEARCH_ENTITY_TOPIC.topic_1,
   SEARCH_ENTITY_PIPELINE.pipeline_1,
   SEARCH_ENTITY_MLMODEL.mlmodel_2,
+  SEARCH_ENTITY_STORED_PROCEDURE.stored_procedure_2,
+  SEARCH_ENTITY_DATA_MODEL.data_model_2,
 ];
 
 const followEntity = ({ term, serviceName, entity }, isUnfollow) => {
   visitEntityDetailsPage(term, serviceName, entity);
+
+  if (entity === 'dashboardDataModel') {
+    interceptURL(
+      isUnfollow ? 'DELETE' : 'PUT',
+      isUnfollow
+        ? '/api/v1/dashboard/datamodels/*/followers/*'
+        : '/api/v1/dashboard/datamodels/*/followers',
+      'waitAfterFollow'
+    );
+  } else {
+    interceptURL(
+      isUnfollow ? 'DELETE' : 'PUT',
+      isUnfollow ? '/api/v1/*/*/followers/*' : '/api/v1/*/*/followers',
+      'waitAfterFollow'
+    );
+  }
 
   interceptURL(
     isUnfollow ? 'DELETE' : 'PUT',

@@ -22,24 +22,25 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.dagsterConnection import (
     DagsterConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.api.source import InvalidSourceException
+from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.step import WorkflowFatalError
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dagster.models import (
     DagsterPipeline,
     RunStepStats,
     SolidHandle,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
@@ -61,19 +62,17 @@ class DagsterSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DagsterConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DagsterConnection):
             raise InvalidSourceException(
                 f"Expected DagsterConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _get_downstream_tasks(self, job: SolidHandle) -> Optional[List[str]]:
-        """
-        Method to get downstream tasks
-        """
+        """Method to get downstream tasks"""
         down_stream_tasks = []
         if job.solid:
             for tasks in job.solid.inputs or []:
@@ -83,9 +82,7 @@ class DagsterSource(PipelineServiceSource):
         return down_stream_tasks or None
 
     def _get_task_list(self, pipeline_name: str) -> Optional[List[Task]]:
-        """
-        Method to collect all the tasks from dagster and return it in a task list
-        """
+        """Method to collect all the tasks from dagster and return it in a task list"""
         jobs = self.client.get_jobs(
             pipeline_name=pipeline_name,
             repository_name=self.context.repository_name,
@@ -99,6 +96,9 @@ class DagsterSource(PipelineServiceSource):
                         name=job.handleID,
                         displayName=job.handleID,
                         downstreamTasks=self._get_downstream_tasks(job=job),
+                        sourceUrl=self.get_source_url(
+                            pipeline_name=pipeline_name, task_name=job.handleID
+                        ),
                     )
                     task_list.append(task)
                 except Exception as exc:
@@ -111,12 +111,8 @@ class DagsterSource(PipelineServiceSource):
 
     def yield_pipeline(
         self, pipeline_details: DagsterPipeline
-    ) -> Iterable[CreatePipelineRequest]:
-        """
-        Convert a DAG into a Pipeline Entity
-        :param serialized_dag: SerializedDAG from dagster metadata DB
-        :return: Create Pipeline request with tasks
-        """
+    ) -> Iterable[Either[CreatePipelineRequest]]:
+        """Convert a DAG into a Pipeline Entity"""
 
         try:
             pipeline_request = CreatePipelineRequest(
@@ -131,28 +127,34 @@ class DagsterSource(PipelineServiceSource):
                     classification_name=DAGSTER_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
+                sourceUrl=self.get_source_url(
+                    pipeline_name=pipeline_details.name, task_name=None
+                ),
             )
-            yield pipeline_request
+            yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error to yield pipeline for {pipeline_details}: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_details.name,
+                    error=f"Error to yield pipeline for {pipeline_details}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
-    def yield_tag(self, *_, **__) -> OMetaTagAndClassification:
+    def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=[self.context.repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,
             tag_description="Dagster Tag",
-            classification_desciption="Tags associated with dagster entities",
+            classification_description="Tags associated with dagster entities",
             include_tags=self.source_config.includeTags,
         )
 
     def _get_task_status(
         self, run: RunStepStats, task_name: str
-    ) -> Iterable[OMetaPipelineStatus]:
-        """
-        Prepare the OMetaPipelineStatus
-        """
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Prepare the OMetaPipelineStatus"""
         try:
             task_status = TaskStatus(
                 name=task_name,
@@ -174,17 +176,20 @@ class DagsterSource(PipelineServiceSource):
                 pipeline_fqn=self.context.pipeline.fullyQualifiedName.__root__,
                 pipeline_status=pipeline_status,
             )
-            yield pipeline_status_yield
+            yield Either(right=pipeline_status_yield)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error to yield run status for {run}: {exc}")
+            yield Either(
+                left=StackTraceError(
+                    name=run.runId,
+                    error=f"Error to yield run status for {run}: {exc}",
+                    stack_trace=traceback.format_exc(),
+                )
+            )
 
     def yield_pipeline_status(
         self, pipeline_details: DagsterPipeline
-    ) -> OMetaPipelineStatus:
-        """
-        Yield the pipeline and task status
-        """
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Yield the pipeline and task status"""
         for task in self.context.pipeline.tasks or []:
             try:
                 runs = self.client.get_task_runs(
@@ -196,22 +201,23 @@ class DagsterSource(PipelineServiceSource):
                 for run in runs.solidHandle.stepStats.nodes or []:
                     yield from self._get_task_status(run=run, task_name=task.name)
             except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error to yield pipeline status for {pipeline_details}: {exc}"
+                yield Either(
+                    left=StackTraceError(
+                        name=f"{pipeline_details.name} Pipeline Status",
+                        error=f"Error to yield pipeline status for {pipeline_details}: {exc}",
+                        stack_trace=traceback.format_exc(),
+                    )
                 )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: DagsterPipeline
-    ) -> Optional[Iterable[AddLineageRequest]]:
+    ) -> Iterable[Either[AddLineageRequest]]:
         """
         Not implemented, as this connector does not create any lineage
         """
 
     def get_pipelines_list(self) -> Iterable[DagsterPipeline]:
-        """
-        Get List of all pipelines
-        """
+        """Get List of all pipelines"""
         try:
             results = self.client.get_run_list()
             for result in results:
@@ -225,13 +231,26 @@ class DagsterSource(PipelineServiceSource):
                 f"Unable to get pipelines list\n"
                 f"Please check if dagster is running correctly and is in good state: {exc}"
             )
+            raise WorkflowFatalError("Unable to get pipeline list")
 
     def get_pipeline_name(self, pipeline_details: DagsterPipeline) -> str:
-        """
-        Get Pipeline Name
-        """
-
         return pipeline_details.name
 
-    def test_connection(self) -> None:
-        pass
+    def get_source_url(
+        self, pipeline_name: str, task_name: Optional[str]
+    ) -> Optional[str]:
+        """
+        Method to get source url for pipelines and tasks for dagster
+        """
+        try:
+            url = (
+                f"{clean_uri(self.service_connection.host)}/locations/"
+                f"{self.context.repository_location}/jobs/{pipeline_name}/"
+            )
+            if task_name:
+                url = f"{url}{task_name}"
+            return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error to get pipeline url: {exc}")
+        return None

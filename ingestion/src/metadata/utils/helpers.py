@@ -107,11 +107,12 @@ def calculate_execution_time(func):
     @wraps(func)
     def calculate_debug_time(*args, **kwargs):
         start = perf_counter()
-        func(*args, **kwargs)
+        result = func(*args, **kwargs)
         end = perf_counter()
         logger.debug(
             f"{func.__name__} executed in { pretty_print_time_duration(end - start)}"
         )
+        return result
 
     return calculate_debug_time
 

@@ -96,7 +96,6 @@ class DatasourceField(BaseModel):
     id: str
     name: Optional[str]
     upstreamColumns: Optional[List[Union[UpstreamColumn, None]]]
-    fullyQualifiedName: Optional[str]
     description: Optional[str]
 
 
