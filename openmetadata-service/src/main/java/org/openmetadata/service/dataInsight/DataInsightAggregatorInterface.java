@@ -6,13 +6,13 @@ import java.util.List;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 
 public interface DataInsightAggregatorInterface {
-  static final String ENTITY_TYPE = "entityType";
-  static final String SERVICE_NAME = "serviceName";
-  static final String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
-  static final String HAS_OWNER_FRACTION = "hasOwnerFraction";
-  static final String ENTITY_COUNT = "entityCount";
-  static final String TIMESTAMP = "timestamp";
-  static final String ENTITY_TIER = "entityTier";
+  String ENTITY_TYPE = "entityType";
+  String SERVICE_NAME = "serviceName";
+  String COMPLETED_DESCRIPTION_FRACTION = "completedDescriptionFraction";
+  String HAS_OWNER_FRACTION = "hasOwnerFraction";
+  String ENTITY_COUNT = "entityCount";
+  String TIMESTAMP = "timestamp";
+  String ENTITY_TIER = "entityTier";
 
   default DataInsightChartResult process(DataInsightChartResult.DataInsightChartType chartType) throws ParseException {
     List<Object> data = this.aggregate();

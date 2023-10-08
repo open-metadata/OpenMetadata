@@ -23,6 +23,7 @@ import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedT
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -180,6 +181,10 @@ const UpdateDescription = () => {
   useEffect(() => {
     setCurrentDescription(getDescription());
   }, [entityData, columnObject]);
+
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels

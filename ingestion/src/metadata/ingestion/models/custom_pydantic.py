@@ -9,9 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pydantic classes overwritten defaults ones of code generation
-"""
+Pydantic classes overwritten defaults ones of code generation.
 
+This classes are used in the generated module, which should have NO
+dependencies against any other metadata package. This class should
+be self-sufficient with only pydantic at import time.
+"""
+import logging
 import warnings
 from typing import Any, Dict
 
@@ -19,9 +23,7 @@ from pydantic.types import OptionalInt, SecretStr
 from pydantic.utils import update_not_none
 from pydantic.validators import constr_length_validator, str_validator
 
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
+logger = logging.getLogger("metadata")
 
 
 class CustomSecretStr(SecretStr):
@@ -101,6 +103,6 @@ class CustomSecretStr(SecretStr):
                 )
             except Exception as exc:
                 logger.error(
-                    f"Secret value [{secret_id}] not present in the configured secrets manages: {exc}"
+                    f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}"
                 )
         return self._secret_value
