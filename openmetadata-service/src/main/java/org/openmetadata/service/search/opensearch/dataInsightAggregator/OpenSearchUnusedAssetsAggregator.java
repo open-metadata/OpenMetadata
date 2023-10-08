@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import os.org.apache.lucene.search.TotalHits;
 import org.openmetadata.service.dataInsight.UnusedAssetsAggregator;
+import os.org.apache.lucene.search.TotalHits;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
 
