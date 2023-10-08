@@ -140,7 +140,7 @@ public class OpenSearchClient implements SearchClient {
   private boolean isClientAvailable;
 
   static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
+    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
