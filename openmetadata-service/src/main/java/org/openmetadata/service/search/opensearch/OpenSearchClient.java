@@ -80,72 +80,72 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
-import org.opensearch.action.ActionListener;
-import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.opensearch.action.bulk.BulkItemResponse;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.action.delete.DeleteRequest;
-import org.opensearch.action.delete.DeleteResponse;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.action.support.WriteRequest;
-import org.opensearch.action.support.master.AcknowledgedResponse;
-import org.opensearch.action.update.UpdateRequest;
-import org.opensearch.action.update.UpdateResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestClient;
-import org.opensearch.client.RestClientBuilder;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.CreateIndexResponse;
-import org.opensearch.client.indices.GetIndexRequest;
-import org.opensearch.client.indices.PutMappingRequest;
-import org.opensearch.common.lucene.search.function.CombineFunction;
-import org.opensearch.common.settings.Settings;
-import org.opensearch.common.unit.Fuzziness;
-import org.opensearch.common.unit.TimeValue;
-import org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import org.opensearch.common.xcontent.NamedXContentRegistry;
-import org.opensearch.common.xcontent.XContentParser;
-import org.opensearch.common.xcontent.XContentType;
-import org.opensearch.index.query.BoolQueryBuilder;
-import org.opensearch.index.query.MatchQueryBuilder;
-import org.opensearch.index.query.MultiMatchQueryBuilder;
-import org.opensearch.index.query.Operator;
-import org.opensearch.index.query.QueryBuilder;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.index.query.QueryStringQueryBuilder;
-import org.opensearch.index.query.RangeQueryBuilder;
-import org.opensearch.index.query.ScriptQueryBuilder;
-import org.opensearch.index.query.TermQueryBuilder;
-import org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
-import org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.opensearch.index.reindex.BulkByScrollResponse;
-import org.opensearch.index.reindex.DeleteByQueryRequest;
-import org.opensearch.index.reindex.UpdateByQueryRequest;
-import org.opensearch.script.Script;
-import org.opensearch.script.ScriptType;
-import org.opensearch.search.SearchModule;
-import org.opensearch.search.aggregations.AggregationBuilder;
-import org.opensearch.search.aggregations.AggregationBuilders;
-import org.opensearch.search.aggregations.BucketOrder;
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-import org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
-import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
-import org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
-import org.opensearch.search.builder.SearchSourceBuilder;
-import org.opensearch.search.fetch.subphase.FetchSourceContext;
-import org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.opensearch.search.sort.SortOrder;
-import org.opensearch.search.suggest.Suggest;
-import org.opensearch.search.suggest.SuggestBuilder;
-import org.opensearch.search.suggest.SuggestBuilders;
-import org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
-import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
+import os.org.opensearch.action.ActionListener;
+import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
+import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
+import os.org.opensearch.action.bulk.BulkItemResponse;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.action.delete.DeleteRequest;
+import os.org.opensearch.action.delete.DeleteResponse;
+import os.org.opensearch.action.search.SearchResponse;
+import os.org.opensearch.action.support.WriteRequest;
+import os.org.opensearch.action.support.master.AcknowledgedResponse;
+import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.action.update.UpdateResponse;
+import os.org.opensearch.client.RequestOptions;
+import os.org.opensearch.client.RestClient;
+import os.org.opensearch.client.RestClientBuilder;
+import os.org.opensearch.client.RestHighLevelClient;
+import os.org.opensearch.client.indices.CreateIndexRequest;
+import os.org.opensearch.client.indices.CreateIndexResponse;
+import os.org.opensearch.client.indices.GetIndexRequest;
+import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.common.lucene.search.function.CombineFunction;
+import os.org.opensearch.common.settings.Settings;
+import os.org.opensearch.common.unit.Fuzziness;
+import os.org.opensearch.common.unit.TimeValue;
+import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
+import os.org.opensearch.common.xcontent.NamedXContentRegistry;
+import os.org.opensearch.common.xcontent.XContentParser;
+import os.org.opensearch.common.xcontent.XContentType;
+import os.org.opensearch.index.query.BoolQueryBuilder;
+import os.org.opensearch.index.query.MatchQueryBuilder;
+import os.org.opensearch.index.query.MultiMatchQueryBuilder;
+import os.org.opensearch.index.query.Operator;
+import os.org.opensearch.index.query.QueryBuilder;
+import os.org.opensearch.index.query.QueryBuilders;
+import os.org.opensearch.index.query.QueryStringQueryBuilder;
+import os.org.opensearch.index.query.RangeQueryBuilder;
+import os.org.opensearch.index.query.ScriptQueryBuilder;
+import os.org.opensearch.index.query.TermQueryBuilder;
+import os.org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
+import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
+import os.org.opensearch.index.reindex.BulkByScrollResponse;
+import os.org.opensearch.index.reindex.DeleteByQueryRequest;
+import os.org.opensearch.index.reindex.UpdateByQueryRequest;
+import os.org.opensearch.script.Script;
+import os.org.opensearch.script.ScriptType;
+import os.org.opensearch.search.SearchModule;
+import os.org.opensearch.search.aggregations.AggregationBuilder;
+import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.BucketOrder;
+import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
+import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
+import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
+import os.org.opensearch.search.builder.SearchSourceBuilder;
+import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
+import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
+import os.org.opensearch.search.sort.SortOrder;
+import os.org.opensearch.search.suggest.Suggest;
+import os.org.opensearch.search.suggest.SuggestBuilder;
+import os.org.opensearch.search.suggest.SuggestBuilders;
+import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
+import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -378,7 +378,7 @@ public class OpenSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
+                new os.org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
@@ -387,8 +387,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
-    org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(wildcardQuery);
     searchRequest.source(searchSourceBuilder);
@@ -398,7 +398,8 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
-    org.opensearch.action.search.SearchRequest searchRequest = new org.opensearch.action.search.SearchRequest(index);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
@@ -426,7 +427,7 @@ public class OpenSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+                new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
@@ -476,8 +477,8 @@ public class OpenSearchClient implements SearchClient {
         .fetchSource(
             new FetchSourceContext(
                 request.fetchSource(), request.getIncludeSourceFields().toArray(String[]::new), new String[] {}));
-    org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
     return Response.status(OK).entity(suggest.toString()).build();
@@ -1124,7 +1125,7 @@ public class OpenSearchClient implements SearchClient {
       DataInsightChartResult.DataInsightChartType chartType,
       String indexName)
       throws IOException, ParseException {
-    org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
+    os.org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
         buildSearchRequest(scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
     SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
     DataInsightChartResult processedDataTotalAssets =
@@ -1155,7 +1156,7 @@ public class OpenSearchClient implements SearchClient {
       String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException {
-    org.opensearch.action.search.SearchRequest searchRequest =
+    os.org.opensearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
@@ -1208,7 +1209,7 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private static org.opensearch.action.search.SearchRequest buildSearchRequest(
+  private static os.org.opensearch.action.search.SearchRequest buildSearchRequest(
       Long startTs,
       Long endTs,
       String tier,
@@ -1233,8 +1234,8 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
     }
 
-    org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest(dataReportIndex);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(dataReportIndex);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
