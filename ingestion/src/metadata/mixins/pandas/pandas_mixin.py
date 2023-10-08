@@ -95,7 +95,6 @@ class PandasInterfaceMixin:
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
             ),
-            is_profiler=True,
         )
         if data:
             random.shuffle(data)

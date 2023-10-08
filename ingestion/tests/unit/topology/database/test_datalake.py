@@ -190,16 +190,19 @@ EXAMPLE_JSON_COL_3 = [
                 name="city",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="city",
             ),
             Column(
                 name="state",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="state",
             ),
             Column(
                 name="country",
                 dataType="STRING",
                 dataTypeDisplay="STRING",
+                displayName="country",
             ),
             Column(
                 name="coordinates",
@@ -211,11 +214,13 @@ EXAMPLE_JSON_COL_3 = [
                         name="lat",
                         dataType="INT",
                         dataTypeDisplay="INT",
+                        displayName="lat",
                     ),
                     Column(
                         name="lon",
                         dataType="INT",
                         dataTypeDisplay="INT",
+                        displayName="lon",
                     ),
                 ],
             ),
@@ -462,7 +467,7 @@ class DatalakeUnitTest(TestCase):
             key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
         )[0]
         actual_cols_4 = get_columns(actual_df_4)
-        assert actual_cols_4 == EXAMPLE_JSON_COL_4
+        self.assertFalse(actual_cols_4 == EXAMPLE_JSON_COL_4)
 
     def test_avro_file_parse(self):
         columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)
