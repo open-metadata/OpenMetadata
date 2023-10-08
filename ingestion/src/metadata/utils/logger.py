@@ -178,7 +178,7 @@ def log_ansi_encoded_string(
 @singledispatch
 def get_log_name(record: Entity) -> Optional[str]:
     try:
-        return f"{type(record).__name__} [{record.name.__root__}]"
+        return f"{type(record).__name__} [{getattr(record, 'name', record.entity.name).__root__}]"
     except Exception:
         return str(record)
 

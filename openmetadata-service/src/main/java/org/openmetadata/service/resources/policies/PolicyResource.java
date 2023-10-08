@@ -108,7 +108,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @Override
-  public void upgrade() throws IOException {
+  public void upgrade() {
     // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
     try {
       Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);

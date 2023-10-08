@@ -39,17 +39,17 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class OpenMetadataConnectionBuilder {
 
-  AuthProvider authProvider;
+  final AuthProvider authProvider;
   String bot;
-  Object securityConfig;
+  final Object securityConfig;
   private final VerifySSL verifySSL;
   private final String openMetadataURL;
   private final String clusterName;
   private final SecretsManagerProvider secretsManagerProvider;
   private final SecretsManagerClientLoader secretsManagerLoader;
   private final Object openMetadataSSLConfig;
-  BotRepository botRepository;
-  UserRepository userRepository;
+  final BotRepository botRepository;
+  final UserRepository userRepository;
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);

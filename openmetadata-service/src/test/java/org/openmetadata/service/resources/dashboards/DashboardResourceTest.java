@@ -226,7 +226,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   public void compareEntities(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {}
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;
     }

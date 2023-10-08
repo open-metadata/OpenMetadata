@@ -674,7 +674,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     assertColumns(expected.getColumns(), actualDataModel.getColumns());
   }
 
-  private void assertFileFormats(List<ContainerFileFormat> expected, String actual) throws IOException {
+  private void assertFileFormats(List<ContainerFileFormat> expected, String actual) {
     List<ContainerFileFormat> actualFormats = JsonUtils.readObjects(actual, ContainerFileFormat.class);
     assertListProperty(expected, actualFormats, (c1, c2) -> assertEquals(c1.name(), c2.name()));
   }
