@@ -212,18 +212,6 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      ActionListener<AcknowledgedResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(AcknowledgedResponse acknowledgedResponse) {
-              LOG.debug("Created successfully: " + acknowledgedResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases());
       aliases.add(indexMapping.getAlias());
       IndicesAliasesRequest.AliasActions aliasAction =
@@ -232,7 +220,7 @@ public class ElasticSearchClient implements SearchClient {
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
     } catch (Exception e) {
       LOG.error(String.format("Failed to create alias for %s due to", indexMapping.getIndexName()), e);
     }

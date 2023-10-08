@@ -41,7 +41,12 @@
     </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
-      <artifactId>openmetadata-shaded-deps</artifactId>
+      <artifactId>elasticsearch-deps</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>opensearch-deps</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

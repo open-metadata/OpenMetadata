@@ -47,7 +47,6 @@ import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
-import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -192,13 +191,13 @@ public class OpenSearchClient implements SearchClient {
         // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
-        LOG.error("Failed to create Elastic Search indexes due to", e);
+        LOG.error("Failed to create Open Search indexes due to", e);
         return false;
       }
       return true;
     } else {
       LOG.error(
-          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
+          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
       return false;
     }
   }
@@ -206,27 +205,15 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      ActionListener<AcknowledgedResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(AcknowledgedResponse acknowledgedResponse) {
-              LOG.debug("Created successfully: " + acknowledgedResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
       List<String> aliases = indexMapping.getParentAliases();
       aliases.add(indexMapping.getAlias());
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexMappingFile())
+              .index(indexMapping.getIndexName())
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
     } catch (Exception e) {
       LOG.error(String.format("Failed to create alias for %s due to", indexMapping.getIndexName()), e);
     }
@@ -240,7 +227,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Elastic Search index %s due to", indexMapping.getIndexName()), e);
+      LOG.error(String.format("Failed to Update Open Search index %s due to", indexMapping.getIndexName()), e);
     }
   }
 
@@ -251,7 +238,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
       LOG.debug("{} Deleted {}", indexMapping.getIndexName(), deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
+      LOG.error("Failed to delete Open Search indexes due to", e);
     }
   }
 
@@ -359,11 +346,11 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
+    /* for performance reasons OpenSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
     however in most cases for search results an approximate value is good enough.
     we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
+    https://github.com/Open/Opensearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
             request.fetchSource(), request.getIncludeSourceFields().toArray(String[]::new), new String[] {}));
@@ -442,12 +429,12 @@ public class OpenSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
+              LOG.debug("Entity Updated successfully: " + updateResponse.toString());
             }
 
             @Override
             public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
+              LOG.error("Entity Update failed: " + e.getMessage());
             }
           };
       client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
@@ -933,7 +920,7 @@ public class OpenSearchClient implements SearchClient {
       ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
       DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
       deleteByQueryRequest.setQuery(scriptQuery);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
     }
   }
 
@@ -941,7 +928,7 @@ public class OpenSearchClient implements SearchClient {
   public void deleteEntity(String indexName, String docId) {
     if (isClientAvailable) {
       DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
-      deleteEntityFromElasticSearch(deleteRequest);
+      deleteEntityFromOpenSearch(deleteRequest);
     }
   }
 
@@ -954,7 +941,7 @@ public class OpenSearchClient implements SearchClient {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
       deleteByQueryRequest.setQuery(queryBuilder);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
     }
   }
 
@@ -980,7 +967,7 @@ public class OpenSearchClient implements SearchClient {
       updateByQueryRequest.setQuery(queryBuilder);
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
       updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
+      updateOpenSearchByQuery(updateByQueryRequest);
     }
   }
 
@@ -1008,11 +995,11 @@ public class OpenSearchClient implements SearchClient {
               updates.getKey(),
               JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
       updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
+      updateOpenSearchByQuery(updateByQueryRequest);
     }
   }
 
-  private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
+  private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
@@ -1035,26 +1022,26 @@ public class OpenSearchClient implements SearchClient {
   public void updateOpenSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       ActionListener<UpdateResponse> listener =
           new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
+              LOG.debug("Entity Updated successfully: " + updateResponse.toString());
             }
 
             @Override
             public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
+              LOG.error("Entity Update failed: " + e.getMessage());
             }
           };
       client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
     }
   }
 
-  private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
+  private void deleteEntityFromOpenSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       ActionListener<DeleteResponse> listener =
           new ActionListener<>() {
             @Override
@@ -1072,7 +1059,7 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
+  private void deleteEntityFromOpenSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefresh(true);
       ActionListener<BulkByScrollResponse> listener =
