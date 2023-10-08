@@ -130,7 +130,7 @@ public class MigrationUtil {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     try {
-        // there is no way to list the glossary terms using repository as the relationship is broken.
+      // there is no way to list the glossary terms using repository as the relationship is broken.
       handle
           .createQuery(GLOSSARY_TERM_LIST_QUERY)
           .mapToMap()
