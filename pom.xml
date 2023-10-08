@@ -108,7 +108,7 @@
     This compatibility broken in 7.14, so lets keep this version pinned to 7.13.x
      -->
     <elasticsearch.version>7.16.3</elasticsearch.version>
-    <opensearch.version>1.3.0</opensearch.version>
+    <opensearch.version>1.3.12</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.15</openapiswagger.version>
     <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
