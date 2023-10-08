@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
@@ -41,8 +42,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
       return {
         isOver: monitor.isOver(),
-        dropClassName:
-          dragIndex < (index ?? 0) ? 'drop-over-downward' : 'drop-over-upward',
+        dropClassName: dragIndex !== index ? 'drop-over-child' : '',
       };
     },
     hover: () => {
@@ -56,7 +56,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
   // here we are passing the drag record
   const [{ isDragging }, drag] = useDrag({
     type: DRAGGABLE_BODY_ROW,
-    item: { record },
+    item: { record, index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -71,7 +71,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
   return (
     <tr
-      className={`${className} ${isOver ? dropClassName : ''}`}
+      className={classNames(isOver ? dropClassName : '')}
       ref={ref}
       style={{
         cursor: 'move',
