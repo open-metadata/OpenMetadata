@@ -16,9 +16,7 @@ from typing import List
 
 import pytest
 
-from metadata.ingestion.api.sink import SinkStatus
 from metadata.ingestion.api.status import Status
-
 from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
@@ -79,7 +77,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "snowflake"
 
     def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: SinkStatus
+        self, source_status: Status, sink_status: Status
     ) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
