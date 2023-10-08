@@ -19,9 +19,6 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -53,12 +50,11 @@ class DatabricksUnityCatalogLineageSource(Source):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.client = DatabricksClient(self.service_connection)
@@ -76,7 +72,7 @@ class DatabricksUnityCatalogLineageSource(Source):
         """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
@@ -84,7 +80,7 @@ class DatabricksUnityCatalogLineageSource(Source):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _get_lineage_details(
         self, from_table: Table, to_table: Table, databricks_table_fqn: str

@@ -37,8 +37,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
-  public TagRepository(CollectionDAO dao) {
-    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, dao.tagDAO(), dao, "", "");
+  public TagRepository() {
+    super(TagResource.TAG_COLLECTION_PATH, Entity.TAG, Tag.class, Entity.getCollectionDAO().tagDAO(), "", "");
     supportsSearch = true;
   }
 

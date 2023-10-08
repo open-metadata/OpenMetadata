@@ -24,12 +24,11 @@ import org.openmetadata.service.resources.services.mlmodel.MlModelServiceResourc
 public class MlModelServiceRepository extends ServiceEntityRepository<MlModelService, MlModelConnection> {
   private static final String UPDATE_FIELDS = "owner,connection";
 
-  public MlModelServiceRepository(CollectionDAO dao) {
+  public MlModelServiceRepository() {
     super(
         MlModelServiceResource.COLLECTION_PATH,
         Entity.MLMODEL_SERVICE,
-        dao,
-        dao.mlModelServiceDAO(),
+        Entity.getCollectionDAO().mlModelServiceDAO(),
         MlModelConnection.class,
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);

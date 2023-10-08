@@ -6,7 +6,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -64,7 +63,7 @@ public class UserTokenCache {
 
   static class UserTokenLoader extends CacheLoader<String, HashSet<String>> {
     @Override
-    public HashSet<String> load(@CheckForNull String userName) throws IOException {
+    public HashSet<String> load(@CheckForNull String userName) {
       HashSet<String> result = new HashSet<>();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       User user =

@@ -30,15 +30,18 @@ import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
-const color = '';
-
 const TagsV1 = ({
   tag,
   startWith,
   className,
   showOnlyName = false,
+  isVersionPage = false,
 }: TagsV1Props) => {
   const history = useHistory();
+  const color = useMemo(
+    () => (isVersionPage ? undefined : tag.style?.color),
+    [tag]
+  );
 
   const isGlossaryTag = useMemo(
     () => tag.source === TagSource.Glossary,
@@ -94,7 +97,7 @@ const TagsV1 = ({
   const tagColorBar = useMemo(
     () =>
       color ? (
-        <div className="tag-color-bar" style={{ background: color }} />
+        <div className="tag-color-bar" style={{ borderColor: color }} />
       ) : null,
     [color]
   );
@@ -104,7 +107,17 @@ const TagsV1 = ({
       <div className="d-flex w-full">
         {tagColorBar}
         <div className="d-flex items-center p-x-xs w-full">
-          {startIcon}
+          {tag.style?.iconURL ? (
+            <img
+              className="m-r-xss"
+              data-testid="icon"
+              height={12}
+              src={tag.style.iconURL}
+              width={12}
+            />
+          ) : (
+            startIcon
+          )}
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"
@@ -114,7 +127,7 @@ const TagsV1 = ({
         </div>
       </div>
     ),
-    [startIcon, tagName, tag.tagFQN, tagColorBar]
+    [startIcon, tagName, tag, tagColorBar]
   );
 
   const tagChip = useMemo(
@@ -122,7 +135,11 @@ const TagsV1 = ({
       <Tag
         className={classNames(className, 'tag-chip tag-chip-content')}
         data-testid="tags"
-        style={{ backgroundColor: reduceColorOpacity(color, 0.1) }}
+        style={
+          color
+            ? { backgroundColor: reduceColorOpacity(color, 0.1) }
+            : undefined
+        }
         onClick={() => redirectLink()}>
         {tagContent}
       </Tag>

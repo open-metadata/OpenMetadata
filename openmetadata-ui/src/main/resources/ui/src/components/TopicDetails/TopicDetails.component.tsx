@@ -40,7 +40,7 @@ import { Topic } from '../../generated/entity/data/topic';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagLabel } from '../../generated/type/schema';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { restoreTopic } from '../../rest/topicsAPI';
 import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import {
@@ -49,7 +49,7 @@ import {
 } from '../../utils/EntityUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -226,12 +226,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && topicDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];

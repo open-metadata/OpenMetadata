@@ -21,9 +21,6 @@ from metadata.generated.schema.entity.data.mlmodel import (
     MlModel,
     MlStore,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.mlmodelService import (
     MlModelConnection,
     MlModelService,
@@ -107,12 +104,11 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config

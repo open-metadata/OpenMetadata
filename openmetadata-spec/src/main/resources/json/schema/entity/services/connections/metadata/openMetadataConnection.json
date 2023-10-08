@@ -182,6 +182,11 @@
       "type": "boolean",
       "default": false
     },
+    "storeServiceConnection": {
+      "description": "If set to true, when creating a service during the ingestion we will store its Service Connection. Otherwise, the ingestion will create a bare service without connection details.",
+      "type": "boolean",
+      "default": true
+    },
     "elasticsSearch": {
       "description": "Configuration for Sink Component in the OpenMetadata Ingestion Framework.",
       "type": "object",

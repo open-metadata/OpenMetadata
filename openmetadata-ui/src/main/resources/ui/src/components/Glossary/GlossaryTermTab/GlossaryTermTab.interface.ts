@@ -33,12 +33,5 @@ export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
 
 export type MoveGlossaryTermType = {
   from: GlossaryTerm;
-  to: GlossaryTerm;
+  to?: GlossaryTerm;
 };
-
-export interface DraggableBodyRowProps
-  extends React.HTMLAttributes<HTMLTableRowElement> {
-  index: number;
-  handleMoveRow: (dragRecord: GlossaryTerm, dropRecord: GlossaryTerm) => void;
-  record: GlossaryTerm;
-}

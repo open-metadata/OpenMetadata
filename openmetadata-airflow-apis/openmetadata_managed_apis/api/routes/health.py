@@ -18,9 +18,9 @@ from openmetadata_managed_apis.operations.health import health_response
 from openmetadata_managed_apis.utils.logger import routes_logger
 
 try:
-    from importlib.metadata import version
+    pass
 except ImportError:
-    from importlib_metadata import version
+    pass
 
 logger = routes_logger()
 

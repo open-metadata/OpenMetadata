@@ -100,8 +100,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private void sendReportsToTeams(
-      SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws IOException {
+      SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);

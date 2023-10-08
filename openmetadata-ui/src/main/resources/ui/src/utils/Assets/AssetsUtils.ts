@@ -95,6 +95,7 @@ export const getAPIfromSource = (
     case EntityType.MLMODEL_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -140,6 +141,7 @@ export const getEntityAPIfromSource = (
     case EntityType.MLMODEL_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -158,6 +160,14 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.CONTAINER]: SearchIndex.CONTAINER,
     [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
     [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
+    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
+    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
+    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
+    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
+    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
+    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
+    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
+    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
   };
 
   if (

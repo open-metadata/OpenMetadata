@@ -141,7 +141,7 @@ class LookerUnitTest(TestCase):
         # This already validates that the source can be initialized
         self.looker: LookerSource = LookerSource.create(
             MOCK_LOOKER_CONFIG["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
         self.looker.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE

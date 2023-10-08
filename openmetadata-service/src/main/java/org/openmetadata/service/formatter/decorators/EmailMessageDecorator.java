@@ -16,7 +16,6 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +63,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildMessage(ChangeEvent event) throws IOException {
+  public EmailMessage buildMessage(ChangeEvent event) {
     EmailMessage emailMessage = new EmailMessage();
     emailMessage.setUserName(event.getUserName());
     if (event.getEntity() != null) {

@@ -32,6 +32,13 @@ def _(element, compiler, **kw):
     return f"SUM(CAST({proc} AS BIGINT))"
 
 
+@compiles(SumFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    """Cast to BIGINT to address cannot cast nan to bigint"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(TRY_CAST({proc} AS BIGINT))"
+
+
 @compiles(SumFn, Dialects.BigQuery)
 def _(element, compiler, **kw):
     """Handle case where column type is INTEGER but SUM returns a NUMBER"""

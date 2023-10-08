@@ -615,6 +615,11 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .contains(name)
     .should('exist');
+  if (term.color) {
+    cy.get(
+      '[data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="icon"]'
+    ).should('be.visible');
+  }
 };
 
 export const addUser = (username, email) => {

@@ -23,8 +23,9 @@ import {
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -51,6 +52,7 @@ import {
 import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   StatusClass,
@@ -62,8 +64,8 @@ import {
   getTableExpandableConfig,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
 import {
-  DraggableBodyRowProps,
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
@@ -91,6 +93,7 @@ const GlossaryTermTab = ({
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isTableHovered, setIsTableHovered] = useState(false);
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -216,8 +219,14 @@ const GlossaryTermTab = ({
   );
 
   const handleMoveRow = useCallback(
-    async (dragRecord: GlossaryTerm, dropRecord: GlossaryTerm) => {
-      if (dragRecord.id === dropRecord.id) {
+    async (dragRecord: GlossaryTerm, dropRecord?: GlossaryTerm) => {
+      const dropRecordFqnPart =
+        Fqn.split(dragRecord.fullyQualifiedName).length === 2;
+
+      if (isUndefined(dropRecord) && dropRecordFqnPart) {
+        return;
+      }
+      if (dragRecord.id === dropRecord?.id) {
         return;
       }
 
@@ -230,14 +239,18 @@ const GlossaryTermTab = ({
     []
   );
 
+  const handleTableHover = (value: boolean) => setIsTableHovered(value);
+
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
       setIsTableLoading(true);
       const newTermData = {
         ...movedGlossaryTerm.from,
-        parent: {
-          fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
-        },
+        parent: isUndefined(movedGlossaryTerm.to)
+          ? null
+          : {
+              fullyQualifiedName: movedGlossaryTerm.to.fullyQualifiedName,
+            },
       };
       const jsonPatch = compare(movedGlossaryTerm.from, newTermData);
 
@@ -249,6 +262,7 @@ const GlossaryTermTab = ({
       } finally {
         setIsTableLoading(false);
         setIsModalOpen(false);
+        setIsTableHovered(false);
       }
     }
   };
@@ -256,15 +270,19 @@ const GlossaryTermTab = ({
   const onTableRow: TableProps<ModifiedGlossaryTerm>['onRow'] = (
     record,
     index
-  ) => {
-    const attr = {
+  ) =>
+    ({
       index,
       handleMoveRow,
+      handleTableHover,
       record,
-    };
+    } as DraggableBodyRowProps<GlossaryTerm>);
 
-    return attr as DraggableBodyRowProps;
-  };
+  const onTableHeader: TableProps<ModifiedGlossaryTerm>['onHeaderRow'] = () =>
+    ({
+      handleMoveRow,
+      handleTableHover,
+    } as DraggableBodyRowProps<GlossaryTerm>);
 
   const toggleExpandAll = () => {
     if (expandedRowKeys.length === childGlossaryTerms.length) {
@@ -275,6 +293,11 @@ const GlossaryTermTab = ({
       );
     }
   };
+
+  const onDragConfirmationModalClose = useCallback(() => {
+    setIsModalOpen(false);
+    setIsTableHovered(false);
+  }, []);
 
   useEffect(() => {
     if (childGlossaryTerms) {
@@ -335,7 +358,9 @@ const GlossaryTermTab = ({
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
-              className="drop-over-background"
+              className={classNames('drop-over-background', {
+                'drop-over-table': isTableHovered,
+              })}
               columns={columns}
               components={TABLE_CONSTANTS}
               dataSource={glossaryTerms}
@@ -346,6 +371,7 @@ const GlossaryTermTab = ({
               scroll={{ x: true }}
               size="small"
               tableLayout="auto"
+              onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />
           </DndProvider>
@@ -364,15 +390,17 @@ const GlossaryTermTab = ({
           title={t('label.move-the-entity', {
             entity: t('label.glossary-term'),
           })}
-          onCancel={() => setIsModalOpen(false)}
+          onCancel={onDragConfirmationModalClose}
           onOk={handleChangeGlossaryTerm}>
           <Transi18next
             i18nKey="message.entity-transfer-message"
             renderElement={<strong />}
             values={{
               from: movedGlossaryTerm?.from.name,
-              to: movedGlossaryTerm?.to.name,
-              entity: t('label.term-lowercase'),
+              to: movedGlossaryTerm?.to?.name ?? getEntityName(selectedData),
+              entity: isUndefined(movedGlossaryTerm?.to)
+                ? ''
+                : t('label.term-lowercase'),
             }}
           />
         </Modal>
