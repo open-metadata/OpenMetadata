@@ -45,7 +45,6 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
@@ -117,12 +116,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(
-        entityType,
-        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      )
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
     );
     setActiveThread();
   };
@@ -203,15 +197,16 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    const userFilter =
-      isUserEntity && currentUser?.isAdmin
+    const filter = isUserEntity
+      ? currentUser?.isAdmin
         ? FeedFilter.ALL
-        : FeedFilter.OWNER_OR_FOLLOWS;
+        : FeedFilter.OWNER_OR_FOLLOWS
+      : undefined;
 
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : userFilter,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isUserEntity, currentUser]);
 

@@ -279,7 +279,7 @@ export const DataAssetsHeader = ({
     history.push(
       getEntityDetailLink(
         entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName),
+        dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
         ActivityFeedTabs.TASKS
       )

@@ -113,6 +113,7 @@ import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import './EntityVersionPage.less';
 
@@ -157,6 +158,7 @@ const EntityVersionPage: FunctionComponent = () => {
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
   const backHandler = useCallback(() => {
+    const decodedEntityFQN = getDecodedFqn(entityFQN);
     switch (entityType) {
       case EntityType.TABLE:
         history.push(getTableTabPath(entityFQN, tab));
@@ -164,27 +166,27 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
 
       case EntityType.TOPIC:
-        history.push(getTopicDetailsPath(entityFQN, tab));
+        history.push(getTopicDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.DASHBOARD:
-        history.push(getDashboardDetailsPath(entityFQN, tab));
+        history.push(getDashboardDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.PIPELINE:
-        history.push(getPipelineDetailsPath(entityFQN, tab));
+        history.push(getPipelineDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.MLMODEL:
-        history.push(getMlModelDetailsPath(entityFQN, tab));
+        history.push(getMlModelDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.CONTAINER:
-        history.push(getContainerDetailPath(entityFQN, tab));
+        history.push(getContainerDetailPath(decodedEntityFQN, tab));
 
         break;
 
@@ -194,12 +196,12 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
 
       case EntityType.DASHBOARD_DATA_MODEL:
-        history.push(getDataModelDetailsPath(entityFQN, tab));
+        history.push(getDataModelDetailsPath(decodedEntityFQN, tab));
 
         break;
 
       case EntityType.STORED_PROCEDURE:
-        history.push(getStoredProcedureDetailsPath(entityFQN, tab));
+        history.push(getStoredProcedureDetailsPath(decodedEntityFQN, tab));
 
         break;
 
@@ -353,14 +355,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getDashboardByFqn(entityFQN, '');
 
           setEntityId(id);
 
@@ -577,7 +572,6 @@ const EntityVersionPage: FunctionComponent = () => {
           <TableVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData as Table}
-            datasetFQN={entityFQN}
             deleted={currentVersionData.deleted}
             domain={domain}
             entityPermissions={entityPermissions}
@@ -603,7 +597,6 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedTopicName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -642,7 +635,6 @@ const EntityVersionPage: FunctionComponent = () => {
             owner={owner}
             slashedPipelineName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -673,7 +665,6 @@ const EntityVersionPage: FunctionComponent = () => {
           <ContainerVersion
             backHandler={backHandler}
             breadCrumbList={slashedEntityName}
-            containerFQN={entityFQN}
             currentVersionData={currentVersionData as Container}
             deleted={currentVersionData.deleted}
             domain={domain}
@@ -698,7 +689,6 @@ const EntityVersionPage: FunctionComponent = () => {
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
             owner={owner}
-            searchIndexFQN={entityFQN}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -712,14 +702,12 @@ const EntityVersionPage: FunctionComponent = () => {
           <DataModelVersion
             backHandler={backHandler}
             currentVersionData={currentVersionData}
-            dataModelFQN={entityFQN}
             deleted={currentVersionData.deleted}
             domain={domain}
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedDataModelName={slashedEntityName}
             tier={tier as TagLabel}
-            topicFQN={entityFQN}
             version={version}
             versionHandler={versionHandler}
             versionList={versionList}
@@ -738,7 +726,6 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owner={owner}
             slashedTableName={slashedEntityName}
-            storedProcedureFQN={entityFQN}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}

@@ -353,7 +353,7 @@ export const getStoredProcedureDetailsPath = (
   let path = ROUTES.STORED_PROCEDURE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(storedProcedureFQN));
 
-  return `${path}${columnName ? `.${columnName}` : ''}`;
+  return `${path}${columnName ? `/${columnName}` : ''}`;
 };
 
 export const getTagsDetailsPath = (entityFQN: string, columnName?: string) => {

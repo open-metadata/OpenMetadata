@@ -111,7 +111,7 @@ const DataModelDetails = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
-      dashboardDataModelFQN,
+      decodedDataModelFQN,
       setFeedCount
     );
   };

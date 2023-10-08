@@ -25,7 +25,6 @@ export interface TableVersionProp {
   domain: Table['domain'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  datasetFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

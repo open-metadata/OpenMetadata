@@ -117,7 +117,6 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   slashedPipelineName: [],
-  topicFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

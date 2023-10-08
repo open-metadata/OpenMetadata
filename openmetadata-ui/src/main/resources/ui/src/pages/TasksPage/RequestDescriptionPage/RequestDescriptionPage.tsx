@@ -132,9 +132,7 @@ const RequestDescription = () => {
           history.push(
             getEntityDetailLink(
               entityType,
-              entityType === EntityType.TABLE
-                ? entityFQN
-                : getDecodedFqn(entityFQN),
+              decodedEntityFQN,
               EntityTabs.ACTIVITY_FEED,
               ActivityFeedTabs.TASKS
             )
