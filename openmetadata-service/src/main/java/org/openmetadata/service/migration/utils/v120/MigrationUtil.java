@@ -5,9 +5,13 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -50,6 +54,8 @@ public class MigrationUtil {
 
   private static final String DELETE_QUERY = "DELETE FROM query_entity WHERE id = :id";
   private static final String DELETE_RELATIONSHIP = "DELETE FROM entity_relationship WHERE fromId = :id or toId = :id";
+
+  private static final String GLOSSARY_TERM_LIST_QUERY = "SELECT json FROM glossary_term_entity";
 
   /**
    * Queries have a `queryUsedIn` field as a list of EntityRef. We'll pick up the first element of the list, since the
@@ -108,6 +114,48 @@ public class MigrationUtil {
               });
     } catch (Exception ex) {
       LOG.warn("Error running the query migration ", ex);
+    }
+  }
+
+  /**
+   * Before Release 1.2, Glossary and all of the Glossary terms , even the deeply nested glossary terms have contains
+   * relation with Glossary and also its parent GlossaryTerm. This causes delete issue as we recursively delete the
+   * GlossaryTerms When Glossary gets deleted. We have updated the Glossary -> nested GlossaryTerm to be "Has". This
+   * migration does following update 1. List all GlossaryTerms, update the status to Accepted , since we introduced the
+   * Glossary Approval Workflow 2. For each term we look at who is the parent is, There should be only one parent in
+   * 1.2.0 release, previous releases nested terms will have a two parents the parent GlossaryTerm and its Glossary. We
+   * will update the relation to Glossary to be "Has".
+   */
+  public static void updateGlossaryAndGlossaryTermRelations(Handle handle, CollectionDAO collectionDAO) {
+    GlossaryTermRepository glossaryTermRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    try {
+        // there is no way to list the glossary terms using repository as the relationship is broken.
+      handle
+          .createQuery(GLOSSARY_TERM_LIST_QUERY)
+          .mapToMap()
+          .forEach(
+              row -> {
+                GlossaryTerm term = JsonUtils.readValue((String) row.get("json"), GlossaryTerm.class);
+                if (term.getStatus() == GlossaryTerm.Status.DRAFT) {
+                  term.setStatus(GlossaryTerm.Status.APPROVED);
+                  collectionDAO.glossaryTermDAO().update(term);
+                }
+                EntityReference glossaryRef =
+                    glossaryTermRepository.getFromEntityRef(
+                        term.getId(), Relationship.CONTAINS, Entity.GLOSSARY, false);
+                EntityReference glossaryTermRef =
+                    glossaryTermRepository.getFromEntityRef(
+                        term.getId(), Relationship.CONTAINS, Entity.GLOSSARY_TERM, false);
+                if (glossaryTermRef != null && glossaryRef != null) {
+                  glossaryTermRepository.deleteRelationship(
+                      glossaryRef.getId(), Entity.GLOSSARY, term.getId(), Entity.GLOSSARY_TERM, Relationship.CONTAINS);
+                  glossaryTermRepository.addRelationship(
+                      glossaryRef.getId(), term.getId(), Entity.GLOSSARY, Entity.GLOSSARY_TERM, Relationship.HAS);
+                }
+              });
+    } catch (Exception ex) {
+      LOG.warn("Error during the Glossary Term migration due to ", ex);
     }
   }
 }
