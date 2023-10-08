@@ -347,99 +347,55 @@ const DataInsightPage = () => {
     setChartFilter(INITIAL_CHART_FILTER);
   }, []);
 
-  const { noDataInsightPermission, noKPIPermission } = useMemo(() => {
-    const data = {
-      noDataInsightPermission:
-        !viewDataInsightChartPermission &&
-        (tab === DataInsightTabs.APP_ANALYTICS ||
-          tab === DataInsightTabs.DATA_ASSETS),
-      noKPIPermission: !viewKPIPermission && tab === DataInsightTabs.KPIS,
-      // dataInsightTabs: [
-      //   {
-      //     key: DataInsightTabs.DATA_ASSETS,
-      //     path: getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS),
-      //     component: () => (
-      //       <DataAssetsTab
-      //         chartFilter={chartFilter}
-      //         kpiList={kpiList}
-      //         selectedDaysFilter={selectedDaysFilter}
-      //         tier={tier}
-      //       />
-      //     ),
-      //   },
-      //   {
-      //     key: DataInsightTabs.APP_ANALYTICS,
-      //     path: getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS),
-      //     component: () => (
-      //       <AppAnalyticsTab
-      //         chartFilter={chartFilter}
-      //         selectedDaysFilter={selectedDaysFilter}
-      //       />
-      //     ),
-      //   },
-      //   {
-      //     key: DataInsightTabs.KPIS,
-      //     path: getDataInsightPathWithFqn(DataInsightTabs.KPIS),
-      //     component: () => <KPIList viewKPIPermission={viewKPIPermission} />,
-      //   },
-      //   {
-      //     key: DataInsightTabs.COST_ANALYSIS,
-      //     path: getDataInsightPathWithFqn(DataInsightTabs.COST_ANALYSIS),
-      //     component: () => <CostAnalysis />,
-      //   },
-      // ],
-    };
+  const { noDataInsightPermission, noKPIPermission, dataInsightTabs } =
+    useMemo(() => {
+      const data = {
+        noDataInsightPermission:
+          !viewDataInsightChartPermission &&
+          (tab === DataInsightTabs.APP_ANALYTICS ||
+            tab === DataInsightTabs.DATA_ASSETS),
+        noKPIPermission: !viewKPIPermission && tab === DataInsightTabs.KPIS,
+        dataInsightTabs: [
+          {
+            key: DataInsightTabs.DATA_ASSETS,
+            path: getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS),
+            component: (
+              <DataAssetsTab
+                chartFilter={chartFilter}
+                kpiList={kpiList}
+                selectedDaysFilter={selectedDaysFilter}
+                tier={tier}
+              />
+            ),
+          },
+          {
+            key: DataInsightTabs.APP_ANALYTICS,
+            path: getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS),
+            component: (
+              <AppAnalyticsTab
+                chartFilter={chartFilter}
+                selectedDaysFilter={selectedDaysFilter}
+              />
+            ),
+          },
+          {
+            key: DataInsightTabs.KPIS,
+            path: getDataInsightPathWithFqn(DataInsightTabs.KPIS),
+            component: <KPIList viewKPIPermission={viewKPIPermission} />,
+          },
+        ],
+      };
 
-    return data;
-  }, [
-    viewDataInsightChartPermission,
-    viewKPIPermission,
-    tab,
-    selectedDaysFilter,
-    chartFilter,
-    kpiList,
-    tier,
-  ]);
-
-  const dataInsightTabs = useMemo(
-    () => [
-      {
-        key: DataInsightTabs.DATA_ASSETS,
-        path: getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS),
-        component: (
-          <DataAssetsTab
-            chartFilter={chartFilter}
-            kpiList={kpiList}
-            selectedDaysFilter={selectedDaysFilter}
-            tier={tier}
-          />
-        ),
-      },
-      {
-        key: DataInsightTabs.APP_ANALYTICS,
-        path: getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS),
-        component: (
-          <AppAnalyticsTab
-            chartFilter={chartFilter}
-            selectedDaysFilter={selectedDaysFilter}
-          />
-        ),
-      },
-      {
-        key: DataInsightTabs.KPIS,
-        path: getDataInsightPathWithFqn(DataInsightTabs.KPIS),
-        component: <KPIList viewKPIPermission={viewKPIPermission} />,
-      },
-    ],
-    [
+      return data;
+    }, [
+      viewDataInsightChartPermission,
       viewKPIPermission,
-      chartFilter,
+      tab,
       selectedDaysFilter,
-      tier,
+      chartFilter,
       kpiList,
-      isKpiLoading,
-    ]
-  );
+      tier,
+    ]);
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
