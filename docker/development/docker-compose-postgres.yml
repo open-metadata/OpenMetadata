@@ -24,7 +24,7 @@ services:
     restart: always
     command: "--work_mem=10MB"
     depends_on:
-      - elasticsearch
+      - opensearch
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -345,7 +345,7 @@ services:
       - "8586:8586"
       - "5005:5005"
     depends_on:
-      elasticsearch:
+      ingestion:
         condition: service_started
       postgresql:
         condition: service_healthy
@@ -377,7 +377,7 @@ services:
     command:
       - "/opt/airflow/ingestion_dependency.sh"
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
