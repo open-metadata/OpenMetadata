@@ -94,7 +94,7 @@
     "react-reflex": "^4.0.12",
     "react-router-dom": "^5.2.0",
     "react-toastify": "^8.2.0",
-    "reactflow": "^11.1.1",
+    "reactflow": "^11.8.3",
     "reactjs-localstorage": "^1.0.1",
     "recharts": "2.5.0",
     "showdown": "^2.1.0",
