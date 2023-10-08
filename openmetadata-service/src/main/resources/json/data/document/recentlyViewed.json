@@ -1,0 +1,10 @@
+{
+  "name": "RecentlyViewed",
+  "displayName": "Recently Viewed",
+  "description": "Recently Viewed KnowledgePanel shows list of Data Assets that User visited.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.RecentlyViewed",
+  "data": {
+    "gridSizes": ["small"]
+  }
+}
