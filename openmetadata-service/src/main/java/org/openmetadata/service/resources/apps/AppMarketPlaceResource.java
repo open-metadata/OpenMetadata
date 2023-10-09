@@ -47,7 +47,6 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -62,15 +61,12 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
-  private SearchRepository searchRepository;
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       this.pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
-
-      this.searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
       // Initialize Default Installed Applications
       this.repository.initSeedDataFromResources();

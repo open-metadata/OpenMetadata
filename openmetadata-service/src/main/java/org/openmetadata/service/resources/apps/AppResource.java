@@ -98,22 +98,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
       for (CreateApp createApp : createAppsReq) {
-        AppMarketPlaceDefinition definition =
-            repository
-                .getMarketPlace()
-                .getByName(
-                    null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-        App app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
+        try {
+          AppMarketPlaceDefinition definition =
+              repository
+                  .getMarketPlace()
+                  .getByName(
+                      null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+          App app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
 
-        // Initialize
-        repository.initializeEntity(app);
+          // Initialize
+          repository.initializeEntity(app);
 
-        // Schedule
-        if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-          ApplicationHandler.scheduleApplication(
-              app,
-              JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-              searchRepository);
+          // Schedule
+          if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+            ApplicationHandler.scheduleApplication(
+                app,
+                JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+                searchRepository);
+          }
+        } catch (Exception ex) {
+          LOG.error("Failed in App Initialization, AppName : {}", createApp.getName(), ex);
         }
       }
     } catch (Exception ex) {
@@ -384,25 +388,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
       })
   public Response createOrUpdate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("appId") UUID appId,
-      @Valid CreateApp create) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
+      throws SchedulerException {
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
-            .get(uriInfo, appId, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+            .getByName(
+                uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
-    try {
-      AppScheduler.getInstance().deleteScheduledApplication(app);
-      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-        ApplicationHandler.scheduleApplication(
-            app,
-            JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-            searchRepository);
-      }
-    } catch (SchedulerException e) {
-      throw new RuntimeException(e);
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.scheduleApplication(
+          app,
+          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          searchRepository);
     }
     return createOrUpdate(uriInfo, securityContext, app);
   }
@@ -495,7 +494,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/trigger/{appType}/{name}")
+  @Path("/trigger/{name}")
   @Operation(
       operationId = "triggerApplicationRun",
       summary = "Trigger an Application run",
@@ -509,18 +508,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response triggerApplicationRun(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
-      @Parameter(description = "App Type", schema = @Schema(type = "UUID")) @PathParam("appType") String appType,
-      @Context SecurityContext securityContext) {
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
     App app = repository.getByName(uriInfo, name, fields);
-    AppType applicationType = AppType.fromValue(appType);
-    if (applicationType.equals(AppType.Internal)) {
+    if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
           app,
           JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
           searchRepository);
-      return Response.status(Response.Status.OK).entity(null).build();
+      return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       app.setOpenMetadataServerConnection(
           new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
