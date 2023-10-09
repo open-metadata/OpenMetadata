@@ -226,7 +226,6 @@ public abstract class PipelineServiceClient {
     return retry.executeSupplier(responseSupplier);
   }
 
-
   /* Check the status of pipeline service to ensure it is healthy */
   public PipelineServiceClientResponse getServiceStatus() {
     if (pipelineServiceClientEnabled) {
