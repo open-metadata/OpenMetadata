@@ -23,11 +23,11 @@ public class ApplicationHandler {
 
       // Call init Method
       Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
-      initMethod.invoke(resource, app, daoCollection);
+      initMethod.invoke(resource, app, daoCollection, searchRepository);
 
       // Call Trigger On Demand Method
-      Method triggerOnDemandMethod = resource.getClass().getMethod("triggerOnDemand", Object.class);
-      triggerOnDemandMethod.invoke(resource, app.getAppConfiguration());
+      Method triggerOnDemandMethod = resource.getClass().getMethod("triggerOnDemand");
+      triggerOnDemandMethod.invoke(resource);
     } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
       LOG.error("Exception encountered", e);
       throw new RuntimeException(e);

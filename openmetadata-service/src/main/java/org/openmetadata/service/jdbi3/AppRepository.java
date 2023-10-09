@@ -5,7 +5,6 @@ import static org.openmetadata.service.resources.teams.UserResource.getUser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.ws.rs.InternalServerErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -14,7 +13,6 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -36,9 +34,16 @@ public class AppRepository extends EntityRepository<App> {
   public static String APP_BOT_ROLE = "ApplicationBotRole";
   public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
 
+  public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
+
   public AppRepository() {
     super(
-        AppResource.COLLECTION_PATH, Entity.APPLICATION, App.class, Entity.getCollectionDAO().applicationDAO(), "", "");
+        AppResource.COLLECTION_PATH,
+        Entity.APPLICATION,
+        App.class,
+        Entity.getCollectionDAO().applicationDAO(),
+        UPDATE_FIELDS,
+        UPDATE_FIELDS);
     supportsSearch = false;
   }
 
@@ -46,14 +51,6 @@ public class AppRepository extends EntityRepository<App> {
   public App setFields(App entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     return entity.withBot(getBotUser(entity));
-  }
-
-  private List<AppSchedule> getApplicationSchedule(App app) {
-    List<CollectionDAO.ExtensionRecord> schedules =
-        daoCollection.entityExtensionDAO().getExtensions(app.getId(), APP_SCHEDULE_EXTENSION);
-    return schedules.stream()
-        .map((schedule) -> JsonUtils.readValue(schedule.getExtensionJson(), AppSchedule.class))
-        .collect(Collectors.toList());
   }
 
   public AppMarketPlaceRepository getMarketPlace() {
@@ -203,6 +200,23 @@ public class AppRepository extends EntityRepository<App> {
     } else {
       // limit == 0 , return total count of entity.
       return new ResultList<>(entities, null, total);
+    }
+  }
+
+  @Override
+  public EntityUpdater getUpdater(App original, App updated, Operation operation) {
+    return new AppRepository.AppUpdater(original, updated, operation);
+  }
+
+  public class AppUpdater extends EntityUpdater {
+    public AppUpdater(App original, App updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Override
+    public void entitySpecificUpdate() {
+      recordChange("appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
+      recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
     }
   }
 }

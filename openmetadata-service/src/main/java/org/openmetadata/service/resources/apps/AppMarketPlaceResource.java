@@ -47,30 +47,26 @@ import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apps/marketplace")
-@Tag(name = "Apps", description = "Apps marketplace holds to application available for openmetadata")
+@Tag(name = "Apps", description = "Apps marketplace holds to application available for Open-metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "appsMarketPlace", order = 7)
+@Collection(name = "appsMarketPlace", order = 8)
 @Slf4j
 public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClient pipelineServiceClient;
   static final String FIELDS = "owner";
-  private SearchRepository searchRepository;
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
       this.pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
-
-      this.searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
       // Initialize Default Installed Applications
       this.repository.initSeedDataFromResources();

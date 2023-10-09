@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -50,7 +51,6 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class SearchIndexApp extends AbstractNativeApplication {
-
   private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
   private List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
   private List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
@@ -66,7 +66,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
     super.init(app, dao, searchRepository);
 
     // request for reindexing
-    EventPublisherJob request = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    EventPublisherJob request =
+        JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
+            .withStats(new Stats())
+            .withFailure(new Failure());
     this.jobData = request;
     request
         .getEntities()
@@ -97,7 +100,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   @Override
-  @SneakyThrows
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
       LOG.info("Executing Reindexing Job with JobData : {}", jobData);
@@ -107,7 +109,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       entitiesReIndex();
       dataInsightReindex();
       // Mark Job as Completed
-      // updateJobStatus();
+      updateJobStatus();
     } catch (Exception ex) {
       String error =
           String.format(
@@ -118,7 +120,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       handleJobError("Failure in Job: Check Stack", error, System.currentTimeMillis());
     } finally {
       // store job details in Database
-      // updateRecordToDb();
+      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
       // Send update
       sendUpdates();
     }
@@ -183,12 +185,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
                   ExceptionUtils.getStackTrace(wx)),
               currentTime);
         } finally {
-          //          updateStats(
-          //              success,
-          //              failed,
-          //              paginatedEntitiesSource.getStats(),
-          //              entityProcessor.getStats(),
-          //              searchIndexSink.getStats());
+          updateStats(
+              success,
+              failed,
+              paginatedEntitiesSource.getStats(),
+              entityProcessor.getStats(),
+              searchIndexSink.getStats());
           sendUpdates();
         }
       }
@@ -261,12 +263,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
                   ExceptionUtils.getStackTrace(wx)),
               currentTime);
         } finally {
-          //          updateStats(
-          //              success,
-          //              failed,
-          //              paginatedDataInsightSource.getStats(),
-          //              dataInsightProcessor.getStats(),
-          //              searchIndexSink.getStats());
+          updateStats(
+              success,
+              failed,
+              paginatedDataInsightSource.getStats(),
+              dataInsightProcessor.getStats(),
+              searchIndexSink.getStats());
           sendUpdates();
         }
       }
@@ -285,7 +287,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   public void updateStats(
       int currentSuccess, int currentFailed, StepStats reader, StepStats processor, StepStats writer) {
     // Job Level Stats
-    Stats jobDataStats = jobData.getStats() != null ? jobData.getStats() : new Stats();
+    Stats jobDataStats = jobData.getStats();
 
     // Total Stats
     StepStats stats = jobData.getStats().getJobStats();
@@ -305,17 +307,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     jobData.setStats(jobDataStats);
   }
-
-  //  public void updateRecordToDb() throws IOException {
-  //    String recordString =
-  //        dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
-  //    EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
-  //    long originalLastUpdate = lastRecord.getTimestamp();
-  //    dao.entityExtensionTimeSeriesDao()
-  //        .update(
-  //            jobData.getId().toString(), REINDEXING_JOB_EXTENSION, JsonUtils.pojoToJson(jobData),
-  // originalLastUpdate);
-  //  }
 
   private void reCreateIndexes(String entityType) {
     if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
