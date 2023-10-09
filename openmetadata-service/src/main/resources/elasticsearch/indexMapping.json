@@ -131,31 +131,31 @@
     "alias": "team",
     "parentAliases": []
   },
-  "EntityReportData": {
+  "entityReportData": {
     "indexName": "entity_report_data_index",
     "indexMappingFile": "/elasticsearch/entity_report_data_index.json",
     "alias": "entityReportData",
     "parentAliases": []
   },
-  "WebAnalyticEntityViewReportData": {
+  "webAnalyticEntityViewReportData": {
     "indexName": "web_analytic_entity_view_report_data_index",
     "indexMappingFile": "/elasticsearch/web_analytic_entity_view_report_data_index.json",
     "alias": "webAnalyticEntityViewReportData",
     "parentAliases": []
   },
-  "WebAnalyticUserActivityReportData": {
+  "webAnalyticUserActivityReportData": {
     "indexName": "web_analytic_user_activity_report_data_index",
     "indexMappingFile": "/elasticsearch/web_analytic_user_activity_report_data_index.json",
     "alias": "webAnalyticUserActivityReportData",
     "parentAliases": []
   },
-  "RawCostAnalysisReportData": {
+  "rawCostAnalysisReportData": {
     "indexName": "raw_cost_analysis_report_data_index",
     "indexMappingFile": "/elasticsearch/raw_cost_analysis_report_data_index.json",
     "alias": "RawCostAnalysisReportData",
     "parentAliases": []
   },
-  "AggregatedCostAnalysisReportData": {
+  "aggregatedCostAnalysisReportData": {
     "indexName": "aggregated_cost_analysis_report_data_index",
     "indexMappingFile": "/elasticsearch/aggregated_cost_analysis_report_data_index.json",
     "alias": "AggregatedCostAnalysisReportData",

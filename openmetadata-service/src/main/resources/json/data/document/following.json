@@ -1,0 +1,10 @@
+{
+  "name": "Following",
+  "displayName": "Following KnowledgePanel",
+  "description": "Following KnowledgePanel shows all the Assets that the User is Following.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.Following",
+  "data": {
+    "gridSizes": ["small"]
+  }
+}

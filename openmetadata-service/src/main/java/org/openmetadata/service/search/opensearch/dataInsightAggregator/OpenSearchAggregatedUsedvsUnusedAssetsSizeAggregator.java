@@ -2,10 +2,10 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsSizeAggregator;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.histogram.Histogram;
-import org.opensearch.search.aggregations.bucket.histogram.Histogram.Bucket;
-import org.opensearch.search.aggregations.metrics.Sum;
+import os.org.opensearch.search.aggregations.Aggregations;
+import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
+import os.org.opensearch.search.aggregations.bucket.histogram.Histogram.Bucket;
+import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator
     extends AggregatedUsedvsUnusedAssetsSizeAggregator<Aggregations, Histogram, Bucket, Sum> {

@@ -77,6 +77,6 @@ class UniqueCount(QueryMetric):
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"
-                f"when computing Unique Count.\n Error: {err}"
+                f" when computing Unique Count.\n Error: {err}"
             )
             return 0
