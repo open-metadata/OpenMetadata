@@ -3,6 +3,7 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
@@ -39,7 +40,7 @@ public class AbstractNativeApplication implements NativeApplication {
       // Trigger the application
       AppScheduler.getInstance().triggerOnDemandApplication(app);
     } else {
-      throw new IllegalArgumentException("Live Application cannot scheduled.");
+      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
     }
   }
 
@@ -52,14 +53,15 @@ public class AbstractNativeApplication implements NativeApplication {
       // Schedule New Application Run
       AppScheduler.getInstance().addApplicationSchedule(app);
     } else {
-      throw new IllegalArgumentException("Live Application cannot scheduled.");
+      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
     }
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {
     // Server apps are native
     if (!app.getAppType().equals(AppType.Internal)) {
-      throw new IllegalArgumentException("Application Type is not Native.");
+      throw new IllegalArgumentException(
+          "Application cannot be executed internally in Server. Please check if the App supports internal Server Execution.");
     }
 
     // Check OnDemand Execution is supported
