@@ -62,7 +62,9 @@ class EntityReportProcessorTest(unittest.TestCase):
     def test_fetch_owner(self, mocked_ometa):
         """Check fecth owner returns the expected value"""
 
-        processor = DataProcessor.create(ReportDataType.entityReportData.value, mocked_ometa)
+        processor = DataProcessor.create(
+            ReportDataType.entityReportData.value, mocked_ometa
+        )
         mocked_ometa.get_by_name.return_value = USER
         owner = processor._get_team(self.chart.owner)
         assert owner == "marketing"

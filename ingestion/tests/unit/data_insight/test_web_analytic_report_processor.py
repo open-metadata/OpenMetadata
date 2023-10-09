@@ -22,6 +22,7 @@ from metadata.data_insight.processor.reports.web_analytic_report_data_processor 
     WebAnalyticUserActivityReportDataProcessor,
 )
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
+from metadata.generated.schema.analytics.reportData import ReportDataType
 from metadata.generated.schema.analytics.reportDataType.webAnalyticEntityViewReportData import (
     WebAnalyticEntityViewReportData,
 )
@@ -34,8 +35,6 @@ from metadata.generated.schema.analytics.webAnalyticEventData import (
 from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent import (
     PageViewData,
 )
-
-from metadata.generated.schema.analytics.reportData import ReportDataType
 
 WEB_ANALYTIC_EVENTS = [
     WebAnalyticEventData(
