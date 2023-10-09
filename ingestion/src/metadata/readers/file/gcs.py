@@ -39,7 +39,7 @@ class GCSReader(Reader):
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from repo: {err}")
+            raise ReadException(f"Error fetching file [{path}] from GCS: {err}")
 
     def _get_tree(self) -> List[str]:
         """

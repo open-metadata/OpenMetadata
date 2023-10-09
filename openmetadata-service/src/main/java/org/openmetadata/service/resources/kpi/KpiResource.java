@@ -42,7 +42,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -68,8 +68,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return kpi;
   }
 
-  public KpiResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Kpi.class, new KpiRepository(dao), authorizer);
+  public KpiResource(Authorizer authorizer) {
+    super(Entity.KPI, authorizer);
   }
 
   @Override
@@ -414,7 +414,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @Valid
           @QueryParam("orderBy")
           @DefaultValue("DESC")
-          CollectionDAO.EntityExtensionTimeSeriesDAO.OrderBy orderBy) {
+          OrderBy orderBy) {
     return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 

@@ -12,11 +12,11 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interface';
 
 function CommonEntitySummaryInfo({

@@ -159,7 +159,7 @@ def get_columns(
         # tds_version 4.2 does not support NVARCHAR(MAX)
         computed_definition = sql.cast(computed_cols.c.definition, NVARCHAR(4000))
 
-    s = (  # pylint: disable=invalid-name
+    s = (
         sql.select(
             columns,
             computed_definition,
@@ -174,9 +174,7 @@ def get_columns(
         .order_by(columns.c.ordinal_position)
     )
 
-    c = connection.execution_options(  # pylint:disable=invalid-name
-        future_result=True
-    ).execute(s)
+    c = connection.execution_options(future_result=True).execute(s)
 
     cols = []
     for row in c.mappings():

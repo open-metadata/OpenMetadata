@@ -9,7 +9,6 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.USER;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -97,7 +96,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following entityName from the List.",
       examples = {"matchAnyEntityFqn('Name1', 'Name')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityFqn(String... entityNames) throws IOException {
+  public boolean matchAnyEntityFqn(String... entityNames) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }
@@ -120,7 +119,7 @@ public class AlertsRuleEvaluator {
       description = "Returns true if the change event entity being accessed has following entityId from the List.",
       examples = {"matchAnyEntityId('uuid1', 'uuid2')"},
       paramInputType = ALL_INDEX_ELASTIC_SEARCH)
-  public boolean matchAnyEntityId(String... entityIds) throws IOException {
+  public boolean matchAnyEntityId(String... entityIds) {
     if (changeEvent == null || changeEvent.getEntity() == null) {
       return false;
     }

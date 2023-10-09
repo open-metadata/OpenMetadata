@@ -12,28 +12,28 @@
  */
 
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import {
-  API_RES_MAX_SIZE,
-  getGlossaryTermDetailsPath,
-} from 'constants/constants';
-import { EntityAction } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import { VERSION_VIEW_GLOSSARY_PERMISSION } from 'mocks/Glossary.mock';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import Loader from '../../components/Loader/Loader';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  API_RES_MAX_SIZE,
+  getGlossaryTermDetailsPath,
+} from '../../constants/constants';
+import { EntityAction } from '../../enums/entity.enum';
+import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
   addGlossaryTerm,
   getGlossaryTerms,
   ListGlossaryTermsParams,
   patchGlossaryTerm,
-} from 'rest/glossaryAPI';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+} from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -207,7 +207,7 @@ const GlossaryV1 = ({
     if (!isGlossaryActive && tab !== 'terms') {
       history.push(
         getGlossaryTermDetailsPath(
-          getEncodedFqn(selectedData.fullyQualifiedName || ''),
+          selectedData.fullyQualifiedName || '',
           'terms'
         )
       );
@@ -376,4 +376,4 @@ const GlossaryV1 = ({
   );
 };
 
-export default GlossaryV1;
+export default withActivityFeed(GlossaryV1);

@@ -44,7 +44,6 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.service.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.service.util.JsonUtils;
@@ -52,10 +51,9 @@ import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 @Slf4j
-public class MessagingServiceResourceTest extends EntityResourceTest<MessagingService, CreateMessagingService> {
-
+public class MessagingServiceResourceTest extends ServiceResourceTest<MessagingService, CreateMessagingService> {
   public static final String KAFKA_BROKERS = "192.168.1.1:0";
-  public static URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
+  public static final URI SCHEMA_REGISTRY_URL = CommonUtil.getUri("http://localhost:0");
 
   public MessagingServiceResourceTest() {
     super(
@@ -95,12 +93,6 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create messaging with mandatory "brokers" field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -118,6 +110,9 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
                             .withBootstrapServers("localhost:9092")
                             .withSchemaRegistryURL(new URI("localhost:8081")))),
         authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -243,7 +238,7 @@ public class MessagingServiceResourceTest extends EntityResourceTest<MessagingSe
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if ("connection".equals(fieldName)) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

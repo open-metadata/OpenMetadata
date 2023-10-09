@@ -34,16 +34,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String UPDATE_FIELDS = "experts,assets"; // Domain field can't be updated
 
-  public DataProductRepository(CollectionDAO dao) {
+  public DataProductRepository() {
     super(
         DataProductResource.COLLECTION_PATH,
         Entity.DATA_PRODUCT,
         DataProduct.class,
-        dao.dataProductDAO(),
-        dao,
+        Entity.getCollectionDAO().dataProductDAO(),
         UPDATE_FIELDS,
         UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override

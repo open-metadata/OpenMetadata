@@ -22,9 +22,6 @@ from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -44,6 +41,7 @@ from metadata.ingestion.source.database.mysql.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 ischema_names.update(col_type_map)
 
@@ -65,7 +63,7 @@ class MysqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
@@ -74,7 +72,7 @@ class MysqlSource(CommonDbSourceService):
             raise InvalidSourceException(
                 f"Expected MysqlConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):

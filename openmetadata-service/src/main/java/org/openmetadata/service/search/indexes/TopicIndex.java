@@ -5,7 +5,6 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
@@ -18,9 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -31,7 +28,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TopicIndex implements ElasticSearchIndex {
+public class TopicIndex implements SearchIndex {
   final List<String> excludeTopicFields = List.of("sampleData", "changeDescription", "messageSchema");
   final Topic topic;
 
@@ -40,17 +37,6 @@ public class TopicIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (topic.getOwner() != null) {
-      EntityReference owner = topic.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      topic.setOwner(owner);
-    }
-    if (topic.getDomain() != null) {
-      EntityReference domain = topic.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      topic.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(topic);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
@@ -86,6 +72,12 @@ public class TopicIndex implements ElasticSearchIndex {
         "fqnParts",
         getFQNParts(
             topic.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (topic.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(topic.getOwner()));
+    }
+    if (topic.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(topic.getDomain()));
+    }
     return doc;
   }
 
@@ -121,7 +113,6 @@ public class TopicIndex implements ElasticSearchIndex {
     fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 15.0f);
     fields.put(FIELD_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);

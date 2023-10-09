@@ -112,6 +112,10 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<span>U</span>)
 );
 
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
+  return jest.fn().mockReturnValue(<p>FeedEditor</p>);
+});
+
 jest.mock('./ImportGlossary/ImportGlossary', () =>
   jest
     .fn()

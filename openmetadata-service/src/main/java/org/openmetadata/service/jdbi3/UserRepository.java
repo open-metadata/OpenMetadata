@@ -26,6 +26,7 @@ import static org.openmetadata.service.Entity.USER;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -68,20 +69,35 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
   static final String ROLES_FIELD = "roles";
+  static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
-  static final String USER_PATCH_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  static final String USER_UPDATE_FIELDS = "profile,roles,teams,authenticationMechanism,isEmailVerified";
-  private final EntityReference organization;
+  static final String USER_PATCH_FIELDS =
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+  static final String USER_UPDATE_FIELDS =
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+  private volatile EntityReference organization;
 
-  public UserRepository(CollectionDAO dao) {
-    super(UserResource.COLLECTION_PATH, USER, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
-    organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
+  public UserRepository() {
+    super(
+        UserResource.COLLECTION_PATH,
+        USER,
+        User.class,
+        Entity.getCollectionDAO().userDAO(),
+        USER_PATCH_FIELDS,
+        USER_UPDATE_FIELDS);
     this.quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
-  // with the introduction of fqnhash we added case sensitivity to all the entities
-  // however usernames , emails cannot be case sensitive
+  private EntityReference getOrganization() {
+    if (organization == null) {
+      organization = Entity.getEntityReferenceByName(TEAM, Entity.ORGANIZATION_NAME, Include.ALL);
+    }
+    return organization;
+  }
+
+  // with the introduction of fqnHash we added case sensitivity to all the entities
+  // however usernames , emails cannot be case-sensitive
   @Override
   public void setFullyQualifiedName(User user) {
     user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
@@ -128,7 +144,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private List<EntityReference> getInheritedRoles(User user) {
     if (Boolean.TRUE.equals(user.getIsBot())) {
-      return null; // No inherited roles for bots
+      return Collections.emptyList(); // No inherited roles for bots
     }
     return SubjectContext.getRolesForTeams(getTeams(user));
   }
@@ -157,6 +173,8 @@ public class UserRepository extends EntityRepository<User> {
   public void storeRelationships(User user) {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
+    assignDefaultPersona(user, user.getDefaultPersona());
+    assignPersonas(user, user.getPersonas());
     user.setInheritedRoles(getInheritedRoles(user));
   }
 
@@ -165,7 +183,7 @@ public class UserRepository extends EntityRepository<User> {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAIN) && user.getDomain() == null) {
-      List<EntityReference> teams = !fields.contains("teams") ? getTeams(user) : user.getTeams();
+      List<EntityReference> teams = !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
         Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
         user.withDomain(team.getDomain());
@@ -181,17 +199,19 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   public User setFields(User user, Fields fields) {
-    user.setTeams(fields.contains("teams") ? getTeams(user) : user.getTeams());
+    user.setTeams(fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams());
     user.setOwns(fields.contains("owns") ? getOwns(user) : user.getOwns());
     user.setFollows(fields.contains("follows") ? getFollows(user) : user.getFollows());
     user.setRoles(fields.contains(ROLES_FIELD) ? getRoles(user) : user.getRoles());
+    user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
+    user.setDefaultPersona(fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
     return user.withInheritedRoles(fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
   }
 
   @Override
   public User clearFields(User user, Fields fields) {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
-    user.setTeams(fields.contains("teams") ? user.getTeams() : null);
+    user.setTeams(fields.contains(TEAMS_FIELD) ? user.getTeams() : null);
     user.setOwns(fields.contains("owns") ? user.getOwns() : null);
     user.setFollows(fields.contains("follows") ? user.getFollows() : null);
     user.setRoles(fields.contains(ROLES_FIELD) ? user.getRoles() : null);
@@ -228,7 +248,7 @@ public class UserRepository extends EntityRepository<User> {
       }
       teams.sort(EntityUtil.compareEntityReference);
     } else {
-      user.setTeams(new ArrayList<>(List.of(organization))); // Organization is a default team
+      user.setTeams(new ArrayList<>(List.of(getOrganization()))); // Organization is a default team
     }
   }
 
@@ -279,7 +299,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getTeamChildren(UUID teamId) {
-    if (teamId.equals(organization.getId())) { // For organization all the parentless teams are children
+    if (teamId.equals(getOrganization().getId())) { // For organization all the parentless teams are children
       List<String> children = daoCollection.teamDAO().listTeamsUnderOrganization(teamId);
       return EntityUtil.populateEntityReferencesById(EntityUtil.strToIds(children), Entity.TEAM);
     }
@@ -319,9 +339,17 @@ public class UserRepository extends EntityRepository<User> {
     teams = listOrEmpty(teams).stream().filter(team -> !team.getDeleted()).collect(Collectors.toList());
     // If there are no teams that a user belongs to then return organization as the default team
     if (listOrEmpty(teams).isEmpty()) {
-      return new ArrayList<>(List.of(organization));
+      return new ArrayList<>(List.of(getOrganization()));
     }
     return teams;
+  }
+
+  public List<EntityReference> getPersonas(User user) {
+    return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+  }
+
+  public EntityReference getDefaultPersona(User user) {
+    return getToEntityRef(user.getId(), Relationship.DEFAULTS_TO, Entity.PERSONA, false);
   }
 
   private void assignRoles(User user, List<EntityReference> roles) {
@@ -334,15 +362,27 @@ public class UserRepository extends EntityRepository<User> {
   private void assignTeams(User user, List<EntityReference> teams) {
     teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
-      if (team.getId().equals(organization.getId())) {
+      if (team.getId().equals(getOrganization().getId())) {
         continue; // Default relationship user to organization team is not stored
       }
       addRelationship(team.getId(), user.getId(), Entity.TEAM, USER, Relationship.HAS);
     }
     if (teams.size() > 1) {
       // Remove organization team from the response
-      teams = teams.stream().filter(t -> !t.getId().equals(organization.getId())).collect(Collectors.toList());
+      teams = teams.stream().filter(t -> !t.getId().equals(getOrganization().getId())).collect(Collectors.toList());
       user.setTeams(teams);
+    }
+  }
+
+  private void assignPersonas(User user, List<EntityReference> personas) {
+    for (EntityReference persona : listOrEmpty(personas)) {
+      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.APPLIED_TO);
+    }
+  }
+
+  private void assignDefaultPersona(User user, EntityReference persona) {
+    if (persona != null) {
+      addRelationship(persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO);
     }
   }
 
@@ -462,6 +502,8 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate() {
       updateRoles(original, updated);
       updateTeams(original, updated);
+      updatePersonas(original, updated);
+      recordChange("defaultPersona", original.getDefaultPersona(), updated.getDefaultPersona(), true);
       recordChange("profile", original.getProfile(), updated.getProfile(), true);
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
@@ -500,7 +542,23 @@ public class UserRepository extends EntityRepository<User> {
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+      recordListChange(TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    private void updatePersonas(User original, User updated) {
+      deleteTo(original.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+      assignPersonas(updated, updated.getPersonas());
+
+      List<EntityReference> origPersonas = listOrEmpty(original.getPersonas());
+      List<EntityReference> updatedPersonas = listOrEmpty(updated.getPersonas());
+
+      origPersonas.sort(EntityUtil.compareEntityReference);
+      updatedPersonas.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+
+      recordListChange("personas", origPersonas, updatedPersonas, added, deleted, EntityUtil.entityReferenceMatch);
     }
 
     private void updateAuthenticationMechanism(User original, User updated) {

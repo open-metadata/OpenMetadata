@@ -22,29 +22,33 @@ import {
   Space,
   Typography,
 } from 'antd';
-import RichTextEditor from 'components/common/rich-text-editor/RichTextEditor';
+import { isEmpty, map } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import RichTextEditor from '../../components/common/rich-text-editor/RichTextEditor';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from 'constants/regex.constants';
+} from '../../constants/GlobalSettings.constants';
+import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
 import {
   AlertType,
   EventSubscription,
   ProviderType,
   ScheduleInfo,
   TriggerType,
-} from 'generated/events/eventSubscription';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
-import { isEmpty, map } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { createAlert, getAlertsFromId, updateAlert } from 'rest/alertsAPI';
-import { StyledCard } from 'utils/Alerts/AlertsUtil';
-import { getField } from 'utils/formUtils';
-import { getSettingPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../generated/events/eventSubscription';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+import {
+  createAlert,
+  getAlertsFromId,
+  updateAlert,
+} from '../../rest/alertsAPI';
+import { StyledCard } from '../../utils/Alerts/AlertsUtil';
+import { getField } from '../../utils/formUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './add-data-insight-report-alert.less';
 
 const AddDataInsightReportAlert = () => {

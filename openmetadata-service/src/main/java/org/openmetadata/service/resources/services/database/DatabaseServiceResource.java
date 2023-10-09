@@ -56,16 +56,12 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -96,8 +92,8 @@ public class DatabaseServiceResource
     return null;
   }
 
-  public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer, ServiceType.DATABASE);
+  public DatabaseServiceResource(Authorizer authorizer) {
+    super(Entity.DATABASE_SERVICE, authorizer, ServiceType.DATABASE);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {
@@ -124,6 +120,9 @@ public class DatabaseServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(
               description = "Returns list of database services before this cursor",
@@ -139,17 +138,7 @@ public class DatabaseServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = getFields(fieldsParam);
-    ResultList<DatabaseService> dbServices;
-
-    ListFilter filter = new ListFilter(include);
-    if (before != null) {
-      dbServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else {
-      dbServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, decryptOrNullify(securityContext, dbServices));
+    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET

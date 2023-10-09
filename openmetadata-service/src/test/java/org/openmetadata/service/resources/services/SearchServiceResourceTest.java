@@ -29,12 +29,11 @@ import org.openmetadata.schema.services.connections.search.ElasticSearchConnecti
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.searchIndexes.SearchServiceResource;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
-public class SearchServiceResourceTest extends EntityResourceTest<SearchService, CreateSearchService> {
+public class SearchServiceResourceTest extends ServiceResourceTest<SearchService, CreateSearchService> {
   public SearchServiceResourceTest() {
     super(
         Entity.SEARCH_SERVICE,
@@ -76,12 +75,6 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create StorageService with mandatory connection field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -91,6 +84,9 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
     createAndCheckEntity(createRequest(test, 3).withConnection(TestUtils.ELASTIC_SEARCH_CONNECTION), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -150,8 +146,7 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
 
   @Override
   public void validateCreatedEntity(
-      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     SearchConnection expectedConnection = createRequest.getConnection();
     SearchConnection actualConnection = service.getConnection();
@@ -159,10 +154,8 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   @Override
-  public void compareEntities(SearchService expected, SearchService updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(SearchService expected, SearchService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
-
   }
 
   @Override
@@ -185,7 +178,7 @@ public class SearchServiceResourceTest extends EntityResourceTest<SearchService,
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

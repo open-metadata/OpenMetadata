@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Tag } from 'generated/entity/classification/tag';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
 import { get, isArray, isObject, transform } from 'lodash';
 import { FormattedTableData } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
+import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { SearchResponse } from '../interface/search.interface';

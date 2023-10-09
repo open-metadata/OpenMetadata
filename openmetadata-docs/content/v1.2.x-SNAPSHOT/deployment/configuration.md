@@ -47,7 +47,6 @@ database:
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 
-
 elasticsearch:
   host: localhost
   port: 9200

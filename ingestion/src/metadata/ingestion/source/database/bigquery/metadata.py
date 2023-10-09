@@ -41,9 +41,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -55,6 +52,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import get_inspector_details
 from metadata.ingestion.source.database.bigquery.models import (
@@ -207,32 +205,45 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
     Database metadata from Bigquery Source
     """
 
-    def __init__(self, config, metadata_config):
-        super().__init__(config, metadata_config)
+    def __init__(self, config, metadata):
+        # Check if the engine is established before setting project IDs
+        # This ensures that we don't try to set project IDs when there is no engine
+        # as per service connection config, which would result in an error.
+        self.test_connection = lambda: None
+        super().__init__(config, metadata)
         self.temp_credentials = None
         self.client = None
+        # Upon invoking the set_project_id method, we retrieve a comprehensive
+        # list of all project IDs. Subsequently, after the invokation,
+        # we proceed to test the connections for each of these project IDs
         self.project_ids = self.set_project_id()
+        self.test_connection = self._test_connection
+        self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: BigQueryConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     @staticmethod
     def set_project_id() -> List[str]:
         _, project_ids = auth.default()
         return project_ids if isinstance(project_ids, list) else [project_ids]
 
-    def test_connection(self) -> None:
-        for project_id in self.set_project_id():
-            self.set_inspector(project_id)
+    def _test_connection(self) -> None:
+        for project_id in self.project_ids:
+            inspector_details = get_inspector_details(
+                database_name=project_id, service_connection=self.service_connection
+            )
             test_connection_fn = get_test_connection_fn(self.service_connection)
-            test_connection_fn(self.metadata, self.engine, self.service_connection)
+            test_connection_fn(
+                self.metadata, inspector_details.engine, self.service_connection
+            )
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):

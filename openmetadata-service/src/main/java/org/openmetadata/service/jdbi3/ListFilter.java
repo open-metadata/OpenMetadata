@@ -58,6 +58,7 @@ public class ListFilter {
     condition = addCondition(condition, getTestCaseCondition());
     condition = addCondition(condition, getTestSuiteTypeCondition());
     condition = addCondition(condition, getTestSuiteFQNCondition());
+    condition = addCondition(condition, getDomainCondition());
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
@@ -92,6 +93,16 @@ public class ListFilter {
     return testSuiteName == null
         ? ""
         : String.format("fqnHash LIKE '%s%s%%'", FullyQualifiedName.buildHash(testSuiteName), Entity.SEPARATOR);
+  }
+
+  private String getDomainCondition() {
+    String domainId = getQueryParam("domainId");
+    return domainId == null
+        ? ""
+        : String.format(
+            "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId='%s' AND "
+                + "relation=10))",
+            domainId);
   }
 
   public String getParentCondition(String tableName) {

@@ -12,8 +12,8 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { mockedGlossaries } from 'mocks/Glossary.mock';
 import React from 'react';
+import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 
 const mockHistory = {
@@ -26,7 +26,7 @@ jest.mock('react-router-dom', () => ({
     glossaryName: 'GlossaryName',
   }),
 }));
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,
@@ -60,11 +60,11 @@ jest.mock('components/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('utils/PermissionsUtils', () => ({
+jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('components/common/LeftPanelCard/LeftPanelCard', () => {
+jest.mock('../../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => (

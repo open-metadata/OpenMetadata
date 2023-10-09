@@ -129,6 +129,7 @@ authorizerConfiguration:
   containerRequestFilter: "org.openmetadata.service.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
     - "admin"
+    - "hello.world"
   # Added only for test purposes and not for production setup
   testPrincipals:
     - "test"
@@ -194,21 +195,6 @@ eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.service.events.AuditEventHandler"
     - "org.openmetadata.service.events.ChangeEventHandler"
-
-elasticsearch:
-  searchType:  "elasticsearch"
-  host: localhost
-  port: 9200
-  scheme: http
-  username: ""
-  password: ""
-  truststorePath: ""
-  truststorePassword: ""
-  connectionTimeoutSecs: 5
-  socketTimeoutSecs: 60
-  keepAliveTimeoutSecs: 600
-  batchSize: 10
-  searchIndexMappingLanguage: EN
 
 pipelineServiceClientConfiguration:
   className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"

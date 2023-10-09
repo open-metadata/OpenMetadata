@@ -16,12 +16,6 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  getDayCron,
-  getHourCron,
-} from 'components/common/CronEditor/CronEditor.constant';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import {
   capitalize,
@@ -44,8 +38,13 @@ import {
 import React from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import { getFeedCount } from 'rest/feedsAPI';
 import AppState from '../AppState';
+import {
+  getDayCron,
+  getHourCron,
+} from '../components/common/CronEditor/CronEditor.constant';
+import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getContainerDetailPath,
@@ -53,6 +52,7 @@ import {
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
   getDataModelDetailsPath,
+  getGlossaryTermDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
   getStoredProcedureDetailPath,
@@ -72,6 +72,7 @@ import { PipelineType } from '../generated/entity/services/ingestionPipelines/in
 import { EntityReference } from '../generated/entity/teams/user';
 import { Paging } from '../generated/type/paging';
 import { TagLabel } from '../generated/type/tagLabel';
+import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink, getTitleCase } from './EntityUtils';
 import Fqn from './Fqn';
 import { history } from './HistoryUtils';
@@ -853,6 +854,11 @@ export const getEntityDetailLink = (
 
     case EntityType.STORED_PROCEDURE:
       path = getStoredProcedureDetailPath(fqn, tab, subTab);
+
+      break;
+    case EntityType.GLOSSARY:
+    case EntityType.GLOSSARY_TERM:
+      path = getGlossaryTermDetailsPath(fqn, tab, subTab);
 
       break;
   }

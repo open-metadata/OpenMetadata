@@ -12,11 +12,11 @@
  */
 
 import classNames from 'classnames';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { EntityField } from 'constants/Feeds.constants';
 import { lowerCase } from 'lodash';
-import EntityTasks from 'pages/TasksPage/EntityTasks/EntityTasks.component';
 import React from 'react';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { EntityField } from '../../constants/Feeds.constants';
+import EntityTasks from '../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 
 const TableTags = <T extends TableUnion>({

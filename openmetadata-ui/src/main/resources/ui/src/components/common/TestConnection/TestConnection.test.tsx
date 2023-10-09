@@ -17,21 +17,19 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ServiceCategory } from 'enums/service.enum';
-import {
-  StatusType,
-  WorkflowStatus,
-} from 'generated/api/automations/createWorkflow';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
-import { ConfigData } from 'interface/service.interface';
 import React from 'react';
+import { ServiceCategory } from '../../../enums/service.enum';
+import { WorkflowStatus } from '../../../generated/entity/automations/workflow';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import { ConfigData } from '../../../interface/service.interface';
 import {
   addWorkflow,
   deleteWorkflowById,
   getTestConnectionDefinitionByName,
   getWorkflowById,
   triggerWorkflowById,
-} from 'rest/workflowAPI';
+} from '../../../rest/workflowAPI';
+import { StatusType } from '../StatusBadge/StatusBadge.interface';
 import TestConnection from './TestConnection';
 import {
   CREATE_WORKFLOW_PAYLOAD,
@@ -51,8 +49,8 @@ const mockProps = {
   shouldValidateForm: false,
 };
 
-jest.mock('utils/ServiceUtils', () => ({
-  ...jest.requireActual('utils/ServiceUtils'),
+jest.mock('../../../utils/ServiceUtils', () => ({
+  ...jest.requireActual('../../../utils/ServiceUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
 }));
 
@@ -64,7 +62,7 @@ jest.mock('./TestConnectionModal/TestConnectionModal', () =>
     )
 );
 
-jest.mock('rest/workflowAPI', () => ({
+jest.mock('../../../rest/workflowAPI', () => ({
   addWorkflow: jest
     .fn()
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
@@ -80,7 +78,7 @@ jest.mock('rest/workflowAPI', () => ({
     .mockImplementation(() => Promise.resolve(WORKFLOW_DETAILS)),
 }));
 
-jest.mock('hooks/useAirflowStatus', () => ({
+jest.mock('../../../hooks/useAirflowStatus', () => ({
   useAirflowStatus: jest
     .fn()
     .mockImplementation(() => ({ isAirflowAvailable: true })),
@@ -220,7 +218,7 @@ describe('Test Connection Component', () => {
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ...WORKFLOW_DETAILS,
-        response: { ...WORKFLOW_DETAILS.response, status: StatusType.Failed },
+        response: { ...WORKFLOW_DETAILS.response, status: StatusType.Failure },
       })
     );
     await act(async () => {
@@ -417,7 +415,7 @@ describe('Test Connection Component', () => {
               mandatory: false,
             },
           ],
-          status: StatusType.Failed,
+          status: StatusType.Failure,
         },
       })
     );

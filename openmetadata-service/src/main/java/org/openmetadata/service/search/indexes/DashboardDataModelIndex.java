@@ -15,15 +15,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DashboardDataModelIndex implements ElasticSearchIndex {
+public class DashboardDataModelIndex implements SearchIndex {
 
   private static final List<String> excludeFields = List.of("changeDescription");
 
@@ -34,17 +32,6 @@ public class DashboardDataModelIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (dashboardDataModel.getOwner() != null) {
-      EntityReference owner = dashboardDataModel.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      dashboardDataModel.setOwner(owner);
-    }
-    if (dashboardDataModel.getDomain() != null) {
-      EntityReference domain = dashboardDataModel.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      dashboardDataModel.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(dashboardDataModel);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -57,7 +44,12 @@ public class DashboardDataModelIndex implements ElasticSearchIndex {
         getFQNParts(
             dashboardDataModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
-
+    if (dashboardDataModel.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(dashboardDataModel.getOwner()));
+    }
+    if (dashboardDataModel.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(dashboardDataModel.getDomain()));
+    }
     return doc;
   }
 

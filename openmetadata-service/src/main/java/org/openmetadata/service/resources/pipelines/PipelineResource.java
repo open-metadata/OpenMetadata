@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.resources.Collection;
@@ -86,8 +85,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
-  public PipelineResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Pipeline.class, new PipelineRepository(dao), authorizer);
+  public PipelineResource(Authorizer authorizer) {
+    super(Entity.PIPELINE, authorizer);
   }
 
   @Override

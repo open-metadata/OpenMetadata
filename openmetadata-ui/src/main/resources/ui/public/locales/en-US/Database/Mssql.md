@@ -55,9 +55,9 @@ $$section
 There are three schemes based on the user's requirement to fetch data from MSSQL:
 - **mssql+pytds**: High-performance open-source library for connecting to Microsoft SQL Server.
 - **mssql+pyodbc**: Cross-platform Python library that uses ODBC to connect to Microsoft SQL Server.
-- *mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
+- **mssql+pymssql**: Python library that uses FreeTDS to connect to Microsoft SQL Server, with support for bulk data transfer and query timeouts.
 
-If you are unsure about this setting, keep the default value.
+If you are connecting via windows authentication from a linux docker deployment please use `mssql+pymssql`. 
 
 $$
 

@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,22 +34,19 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
-  public ClassificationRepository(CollectionDAO dao) {
+  public ClassificationRepository() {
     super(
         ClassificationResource.TAG_COLLECTION_PATH,
         Entity.CLASSIFICATION,
         Classification.class,
-        dao.classificationDAO(),
-        dao,
+        Entity.getCollectionDAO().classificationDAO(),
         "",
         "");
     quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -105,40 +101,6 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
-  @Override
-  @SuppressWarnings("unused")
-  public void postUpdate(Classification original, Classification updated) {
-    String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-    if (updated.getDisabled() != null) {
-      scriptTxt = "ctx._source.disabled=" + updated.getDisabled();
-    }
-    searchClient.updateSearchEntityUpdated(
-        JsonUtils.deepCopy(updated, Classification.class), scriptTxt, "classification.fullyQualifiedName");
-  }
-
-  @Override
-  public void deleteFromSearch(Classification entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Classification.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "classification.fullyQualifiedName");
-      } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Classification.class), "", "classification.fullyQualifiedName");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Classification entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Classification.class), false, "classification.fullyQualifiedName");
-    }
-  }
-
   public class ClassificationUpdater extends EntityUpdater {
     public ClassificationUpdater(Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
@@ -149,7 +111,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // TODO handle name change
       // TODO mutuallyExclusive from false to true?
       recordChange("mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-      recordChange("disabled,", original.getDisabled(), updated.getDisabled());
+      recordChange("disabled", original.getDisabled(), updated.getDisabled());
       updateName(original, updated);
     }
 

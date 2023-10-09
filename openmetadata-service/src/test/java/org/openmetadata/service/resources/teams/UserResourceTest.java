@@ -138,7 +138,7 @@ import org.openmetadata.service.util.TestUtils.UpdateType;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   private static final Profile PROFILE =
-      new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+      new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
   private static final TeamResourceTest TEAM_TEST = new TeamResourceTest();
 
   public UserResourceTest() {
@@ -246,6 +246,18 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_adminPrincipalsCreation() throws IOException {
+    // This is test is ensure adminPrincipals are getting created as expected
+    // we are hardcoding the usernames as they are passed in config
+    // Create user with different optional fields
+    User user = getEntityByName("admin", ADMIN_AUTH_HEADERS);
+    assertEquals("admin", user.getName());
+
+    user = getEntityByName("hello.world", ADMIN_AUTH_HEADERS);
+    assertEquals("hello.world", user.getName());
+  }
+
+  @Test
   void put_validUser_200_ok() throws IOException {
     // Create user with different optional fields
     CreateUser create = createRequest("user.xyz", null, null, null);
@@ -287,6 +299,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withName("testAdmin")
             .withDisplayName("displayName")
             .withEmail("testAdmin@email.com")
+            .withPersonas(List.of(DATA_ENGINEER.getEntityReference()))
             .withIsAdmin(true);
     createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(create);
@@ -608,7 +621,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     EntityReference team3 =
         TEAM_TEST.createEntity(TEAM_TEST.createRequest(test, 3), ADMIN_AUTH_HEADERS).getEntityReference();
     List<EntityReference> teams = Arrays.asList(team1, team2);
-    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("https://image.com")));
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     EntityReference role1 =
@@ -625,6 +638,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(timezone)
         .withDisplayName("displayName")
         .withProfile(profile)
+        .withDefaultPersona(DATA_SCIENTIST.getEntityReference())
+        .withPersonas(List.of(DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference()))
         .withIsBot(false)
         .withIsAdmin(false);
     ChangeDescription change = getChangeDescription(user.getVersion());
@@ -635,6 +650,8 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldAdded(change, "displayName", "displayName");
     fieldAdded(change, "profile", profile);
     fieldAdded(change, "isBot", false);
+    fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
+    fieldAdded(change, "personas", List.of(DATA_SCIENTIST.getEntityReference(), DATA_ENGINEER.getEntityReference()));
     user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
@@ -642,7 +659,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     //
     String timezone1 = "Canada/Eastern";
     List<EntityReference> teams1 = Arrays.asList(team1, team3); // team2 dropped and team3 is added
-    Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
+    Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("https://image2.com")));
 
     EntityReference role2 =
         roleResourceTest.createEntity(roleResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS).getEntityReference();
@@ -653,13 +670,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(timezone1)
         .withDisplayName("displayName1")
         .withProfile(profile1)
+        .withPersonas(List.of(DATA_ENGINEER.getEntityReference()))
         .withIsBot(true)
         .withIsAdmin(false);
 
     change = getChangeDescription(user.getVersion());
     fieldDeleted(change, "roles", listOf(role1));
-    fieldAdded(change, "roles", listOf(role2));
     fieldDeleted(change, "teams", listOf(team2));
+    fieldDeleted(change, "personas", listOf(DATA_SCIENTIST.getEntityReference()));
+    fieldAdded(change, "roles", listOf(role2));
     fieldAdded(change, "teams", listOf(team3));
     fieldUpdated(change, "timezone", timezone, timezone1);
     fieldUpdated(change, "displayName", "displayName", "displayName1");
@@ -676,6 +695,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withTimezone(null)
         .withDisplayName(null)
         .withProfile(null)
+        .withPersonas(null)
         .withIsBot(null)
         .withIsAdmin(false);
 
@@ -688,6 +708,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     fieldDeleted(change, "displayName", "displayName1");
     fieldDeleted(change, "profile", profile1);
     fieldDeleted(change, "isBot", true);
+    fieldDeleted(change, "personas", listOf(DATA_ENGINEER.getEntityReference()));
     patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -970,7 +991,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
     Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest("team-invalidCsv"), ADMIN_AUTH_HEADERS);
 
-    // Invalid user name with "::"
+    // Invalid username with "::"
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(UserCsv.HEADERS));
     String record = "invalid::User,,,user@domain.com,,,team-invalidCsv,";
     String csv = createCsv(UserCsv.HEADERS, listOf(record), null);
@@ -1120,7 +1141,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Profile profile1 =
         new Profile()
             .withSubscription(
-                new SubscriptionConfig().withSlack(new Webhook().withEndpoint(new URI("http://example.com"))));
+                new SubscriptionConfig().withSlack(new Webhook().withEndpoint(new URI("https://example.com"))));
 
     // Add policies to the team
     String json = JsonUtils.pojoToJson(user);
@@ -1239,7 +1260,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
           expectedTeams.stream().filter(t -> !t.getId().equals(ORG_TEAM.getId())).collect(Collectors.toList());
     }
     assertEntityReferences(expectedTeams, user.getTeams());
-
+    assertEntityReferences(createRequest.getPersonas(), user.getPersonas());
     if (createRequest.getProfile() != null) {
       assertEquals(createRequest.getProfile(), user.getProfile());
     }
@@ -1247,36 +1268,52 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
   @Override
   public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
-    assertEquals(expected.getName(), expected.getName());
-    assertEquals(expected.getDisplayName(), expected.getDisplayName());
-    assertEquals(expected.getTimezone(), expected.getTimezone());
-    assertEquals(expected.getIsBot(), expected.getIsBot());
-    assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
+    assertEquals(expected.getName(), updated.getName());
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEquals(expected.getTimezone(), updated.getTimezone());
+    assertEquals(expected.getIsBot(), updated.getIsBot());
+    assertEquals(expected.getIsAdmin(), updated.getIsAdmin());
+    if (expected.getDefaultPersona() != null) {
+      assertEquals(expected.getDefaultPersona(), updated.getDefaultPersona());
+    }
 
     TestUtils.assertEntityReferences(expected.getRoles(), updated.getRoles());
     TestUtils.assertEntityReferences(expected.getTeams(), updated.getTeams());
-
+    if (updated.getPersonas() != null) {
+      TestUtils.assertEntityReferences(expected.getPersonas(), updated.getPersonas());
+    }
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());
     }
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == null && actual == null) {
       return;
     }
-    if (fieldName.equals("profile")) {
-      Profile expectedProfile = (Profile) expected;
-      Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
-      assertEquals(expectedProfile, actualProfile);
-    } else if (fieldName.equals("teams") || fieldName.equals("roles")) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedList = (List<EntityReference>) expected;
-      List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertEntityReferences(expectedList, actualList);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
+    switch (fieldName) {
+      case "profile":
+        Profile expectedProfile = (Profile) expected;
+        Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
+        assertEquals(expectedProfile, actualProfile);
+        break;
+      case "teams":
+      case "roles":
+      case "personas":
+        @SuppressWarnings("unchecked")
+        List<EntityReference> expectedList = (List<EntityReference>) expected;
+        List<EntityReference> actualList = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+        assertEntityReferences(expectedList, actualList);
+        break;
+      case "defaultPersona":
+        EntityReference expectedRef = (EntityReference) expected;
+        EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+        assertEquals(expectedRef.getId(), actualRef.getId());
+        break;
+      default:
+        assertCommonFieldChange(fieldName, expected, actual);
+        break;
     }
   }
 

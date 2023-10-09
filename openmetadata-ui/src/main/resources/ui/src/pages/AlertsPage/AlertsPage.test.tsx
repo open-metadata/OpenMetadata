@@ -47,7 +47,7 @@ const MOCK_DATA = [
   },
 ];
 
-jest.mock('rest/alertsAPI', () => ({
+jest.mock('../../rest/alertsAPI', () => ({
   getAllAlerts: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: MOCK_DATA,

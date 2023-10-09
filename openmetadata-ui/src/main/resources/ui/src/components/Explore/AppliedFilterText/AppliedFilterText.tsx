@@ -12,9 +12,9 @@
  */
 
 import { Button, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import './AppliedFilterText.less';
 

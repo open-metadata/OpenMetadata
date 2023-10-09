@@ -12,8 +12,8 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
 import React from 'react';
+import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
 import { mockMlModelEntityDetails } from './mocks/MlModelSummary.mock';
@@ -47,11 +47,11 @@ jest.mock('./DashboardSummary/DashboardSummary.component', () =>
     ))
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
   getEntityName: jest.fn().mockImplementation(() => 'displayName'),
 }));
-jest.mock('utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
 }));
@@ -77,7 +77,7 @@ jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <>{children}</>),
 }));
 
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       ViewBasic: true,

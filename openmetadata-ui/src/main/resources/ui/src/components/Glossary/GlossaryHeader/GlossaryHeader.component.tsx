@@ -11,55 +11,73 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Divider,
+  Dropdown,
+  Row,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as IconTerm } from 'assets/svg/book.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as ExportIcon } from 'assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from 'assets/svg/ic-import.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
-import { ReactComponent as IconDropdown } from 'assets/svg/menu.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { useEntityExportModalProvider } from 'components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { EntityHeader } from 'components/Entity/EntityHeader/EntityHeader.component';
-import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import Voting from 'components/Voting/Voting.component';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityAction, EntityType } from 'enums/entity.enum';
-import { Glossary } from 'generated/entity/data/glossary';
-import {
-  EntityReference,
-  GlossaryTerm,
-} from 'generated/entity/data/glossaryTerm';
 import { cloneDeep, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
+import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
+import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import Voting from '../../../components/Voting/Voting.component';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityAction, EntityType } from '../../../enums/entity.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  EntityReference,
+  GlossaryTerm,
+  Status,
+} from '../../../generated/entity/data/glossaryTerm';
+import { Style } from '../../../generated/type/tagLabel';
 import {
   exportGlossaryInCSVFormat,
   getGlossariesById,
   getGlossaryTermsById,
-} from 'rest/glossaryAPI';
-import { getCurrentUserId, getEntityDeleteMessage } from 'utils/CommonUtils';
-import { getEntityVoteStatus } from 'utils/EntityUtils';
+} from '../../../rest/glossaryAPI';
+import {
+  getCurrentUserId,
+  getEntityDeleteMessage,
+} from '../../../utils/CommonUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
+import { StatusClass } from '../../../utils/GlossaryUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
-} from 'utils/RouterUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import Fqn from '../../../utils/Fqn';
+} from '../../../utils/RouterUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 
 export interface GlossaryHeaderProps {
   isVersionView?: boolean;
@@ -103,6 +121,7 @@ const GlossaryHeader = ({
   const [latestGlossaryData, setLatestGlossaryData] = useState<
     Glossary | GlossaryTerm
   >();
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -126,6 +145,42 @@ const GlossaryHeader = ({
     () => getEntityVoteStatus(USER_ID, selectedData.votes),
     [selectedData.votes, USER_ID]
   );
+
+  const icon = useMemo(() => {
+    if (isGlossary) {
+      return (
+        <GlossaryIcon
+          className="align-middle"
+          color={DE_ACTIVE_COLOR}
+          height={36}
+          name="folder"
+          width={32}
+        />
+      );
+    }
+
+    if ((selectedData as GlossaryTerm).style?.iconURL) {
+      return (
+        <img
+          className="align-middle"
+          data-testid="icon"
+          height={36}
+          src={(selectedData as GlossaryTerm).style?.iconURL}
+          width={32}
+        />
+      );
+    }
+
+    return (
+      <IconTerm
+        className="align-middle"
+        color={DE_ACTIVE_COLOR}
+        height={36}
+        name="doc"
+        width={32}
+      />
+    );
+  }, [selectedData, isGlossary]);
 
   const handleAddGlossaryTermClick = useCallback(() => {
     onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
@@ -176,6 +231,21 @@ const GlossaryHeader = ({
 
     onUpdate(updatedDetails);
     setIsNameEditing(false);
+  };
+
+  const onStyleSave = (data: Style) => {
+    const style: Style = {
+      // if color/iconURL is empty or undefined send undefined
+      color: data.color ? data.color : undefined,
+      iconURL: data.iconURL ? data.iconURL : undefined,
+    };
+    const updatedDetails = {
+      ...selectedData,
+      style,
+    };
+
+    onUpdate(updatedDetails);
+    setIsStyleEditing(false);
   };
 
   const handleUpdateVote = (data: VotingDataProps) => updateVote?.(data);
@@ -267,6 +337,28 @@ const GlossaryHeader = ({
           },
         ] as ItemType[])
       : []),
+    ...(permissions?.EditAll && !isGlossary
+      ? ([
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.edit-entity-style-description', {
+                  entity: t('label.glossary-term'),
+                })}
+                icon={<StyleIcon color={DE_ACTIVE_COLOR} width="18px" />}
+                id="rename-button"
+                name={t('label.style')}
+              />
+            ),
+            key: 'edit-style-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+        ] as ItemType[])
+      : []),
     ...(permissions.Delete
       ? ([
           {
@@ -295,6 +387,25 @@ const GlossaryHeader = ({
         ] as ItemType[])
       : []),
   ];
+
+  const statusBadge = useMemo(() => {
+    if (!isGlossary) {
+      const entityStatus =
+        (selectedData as GlossaryTerm).status ?? Status.Approved;
+
+      return (
+        <Space>
+          <Divider className="m-x-xs h-6" type="vertical" />
+          <StatusBadge
+            label={entityStatus}
+            status={StatusClass[entityStatus]}
+          />
+        </Space>
+      );
+    }
+
+    return null;
+  }, [isGlossary, selectedData]);
 
   const createButtons = useMemo(() => {
     if (permissions.Create) {
@@ -373,28 +484,13 @@ const GlossaryHeader = ({
   return (
     <>
       <Row gutter={[0, 16]} justify="space-between" wrap={false}>
-        <Col flex="auto">
+        <Col className="d-flex" flex="auto">
           <EntityHeader
+            badge={statusBadge}
             breadcrumb={breadcrumb}
             entityData={selectedData}
             entityType={EntityType.GLOSSARY_TERM}
-            icon={
-              isGlossary ? (
-                <GlossaryIcon
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              ) : (
-                <IconTerm
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="doc"
-                  width={32}
-                />
-              )
-            }
+            icon={icon}
             serviceName=""
           />
         </Col>
@@ -476,6 +572,13 @@ const GlossaryHeader = ({
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
+      />
+
+      <StyleModal
+        open={isStyleEditing}
+        style={(selectedData as GlossaryTerm).style}
+        onCancel={() => setIsStyleEditing(false)}
+        onSubmit={onStyleSave}
       />
     </>
   );

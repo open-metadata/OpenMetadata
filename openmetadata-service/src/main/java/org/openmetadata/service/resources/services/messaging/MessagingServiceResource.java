@@ -55,8 +55,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -75,8 +74,8 @@ public class MessagingServiceResource
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owner,domain";
 
-  public MessagingServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MessagingService.class, new MessagingServiceRepository(dao), authorizer, ServiceType.MESSAGING);
+  public MessagingServiceResource(Authorizer authorizer) {
+    super(Entity.MESSAGING_SERVICE, authorizer, ServiceType.MESSAGING);
   }
 
   public static class MessagingServiceList extends ResultList<MessagingService> {
@@ -105,6 +104,9 @@ public class MessagingServiceResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @Parameter(description = "Filter services by domain", schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(description = "Limit number services returned. (1 to 1000000, " + "default 10)")
           @DefaultValue("10")
           @Min(0)
@@ -123,10 +125,7 @@ public class MessagingServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include);
-    ResultList<MessagingService> messagingServices =
-        super.listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    return addHref(uriInfo, decryptOrNullify(securityContext, messagingServices));
+    return listInternal(uriInfo, securityContext, fieldsParam, include, domain, limitParam, before, after);
   }
 
   @GET

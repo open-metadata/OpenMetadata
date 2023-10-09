@@ -55,17 +55,13 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -121,8 +117,8 @@ public class MetadataServiceResource
     return service;
   }
 
-  public MetadataServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(MetadataService.class, new MetadataServiceRepository(dao), authorizer, ServiceType.METADATA);
+  public MetadataServiceResource(Authorizer authorizer) {
+    super(Entity.METADATA_SERVICE, authorizer, ServiceType.METADATA);
   }
 
   @Override
@@ -172,17 +168,7 @@ public class MetadataServiceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    RestUtil.validateCursors(before, after);
-    EntityUtil.Fields fields = getFields(fieldsParam);
-    ResultList<MetadataService> metadataServices;
-
-    ListFilter filter = new ListFilter(include);
-    if (before != null) {
-      metadataServices = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else {
-      metadataServices = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, decryptOrNullify(securityContext, metadataServices));
+    return listInternal(uriInfo, securityContext, fieldsParam, include, null, limitParam, before, after);
   }
 
   @GET

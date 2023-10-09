@@ -39,7 +39,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.UNEXPEC
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidChild;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParent;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidParentCount;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,7 +73,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -85,10 +83,16 @@ public class TeamRepository extends EntityRepository<Team> {
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
-  public TeamRepository(CollectionDAO dao) {
-    super(TeamResource.COLLECTION_PATH, TEAM, Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, TEAM_UPDATE_FIELDS);
+  public TeamRepository() {
+    super(
+        TeamResource.COLLECTION_PATH,
+        TEAM,
+        Team.class,
+        Entity.getCollectionDAO().teamDAO(),
+        TEAM_PATCH_FIELDS,
+        TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -225,29 +229,6 @@ public class TeamRepository extends EntityRepository<Team> {
     return teamCsv.importCsv(csv, dryRun);
   }
 
-  @Override
-  public void deleteFromSearch(Team entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Team.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "parents.fullyQualifiedName");
-      } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Team.class), "", "parents.fullyQualifiedName");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Team entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Team.class), false, "parents.fullyQualifiedName");
-    }
-  }
-
   private List<EntityReference> getInheritedRoles(Team team) {
     return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
   }
@@ -316,7 +297,7 @@ public class TeamRepository extends EntityRepository<Team> {
         allTeams.stream()
             .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
             .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
-            .collect(Collectors.toList());
+            .toList();
     // build hierarchy of joinable teams
     joinableTeams.forEach(
         team -> {
@@ -536,7 +517,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  public void initOrganization() throws IOException {
+  public void initOrganization() {
     String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);

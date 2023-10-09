@@ -17,9 +17,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
-from metadata.data_insight.processor.data_processor import DataProcessor
-from metadata.data_insight.processor.web_analytic_report_data_processor import (
-    WebAnalyticEntityViewReportDataProcessor,
+from metadata.data_insight.processor.reports.data_processor import DataProcessor
+from metadata.data_insight.processor.reports.web_analytic_report_data_processor import (
     WebAnalyticUserActivityReportDataProcessor,
 )
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
@@ -92,40 +91,54 @@ USER_DETAILS = {"name": "aaron_johnson0", "team": "sales"}
 
 class WebAnalyticEntityViewReportDataProcessorTest(unittest.TestCase):
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata", return_value=MagicMock())
-    @patch.object(
-        WebAnalyticEntityViewReportDataProcessor,
-        "fetch_data",
-        return_value=WEB_ANALYTIC_EVENTS,
-    )
-    def test_refine(self, mocked_ometa, mocked_fetch_data):
+    def test_refine(self, mocked_ometa):
         """Check fecth owner returns the expected value"""
+        web_analytic_entity_report_data = {}
         processor = DataProcessor.create(
             "WebAnalyticEntityViewReportData", mocked_ometa
         )
-        data = next(processor.refine()).data
+        processor._pre_hook_fn()
+        for event in WEB_ANALYTIC_EVENTS:
+            processor.refine(event)
 
-        assert isinstance(data, WebAnalyticEntityViewReportData)
-        assert data.views == 2
+        data = processor._refined_data
+        assert isinstance(data, dict)
+
+        for datum in processor.yield_refined_data():
+            assert isinstance(datum.data, WebAnalyticEntityViewReportData)
+            web_analytic_entity_report_data[datum.data.entityFqn.__root__] = datum.data
+
+        assert (
+            web_analytic_entity_report_data[
+                "sample_data.ecommerce_db.shopify.dim_address"
+            ].views
+            == 2
+        )
 
 
 class WebAnalyticUserActivityReportDataProcessorTest(unittest.TestCase):
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata", return_value=MagicMock())
     @patch.object(
         WebAnalyticUserActivityReportDataProcessor,
-        "fetch_data",
-        return_value=WEB_ANALYTIC_EVENTS,
-    )
-    @patch.object(
-        WebAnalyticUserActivityReportDataProcessor,
         "_get_user_details",
         return_value=USER_DETAILS,
     )
-    def test_refine(self, mocked_ometa, mocked_fetch_data, mocked_user_details):
+    def test_refine(self, mocked_ometa, mocked_user_details):
         """Check fecth owner returns the expected value"""
         processor = DataProcessor.create(
             "WebAnalyticUserActivityReportData", mocked_ometa
         )
-        data = next(processor.refine()).data
+        processor._pre_hook_fn()
+        for event in WEB_ANALYTIC_EVENTS:
+            processor.refine(event)
+        processor._post_hook_fn()
+
+        data = processor._refined_data
+        assert isinstance(data, dict)
+
+        for datum in processor.yield_refined_data():
+            assert isinstance(datum.data, WebAnalyticUserActivityReportData)
+            data = datum.data
 
         assert isinstance(data, WebAnalyticUserActivityReportData)
         assert data.totalSessions == 2

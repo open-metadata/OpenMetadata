@@ -1,32 +1,30 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.service.resources.EntityResource.searchClient;
-
 import java.util.UUID;
 import lombok.Getter;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 
-public class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
+@Repository
+public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
   @Getter protected final String collectionPath;
   @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
-  @Getter protected final CollectionDAO daoCollection;
+  @Getter protected final SearchRepository searchRepository;
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
 
-  protected boolean supportsSearchIndex = true;
+  protected final boolean supportsSearchIndex = true;
 
   protected EntityTimeSeriesRepository(
-      String collectionPath,
-      CollectionDAO daoCollection,
-      EntityTimeSeriesDAO timeSeriesDao,
-      Class<T> entityClass,
-      String entityType) {
+      String collectionPath, EntityTimeSeriesDAO timeSeriesDao, Class<T> entityClass, String entityType) {
     this.collectionPath = collectionPath;
     this.timeSeriesDao = timeSeriesDao;
-    this.daoCollection = daoCollection;
     this.entityClass = entityClass;
     this.entityType = entityType;
+    this.searchRepository = Entity.getSearchRepository();
+    Entity.registerEntity(entityClass, entityType, this);
   }
 
   public T createNewRecord(T record, String extension, String recordFQN) {
@@ -38,7 +36,7 @@ public class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
 
   protected void postCreate(T entity) {
     if (supportsSearchIndex) {
-      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+      searchRepository.createTimeSeriesEntity(JsonUtils.deepCopy(entity, entityClass));
     }
   }
 }

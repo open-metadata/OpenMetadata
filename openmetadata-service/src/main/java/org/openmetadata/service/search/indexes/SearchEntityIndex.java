@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
@@ -15,14 +14,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchEntityIndex implements ElasticSearchIndex {
+public class SearchEntityIndex implements SearchIndex {
 
   final org.openmetadata.schema.entity.data.SearchIndex searchIndex;
 
@@ -33,17 +30,6 @@ public class SearchEntityIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (searchIndex.getOwner() != null) {
-      EntityReference owner = searchIndex.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      searchIndex.setOwner(owner);
-    }
-    if (searchIndex.getDomain() != null) {
-      EntityReference domain = searchIndex.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      searchIndex.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(searchIndex);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -56,6 +42,12 @@ public class SearchEntityIndex implements ElasticSearchIndex {
         getFQNParts(
             searchIndex.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (searchIndex.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(searchIndex.getOwner()));
+    }
+    if (searchIndex.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(searchIndex.getDomain()));
+    }
     return doc;
   }
 
@@ -65,7 +57,6 @@ public class SearchEntityIndex implements ElasticSearchIndex {
     fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 15.0f);
     fields.put(FIELD_NAME_NGRAM, 1.0f);
-    fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
     fields.put(FULLY_QUALIFIED_NAME_PARTS, 10.0f);

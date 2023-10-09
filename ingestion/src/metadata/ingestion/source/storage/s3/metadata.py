@@ -27,9 +27,6 @@ from metadata.generated.schema.entity.data.container import (
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection,
 )
@@ -43,6 +40,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
@@ -72,8 +70,8 @@ class S3Source(StorageServiceSource):
     Source implementation to ingest S3 buckets data.
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.s3_client = self.connection.s3_client
         self.cloudwatch_client = self.connection.cloudwatch_client
 
@@ -81,30 +79,56 @@ class S3Source(StorageServiceSource):
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: S3Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(
                 f"Expected S3StoreConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
         bucket_results = self.fetch_buckets()
 
         for bucket_response in bucket_results:
+            bucket_name = bucket_response.name
             try:
-
-                # We always try to generate the parent container (the bucket)
+                # We always generate the parent container (the bucket)
                 yield self._generate_unstructured_container(
                     bucket_response=bucket_response
                 )
-                self._bucket_cache[bucket_response.name] = self.context.container
-                metadata_config = self._load_metadata_file(
-                    bucket_name=bucket_response.name
+                self._bucket_cache[bucket_name] = self.context.container
+                parent_entity: EntityReference = EntityReference(
+                    id=self._bucket_cache[bucket_name].id.__root__, type="container"
                 )
+                if self.global_manifest:
+                    manifest_entries_for_current_bucket = (
+                        self._manifest_entries_to_metadata_entries_by_container(
+                            container_name=bucket_name, manifest=self.global_manifest
+                        )
+                    )
+                    # Check if we have entries in the manifest file belonging to this bucket
+                    if manifest_entries_for_current_bucket:
+                        # ingest all the relevant valid paths from it
+                        yield from self._generate_structured_containers(
+                            bucket_response=bucket_response,
+                            entries=self._manifest_entries_to_metadata_entries_by_container(
+                                container_name=bucket_name,
+                                manifest=self.global_manifest,
+                            ),
+                            parent=parent_entity,
+                        )
+                        # nothing else do to for the current bucket, skipping to the next
+                        continue
+                # If no global file, or no valid entries in the manifest, check for bucket level metadata file
+                metadata_config = self._load_metadata_file(bucket_name=bucket_name)
                 if metadata_config:
+                    yield from self._generate_structured_containers(
+                        bucket_response=bucket_response,
+                        entries=metadata_config.entries,
+                        parent=parent_entity,
+                    )
                     for metadata_entry in metadata_config.entries:
                         logger.info(
                             f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
@@ -200,6 +224,30 @@ class S3Source(StorageServiceSource):
                     ),
                 )
         return None
+
+    def _generate_structured_containers(
+        self,
+        bucket_response: S3BucketResponse,
+        entries: List[MetadataEntry],
+        parent: Optional[EntityReference] = None,
+    ) -> List[S3ContainerDetails]:
+        result: List[S3ContainerDetails] = []
+        for metadata_entry in entries:
+            logger.info(
+                f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
+                f"and generating structured container"
+            )
+            structured_container: Optional[
+                S3ContainerDetails
+            ] = self._generate_container_details(
+                bucket_response=bucket_response,
+                metadata_entry=metadata_entry,
+                parent=parent,
+            )
+            if structured_container:
+                result.append(structured_container)
+
+        return result
 
     def fetch_buckets(self) -> List[S3BucketResponse]:
         results: List[S3BucketResponse] = []

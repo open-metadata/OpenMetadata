@@ -15,9 +15,13 @@
 /// <reference types="Cypress" />
 
 import {
+  deleteUser,
   descriptionBox,
   interceptURL,
+  login,
+  signupAndLogin,
   toastNotification,
+  uuid,
   verifyMultipleResponseStatusCode,
   verifyResponseStatusCode,
   visitEntityDetailsPage,
@@ -34,6 +38,16 @@ import {
   NEW_GLOSSARY_TERMS,
   SEARCH_ENTITY_TABLE,
 } from '../../constants/constants';
+
+const CREDENTIALS = {
+  firstName: 'Cypress',
+  lastName: 'UserDC',
+  email: `test_dataconsumer${uuid()}@openmetadata.org`,
+  password: 'User@OMD123',
+  username: 'CypressUserDC',
+};
+
+let createdUserId = '';
 
 const visitGlossaryTermPage = (termName, fqn, fetchPermission) => {
   interceptURL(
@@ -146,15 +160,22 @@ const fillGlossaryTermDetails = (term, glossary, isMutually = false) => {
     .should('be.visible')
     .type('https://test.com');
 
+  if (term.icon) {
+    cy.get('[data-testid="icon-url"]').scrollIntoView().type(term.icon);
+  }
+  if (term.color) {
+    cy.get('[data-testid="color-input"]').scrollIntoView().type(term.color);
+  }
+
   // check for parent glossary reviewer
   if (glossary.name === NEW_GLOSSARY.name) {
     cy.get('[data-testid="user-tag"]')
-      .contains(glossary.reviewer)
+      .contains(CREDENTIALS.username)
       .should('be.visible');
   }
 };
 
-const createGlossaryTerm = (term, glossary, isMutually = false) => {
+const createGlossaryTerm = (term, glossary, status, isMutually = false) => {
   fillGlossaryTermDetails(term, glossary, isMutually);
 
   interceptURL('POST', '/api/v1/glossaryTerms', 'createGlossaryTerms');
@@ -168,8 +189,11 @@ const createGlossaryTerm = (term, glossary, isMutually = false) => {
   cy.get(`[data-row-key="${glossary.name}.${term.name}"]`)
     .scrollIntoView()
     .should('be.visible')
-    .contains(term.name)
-    .should('be.visible');
+    .contains(term.name);
+
+  cy.get(`[data-testid="${glossary.name}.${term.name}-status"]`)
+    .should('be.visible')
+    .contains(status);
 };
 
 const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
@@ -402,28 +426,38 @@ const voteGlossary = (isGlossary) => {
   initialVoting(isGlossary ? '@voteGlossary' : '@voteGlossaryTerm');
 };
 
+const goToGlossaryPage = () => {
+  interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
+  interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
+  cy.get('[data-testid="governance"]').click({
+    animationDistanceThreshold: 20,
+  });
+
+  // Clicking on Glossary
+  cy.get('.govern-menu').then(($el) => {
+    cy.wrap($el)
+      .find('[data-testid="app-bar-item-glossary"]')
+      .click({ force: true });
+  });
+};
+
+describe('Prerequisites', () => {
+  it('Create a user with data consumer role', () => {
+    signupAndLogin(
+      CREDENTIALS.email,
+      CREDENTIALS.password,
+      CREDENTIALS.firstName,
+      CREDENTIALS.lastName
+    ).then((id) => {
+      createdUserId = id;
+    });
+  });
+});
+
 describe('Glossary page should work properly', () => {
   beforeEach(() => {
     cy.login();
-
-    interceptURL('GET', '/api/v1/glossaryTerms*', 'getGlossaryTerms');
-    interceptURL('GET', '/api/v1/glossaries?fields=*', 'fetchGlossaries');
-    cy.get('[data-testid="governance"]')
-      .should('exist')
-      .and('be.visible')
-      .click({ animationDistanceThreshold: 20 });
-
-    // Clicking on Glossary
-    cy.get('.govern-menu')
-      .should('exist')
-      .and('be.visible')
-      .then(($el) => {
-        cy.wrap($el)
-          .find('[data-testid="app-bar-item-glossary"]')
-          .should('exist')
-          .and('be.visible')
-          .click({ force: true });
-      });
+    goToGlossaryPage();
   });
 
   it('Create new glossary flow should work properly', () => {
@@ -473,8 +507,8 @@ describe('Glossary page should work properly', () => {
 
     cy.get('[data-testid="add-reviewers"]').scrollIntoView().click();
 
-    cy.get('[data-testid="searchbar"]').type(NEW_GLOSSARY.reviewer);
-    cy.get(`[title="${NEW_GLOSSARY.reviewer}"]`)
+    cy.get('[data-testid="searchbar"]').type(CREDENTIALS.username);
+    cy.get(`[title="${CREDENTIALS.username}"]`)
       .scrollIntoView()
       .should('be.visible')
       .click();
@@ -508,10 +542,8 @@ describe('Glossary page should work properly', () => {
       expect(request.body.owner).to.have.all.keys('id', 'type');
       expect(request.body.reviewers).has.length(1);
       expect(request.body.tags).has.length(1);
-      expect(request.body.tags[0]).to.deep.equal({
-        tagFQN: 'PersonalData.Personal',
-        source: 'Classification',
-      });
+      expect(request.body.tags[0].tagFQN).equals('PersonalData.Personal');
+      expect(request.body.tags[0].source).equals('Classification');
 
       cy.url().should('include', '/glossary/');
 
@@ -596,7 +628,7 @@ describe('Glossary page should work properly', () => {
     cy.get(`[data-testid="glossary-reviewer-name"]`)
       .invoke('text')
       .then((text) => {
-        expect(text).to.contain(NEW_GLOSSARY.reviewer);
+        expect(text).to.contain(CREDENTIALS.username);
       });
 
     // Verify Product glossary details
@@ -620,14 +652,63 @@ describe('Glossary page should work properly', () => {
   it('Create glossary term should work properly', () => {
     const terms = Object.values(NEW_GLOSSARY_TERMS);
     selectActiveGlossary(NEW_GLOSSARY.name);
-    terms.forEach((term) => createGlossaryTerm(term, NEW_GLOSSARY, true));
+    terms.forEach((term) =>
+      createGlossaryTerm(term, NEW_GLOSSARY, 'Draft', true)
+    );
 
     // Glossary term for Product glossary
-
     selectActiveGlossary(NEW_GLOSSARY_1.name);
 
     const ProductTerms = Object.values(NEW_GLOSSARY_1_TERMS);
-    ProductTerms.forEach((term) => createGlossaryTerm(term, NEW_GLOSSARY_1));
+    ProductTerms.forEach((term) =>
+      createGlossaryTerm(term, NEW_GLOSSARY_1, 'Approved')
+    );
+  });
+
+  it('Approval Workflow for Glossary Term', () => {
+    cy.logout();
+
+    login(CREDENTIALS.email, CREDENTIALS.password);
+
+    goToGlossaryPage();
+
+    selectActiveGlossary(NEW_GLOSSARY.name);
+
+    const { name, fullyQualifiedName } = NEW_GLOSSARY_TERMS.term_1;
+
+    visitGlossaryTermPage(name, fullyQualifiedName);
+
+    cy.get('[data-testid="activity_feed"]').click();
+
+    interceptURL('GET', '/api/v1/feed*', 'activityFeed');
+
+    cy.get('[data-testid="global-setting-left-panel"]')
+      .contains('Tasks')
+      .click();
+
+    verifyResponseStatusCode('@activityFeed', 200);
+
+    interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
+
+    cy.get('[data-testid="approve-task"]').click();
+
+    verifyResponseStatusCode('@resolveTask', 200);
+
+    // Verify toast notification
+    toastNotification('Task resolved successfully');
+
+    verifyResponseStatusCode('@activityFeed', 200);
+
+    goToGlossaryPage();
+    selectActiveGlossary(NEW_GLOSSARY.name);
+
+    cy.get(`[data-testid="${fullyQualifiedName}-status"]`)
+      .should('be.visible')
+      .contains('Approved');
+
+    cy.logout();
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
   });
 
   it('Updating data of glossary should work properly', () => {
@@ -645,7 +726,7 @@ describe('Glossary page should work properly', () => {
     voteGlossary(true);
   });
 
-  it.skip('Update glossary term', () => {
+  it('Update glossary term', () => {
     const uSynonyms = ['pick up', 'take', 'obtain'];
     const newRef = { name: 'take', url: 'https://take.com' };
     const term2 = NEW_GLOSSARY_TERMS.term_2.name;
@@ -659,25 +740,8 @@ describe('Glossary page should work properly', () => {
     verifyMultipleResponseStatusCode(['@glossaryTerm', '@permissions'], 200);
 
     // visit glossary term page
-    interceptURL(
-      'GET',
-      `/api/v1/glossaryTerms/name/*?fields=*`,
-      'glossaryTermDetails'
-    );
-    interceptURL('GET', `/api/v1/glossaryTerms?parent=*`, 'listGlossaryTerm');
-    interceptURL(
-      'GET',
-      `/api/v1/permissions/glossaryTerm/*`,
-      'glossaryTermPermission'
-    );
-    cy.get(`[data-row-key="${fullyQualifiedName}"]`)
-      .contains(name)
-      .should('be.visible')
-      .click();
-    verifyMultipleResponseStatusCode(
-      ['@glossaryTermDetails', '@listGlossaryTerm', '@glossaryTermPermission'],
-      200
-    );
+    visitGlossaryTermPage(name, fullyQualifiedName);
+
     // Updating synonyms
     updateSynonyms(uSynonyms);
 
@@ -699,7 +763,7 @@ describe('Glossary page should work properly', () => {
     voteGlossary();
   });
 
-  it.skip('Assets Tab should work properly', () => {
+  it('Assets Tab should work properly', () => {
     selectActiveGlossary(NEW_GLOSSARY.name);
     const glossary = NEW_GLOSSARY.name;
     const term1 = NEW_GLOSSARY_TERMS.term_1.name;
@@ -791,6 +855,10 @@ describe('Glossary page should work properly', () => {
       .should('contain', term3)
       .should('contain', term4);
 
+    cy.get(
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="icon"]'
+    ).should('have.length', 2);
+
     // Add tag to schema table
     const firstColumn =
       '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] > [data-testid="entity-tags"] [data-testid="add-tag"]';
@@ -813,7 +881,9 @@ describe('Glossary page should work properly', () => {
     )
       .scrollIntoView()
       .should('contain', term3);
-
+    cy.get(
+      '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="icon"]'
+    ).should('be.visible');
     cy.get('[data-testid="governance"]').click();
     cy.get('[data-testid="app-bar-item-glossary"]').click({ force: true });
 
@@ -830,7 +900,7 @@ describe('Glossary page should work properly', () => {
       .should('be.visible');
   });
 
-  it.skip('Remove Glossary term from entity should work properly', () => {
+  it('Remove Glossary term from entity should work properly', () => {
     const glossaryName = NEW_GLOSSARY_1.name;
     const { name, fullyQualifiedName } = NEW_GLOSSARY_1_TERMS.term_1;
     const entity = SEARCH_ENTITY_TABLE.table_3;
@@ -897,8 +967,20 @@ describe('Glossary page should work properly', () => {
       'be.visible'
     );
   });
+});
+
+describe('Cleanup', () => {
+  beforeEach(() => {
+    Cypress.session.clearAllSavedSessions();
+    cy.login();
+  });
+
+  it('delete user', () => {
+    deleteUser(createdUserId);
+  });
 
   it('Delete glossary term should work properly', () => {
+    goToGlossaryPage();
     const terms = Object.values(NEW_GLOSSARY_TERMS);
     selectActiveGlossary(NEW_GLOSSARY.name);
     terms.forEach(deleteGlossaryTerm);
@@ -909,6 +991,7 @@ describe('Glossary page should work properly', () => {
   });
 
   it('Delete glossary should work properly', () => {
+    goToGlossaryPage();
     verifyResponseStatusCode('@fetchGlossaries', 200);
     [NEW_GLOSSARY.name, NEW_GLOSSARY_1.name].forEach((glossary) => {
       deleteGlossary(glossary);

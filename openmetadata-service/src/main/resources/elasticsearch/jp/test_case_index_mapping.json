@@ -87,13 +87,7 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer_jp"
       },
       "entityLink": {
         "type": "text"
@@ -162,13 +156,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer_jp",
-            "fields": {
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
-              }
-            }
+            "analyzer": "om_analyzer_jp"
           },
           "entityType": {
             "type": "keyword"

@@ -149,7 +149,7 @@ class UsageQueryFilterTests(TestCase):
         config = OpenMetadataWorkflowConfig.parse_obj(mock_clickhouse_config)
         clickhouse_source = ClickhouseUsageSource.create(
             mock_clickhouse_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
         )
         clickhouse_source.prepare()
         assert clickhouse_source.filters == EXPECTED_CLICKHOUSE_FILTER

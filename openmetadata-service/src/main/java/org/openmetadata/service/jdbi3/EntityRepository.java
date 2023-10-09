@@ -19,10 +19,29 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.DELETED;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_CHILDREN;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
+import static org.openmetadata.service.Entity.FIELD_DELETED;
+import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
+import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
+import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -111,6 +130,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -153,6 +173,7 @@ import org.openmetadata.service.util.ResultList;
  * information does not become stale.
  */
 @Slf4j
+@Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
@@ -172,6 +193,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   @Getter protected final CollectionDAO daoCollection;
+  @Getter protected final SearchRepository searchRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -184,7 +206,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsDomain;
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
-  protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
+  @Getter protected final boolean supportsExperts;
+  protected boolean quoteFqn = false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -192,21 +215,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields that can be updated during PUT operation */
   @Getter protected final Fields putFields;
 
-  protected boolean supportsSearchIndex = false;
+  protected boolean supportsSearch = false;
 
   protected EntityRepository(
       String collectionPath,
       String entityType,
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
-      CollectionDAO collectionDAO,
       String patchFields,
       String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
-    this.daoCollection = collectionDAO;
+    this.daoCollection = Entity.getCollectionDAO();
+    this.searchRepository = Entity.getSearchRepository();
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
@@ -247,6 +270,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_REVIEWERS);
       this.putFields.addField(allowedFields, FIELD_REVIEWERS);
     }
+    this.supportsExperts = allowedFields.contains(FIELD_EXPERTS);
+    if (supportsExperts) {
+      this.patchFields.addField(allowedFields, FIELD_EXPERTS);
+      this.putFields.addField(allowedFields, FIELD_EXPERTS);
+    }
     this.supportsDataProducts = allowedFields.contains(FIELD_DATA_PRODUCTS);
     if (supportsDataProducts) {
       this.patchFields.addField(allowedFields, FIELD_DATA_PRODUCTS);
@@ -262,6 +290,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
       this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
     }
+    Entity.registerEntity(entityClass, entityType, this);
   }
 
   /**
@@ -542,7 +571,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public ResultList<T> listAfterWithSkipFailure(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     List<String> errors = new ArrayList<>();
     List<T> entities = new ArrayList<>();
     int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
@@ -694,17 +723,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
-    if (supportsSearchIndex) {
-      String contextInfo = entity != null ? String.format("Entity Info : %s", entity) : null;
-      searchClient.updateSearchEntityCreated(JsonUtils.deepCopy(entity, entityClass));
+    if (supportsSearch) {
+      searchRepository.createEntity(entity);
     }
   }
 
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
-    if (supportsSearchIndex) {
-      String scriptTxt = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-      searchClient.updateSearchEntityUpdated(JsonUtils.deepCopy(updated, entityClass), scriptTxt, "");
+    if (supportsSearch) {
+      searchRepository.updateEntity(updated);
     }
   }
 
@@ -775,7 +802,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .withCurrentVersion(entity.getVersion())
             .withPreviousVersion(change.getPreviousVersion());
     entity.setChangeDescription(change);
-    postUpdate(entity, entity);
+    if (supportsSearch) {
+      postUpdate(entity, entity);
+    }
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
@@ -844,19 +873,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void postDelete(T entity) {}
 
   public void deleteFromSearch(T entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, entityClass), changeType.equals(RestUtil.ENTITY_SOFT_DELETED), "");
+    if (supportsSearch) {
+      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
+        searchRepository.softDeleteOrRestoreEntity(entity, true);
       } else {
-        searchClient.updateSearchEntityDeleted(JsonUtils.deepCopy(entity, entityClass), "", "");
+        searchRepository.deleteEntity(entity);
       }
     }
   }
 
   public void restoreFromSearch(T entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(JsonUtils.deepCopy(entity, entityClass), false, "");
+    if (supportsSearch) {
+      searchRepository.softDeleteOrRestoreEntity(entity, false);
     }
   }
 
@@ -938,7 +966,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the tag labels
     daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
 
-    // when the glossary and tag is deleted .. delete its usage
+    // when the glossary and tag is deleted, delete its usage
     daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -1357,6 +1385,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
   }
 
+  public EntityReference getContainer(UUID toId, String fromEntityType) {
+    return getFromEntityRef(toId, Relationship.CONTAINS, fromEntityType, true);
+  }
+
   public EntityReference getFromEntityRef(
       UUID toId, Relationship relationship, String fromEntityType, boolean mustHaveRelationship) {
     List<EntityRelationshipRecord> records = findFromRecords(toId, entityType, relationship, fromEntityType);
@@ -1462,7 +1494,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public EntityReference getDomain(T entity) {
-    return getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false);
+    return supportsDomain ? getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false) : null;
   }
 
   private List<EntityReference> getDataProducts(T entity) {
@@ -1482,11 +1514,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected List<EntityReference> getReviewers(T entity) {
-    return findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER);
+    return supportsReviewers ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER) : null;
   }
 
   protected List<EntityReference> getExperts(T entity) {
-    return findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER);
+    return supportsExperts ? findTo(entity.getId(), entityType, Relationship.EXPERT, Entity.USER) : null;
   }
 
   public EntityReference getOwner(EntityReference ref) {
@@ -2355,7 +2387,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
     @Override
-    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) throws IOException {
+    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
@@ -2365,7 +2397,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
     @Override
-    public EntityInterface load(@NotNull Pair<String, UUID> idPair) throws IOException {
+    public EntityInterface load(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);

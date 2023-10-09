@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.resources.Collection;
@@ -88,8 +87,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return type;
   }
 
-  public TypeResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Type.class, new TypeRepository(dao), authorizer);
+  public TypeResource(Authorizer authorizer) {
+    super(Entity.TYPE, authorizer);
   }
 
   @Override

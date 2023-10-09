@@ -25,15 +25,14 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
     PrestoConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.presto.queries import PRESTO_SHOW_CREATE_TABLE
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ometa_logger
@@ -86,6 +85,7 @@ def get_columns(
                 "name": row.Column,
                 "type": coltype,
                 "system_data_type": row.Type,
+                "comment": row.Comment,
                 # newer Presto no longer includes this column
                 "nullable": getattr(row, "Null", True),
                 "default": None,
@@ -97,7 +97,15 @@ def get_columns(
 @reflection.cache
 # pylint: disable=unused-argument
 def get_table_comment(self, connection, table_name, schema=None, **kw):
-    return {"text": None}
+    fmt_query = PRESTO_SHOW_CREATE_TABLE.format(
+        schema_table_name=".".join(filter(None, [schema, table_name]))
+    )
+    results = connection.execute(fmt_query)
+    for res in results:
+        matches = re.findall(r"COMMENT '(.*)'", res[0])
+        if matches:
+            return {"text": matches[-1]}
+        return {"text": None}
 
 
 PrestoDialect.get_columns = get_columns
@@ -110,14 +118,14 @@ class PrestoSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: PrestoConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, PrestoConnection):
             raise InvalidSourceException(
                 f"Expected PrestoConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
         """

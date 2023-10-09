@@ -4,15 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DatabaseIndex implements ElasticSearchIndex {
+public class DatabaseIndex implements SearchIndex {
 
   final Database database;
 
@@ -23,11 +21,6 @@ public class DatabaseIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (database.getOwner() != null) {
-      EntityReference owner = database.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      database.setOwner(owner);
-    }
     Map<String, Object> doc = JsonUtils.getMap(database);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -40,6 +33,12 @@ public class DatabaseIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.DATABASE);
+    if (database.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(database.getOwner()));
+    }
+    if (database.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(database.getDomain()));
+    }
     return doc;
   }
 }

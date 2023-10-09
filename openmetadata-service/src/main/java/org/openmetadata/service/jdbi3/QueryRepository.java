@@ -29,21 +29,18 @@ import org.openmetadata.service.util.RestUtil;
 public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_USED_IN_FIELD = "queryUsedIn";
   private static final String QUERY_USERS_FIELD = "users";
-
-  private static final String QUERY_USED_BY_FIELD = "usedBy";
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
 
-  public QueryRepository(CollectionDAO dao) {
+  public QueryRepository() {
     super(
         QueryResource.COLLECTION_PATH,
         Entity.QUERY,
         Query.class,
-        dao.queryDAO(),
-        dao,
+        Entity.getCollectionDAO().queryDAO(),
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override

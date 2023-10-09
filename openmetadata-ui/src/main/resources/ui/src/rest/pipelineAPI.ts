@@ -12,15 +12,15 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { Include } from 'generated/type/include';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 import { ListTestCaseResultsParams } from './testAPI';

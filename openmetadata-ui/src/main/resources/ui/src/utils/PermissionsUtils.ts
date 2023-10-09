@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import AppState from '../AppState';
 import {
   OperationPermission,
   ResourceEntity,
   UIPermission,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import AppState from '../AppState';
+} from '../components/PermissionProvider/PermissionProvider.interface';
 import {
   Access,
   Permission,

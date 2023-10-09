@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import { get } from 'lodash';
+import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
 import {
   QueryFieldInterface,
   QueryFieldValueInterface,
   QueryFilterInterface,
-} from 'pages/explore/ExplorePage.interface';
+} from '../../pages/explore/ExplorePage.interface';
 import {
   ExploreQuickFilterField,
   ExploreSearchIndex,

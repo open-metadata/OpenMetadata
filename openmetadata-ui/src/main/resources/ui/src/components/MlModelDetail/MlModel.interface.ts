@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ThreadType } from 'generated/api/feed/createThread';
-import { Mlmodel } from 'generated/entity/data/mlmodel';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { ThreadType } from '../../generated/api/feed/createThread';
+import { Mlmodel } from '../../generated/entity/data/mlmodel';
 
 export interface MlModelFeaturesListProp {
   mlFeatures: Mlmodel['mlFeatures'];

@@ -12,18 +12,12 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import { ROUTES } from 'constants/constants';
-import {
-  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
-  ERROR_PLACEHOLDER_TYPE,
-} from 'enums/common.enum';
 import { observer } from 'mobx-react';
 import Qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { Transi18next } from 'utils/CommonUtils';
-import i18n from 'utils/i18next/LocalUtil';
+import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
   GLOSSARIES_DOCS,
@@ -32,6 +26,12 @@ import {
   OMD_SLACK_LINK,
   TAGS_DOCS,
 } from '../../../constants/docs.constants';
+import {
+  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
+  ERROR_PLACEHOLDER_TYPE,
+} from '../../../enums/common.enum';
+import { Transi18next } from '../../../utils/CommonUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {

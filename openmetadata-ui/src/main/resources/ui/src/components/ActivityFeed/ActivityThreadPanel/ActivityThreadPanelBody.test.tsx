@@ -28,7 +28,7 @@ const mockActivityThreadPanelBodyBodyProp = {
   threadType: ThreadType.Conversation,
 };
 
-jest.mock('rest/feedsAPI', () => ({
+jest.mock('../../../rest/feedsAPI', () => ({
   getAllFeeds: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

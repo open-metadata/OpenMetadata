@@ -6,6 +6,7 @@ import javax.json.JsonObjectBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -56,9 +57,9 @@ public class MigrationUtil {
    * the Query.service EntityRef
    */
   public static void addQueryService(Handle handle, CollectionDAO collectionDAO) {
-    QueryRepository queryRepository = new QueryRepository(collectionDAO);
+    QueryRepository queryRepository = (QueryRepository) Entity.getEntityRepository(Entity.QUERY);
 
-    try (handle) {
+    try {
       handle
           .createQuery(QUERY_LIST_SERVICE)
           .mapToMap()

@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -106,16 +105,15 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
 
-  public TableRepository(CollectionDAO daoCollection) {
+  public TableRepository() {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        daoCollection.tableDAO(),
-        daoCollection,
+        Entity.getCollectionDAO().tableDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override
@@ -158,7 +156,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void setDefaultFields(Table table) {
-    EntityReference schemaRef = getContainer(table.getId());
+    EntityReference schemaRef = getContainer(table.getId(), DATABASE_SCHEMA);
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     table.withDatabaseSchema(schemaRef).withDatabase(schema.getDatabase()).withService(schema.getService());
   }
@@ -928,7 +926,7 @@ public class TableRepository extends EntityRepository<Table> {
                 Relationship.JOINED_WITH.ordinal())
             .stream()
             .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
-            .collect(toUnmodifiableList());
+            .toList();
 
     return entityRelations.stream()
         .map(
@@ -956,7 +954,7 @@ public class TableRepository extends EntityRepository<Table> {
                             FullyQualifiedName.getColumnName(er.getLeft()),
                             er.getMiddle(),
                             JsonUtils.readObjects(er.getRight(), DailyCount.class))))
-            .collect(toUnmodifiableList());
+            .toList();
 
     return entityRelations.stream()
         .collect(groupingBy(Triple::getLeft))
@@ -977,8 +975,8 @@ public class TableRepository extends EntityRepository<Table> {
                                                 .filter(inLast30Days())
                                                 .mapToInt(DailyCount::getCount)
                                                 .sum()))
-                            .collect(toUnmodifiableList())))
-        .collect(toUnmodifiableList());
+                            .toList()))
+        .toList();
   }
 
   private Predicate<DailyCount> inLast30Days() {

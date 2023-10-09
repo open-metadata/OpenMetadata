@@ -17,13 +17,10 @@ import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
 import GlossaryDetails from './GlossaryDetails.component';
 
-jest.mock(
-  'components/Glossary/GlossaryTermTab/GlossaryTermTab.component',
-  () => {
-    return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
-  }
-);
-jest.mock('components/Glossary/GlossaryHeader/GlossaryHeader.component', () => {
+jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {
+  return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
+});
+jest.mock('../GlossaryHeader/GlossaryHeader.component', () => {
   return jest.fn().mockReturnValue(<p>GlossaryHeader.component</p>);
 });
 jest.mock('react-router-dom', () => ({
@@ -39,6 +36,15 @@ jest.mock('react-router-dom', () => ({
     jest.fn();
   }),
 }));
+
+jest.mock(
+  '../..//ActivityFeed/ActivityFeedTab/ActivityFeedTab.component',
+  () => ({
+    ActivityFeedTab: jest
+      .fn()
+      .mockImplementation(() => <p>testActivityFeedTab</p>),
+  })
+);
 
 const mockProps = {
   glossary: mockedGlossaries[0],

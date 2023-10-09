@@ -54,16 +54,15 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
 
-  public MlModelRepository(CollectionDAO dao) {
+  public MlModelRepository() {
     super(
         MlModelResource.COLLECTION_PATH,
         Entity.MLMODEL,
         MlModel.class,
-        dao.mlModelDAO(),
-        dao,
+        Entity.getCollectionDAO().mlModelDAO(),
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {

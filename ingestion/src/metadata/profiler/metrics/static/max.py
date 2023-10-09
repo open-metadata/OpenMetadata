@@ -40,6 +40,12 @@ def _(element, compiler, **kw):
     return f"MAX({col})"
 
 
+@compiles(MaxFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    col = compiler.process(element.clauses, **kw)
+    return f"IF(is_nan(MAX({col})), NULL, MAX({col}))"
+
+
 @compiles(MaxFn, Dialects.MySQL)
 @compiles(MaxFn, Dialects.MariaDB)
 def _(element, compiler, **kw):

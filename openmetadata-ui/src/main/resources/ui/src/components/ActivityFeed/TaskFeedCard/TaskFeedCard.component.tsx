@@ -13,26 +13,37 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import AssigneeList from 'components/common/AssigneeList/AssigneeList';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { Post, Thread, ThreadTaskStatus } from 'generated/entity/feed/thread';
 import { isEmpty, isUndefined, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { getNameFromFQN } from 'utils/CommonUtils';
-import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
-import EntityLink from 'utils/EntityLink';
-import { getEntityFQN, getEntityType, prepareFeedLink } from 'utils/FeedUtils';
-import { getTaskDetailPath } from 'utils/TasksUtils';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
+import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
+import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import {
+  Post,
+  Thread,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
+import { getNameFromFQN } from '../../../utils/CommonUtils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../../utils/EntityLink';
+import {
+  getEntityFQN,
+  getEntityType,
+  prepareFeedLink,
+} from '../../../utils/FeedUtils';
+import { getTaskDetailPath } from '../../../utils/TasksUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
-import { ReactComponent as ThreadIcon } from '/assets/svg/thread.svg';
 
 interface TaskFeedCardProps {
   post: Post;

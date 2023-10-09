@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { COOKIE_VERSION } from 'components/Modals/WhatsNewModal/whatsNewData';
-import { EntityTabs } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
-import { getPartialNameFromFQN } from 'utils/CommonUtils';
-import i18n from 'utils/i18next/LocalUtil';
+import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
+import { EntityTabs } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
+import { getPartialNameFromFQN } from '../utils/CommonUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import { FQN_SEPARATOR_CHAR } from './char.constants';
@@ -276,6 +276,7 @@ export const ROUTES = {
   GLOSSARY_DETAILS_WITH_ACTION: `/glossary/${PLACEHOLDER_ROUTE_FQN}/action/${PLACEHOLDER_ACTION}`,
   ADD_GLOSSARY_TERMS: `/glossary/${PLACEHOLDER_ROUTE_FQN}/add-term`,
   GLOSSARY_DETAILS_WITH_TAB: `/glossary/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  GLOSSARY_DETAILS_WITH_SUBTAB: `/glossary/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   GLOSSARY_VERSION: `/glossary/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   GLOSSARY_TERMS_VERSION: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   GLOSSARY_TERMS_VERSION_TAB: `/glossary-term/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -670,14 +671,20 @@ export const getStoredProcedureDetailPath = (
 
 export const getGlossaryTermDetailsPath = (
   glossaryFQN: string,
-  tab?: string
+  tab?: string,
+  subTab = 'all'
 ) => {
   let path = tab ? ROUTES.GLOSSARY_DETAILS_WITH_TAB : ROUTES.GLOSSARY_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, glossaryFQN);
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(glossaryFQN));
 
   return path;
 };

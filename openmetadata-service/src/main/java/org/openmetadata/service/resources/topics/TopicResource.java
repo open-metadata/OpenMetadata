@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TopicRepository;
 import org.openmetadata.service.resources.Collection;
@@ -86,8 +85,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return topic;
   }
 
-  public TopicResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Topic.class, new TopicRepository(dao), authorizer);
+  public TopicResource(Authorizer authorizer) {
+    super(Entity.TOPIC, authorizer);
   }
 
   @Override

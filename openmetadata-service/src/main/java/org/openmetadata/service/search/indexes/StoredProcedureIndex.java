@@ -12,15 +12,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.StoredProcedure;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class StoredProcedureIndex implements ElasticSearchIndex {
+public class StoredProcedureIndex implements SearchIndex {
 
   private static final List<String> excludeFields = List.of("changeDescription");
 
@@ -31,17 +29,6 @@ public class StoredProcedureIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (storedProcedure.getOwner() != null) {
-      EntityReference owner = storedProcedure.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      storedProcedure.setOwner(owner);
-    }
-    if (storedProcedure.getDomain() != null) {
-      EntityReference domain = storedProcedure.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      storedProcedure.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(storedProcedure);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -54,6 +41,12 @@ public class StoredProcedureIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.STORED_PROCEDURE);
+    if (storedProcedure.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(storedProcedure.getOwner()));
+    }
+    if (storedProcedure.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(storedProcedure.getDomain()));
+    }
     return doc;
   }
 

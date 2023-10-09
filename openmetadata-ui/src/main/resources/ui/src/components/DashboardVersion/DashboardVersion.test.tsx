@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -21,23 +20,27 @@ import {
   mockNoChartData,
   mockTagChangeVersion,
 } from '../../mocks/dashboardVersion.mock';
+import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const mockPush = jest.fn();
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
-});
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
+  }
+);
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../components/common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 
 jest.mock(
-  'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
+  '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
   () => {
     return jest
       .fn()
@@ -45,36 +48,42 @@ jest.mock(
   }
 );
 
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-});
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
+  }
+);
 
 jest.mock(
-  'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
+  '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
 );
 
-jest.mock('components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('components/Tag/TagsViewer/TagsViewer', () =>
+jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
-jest.mock('components/common/CustomPropertyTable/CustomPropertyTable', () => ({
-  CustomPropertyTable: jest
-    .fn()
-    .mockImplementation(() => <div>CustomPropertyTable</div>),
-}));
+jest.mock(
+  '../../components/common/CustomPropertyTable/CustomPropertyTable',
+  () => ({
+    CustomPropertyTable: jest
+      .fn()
+      .mockImplementation(() => <div>CustomPropertyTable</div>),
+  })
+);
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({

@@ -11,43 +11,45 @@
  *  limitations under the License.
  */
 
-import DataProductsPage from 'components/DataProducts/DataProductsPage/DataProductsPage.component';
-import AddDomain from 'components/Domain/AddDomain/AddDomain.component';
-import DomainPage from 'components/Domain/DomainPage.component';
-import DataQualityPage from 'pages/DataQuality/DataQualityPage';
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
+import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
+import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
+import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/policy';
+import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import { useApplicationConfigProvider } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const GlobalSettingPage = withSuspenseFallback(
-  React.lazy(() => import('pages/GlobalSettingPage/GlobalSettingPage'))
+  React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
 );
 
 const MyDataPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/MyDataPage/MyDataPageV1.component'))
+  React.lazy(() => import('../../pages/MyDataPage/MyDataPageV1.component'))
 );
 
 const TestSuiteIngestionPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
+    () => import('../../pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
   )
 );
 
 const TestSuiteDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
+    () =>
+      import('../../pages/TestSuiteDetailsPage/TestSuiteDetailsPage.component')
   )
 );
 
 const AddDataQualityTestPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/AddDataQualityTestPage/AddDataQualityTestPage')
+    () => import('../../pages/AddDataQualityTestPage/AddDataQualityTestPage')
   )
 );
 
@@ -59,223 +61,265 @@ const AddCustomProperty = withSuspenseFallback(
 
 const PipelineDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/PipelineDetails/PipelineDetailsPage.component')
+    () => import('../../pages/PipelineDetails/PipelineDetailsPage.component')
   )
 );
 const BotDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/BotDetailsPage/BotDetailsPage'))
+  React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
 const ServicePage = withSuspenseFallback(
-  React.lazy(() => import('pages/ServiceDetailsPage/ServiceDetailsPage'))
+  React.lazy(() => import('../../pages/ServiceDetailsPage/ServiceDetailsPage'))
 );
 
 const SwaggerPage = withSuspenseFallback(
-  React.lazy(() => import('pages/swagger'))
+  React.lazy(() => import('../../pages/swagger'))
 );
 const TagsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/TagsPage/TagsPage'))
+  React.lazy(() => import('../../pages/TagsPage/TagsPage'))
 );
 const ClassificationVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/ClassificationVersionPage/ClassificationVersionPage')
+    () =>
+      import('../../pages/ClassificationVersionPage/ClassificationVersionPage')
   )
 );
 const TopicDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/TopicDetails/TopicDetailsPage.component'))
+  React.lazy(
+    () => import('../../pages/TopicDetails/TopicDetailsPage.component')
+  )
 );
 const TourPageComponent = withSuspenseFallback(
-  React.lazy(() => import('pages/tour-page/TourPage.component'))
+  React.lazy(() => import('../../pages/tour-page/TourPage.component'))
 );
 const UserPage = withSuspenseFallback(
-  React.lazy(() => import('pages/UserPage/UserPage.component'))
+  React.lazy(() => import('../../pages/UserPage/UserPage.component'))
 );
 
 const DomainVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('components/Domain/DomainVersion/DomainVersion.component')
+    () =>
+      import('../../components/Domain/DomainVersion/DomainVersion.component')
   )
 );
 
 const GlossaryVersionPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('components/Glossary/GlossaryVersion/GlossaryVersion.component')
+      import(
+        '../../components/Glossary/GlossaryVersion/GlossaryVersion.component'
+      )
   )
 );
 
 const AddGlossaryPage = withSuspenseFallback(
-  React.lazy(() => import('pages/AddGlossary/AddGlossaryPage.component'))
+  React.lazy(() => import('../../pages/AddGlossary/AddGlossaryPage.component'))
 );
 
 const AddIngestionPage = withSuspenseFallback(
-  React.lazy(() => import('pages/AddIngestionPage/AddIngestionPage.component'))
+  React.lazy(
+    () => import('../../pages/AddIngestionPage/AddIngestionPage.component')
+  )
 );
 const AddServicePage = withSuspenseFallback(
-  React.lazy(() => import('pages/AddServicePage/AddServicePage.component'))
+  React.lazy(
+    () => import('../../pages/AddServicePage/AddServicePage.component')
+  )
 );
 const EditConnectionFormPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('pages/EditConnectionFormPage/EditConnectionFormPage.component')
+      import(
+        '../../pages/EditConnectionFormPage/EditConnectionFormPage.component'
+      )
   )
 );
 
 const CreateUserPage = withSuspenseFallback(
-  React.lazy(() => import('pages/CreateUserPage/CreateUserPage.component'))
+  React.lazy(
+    () => import('../../pages/CreateUserPage/CreateUserPage.component')
+  )
 );
 const DashboardDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/DashboardDetailsPage/DashboardDetailsPage.component')
+    () =>
+      import('../../pages/DashboardDetailsPage/DashboardDetailsPage.component')
   )
 );
 const DatabaseDetails = withSuspenseFallback(
-  React.lazy(() => import('pages/DatabaseDetailsPage/DatabaseDetailsPage'))
+  React.lazy(
+    () => import('../../pages/DatabaseDetailsPage/DatabaseDetailsPage')
+  )
 );
 const DatabaseSchemaPageComponent = withSuspenseFallback(
   React.lazy(
-    () => import('pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
+    () => import('../../pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
   )
 );
 
 const DataModelDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/DataModelPage/DataModelPage.component'))
+  React.lazy(() => import('../../pages/DataModelPage/DataModelPage.component'))
 );
 
 const StoredProcedureDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/StoredProcedure/StoredProcedurePage'))
+  React.lazy(() => import('../../pages/StoredProcedure/StoredProcedurePage'))
 );
 
 const TableDetailsPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/TableDetailsPageV1/TableDetailsPageV1'))
+  React.lazy(() => import('../../pages/TableDetailsPageV1/TableDetailsPageV1'))
 );
 const EditIngestionPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/EditIngestionPage/EditIngestionPage.component')
+    () => import('../../pages/EditIngestionPage/EditIngestionPage.component')
   )
 );
 const EntityVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/EntityVersionPage/EntityVersionPage.component')
+    () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
   )
 );
 const ServiceVersionPage = withSuspenseFallback(
-  React.lazy(() => import('pages/ServiceVersionPage/ServiceVersionPage'))
+  React.lazy(() => import('../../pages/ServiceVersionPage/ServiceVersionPage'))
 );
 const DatabaseVersionPage = withSuspenseFallback(
-  React.lazy(() => import('pages/DatabaseVersionPage/DatabaseVersionPage'))
+  React.lazy(
+    () => import('../../pages/DatabaseVersionPage/DatabaseVersionPage')
+  )
 );
 const DatabaseSchemaVersionPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
+    () =>
+      import('../../pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
   )
 );
 const ExplorePageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/explore/ExplorePageV1.component'))
+  React.lazy(() => import('../../pages/explore/ExplorePageV1.component'))
 );
 
 const GlossaryPage = withSuspenseFallback(
-  React.lazy(() => import('pages/Glossary/GlossaryPage/GlossaryPage.component'))
+  React.lazy(
+    () => import('../../pages/Glossary/GlossaryPage/GlossaryPage.component')
+  )
 );
 
 const MlModelPage = withSuspenseFallback(
-  React.lazy(() => import('pages/MlModelPage/MlModelPage.component'))
+  React.lazy(() => import('../../pages/MlModelPage/MlModelPage.component'))
 );
 
 const RequestDescriptionPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage')
+      import(
+        '../../pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage'
+      )
   )
 );
 
 const RequestTagsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/TasksPage/RequestTagPage/RequestTagPage'))
+  React.lazy(
+    () => import('../../pages/TasksPage/RequestTagPage/RequestTagPage')
+  )
 );
 
 const UpdateDescriptionPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage')
+    () =>
+      import(
+        '../../pages/TasksPage/UpdateDescriptionPage/UpdateDescriptionPage'
+      )
   )
 );
 
 const UpdateTagsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/TasksPage/UpdateTagPage/UpdateTagPage'))
+  React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
 const AddRolePage = withSuspenseFallback(
-  React.lazy(() => import('pages/RolesPage/AddRolePage/AddRolePage'))
+  React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
 );
 const AddPolicyPage = withSuspenseFallback(
-  React.lazy(() => import('pages/PoliciesPage/AddPolicyPage/AddPolicyPage'))
+  React.lazy(
+    () => import('../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage')
+  )
 );
 
 const EditEmailConfigPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/EditEmailConfigPage/EditEmailConfigPage.component')
+    () =>
+      import('../../pages/EditEmailConfigPage/EditEmailConfigPage.component')
   )
 );
 const EditCustomLogoConfigPage = withSuspenseFallback(
-  React.lazy(() => import('pages/EditCustomLogoConfig/EditCustomLogoConfig'))
+  React.lazy(
+    () => import('../../pages/EditCustomLogoConfig/EditCustomLogoConfig')
+  )
 );
 
 const AddRulePage = withSuspenseFallback(
-  React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/AddRulePage'))
+  React.lazy(
+    () => import('../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
+  )
 );
 const EditRulePage = withSuspenseFallback(
-  React.lazy(() => import('pages/PoliciesPage/PoliciesDetailPage/EditRulePage'))
+  React.lazy(
+    () => import('../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
+  )
 );
 
 const TestCaseDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
+    () =>
+      import('../../pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
   )
 );
 
 const LogsViewer = withSuspenseFallback(
-  React.lazy(() => import('pages/LogsViewer/LogsViewer.component'))
+  React.lazy(() => import('../../pages/LogsViewer/LogsViewer.component'))
 );
 
 const DataInsightPage = withSuspenseFallback(
-  React.lazy(() => import('pages/DataInsightPage/DataInsightPage.component'))
+  React.lazy(
+    () => import('../../pages/DataInsightPage/DataInsightPage.component')
+  )
 );
 
 const AddKPIPage = withSuspenseFallback(
-  React.lazy(() => import('pages/KPIPage/AddKPIPage'))
+  React.lazy(() => import('../../pages/KPIPage/AddKPIPage'))
 );
 
 const EditKPIPage = withSuspenseFallback(
-  React.lazy(() => import('pages/KPIPage/EditKPIPage'))
+  React.lazy(() => import('../../pages/KPIPage/EditKPIPage'))
 );
 
 const AddTestSuitePage = withSuspenseFallback(
   React.lazy(
-    () => import('components/TestSuite/TestSuiteStepper/TestSuiteStepper')
+    () => import('../../components/TestSuite/TestSuiteStepper/TestSuiteStepper')
   )
 );
 
 const ContainerPage = withSuspenseFallback(
-  React.lazy(() => import('pages/ContainerPage/ContainerPage'))
+  React.lazy(() => import('../../pages/ContainerPage/ContainerPage'))
 );
 
 const SearchIndexDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
+    () => import('../../pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
   )
 );
 
 const QueryPage = withSuspenseFallback(
-  React.lazy(() => import('pages/QueryPage/QueryPage.component'))
+  React.lazy(() => import('../../pages/QueryPage/QueryPage.component'))
 );
 const AddQueryPage = withSuspenseFallback(
-  React.lazy(() => import('pages/AddQueryPage/AddQueryPage.component'))
+  React.lazy(() => import('../../pages/AddQueryPage/AddQueryPage.component'))
 );
 
 const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('pages/page-not-found/PageNotFound'))
+  React.lazy(() => import('../../pages/page-not-found/PageNotFound'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
+  const { routeElements } = useApplicationConfigProvider();
 
   const glossaryPermission = useMemo(
     () =>
@@ -651,6 +695,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <AdminProtectedRoute
         exact
+        component={GlossaryPage}
+        hasPermission={glossaryPermission}
+        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB}
+      />
+      <AdminProtectedRoute
+        exact
         component={CreateUserPage}
         hasPermission={checkPermission(
           Operation.Create,
@@ -793,6 +843,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
+      {routeElements}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

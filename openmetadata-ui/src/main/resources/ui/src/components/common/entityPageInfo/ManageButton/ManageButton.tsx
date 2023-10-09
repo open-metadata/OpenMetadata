@@ -13,20 +13,20 @@
 
 import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import classNames from 'classnames';
-import { ManageButtonItemLabel } from 'components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import EntityNameModal from 'components/Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { DROPDOWN_ICON_SIZE_PROPS } from 'constants/ManageButton.constants';
 import { isUndefined } from 'lodash';
 import React, { FC, ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
+import { ManageButtonItemLabel } from '../../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import EntityNameModal from '../../../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';

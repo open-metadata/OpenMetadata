@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -28,16 +27,20 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
 
-  public DomainRepository(CollectionDAO dao) {
-    super(DomainResource.COLLECTION_PATH, DOMAIN, Domain.class, dao.domainDAO(), dao, UPDATE_FIELDS, UPDATE_FIELDS);
-    supportsSearchIndex = true;
+  public DomainRepository() {
+    super(
+        DomainResource.COLLECTION_PATH,
+        DOMAIN,
+        Domain.class,
+        Entity.getCollectionDAO().domainDAO(),
+        UPDATE_FIELDS,
+        UPDATE_FIELDS);
+    supportsSearch = true;
   }
 
   @Override
@@ -105,22 +108,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     } else { // Sub domain
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
-    }
-  }
-
-  @Override
-  public void deleteFromSearch(Domain entity, String changeType) {
-    if (supportsSearchIndex) {
-      String scriptTxt = "ctx._source.remove('domain')";
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Domain.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "domain.fullyQualifiedName");
-      } else {
-        searchClient.deleteEntityAndRemoveRelationships(
-            JsonUtils.deepCopy(entity, Domain.class), scriptTxt, "domain.fullyQualifiedName");
-      }
     }
   }
 

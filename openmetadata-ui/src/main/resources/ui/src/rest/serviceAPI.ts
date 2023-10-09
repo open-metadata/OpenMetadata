@@ -12,11 +12,11 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { configOptions, PAGE_SIZE } from 'constants/constants';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { ServiceData, ServicesData, ServicesUpdateRequest } from 'Models';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { configOptions, PAGE_SIZE } from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
+import { EntityHistory } from '../generated/type/entityHistory';
 import {
   DomainSupportedServiceTypes,
   ServiceResponse,

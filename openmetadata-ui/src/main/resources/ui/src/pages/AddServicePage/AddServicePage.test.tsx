@@ -19,7 +19,7 @@ const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-jest.mock('components/AddService/AddService.component', () => {
+jest.mock('../../components/AddService/AddService.component', () => {
   return jest.fn().mockImplementation(() => <div>AddService.component</div>);
 });
 

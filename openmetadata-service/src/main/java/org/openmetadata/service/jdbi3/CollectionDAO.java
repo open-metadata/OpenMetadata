@@ -61,6 +61,7 @@ import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -97,6 +98,7 @@ import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -165,6 +167,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TeamDAO teamDAO();
+
+  @CreateSqlObject
+  PersonaDAO personaDAO();
 
   @CreateSqlObject
   TagUsageDAO tagUsageDAO();
@@ -303,6 +308,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   DataModelDAO dashboardDataModelDAO();
+
+  @CreateSqlObject
+  DocStoreDAO docStoreDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -494,7 +502,6 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-
       return listCount(getTableName(), getNameColumn(), sqlCondition);
     }
 
@@ -821,11 +828,7 @@ public interface CollectionDAO {
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFromPipleine(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
-
-    @SqlQuery("SELECT fromId, fromEntity, json FROM entity_relationship " + "WHERE toId = :toId ORDER BY fromId")
-    @RegisterRowMapper(FromRelationshipMapper.class)
-    List<EntityRelationshipRecord> findFrom(@Bind("toId") String toId);
+    List<EntityRelationshipRecord> findFromPipeline(@BindUUID("toId") UUID toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT count(*) FROM entity_relationship " + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(@Bind("fromEntity") String fromEntity, @Bind("toEntity") String toEntity);
@@ -1181,6 +1184,36 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
+            // Entity for which the thread is about is owned by the user or his teams
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
+            + "ORDER BY createdAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByOwnerOrFollows(
+        @BindUUID("userId") UUID userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Bind("limit") int limit,
+        @Define("condition") String condition);
+
+    @SqlQuery(
+        "SELECT count(id) FROM thread_entity <condition> AND "
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11))")
+    int listCountThreadsByOwnerOrFollows(
+        @BindUUID("userId") UUID userId,
+        @BindList("teamIds") List<String> teamIds,
+        @Define("condition") String condition);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity <condition> AND "
             + "MD5(id) in ("
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
@@ -1291,16 +1324,7 @@ public interface CollectionDAO {
         @Bind("toType") String toType,
         @Bind("relation") int relation);
 
-    @Deprecated
-    @ConnectionAwareSqlQuery(
-        value = "SELECT count(DISTINCT fromFQN, toFQN) FROM field_relationship",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT COUNT(*) FROM ( SELECT DISTINCT fromFQN, toFQN FROM field_relationship) AS subquery",
-        connectionType = POSTGRES)
-    int listDistinctCount();
-
-    @Deprecated
+    @Deprecated(since = "Release 1.1")
     @SqlQuery(
         "SELECT DISTINCT fromFQN, toFQN FROM field_relationship WHERE fromFQNHash = '' or fromFQNHash is null or toFQNHash = '' or toFQNHash is null LIMIT :limit")
     @RegisterRowMapper(FieldRelationShipMapper.class)
@@ -1999,9 +2023,6 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @SqlUpdate("DELETE FROM tag where fqnHash LIKE CONCAT(:fqnHashPrefix, '.%')")
-    void deleteTagsByPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
-
     @Override
     default int listCount(ListFilter filter) {
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
@@ -2165,9 +2186,6 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash LIKE CONCAT(:tagFQNHash, '.%') AND source = :source")
-    void deleteTagLabelsByPrefix(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
-
     @SqlUpdate(
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE CONCAT(:targetFQNHash, '.%')")
     void deleteTagLabelsByTargetPrefix(@BindFQN("targetFQNHash") String targetFQNHash);
@@ -2241,13 +2259,13 @@ public interface CollectionDAO {
     @Setter
     @Deprecated(since = "Release 1.1")
     class TagLabelMigration {
-      public int source;
-      public String tagFQN;
-      public String targetFQN;
-      public int labelType;
-      public int state;
+      private int source;
+      private String tagFQN;
+      private String targetFQN;
+      private int labelType;
+      private int state;
       private String tagFQNHash;
-      public String targetFQNHash;
+      private String targetFQNHash;
     }
 
     @Deprecated(since = "Release 1.1")
@@ -2296,6 +2314,28 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "nameHash";
+    }
+  }
+
+  interface PersonaDAO extends EntityDAO<Persona> {
+    @Override
+    default String getTableName() {
+      return "persona_entity";
+    }
+
+    @Override
+    default Class<Persona> getEntityClass() {
+      return Persona.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
     }
   }
 
@@ -3150,7 +3190,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) executionTimeSorted "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC) AS ranked FROM <table>) executionTimeSorted "
                 + "<cond> AND ranked < :before "
                 + "ORDER BY ranked DESC "
                 + "LIMIT :limit) rankedBefore ORDER BY ranked",
@@ -3158,8 +3198,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT * FROM (SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> ORDER BY (json ->> 'testCaseResult,timestamp') DESC NULLS LAST) executionTimeSorted "
-                + "<cond> AND ranked < : before "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json -> 'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table>) executionTimeSorted "
+                + "<cond> AND ranked < :before "
                 + "ORDER BY ranked DESC "
                 + "LIMIT :limit) rankedBefore ORDER BY ranked",
         connectionType = POSTGRES)
@@ -3174,18 +3214,18 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> "
-                + "ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) executionTimeSorted "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json ->> '$.testCaseResult.timestamp') DESC ) AS ranked FROM <table> "
+                + ") executionTimeSorted "
                 + "<cond> AND ranked > :after "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json, ranked FROM "
-                + "(SELECT id, json, deleted, ROW_NUMBER() OVER() AS ranked FROM <table> "
-                + "ORDER BY (json ->> 'testCaseResult,timestamp') DESC NULLS LAST) executionTimeSorted "
+                + "(SELECT id, json, deleted, ROW_NUMBER() OVER(ORDER BY (json->'testCaseResult'->>'timestamp') DESC NULLS LAST) AS ranked FROM <table> "
+                + ") executionTimeSorted "
                 + "<cond> AND ranked > :after "
-                + "LIMIT : limit",
+                + "LIMIT :limit",
         connectionType = POSTGRES)
     @RegisterRowMapper(TestCaseRecordMapper.class)
     List<TestCaseRecord> listAfterTsOrdered(
@@ -3260,9 +3300,6 @@ public interface CollectionDAO {
       return "report_data_time_series";
     }
 
-    @SqlQuery("SELECT json FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date")
-    List<String> listReportDataAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
-
     @ConnectionAwareSqlUpdate(
         value = "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and date = :date",
         connectionType = MYSQL)
@@ -3271,6 +3308,9 @@ public interface CollectionDAO {
             "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
         connectionType = POSTGRES)
     void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+
+    @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType")
+    void deletePreviousReportData(@BindFQN("reportDataType") String reportDataType);
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -3653,5 +3693,174 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+  }
+
+  interface DocStoreDAO extends EntityDAO<Document> {
+    @Override
+    default String getTableName() {
+      return "doc_store";
+    }
+
+    @Override
+    default Class<Document> getEntityClass() {
+      return Document.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @Override
+    default List<String> listBefore(ListFilter filter, int limit, String before) {
+      String entityType = filter.getQueryParam("entityType");
+      String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String cond = filter.getCondition();
+      if (entityType == null && fqnPrefix == null) {
+        return EntityDAO.super.listBefore(filter, limit, before);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+      mysqlCondition.append(cond);
+      psqlCondition.append(cond);
+
+      if (fqnPrefix != null) {
+        String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        String fqnCond =
+            String.format(" AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)", fqnPrefixHash);
+        mysqlCondition.append(fqnCond);
+        psqlCondition.append(fqnCond);
+      }
+
+      if (entityType != null) {
+        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+      }
+
+      return listBefore(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String after) {
+      String entityType = filter.getQueryParam("entityType");
+      String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String cond = filter.getCondition();
+
+      if (entityType == null && fqnPrefix == null) {
+        return EntityDAO.super.listAfter(filter, limit, after);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+      mysqlCondition.append(cond);
+      psqlCondition.append(cond);
+
+      if (fqnPrefix != null) {
+        String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        String fqnCond = String.format(" AND (fqnHash LIKE '%s' OR fqnHash='%s')", fqnPrefixHash + ".%", fqnPrefixHash);
+        mysqlCondition.append(fqnCond);
+        psqlCondition.append(fqnCond);
+      }
+      if (entityType != null) {
+        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+      }
+
+      return listAfter(
+          getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      String entityType = filter.getQueryParam("entityType");
+      String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String cond = filter.getCondition();
+
+      if (entityType == null && fqnPrefix == null) {
+        return EntityDAO.super.listCount(filter);
+      }
+
+      StringBuilder mysqlCondition = new StringBuilder();
+      StringBuilder psqlCondition = new StringBuilder();
+      mysqlCondition.append(cond);
+      psqlCondition.append(cond);
+
+      if (fqnPrefix != null) {
+        String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        String fqnCond = String.format(" AND (fqnHash LIKE '%s' OR fqnHash='%s')", fqnPrefixHash + ".%", fqnPrefixHash);
+        mysqlCondition.append(fqnCond);
+        psqlCondition.append(fqnCond);
+      }
+
+      if (entityType != null) {
+        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+      }
+
+      return listCount(getTableName(), getNameColumn(), mysqlCondition.toString(), psqlCondition.toString());
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT <nameColumn>, json FROM <table> <psqlCond> AND "
+                + "<nameColumn> < :before "
+                + "ORDER BY <nameColumn> DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY <nameColumn>",
+        connectionType = POSTGRES)
+    List<String> listBefore(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("before") String before);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <mysqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> <psqlCond> AND "
+                + "<nameColumn> > :after "
+                + "ORDER BY <nameColumn> "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listAfter(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond,
+        @Bind("limit") int limit,
+        @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <mysqlCond>", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table> <psqlCond>", connectionType = POSTGRES)
+    int listCount(
+        @Define("table") String table,
+        @Define("nameColumn") String nameColumn,
+        @Define("mysqlCond") String mysqlCond,
+        @Define("psqlCond") String psqlCond);
   }
 }

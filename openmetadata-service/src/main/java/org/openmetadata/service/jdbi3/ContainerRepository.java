@@ -37,16 +37,15 @@ public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
   private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
-  public ContainerRepository(CollectionDAO dao) {
+  public ContainerRepository() {
     super(
         ContainerResource.COLLECTION_PATH,
         Entity.CONTAINER,
         Container.class,
-        dao.containerDAO(),
-        dao,
+        Entity.getCollectionDAO().containerDAO(),
         CONTAINER_PATCH_FIELDS,
         CONTAINER_UPDATE_FIELDS);
-    supportsSearchIndex = true;
+    supportsSearch = true;
   }
 
   @Override

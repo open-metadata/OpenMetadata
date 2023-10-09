@@ -31,7 +31,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +43,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.openmetadata.service.workflows.searchIndex.SearchIndexWorkflow;
 
@@ -54,7 +53,7 @@ public class ReIndexingHandler {
   private static ReIndexingHandler instance;
   private static volatile boolean initialized = false;
   private static CollectionDAO dao;
-  private static SearchClient searchClient;
+  private static SearchRepository searchRepository;
   private static ExecutorService threadScheduler;
   private static final Map<UUID, SearchIndexWorkflow> REINDEXING_JOB_MAP = new LinkedHashMap<>();
   private static BlockingQueue<Runnable> taskQueue;
@@ -65,9 +64,9 @@ public class ReIndexingHandler {
     return instance;
   }
 
-  public static void initialize(SearchClient client) {
+  public static void initialize(SearchRepository client) {
     if (!initialized) {
-      searchClient = client;
+      searchRepository = client;
       dao = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       taskQueue = new ArrayBlockingQueue<>(5);
       threadScheduler = new ThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, taskQueue);
@@ -119,7 +118,7 @@ public class ReIndexingHandler {
                 "eventPublisherJob",
                 JsonUtils.pojoToJson(jobData));
         // Create Job
-        SearchIndexWorkflow job = new SearchIndexWorkflow(searchClient, jobData);
+        SearchIndexWorkflow job = new SearchIndexWorkflow(searchRepository, jobData);
         threadScheduler.submit(job);
         REINDEXING_JOB_MAP.put(jobData.getId(), job);
         return jobData;
@@ -194,7 +193,7 @@ public class ReIndexingHandler {
     List<EventPublisherJob> result = new ArrayList<>();
     List<SearchIndexWorkflow> activeReindexingJob = new ArrayList<>(REINDEXING_JOB_MAP.values());
     List<EventPublisherJob> activeEventPubJob =
-        activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).collect(Collectors.toList());
+        activeReindexingJob.stream().map(SearchIndexWorkflow::getJobData).toList();
     List<EventPublisherJob> jobsFromDatabase =
         JsonUtils.readObjects(
             dao.entityExtensionTimeSeriesDao().getAllByExtension(REINDEXING_JOB_EXTENSION), EventPublisherJob.class);

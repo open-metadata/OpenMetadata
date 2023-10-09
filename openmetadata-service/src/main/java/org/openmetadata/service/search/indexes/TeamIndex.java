@@ -11,7 +11,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TeamIndex implements ElasticSearchIndex {
+public class TeamIndex implements SearchIndex {
   final Team team;
   final List<String> excludeFields = List.of("owns", "changeDescription");
 
@@ -20,9 +20,6 @@ public class TeamIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (CommonUtil.nullOrEmpty(team.getDisplayName())) {
-      team.setDisplayName(team.getName());
-    }
     Map<String, Object> doc = JsonUtils.getMap(team);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -34,6 +31,7 @@ public class TeamIndex implements ElasticSearchIndex {
             team.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEAM);
+    doc.put("displayName", CommonUtil.nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName());
     return doc;
   }
 }

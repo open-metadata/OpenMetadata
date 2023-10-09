@@ -27,29 +27,28 @@ import {
 } from 'antd';
 import { Content } from 'antd/lib/layout/layout';
 import Sider from 'antd/lib/layout/Sider';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { useAdvanceSearch } from 'components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import AppliedFilterText from 'components/Explore/AppliedFilterText/AppliedFilterText';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import {
-  ExploreProps,
-  ExploreQuickFilterField,
-  ExploreSearchIndex,
-} from 'components/Explore/explore.interface';
-import { getSelectedValuesFromQuickFilter } from 'components/Explore/Explore.utils';
-import ExploreQuickFilters from 'components/Explore/ExploreQuickFilters';
-import SortingDropDown from 'components/Explore/SortingDropDown';
-import { useGlobalSearchProvider } from 'components/GlobalSearchProvider/GlobalSearchProvider';
-import SearchedData from 'components/searched-data/SearchedData';
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from 'enums/common.enum';
 import { isEmpty, isNil, isString, isUndefined, lowerCase, noop } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getSearchIndexFromPath } from 'utils/ExplorePage/ExplorePageUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import {
+  ExploreProps,
+  ExploreQuickFilterField,
+  ExploreSearchIndex,
+} from '../../components/Explore/explore.interface';
+import { getSelectedValuesFromQuickFilter } from '../../components/Explore/Explore.utils';
+import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
+import SortingDropDown from '../../components/Explore/SortingDropDown';
+import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
+import SearchedData from '../../components/searched-data/SearchedData';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { tabsInfo } from '../../constants/explore.constants';
+import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   QueryFieldInterface,
@@ -57,6 +56,7 @@ import {
 } from '../../pages/explore/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getSearchIndexFromPath } from '../../utils/ExplorePage/ExplorePageUtils';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
 import './ExploreV1.style.less';
@@ -156,7 +156,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           return tabItem.count > 0 || tabItem.key === searchCriteria;
         })
       : items;
-  }, [tab, tabsInfo, tabCounts]);
+  }, [tabsInfo, tabCounts]);
 
   const activeTabKey = useMemo(() => {
     if (tab) {

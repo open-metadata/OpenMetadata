@@ -16,9 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -42,17 +40,6 @@ public class TableIndex implements ColumnIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (table.getOwner() != null) {
-      EntityReference owner = table.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      table.setOwner(owner);
-    }
-    if (table.getDomain() != null) {
-      EntityReference domain = table.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      table.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(table);
     List<SearchSuggest> suggest = new ArrayList<>();
     List<SearchSuggest> columnSuggest = new ArrayList<>();
@@ -88,6 +75,12 @@ public class TableIndex implements ColumnIndex {
     doc.put("database_suggest", databaseSuggest);
     doc.put("entityType", Entity.TABLE);
     doc.put("serviceType", table.getServiceType());
+    if (table.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(table.getOwner()));
+    }
+    if (table.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(table.getDomain()));
+    }
     return doc;
   }
 

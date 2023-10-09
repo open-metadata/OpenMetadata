@@ -26,10 +26,10 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.DataInsightJobException;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -47,16 +47,16 @@ public class ReportsHandler {
   public static final String JOB_CONTEXT_CHART_REPO = "dataInsightChartRepository";
   public static final String SEARCH_CLIENT = "searchClient";
 
-  private final SearchClient searchClient;
+  private final SearchRepository searchRepository;
   private final DataInsightChartRepository chartRepository;
   private static ReportsHandler instance;
   private static volatile boolean initialized = false;
   private final Scheduler reportScheduler = new StdSchedulerFactory().getScheduler();
   private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap = new ConcurrentHashMap<>();
 
-  private ReportsHandler(CollectionDAO dao, SearchClient searchClient) throws SchedulerException {
-    this.searchClient = searchClient;
-    this.chartRepository = new DataInsightChartRepository(dao);
+  private ReportsHandler() throws SchedulerException {
+    this.searchRepository = Entity.getSearchRepository();
+    this.chartRepository = (DataInsightChartRepository) Entity.getEntityRepository(Entity.DATA_INSIGHT_CHART);
     this.reportScheduler.start();
   }
 
@@ -69,9 +69,9 @@ public class ReportsHandler {
     return reportJobKeyMap;
   }
 
-  public static void initialize(CollectionDAO dao, SearchClient searchClient) throws SchedulerException {
+  public static void initialize() throws SchedulerException {
     if (!initialized) {
-      instance = new ReportsHandler(dao, searchClient);
+      instance = new ReportsHandler();
       initialized = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");
@@ -110,7 +110,7 @@ public class ReportsHandler {
     if (subscription.getAlertType() == DATA_INSIGHT_REPORT) {
       JobDataMap dataMap = new JobDataMap();
       dataMap.put(JOB_CONTEXT_CHART_REPO, this.chartRepository);
-      dataMap.put(SEARCH_CLIENT, searchClient);
+      dataMap.put(SEARCH_CLIENT, searchRepository);
       dataMap.put(EVENT_SUBSCRIPTION, subscription);
       JobBuilder jobBuilder =
           JobBuilder.newJob(DataInsightsReportJob.class)
@@ -143,7 +143,7 @@ public class ReportsHandler {
     if (jobDetail != null) {
       JobDataMap dataMap = new JobDataMap();
       dataMap.put(JOB_CONTEXT_CHART_REPO, this.chartRepository);
-      dataMap.put(SEARCH_CLIENT, searchClient);
+      dataMap.put(SEARCH_CLIENT, searchRepository);
       dataMap.put(EVENT_SUBSCRIPTION, dataReport);
       reportScheduler.triggerJob(jobDetail.getKey(), dataMap);
       return Response.status(Response.Status.OK).entity("Job Triggered Successfully.").build();

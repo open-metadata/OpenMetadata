@@ -17,9 +17,6 @@ import traceback
 from typing import Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.queryParserData import ParsedData, QueryParserData
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
@@ -27,6 +24,7 @@ from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
@@ -78,21 +76,19 @@ class QueryParserProcessor(Processor):
     def __init__(
         self,
         config: ConfigModel,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
         connection_type: str,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
+        self.metadata = metadata
         self.connection_type = connection_type
 
     @classmethod
-    def create(
-        cls, config_dict: dict, metadata_config: OpenMetadataConnection, **kwargs
-    ):
+    def create(cls, config_dict: dict, metadata: OpenMetadata, **kwargs):
         config = ConfigModel.parse_obj(config_dict)
         connection_type = kwargs.pop("connection_type", "")
-        return cls(config, metadata_config, connection_type)
+        return cls(config, metadata, connection_type)
 
     def _run(self, record: TableQueries) -> Optional[Either[QueryParserData]]:
         if record and record.queries:

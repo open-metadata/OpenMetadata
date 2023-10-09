@@ -12,10 +12,10 @@
  */
 
 import { AxiosError } from 'axios';
-import { ClientErrors } from 'enums/axios.enum';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
+import { ClientErrors } from '../enums/axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 

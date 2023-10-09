@@ -13,24 +13,24 @@
 
 import { Card, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Chip from 'components/common/Chip/Chip.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
+import { isEmpty, toLower } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
+import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
+import Chip from '../../../../components/common/Chip/Chip.component';
+import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   PAGE_SIZE_LARGE,
   TERM_ADMIN,
-} from 'constants/constants';
-import { Role } from 'generated/entity/teams/role';
-import { useAuth } from 'hooks/authHooks';
-import { isEmpty, toLower } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { getRoles } from 'rest/rolesAPIV1';
-import { getEntityName } from 'utils/EntityUtils';
-import { showErrorToast } from 'utils/ToastUtils';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
+} from '../../../../constants/constants';
+import { Role } from '../../../../generated/entity/teams/role';
+import { useAuth } from '../../../../hooks/authHooks';
+import { getRoles } from '../../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../../utils/EntityUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const UserProfileRoles = ({

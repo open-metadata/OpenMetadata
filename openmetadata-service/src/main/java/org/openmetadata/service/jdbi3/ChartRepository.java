@@ -30,9 +30,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class ChartRepository extends EntityRepository<Chart> {
-  public ChartRepository(CollectionDAO dao) {
-    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, dao.chartDAO(), dao, "", "");
-    supportsSearchIndex = true;
+  public ChartRepository() {
+    super(ChartResource.COLLECTION_PATH, Entity.CHART, Chart.class, Entity.getCollectionDAO().chartDAO(), "", "");
+    supportsSearch = true;
   }
 
   @Override

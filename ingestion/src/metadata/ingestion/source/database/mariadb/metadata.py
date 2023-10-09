@@ -23,9 +23,6 @@ from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -45,6 +42,7 @@ from metadata.ingestion.source.database.mysql.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 ischema_names.update(col_type_map)
 
@@ -66,14 +64,14 @@ class MariadbSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: MariaDBConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, MariaDBConnection):
             raise InvalidSourceException(
                 f"Expected MariaDBConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):

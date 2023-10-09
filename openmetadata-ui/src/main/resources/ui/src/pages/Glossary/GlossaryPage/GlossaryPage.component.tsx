@@ -12,26 +12,29 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntitySummaryPanel from 'components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import GlossaryV1 from 'components/Glossary/GlossaryV1.component';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE_LARGE, ROUTES } from 'constants/constants';
-import { GLOSSARIES_DOCS } from 'constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { Operation } from 'generated/entity/policies/policy';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../../components/Explore/explore.interface';
+import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import Loader from '../../../components/Loader/Loader';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
+import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import {
+  ERROR_PLACEHOLDER_TYPE,
+  LOADING_STATE,
+} from '../../../enums/common.enum';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   deleteGlossary,
   deleteGlossaryTerm,
@@ -41,11 +44,11 @@ import {
   patchGlossaryTerm,
   updateGlossaryTermVotes,
   updateGlossaryVotes,
-} from 'rest/glossaryAPI';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getGlossaryPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
@@ -135,18 +138,6 @@ const GlossaryPage = () => {
     fetchGlossaryList();
   }, []);
 
-  const fetchGlossaryTermParent = async () => {
-    setIsRightPanelLoading(true);
-    try {
-      const { parent } = await getGlossaryTermByFQN(glossaryFqn, 'parent');
-      setSelectedData((data) => (data ? { ...data, parent } : undefined));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsRightPanelLoading(false);
-    }
-  };
-
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
     try {
@@ -179,12 +170,6 @@ const GlossaryPage = () => {
       }
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
-
-  useEffect(() => {
-    if (!isGlossaryActive && viewAllGlossaryPermission) {
-      fetchGlossaryTermParent();
-    }
-  }, [glossaryFqn]);
 
   const updateGlossary = async (updatedData: Glossary) => {
     const jsonPatch = compare(selectedData as Glossary, updatedData);
@@ -350,7 +335,9 @@ const GlossaryPage = () => {
   return (
     <PageLayoutV1
       className="glossary-page-layout"
-      leftPanel={<GlossaryLeftPanel glossaries={glossaries} />}
+      leftPanel={
+        isGlossaryActive && <GlossaryLeftPanel glossaries={glossaries} />
+      }
       pageTitle={t('label.glossary')}
       rightPanel={
         previewAsset && (

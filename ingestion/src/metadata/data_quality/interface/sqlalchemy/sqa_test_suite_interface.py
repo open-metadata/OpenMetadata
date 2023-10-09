@@ -54,6 +54,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
         table_entity: Table = None,
+        sqa_metadata=None,
     ):
         self.ometa_client = ometa_client
         self.table_entity = table_entity
@@ -64,7 +65,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         self.set_session_tag(self.session)
         self.set_catalog(self.session)
 
-        self._table = self._convert_table_to_orm_object()
+        self._table = self._convert_table_to_orm_object(sqa_metadata)
 
         (
             self.table_sample_query,

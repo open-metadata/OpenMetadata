@@ -11,6 +11,22 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../../../styles/variables.less');
 .add-reviewer-btn {
   height: 16px;
+}
+
+.glossary-details-page-tabs {
+  .ant-tabs-nav {
+    padding: 0 20px;
+    margin: 0 !important;
+  }
+  .activity-feed-tab {
+    .center-container,
+    .right-container {
+      overflow-x: hidden;
+      overflow-y: auto;
+      height: @glossary-page-tab-height;
+    }
+  }
 }

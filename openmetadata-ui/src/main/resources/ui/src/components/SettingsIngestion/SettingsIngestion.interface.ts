@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ServicesType } from 'interface/service.interface';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ServicesType } from '../../interface/service.interface';
 
 export interface SettingsIngestionProps {
   pipelineType: PipelineType;

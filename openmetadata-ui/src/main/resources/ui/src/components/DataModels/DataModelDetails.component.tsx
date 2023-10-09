@@ -13,36 +13,40 @@
 
 import { Card, Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { getDataModelDetailsPath, getVersionPath } from 'constants/constants';
-import { CSMode } from 'enums/codemirror.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isUndefined, toString } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { restoreDataModel } from 'rest/dataModelsAPI';
-import { getFeedCounts } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityFieldThreadCounts } from 'utils/FeedUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
-import { getTagsWithoutTier } from 'utils/TableUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import SchemaEditor from '../../components/schema-editor/SchemaEditor';
+import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import {
+  getDataModelDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
+import { CSMode } from '../../enums/codemirror.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import { restoreDataModel } from '../../rest/dataModelsAPI';
+import { getFeedCounts } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { createTagObject } from '../../utils/TagsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
 
@@ -154,12 +158,7 @@ const DataModelDetails = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     handleUpdateTags(updatedTags);
   };
 

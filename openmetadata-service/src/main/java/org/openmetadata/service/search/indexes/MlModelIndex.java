@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
-import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DESCRIPTION_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
@@ -14,16 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.MlModel;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class MlModelIndex implements ElasticSearchIndex {
+public class MlModelIndex implements SearchIndex {
   final MlModel mlModel;
   final List<String> excludeFields = List.of("changeDescription");
 
@@ -32,17 +29,6 @@ public class MlModelIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (mlModel.getOwner() != null) {
-      EntityReference owner = mlModel.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      mlModel.setOwner(owner);
-    }
-    if (mlModel.getDomain() != null) {
-      EntityReference domain = mlModel.getDomain();
-      domain.setDisplayName(
-          CommonUtil.nullOrEmpty(domain.getDisplayName()) ? domain.getName() : domain.getDisplayName());
-      mlModel.setDomain(domain);
-    }
     Map<String, Object> doc = JsonUtils.getMap(mlModel);
     List<SearchSuggest> suggest = new ArrayList<>();
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
@@ -62,6 +48,12 @@ public class MlModelIndex implements ElasticSearchIndex {
         getFQNParts(
             mlModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    if (mlModel.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(mlModel.getOwner()));
+    }
+    if (mlModel.getDomain() != null) {
+      doc.put("domain", getDomainWithDisplayName(mlModel.getDomain()));
+    }
     return doc;
   }
 
@@ -70,7 +62,6 @@ public class MlModelIndex implements ElasticSearchIndex {
     fields.put(FIELD_DISPLAY_NAME, 15.0f);
     fields.put(FIELD_DISPLAY_NAME_NGRAM, 1.0f);
     fields.put(FIELD_NAME, 15.0f);
-    fields.put(FIELD_DESCRIPTION_NGRAM, 1.0f);
     fields.put(DISPLAY_NAME_KEYWORD, 25.0f);
     fields.put(NAME_KEYWORD, 25.0f);
     fields.put(FIELD_DESCRIPTION, 1.0f);

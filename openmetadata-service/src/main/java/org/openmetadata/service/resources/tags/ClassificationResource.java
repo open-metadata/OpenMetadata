@@ -23,7 +23,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -53,8 +52,8 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -82,9 +81,8 @@ public class ClassificationResource extends EntityResource<Classification, Class
     /* Required for serde */
   }
 
-  public ClassificationResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Classification.class, new ClassificationRepository(collectionDAO), authorizer);
-    Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
+  public ClassificationResource(Authorizer authorizer) {
+    super(Entity.CLASSIFICATION, authorizer);
   }
 
   @Override

@@ -20,6 +20,7 @@ import {
   getEpochMillisForFutureDays,
 } from '../../src/utils/date-time/DateTimeUtils';
 import {
+  BASE_URL,
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   DELETE_TERM,
@@ -36,7 +37,7 @@ export const BASE_WAIT_TIME = 20000;
 const ADMIN = 'admin';
 const RETRIES_COUNT = 4;
 
-const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
+const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
 export const replaceAllSpacialCharWith_ = (text) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
@@ -52,8 +53,31 @@ export const checkServiceFieldSectionHighlighting = (field) => {
   );
 };
 
-const checkTeamTypeOptions = () => {
-  for (const teamType of TEAM_TYPES) {
+const getTeamType = (currentTeam) => {
+  switch (currentTeam) {
+    case 'BusinessUnit':
+      return {
+        childTeamType: 'Division',
+        teamTypeOptions: TEAM_TYPES,
+      };
+
+    case 'Division':
+      return {
+        childTeamType: 'Department',
+        teamTypeOptions: TEAM_TYPES,
+      };
+
+    case 'Department':
+      return {
+        childTeamType: 'Group',
+        teamTypeOptions: ['Department', 'Group'],
+      };
+  }
+};
+
+const checkTeamTypeOptions = (type) => {
+  cy.log('check', type);
+  for (const teamType of getTeamType(type).teamTypeOptions) {
     cy.get(`.ant-select-dropdown [title="${teamType}"]`)
       .should('exist')
       .should('be.visible');
@@ -591,6 +615,11 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .contains(name)
     .should('exist');
+  if (term.color) {
+    cy.get(
+      '[data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="icon"]'
+    ).should('be.visible');
+  }
 };
 
 export const addUser = (username, email) => {
@@ -960,12 +989,28 @@ export const addTeam = (TEAM_DETAILS, index) => {
     .should('be.visible')
     .click();
 
-  checkTeamTypeOptions();
+  if (index > 0) {
+    cy.get('[data-testid="team-type"]')
+      .invoke('text')
+      .then((text) => {
+        cy.log(text);
+        checkTeamTypeOptions(text);
+        cy.log('check type', text);
+        cy.get(
+          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
+        )
+          .should('exist')
+          .should('be.visible')
+          .click();
+      });
+  } else {
+    checkTeamTypeOptions('BusinessUnit');
 
-  cy.get(`.ant-select-dropdown [title="${TEAM_DETAILS.teamType}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
+      .should('exist')
+      .should('be.visible')
+      .click();
+  }
 
   cy.get(descriptionBox)
     .should('exist')
@@ -1311,6 +1356,76 @@ export const visitDataModelPage = (dataModelFQN, dataModelName) => {
     .click();
 
   verifyResponseStatusCode('@getDataModelDetails', 200);
+};
+
+export const signupAndLogin = (email, password, firstName, lastName) => {
+  return new Cypress.Promise((resolve) => {
+    let createdUserId = '';
+    interceptURL('GET', 'api/v1/system/config/auth', 'getLoginPage');
+    cy.visit('/');
+    verifyResponseStatusCode('@getLoginPage', 200);
+
+    // Click on create account button
+    cy.get('[data-testid="signup"]').scrollIntoView().click();
+
+    // Enter first name
+    cy.get('[id="firstName"]').type(firstName);
+
+    // Enter last name
+    cy.get('[id="lastName"]').type(lastName);
+
+    // Enter email
+    cy.get('[id="email"]').type(email);
+
+    // Enter password
+    cy.get('[id="password"]').type(password);
+    cy.get('[id="password"]')
+      .should('have.attr', 'type')
+      .should('eq', 'password');
+
+    // Confirm password
+    cy.get('[id="confirmPassword"]').type(password);
+
+    // Click on create account button
+    cy.get('.ant-btn').contains('Create Account').click();
+
+    cy.url().should('eq', `${BASE_URL}/signin`).and('contain', 'signin');
+
+    // Login with the created user
+    login(email, password);
+    cy.goToHomePage(true);
+    cy.url().should('eq', `${BASE_URL}/my-data`);
+
+    // Verify user profile
+    cy.get('[data-testid="avatar"]').first().trigger('mouseover').click();
+    cy.get('[data-testid="user-name"]')
+      .should('be.visible')
+      .invoke('text')
+      .should('contain', `${firstName}${lastName}`);
+
+    interceptURL('GET', 'api/v1/users/name/*', 'getUserPage');
+
+    cy.get('[data-testid="user-name"]').click({ force: true });
+    cy.wait('@getUserPage').then((response) => {
+      createdUserId = response.response.body.id;
+      resolve(createdUserId); // Resolve the promise with the createdUserId
+    });
+    cy.get(
+      '[data-testid="user-profile"] [data-testid="user-profile-details"]'
+    ).should('contain', `${firstName}${lastName}`);
+  });
+};
+
+export const deleteUser = (userId) => {
+  const token = localStorage.getItem('oidcIdToken');
+
+  cy.request({
+    method: 'DELETE',
+    url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((response) => {
+    expect(response.status).to.eq(200);
+  });
 };
 
 export const createAnnouncement = (title, startDate, endDate, description) => {

@@ -46,6 +46,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         service_connection_config: DatalakeConnection,
         ometa_client: OpenMetadata,
         table_entity: Table = None,
+        **kwargs,  # pylint: disable=unused-argument
     ):
         self.table_entity = table_entity
 

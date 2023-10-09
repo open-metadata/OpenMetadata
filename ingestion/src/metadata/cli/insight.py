@@ -17,12 +17,12 @@ import sys
 import traceback
 
 from metadata.config.common import load_config_file
-from metadata.data_insight.api.workflow import DataInsightWorkflow
 from metadata.utils.logger import cli_logger
+from metadata.workflow.data_insight import DataInsightWorkflow
 from metadata.workflow.workflow_output_handler import (
     WorkflowType,
-    print_data_insight_status,
     print_init_error,
+    print_status,
 )
 
 logger = cli_logger()
@@ -48,5 +48,5 @@ def run_insight(config_path: str) -> None:
 
     workflow.execute()
     workflow.stop()
-    print_data_insight_status(workflow)
+    print_status(workflow)
     workflow.raise_from_status()

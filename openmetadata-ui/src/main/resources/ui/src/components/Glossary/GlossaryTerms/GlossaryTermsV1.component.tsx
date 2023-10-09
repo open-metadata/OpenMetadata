@@ -12,27 +12,31 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { AssetSelectionModal } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import { EntityDetailsObjectInterface } from 'components/Explore/explore.interface';
-import GlossaryHeader from 'components/Glossary/GlossaryHeader/GlossaryHeader.component';
-import GlossaryTermTab from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { getGlossaryTermDetailsPath } from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { myDataSearchIndex } from 'constants/Mydata.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription } from 'generated/entity/type';
 import { t } from 'i18next';
+import { noop } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { searchData } from 'rest/miscAPI';
-import { getCountBadge } from 'utils/CommonUtils';
-import { getEntityVersionByField } from 'utils/EntityVersionUtils';
-import { getGlossaryTermsVersionsPath } from 'utils/RouterUtils';
+import { getGlossaryTermDetailsPath } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { myDataSearchIndex } from '../../../constants/Mydata.constants';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { ChangeDescription } from '../../../generated/entity/type';
+import { searchData } from '../../../rest/miscAPI';
+import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { EntityDetailsObjectInterface } from '../../Explore/explore.interface';
+import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
+import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import { VotingDataProps } from '../../Voting/voting.interface';
+import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
+import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
+import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
 import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
@@ -76,6 +80,7 @@ const GlossaryTermsV1 = ({
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
+  const [feedCount, setFeedCount] = useState<number>(0);
   const [assetCount, setAssetCount] = useState<number>(0);
 
   const activeTab = useMemo(() => {
@@ -86,8 +91,16 @@ const GlossaryTermsV1 = ({
     history.push({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
-        : getGlossaryTermDetailsPath(glossaryFqn, tab),
+        : getGlossaryTermDetailsPath(decodeURIComponent(glossaryFqn), tab),
     });
+  };
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.GLOSSARY_TERM,
+      getEncodedFqn(glossaryTerm.fullyQualifiedName ?? ''),
+      setFeedCount
+    );
   };
 
   const onExtensionUpdate = async (updatedTable: GlossaryTerm) => {
@@ -162,6 +175,25 @@ const GlossaryTermsV1 = ({
                 />
               ),
             },
+            {
+              label: (
+                <TabsLabel
+                  count={feedCount}
+                  id={GlossaryTabs.ACTIVITY_FEED}
+                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
+                  name={t('label.activity-feed-and-task-plural')}
+                />
+              ),
+              key: GlossaryTabs.ACTIVITY_FEED,
+              children: (
+                <ActivityFeedTab
+                  entityType={EntityType.GLOSSARY_TERM}
+                  fqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  onFeedUpdate={getEntityFeedCount}
+                  onUpdateEntityDetails={noop}
+                />
+              ),
+            },
           ]
         : []),
       {
@@ -195,6 +227,7 @@ const GlossaryTermsV1 = ({
     termsLoading,
     activeTab,
     assetCount,
+    feedCount,
     isSummaryPanelOpen,
     isVersionView,
   ]);
@@ -221,6 +254,7 @@ const GlossaryTermsV1 = ({
 
   useEffect(() => {
     fetchGlossaryTermAssets();
+    getEntityFeedCount();
   }, [glossaryFqn]);
 
   const handleAssetSave = () => {

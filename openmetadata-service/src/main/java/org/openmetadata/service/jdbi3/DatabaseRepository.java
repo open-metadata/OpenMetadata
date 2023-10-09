@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.resources.EntityResource.searchClient;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -30,14 +29,18 @@ import org.openmetadata.service.resources.databases.DatabaseResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class DatabaseRepository extends EntityRepository<Database> {
-  public DatabaseRepository(CollectionDAO dao) {
-    super(DatabaseResource.COLLECTION_PATH, Entity.DATABASE, Database.class, dao.databaseDAO(), dao, "", "");
-    supportsSearchIndex = true;
+  public DatabaseRepository() {
+    super(
+        DatabaseResource.COLLECTION_PATH,
+        Entity.DATABASE,
+        Database.class,
+        Entity.getCollectionDAO().databaseDAO(),
+        "",
+        "");
+    supportsSearch = true;
   }
 
   @Override
@@ -75,29 +78,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database == null
         ? null
         : findTo(database.getId(), Entity.DATABASE, Relationship.CONTAINS, Entity.DATABASE_SCHEMA);
-  }
-
-  @Override
-  public void deleteFromSearch(Database entity, String changeType) {
-    if (supportsSearchIndex) {
-      if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED) || changeType.equals(RestUtil.ENTITY_RESTORED)) {
-        searchClient.softDeleteOrRestoreEntityFromSearch(
-            JsonUtils.deepCopy(entity, Database.class),
-            changeType.equals(RestUtil.ENTITY_SOFT_DELETED),
-            "database.fullyQualifiedName");
-      } else {
-        searchClient.updateSearchEntityDeleted(
-            JsonUtils.deepCopy(entity, Database.class), "", "database.fullyQualifiedName");
-      }
-    }
-  }
-
-  @Override
-  public void restoreFromSearch(Database entity) {
-    if (supportsSearchIndex) {
-      searchClient.softDeleteOrRestoreEntityFromSearch(
-          JsonUtils.deepCopy(entity, Database.class), false, "database.fullyQualifiedName");
-    }
   }
 
   @Override

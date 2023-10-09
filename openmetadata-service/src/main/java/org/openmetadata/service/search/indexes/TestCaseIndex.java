@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
@@ -21,7 +20,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TestCaseIndex implements ElasticSearchIndex {
+public class TestCaseIndex implements SearchIndex {
   final TestCase testCase;
 
   private static final List<String> excludeFields = List.of("changeDescription");
@@ -32,11 +31,6 @@ public class TestCaseIndex implements ElasticSearchIndex {
 
   @SneakyThrows
   public Map<String, Object> buildESDoc() {
-    if (testCase.getOwner() != null) {
-      EntityReference owner = testCase.getOwner();
-      owner.setDisplayName(CommonUtil.nullOrEmpty(owner.getDisplayName()) ? owner.getName() : owner.getDisplayName());
-      testCase.setOwner(owner);
-    }
     List<TestSuite> testSuiteArray = new ArrayList<>();
     if (testCase.getTestSuites() != null) {
       for (TestSuite suite : testCase.getTestSuites()) {
@@ -57,6 +51,9 @@ public class TestCaseIndex implements ElasticSearchIndex {
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
+    if (testCase.getOwner() != null) {
+      doc.put("owner", getOwnerWithDisplayName(testCase.getOwner()));
+    }
     return doc;
   }
 

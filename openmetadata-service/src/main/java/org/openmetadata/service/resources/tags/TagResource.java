@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -64,7 +63,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
@@ -91,7 +89,6 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tags", order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
-  private final CollectionDAO daoCollection;
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   static final String FIELDS = "children,usageCount";
 
@@ -99,10 +96,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     /* Required for serde */
   }
 
-  public TagResource(CollectionDAO collectionDAO, Authorizer authorizer) {
-    super(Tag.class, new TagRepository(collectionDAO), authorizer);
-    Objects.requireNonNull(collectionDAO, "TagRepository must not be null");
-    daoCollection = collectionDAO;
+  public TagResource(Authorizer authorizer) {
+    super(Entity.TAG, authorizer);
   }
 
   @Override
@@ -114,7 +109,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   private void migrateTags() {
     // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not there , once we have
     // any entries we don't need to run it
-    if (!(daoCollection.relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
+    if (!(repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG) > 0)) {
       // We are missing relationship for classification -> tag, and also tag -> tag (parent relationship)
       // Find tag definitions and load classifications from the json file, if necessary
       ClassificationRepository classificationRepository =

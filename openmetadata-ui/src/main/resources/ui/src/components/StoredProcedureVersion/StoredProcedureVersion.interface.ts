@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import { StoredProcedure } from 'generated/entity/data/storedProcedure';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';

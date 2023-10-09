@@ -26,7 +26,7 @@ const FQN = 'service.database.schema.table';
 const type = 'table';
 const expectedDisplayName = 'database.schema.table';
 
-jest.mock('rest/userAPI', () => ({
+jest.mock('../../../../rest/userAPI', () => ({
   getUserByName: jest.fn().mockReturnValue({}),
 }));
 

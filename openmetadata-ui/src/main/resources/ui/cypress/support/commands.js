@@ -129,3 +129,15 @@ Cypress.Commands.add('login', () => {
 Cypress.Commands.add('clickOutside', function () {
   return cy.get('body').click(0, 0); // 0,0 here are the x and y coordinates
 });
+
+Cypress.Commands.add('logout', () => {
+  interceptURL('POST', '/api/v1/users/logout', 'logoutUser');
+  cy.get('[data-testid="app-bar-item-logout"]').scrollIntoView().click();
+
+  cy.get('[data-testid="confirm-logout"]').click();
+
+  // verify the logout request
+  verifyResponseStatusCode('@logoutUser', 200);
+
+  cy.url().should('eq', `${BASE_URL}/signin`);
+});

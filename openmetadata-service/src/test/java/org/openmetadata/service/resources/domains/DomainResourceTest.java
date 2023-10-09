@@ -39,6 +39,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     DOMAIN = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     SUB_DOMAIN =
         createEntity(createRequest("sub-domain").withParent(DOMAIN.getFullyQualifiedName()), ADMIN_AUTH_HEADERS);
+    DOMAIN1 = createEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -153,7 +154,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

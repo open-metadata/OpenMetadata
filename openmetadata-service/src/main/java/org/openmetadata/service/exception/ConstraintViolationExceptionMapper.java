@@ -17,7 +17,6 @@ import com.google.common.collect.Iterables;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 import javax.ws.rs.core.Response;
@@ -40,7 +39,7 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
                   String name = Iterables.getLast(constraintViolation.getPropertyPath()).getName();
                   return name + " " + constraintViolation.getMessage();
                 })
-            .collect(Collectors.toList());
+            .toList();
     return Response.status(Response.Status.BAD_REQUEST)
         .entity(new ErrorMessage(Response.Status.BAD_REQUEST.getStatusCode(), errorMessages.toString()))
         .build();

@@ -2,7 +2,10 @@ package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
-import static org.openmetadata.service.search.EntityBuilderConstant.*;
+import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
+import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
+import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,7 +19,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class UserIndex implements ElasticSearchIndex {
+public class UserIndex implements SearchIndex {
   final User user;
   final List<String> excludeFields = List.of("owns", "changeDescription", "follows", "authenticationMechanism");
 
@@ -25,12 +28,6 @@ public class UserIndex implements ElasticSearchIndex {
   }
 
   public Map<String, Object> buildESDoc() {
-    if (CommonUtil.nullOrEmpty(user.getDisplayName())) {
-      user.setDisplayName(user.getName());
-    }
-    if (user.getIsBot() == null) {
-      user.setIsBot(false);
-    }
     Map<String, Object> doc = JsonUtils.getMap(user);
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     List<SearchSuggest> suggest = new ArrayList<>();
@@ -42,6 +39,10 @@ public class UserIndex implements ElasticSearchIndex {
             user.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.USER);
+    doc.put("displayName", CommonUtil.nullOrEmpty(user.getDisplayName()) ? user.getName() : user.getDisplayName());
+    if (user.getIsBot() == null) {
+      doc.put("isBot", false);
+    }
     return doc;
   }
 

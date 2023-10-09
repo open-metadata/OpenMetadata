@@ -14,10 +14,10 @@
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ErrorPlaceHolderIngestion from 'components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolderIngestion from '../../components/common/error-with-placeholder/ErrorPlaceHolderIngestion';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/searchbar/Searchbar';

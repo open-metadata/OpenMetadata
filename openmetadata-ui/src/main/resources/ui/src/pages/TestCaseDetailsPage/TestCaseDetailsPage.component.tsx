@@ -13,21 +13,21 @@
 
 import { Col, Layout, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import TestSummary from 'components/ProfilerDashboard/component/TestSummary';
-import { TestCase } from 'generated/tests/testCase';
 import { has, isEmpty, isUndefined } from 'lodash';
-import { DataQualityPageTabs } from 'pages/DataQuality/DataQualityPage.interface';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getTestCaseByFqn } from 'rest/testAPI';
-import { formatDateTime } from 'utils/date-time/DateTimeUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
-import { getEncodedFqn } from 'utils/StringsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import TestSummary from '../../components/ProfilerDashboard/component/TestSummary';
+import { TestCase } from '../../generated/tests/testCase';
+import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { getTestCaseByFqn } from '../../rest/testAPI';
+import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './TestCaseDetailsPage.style.less';
 
 function TestCaseDetailsPage() {

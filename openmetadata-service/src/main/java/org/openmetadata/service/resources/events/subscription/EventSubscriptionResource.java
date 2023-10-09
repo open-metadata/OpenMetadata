@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SubscriptionResourceDescriptor;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.ReportsHandler;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -71,8 +72,6 @@ import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -91,11 +90,9 @@ import org.quartz.SchedulerException;
 public class EventSubscriptionResource extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owner,filteringRules";
-  private final CollectionDAO daoCollection;
 
-  public EventSubscriptionResource(CollectionDAO dao, Authorizer authorizer) {
-    super(EventSubscription.class, new EventSubscriptionRepository(dao), authorizer);
-    this.daoCollection = dao;
+  public EventSubscriptionResource(Authorizer authorizer) {
+    super(Entity.EVENT_SUBSCRIPTION, authorizer);
   }
 
   @Override
@@ -114,12 +111,10 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    SearchClient searchClient;
     try {
       repository.initSeedDataFromResources();
       EventsSubscriptionRegistry.initialize(listOrEmpty(EventSubscriptionResource.getDescriptors()));
-      searchClient = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), daoCollection);
-      ReportsHandler.initialize(daoCollection, searchClient);
+      ReportsHandler.initialize();
       initializeEventSubscriptions();
     } catch (Exception ex) {
       // Starting application should not fail
@@ -129,6 +124,7 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
 
   private void initializeEventSubscriptions() {
     try {
+      CollectionDAO daoCollection = repository.getDaoCollection();
       List<String> listAllEventsSubscriptions =
           daoCollection
               .eventSubscriptionDAO()
