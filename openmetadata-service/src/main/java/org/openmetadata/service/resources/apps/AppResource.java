@@ -1,7 +1,9 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -34,6 +37,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
@@ -68,7 +72,8 @@ import org.quartz.SchedulerException;
 @Tag(name = "Apps", description = "Apps are internal/external apps used to something on top of Open-metadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps")
+@Collection(name = "apps", order = 8)
+@Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -87,6 +92,33 @@ public class AppResource extends EntityResource<App, AppRepository> {
     CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
     searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
     AppScheduler.initialize(dao, searchRepository);
+
+    try {
+      // Get Create App Requests
+      List<CreateApp> createAppsReq =
+          getEntitiesFromSeedData(APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);
+      for (CreateApp createApp : createAppsReq) {
+        AppMarketPlaceDefinition definition =
+            repository
+                .getMarketPlace()
+                .getByName(
+                    null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+        App app = getApplication(definition, createApp, "admin");
+
+        // Initialize
+        repository.initializeEntity(app);
+
+        // Schedule
+        if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          ApplicationHandler.scheduleApplication(
+              app,
+              JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+              searchRepository);
+        }
+      }
+    } catch (Exception ex) {
+      LOG.error("Failed in Create App Requests", ex);
+    }
   }
 
   public AppResource(Authorizer authorizer) {
@@ -288,7 +320,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/install/{appName}")
+  @Path("/install")
   @Operation(
       operationId = "createApplication",
       summary = "Create a Application",
@@ -300,16 +332,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("appName")
-          String appName,
-      @Valid CreateApp create) {
+  public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
-            .getByName(uriInfo, appName, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
+            .getByName(
+                uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(

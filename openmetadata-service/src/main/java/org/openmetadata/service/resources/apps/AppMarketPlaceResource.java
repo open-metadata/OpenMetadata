@@ -42,12 +42,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -59,7 +56,7 @@ import org.openmetadata.service.util.ResultList;
 @Tag(name = "Apps", description = "Apps marketplace holds to application available for openmetadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "appsMarketPlace")
+@Collection(name = "appsMarketPlace", order = 7)
 @Slf4j
 public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
@@ -73,10 +70,10 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
       this.pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
 
-      // Create an On Demand DAO
-      CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
-      searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-      AppScheduler.initialize(dao, searchRepository);
+      this.searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
+
+      // Initialize Default Installed Applications
+      this.repository.initSeedDataFromResources();
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }

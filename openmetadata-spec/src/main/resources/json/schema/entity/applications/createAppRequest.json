@@ -6,6 +6,10 @@
   "description": "This schema defines the create applications request for Open-Metadata.",
   "type": "object",
   "properties": {
+    "name": {
+      "description": "Name of the Application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
     "owner": {
       "description": "Owner of this workflow.",
       "$ref": "../../type/entityReference.json",
