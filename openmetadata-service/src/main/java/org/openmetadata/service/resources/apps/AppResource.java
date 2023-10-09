@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
@@ -63,6 +64,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
@@ -103,18 +105,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
                   .getMarketPlace()
                   .getByName(
                       null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-          App app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
 
-          // Initialize
-          repository.initializeEntity(app);
+          String existingJson = repository.getDao().findJsonByFqn(createApp.getName(), ALL);
+
+          App app;
+
+          if (existingJson == null) {
+            app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
+            repository.initializeEntity(app);
+          } else {
+            app = JsonUtils.readValue(existingJson, App.class);
+          }
 
           // Schedule
-          if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+          if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
             ApplicationHandler.scheduleApplication(
                 app,
                 JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
                 searchRepository);
           }
+
         } catch (Exception ex) {
           LOG.error("Failed in App Initialization, AppName : {}", createApp.getName(), ex);
         }
