@@ -13,11 +13,6 @@
 
 import { Select } from 'antd';
 import { AxiosError } from 'axios';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { PAGE_SIZE } from 'constants/constants';
-import { EntityType, FqnPart } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/type';
 import { capitalize, debounce } from 'lodash';
 import { FormattedTableData } from 'Models';
 import React, {
@@ -28,15 +23,20 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
-import { formatDataResponse } from 'utils/APIUtils';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE } from '../../../constants/constants';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { searchData } from '../../../rest/miscAPI';
+import { formatDataResponse } from '../../../utils/APIUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getEntityNodeIcon,
   getSearchIndexFromNodeType,
-} from 'utils/EntityLineageUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/EntityLineageUtils';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { ExploreSearchIndex } from '../../Explore/explore.interface';
 import './node-suggestion.less';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {

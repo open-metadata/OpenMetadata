@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import TagsViewer from 'components/Tag/TagsViewer/TagsViewer';
-import { Column } from 'generated/entity/data/container';
 import { isEmpty } from 'lodash';
 import React, { FC } from 'react';
-import { getEntityName } from 'utils/EntityUtils';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
+import { Column } from '../../../generated/entity/data/container';
+import { getEntityName } from '../../../utils/EntityUtils';
 
 interface ColumnSummaryProps {
   column: Column;

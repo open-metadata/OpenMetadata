@@ -13,6 +13,7 @@
 
 import { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
+import deDe from '../../locale/languages/de-de.json';
 import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
 import frFR from '../../locale/languages/fr-fr.json';
@@ -29,6 +30,7 @@ export enum SupportedLocales {
   Português = 'pt-BR',
   Español = 'es-ES',
   Русский = 'ru-RU',
+  Deutsh = 'de-DE',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -48,6 +50,7 @@ export const getInitOptions = (): InitOptions => {
       'pt-BR': { translation: ptBR },
       'es-ES': { translation: esES },
       'ru-RU': { translation: ruRU },
+      'de-DE': { translation: deDe },
     },
     fallbackLng: ['en-US'],
     detection: {

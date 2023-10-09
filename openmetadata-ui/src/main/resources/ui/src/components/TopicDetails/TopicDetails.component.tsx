@@ -13,38 +13,43 @@
 
 import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import DataProductsContainer from 'components/DataProductsContainer/DataProductsContainer.component';
-import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { getTopicDetailsPath } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { TagLabel } from 'generated/type/schema';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { restoreTopic } from 'rest/topicsAPI';
-import { getEntityName, getEntityReferenceFromEntity } from 'utils/EntityUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
+import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import { getTopicDetailsPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { Tag } from '../../generated/entity/classification/tag';
 import { Topic } from '../../generated/entity/data/topic';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { TagLabel } from '../../generated/type/schema';
+import { TagSource } from '../../generated/type/tagLabel';
+import { restoreTopic } from '../../rest/topicsAPI';
 import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../utils/EntityUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { CustomPropertyTable } from '../common/CustomPropertyTable/CustomPropertyTable';
@@ -210,17 +215,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     [owner]
   );
 
-  const onTierUpdate = (newTier?: string) => {
-    const tierTag: Topic['tags'] = newTier
-      ? [
-          ...getTagsWithoutTier(topicDetails.tags as Array<EntityTags>),
-          {
-            tagFQN: newTier,
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ]
-      : getTagsWithoutTier(topicDetails.tags ?? []);
+  const onTierUpdate = (newTier?: Tag) => {
+    const tierTag = updateTierTag(topicDetails?.tags ?? [], newTier);
     const updatedTopicDetails = {
       ...topicDetails,
       tags: tierTag,
@@ -230,12 +226,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && topicDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];

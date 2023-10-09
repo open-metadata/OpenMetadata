@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { IngestionPipelineLogByIdInterface } from 'pages/LogsViewer/LogsViewer.interfaces';
 import QueryString from 'qs';
 import {
   CreateIngestionPipeline,
@@ -26,6 +25,7 @@ import {
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 

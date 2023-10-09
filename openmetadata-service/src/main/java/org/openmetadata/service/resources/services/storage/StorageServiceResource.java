@@ -44,7 +44,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -73,8 +72,8 @@ public class StorageServiceResource
     return service;
   }
 
-  public StorageServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(StorageService.class, new StorageServiceRepository(dao), authorizer, ServiceType.STORAGE);
+  public StorageServiceResource(Authorizer authorizer) {
+    super(Entity.STORAGE_SERVICE, authorizer, ServiceType.STORAGE);
   }
 
   @Override

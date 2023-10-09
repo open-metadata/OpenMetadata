@@ -27,9 +27,6 @@ from metadata.generated.schema.entity.data.container import (
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection,
 )
@@ -37,15 +34,13 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
     MetadataEntry,
     StorageContainerConfig,
 )
-from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig import (
-    ManifestMetadataConfig,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.s3.models import (
     S3BucketResponse,
     S3ContainerDetails,
@@ -75,8 +70,8 @@ class S3Source(StorageServiceSource):
     Source implementation to ingest S3 buckets data.
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.s3_client = self.connection.s3_client
         self.cloudwatch_client = self.connection.cloudwatch_client
 
@@ -84,17 +79,16 @@ class S3Source(StorageServiceSource):
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: S3Connection = config.serviceConnection.__root__.config
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(
                 f"Expected S3StoreConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
-        global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()
         bucket_results = self.fetch_buckets()
 
         for bucket_response in bucket_results:
@@ -108,10 +102,10 @@ class S3Source(StorageServiceSource):
                 parent_entity: EntityReference = EntityReference(
                     id=self._bucket_cache[bucket_name].id.__root__, type="container"
                 )
-                if global_manifest:
+                if self.global_manifest:
                     manifest_entries_for_current_bucket = (
-                        self._manifest_entries_to_metadata_entries_by_bucket(
-                            bucket=bucket_name, manifest=global_manifest
+                        self._manifest_entries_to_metadata_entries_by_container(
+                            container_name=bucket_name, manifest=self.global_manifest
                         )
                     )
                     # Check if we have entries in the manifest file belonging to this bucket
@@ -119,8 +113,9 @@ class S3Source(StorageServiceSource):
                         # ingest all the relevant valid paths from it
                         yield from self._generate_structured_containers(
                             bucket_response=bucket_response,
-                            entries=self._manifest_entries_to_metadata_entries_by_bucket(
-                                bucket=bucket_name, manifest=global_manifest
+                            entries=self._manifest_entries_to_metadata_entries_by_container(
+                                container_name=bucket_name,
+                                manifest=self.global_manifest,
                             ),
                             parent=parent_entity,
                         )
@@ -333,25 +328,6 @@ class S3Source(StorageServiceSource):
             data_model=None,
             sourceUrl=self._get_bucket_source_url(bucket_name=bucket_response.name),
         )
-
-    @staticmethod
-    def _manifest_entries_to_metadata_entries_by_bucket(
-        bucket: str, manifest: ManifestMetadataConfig
-    ) -> List[MetadataEntry]:
-        """
-        Convert manifest entries(which have an extra bucket property) to bucket-level metadata entries, filtered by
-        a given bucket
-        """
-        return [
-            MetadataEntry(
-                dataPath=entry.dataPath,
-                structureFormat=entry.structureFormat,
-                isPartitioned=entry.isPartitioned,
-                partitionColumns=entry.partitionColumns,
-            )
-            for entry in manifest.entries
-            if entry.bucketName == bucket
-        ]
 
     def _get_sample_file_path(
         self, bucket_name: str, metadata_entry: MetadataEntry

@@ -23,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -33,7 +32,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class DefaultAuthorizer implements Authorizer {
 
   @Override
-  public void init(OpenMetadataApplicationConfig config, CollectionDAO dao) {
+  public void init(OpenMetadataApplicationConfig config) {
     LOG.info("Initializing DefaultAuthorizer with config {}", config.getAuthorizerConfiguration());
   }
 

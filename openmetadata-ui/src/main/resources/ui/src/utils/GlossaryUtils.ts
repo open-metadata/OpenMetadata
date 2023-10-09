@@ -12,17 +12,17 @@
  */
 
 import { AxiosError } from 'axios';
-import { StatusType } from 'components/common/StatusBadge/StatusBadge.interface';
-import { ModifiedGlossaryTerm } from 'components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { isUndefined, omit } from 'lodash';
-import { ListGlossaryTermsParams } from 'rest/glossaryAPI';
-import { searchData } from 'rest/miscAPI';
+import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../generated/type/entityReference';
 import { SearchResponse } from '../interface/search.interface';
+import { ListGlossaryTermsParams } from '../rest/glossaryAPI';
+import { searchData } from '../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from './APIUtils';
 
 export interface GlossaryTermTreeNode {

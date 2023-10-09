@@ -110,3 +110,26 @@ Again, this information will be added on top of the inferred schema from the dat
     ]
 }
 ```
+
+### Global Manifest
+
+You can also manage a **single** manifest file to centralize the ingestion process for any container. In that case,
+you will need to add a `containerName` entry to the structure above. For example:
+
+```yaml
+{
+  "entries": [
+    {
+      "dataPath": "transactions",
+      "structureFormat": "csv",
+      "isPartitioned": false,
+      "containerName": "collate-demo-storage"
+    }
+  ]
+}
+```
+
+You can also keep local manifests in each container, but if possible, we will always try to pick up the global manifest
+during the ingestion.
+
+We will look for a file named `openmetadata_storage_manifest.json`.

@@ -37,7 +37,7 @@ export const BASE_WAIT_TIME = 20000;
 const ADMIN = 'admin';
 const RETRIES_COUNT = 4;
 
-const TEAM_TYPES = ['BusinessUnit', 'Department', 'Division', 'Group'];
+const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
 export const replaceAllSpacialCharWith_ = (text) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
@@ -53,8 +53,31 @@ export const checkServiceFieldSectionHighlighting = (field) => {
   );
 };
 
-const checkTeamTypeOptions = () => {
-  for (const teamType of TEAM_TYPES) {
+const getTeamType = (currentTeam) => {
+  switch (currentTeam) {
+    case 'BusinessUnit':
+      return {
+        childTeamType: 'Division',
+        teamTypeOptions: TEAM_TYPES,
+      };
+
+    case 'Division':
+      return {
+        childTeamType: 'Department',
+        teamTypeOptions: TEAM_TYPES,
+      };
+
+    case 'Department':
+      return {
+        childTeamType: 'Group',
+        teamTypeOptions: ['Department', 'Group'],
+      };
+  }
+};
+
+const checkTeamTypeOptions = (type) => {
+  cy.log('check', type);
+  for (const teamType of getTeamType(type).teamTypeOptions) {
     cy.get(`.ant-select-dropdown [title="${teamType}"]`)
       .should('exist')
       .should('be.visible');
@@ -592,6 +615,11 @@ export const addNewTagToEntity = (entityObj, term) => {
     .scrollIntoView()
     .contains(name)
     .should('exist');
+  if (term.color) {
+    cy.get(
+      '[data-testid="classification-tags-0"] [data-testid="tags-container"] [data-testid="icon"]'
+    ).should('be.visible');
+  }
 };
 
 export const addUser = (username, email) => {
@@ -961,12 +989,28 @@ export const addTeam = (TEAM_DETAILS, index) => {
     .should('be.visible')
     .click();
 
-  checkTeamTypeOptions();
+  if (index > 0) {
+    cy.get('[data-testid="team-type"]')
+      .invoke('text')
+      .then((text) => {
+        cy.log(text);
+        checkTeamTypeOptions(text);
+        cy.log('check type', text);
+        cy.get(
+          `.ant-select-dropdown [title="${getTeamType(text).childTeamType}"]`
+        )
+          .should('exist')
+          .should('be.visible')
+          .click();
+      });
+  } else {
+    checkTeamTypeOptions('BusinessUnit');
 
-  cy.get(`.ant-select-dropdown [title="${TEAM_DETAILS.teamType}"]`)
-    .should('exist')
-    .should('be.visible')
-    .click();
+    cy.get(`.ant-select-dropdown [title='BusinessUnit']`)
+      .should('exist')
+      .should('be.visible')
+      .click();
+  }
 
   cy.get(descriptionBox)
     .should('exist')
@@ -1627,4 +1671,3 @@ export const updateTableFieldDescription = (
 
   verifyResponseStatusCode('@updateDescription', 200);
 };
-

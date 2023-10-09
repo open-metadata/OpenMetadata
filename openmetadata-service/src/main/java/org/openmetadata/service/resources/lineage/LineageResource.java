@@ -22,7 +22,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -42,7 +41,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.type.EntityLineage;
@@ -50,7 +48,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -71,8 +68,8 @@ public class LineageResource {
   private final LineageRepository dao;
   private final Authorizer authorizer;
 
-  public LineageResource(@NonNull CollectionDAO dao, Authorizer authorizer) {
-    this.dao = new LineageRepository(dao);
+  public LineageResource(Authorizer authorizer) {
+    this.dao = Entity.getLineageRepository();
     this.authorizer = authorizer;
   }
 
@@ -111,8 +108,7 @@ public class LineageResource {
           @Min(0)
           @Max(3)
           @QueryParam("downstreamDepth")
-          int downStreamDepth)
-      throws IOException {
+          int downStreamDepth) {
     return addHref(uriInfo, dao.get(entity, id, upstreamDepth, downStreamDepth));
   }
 
@@ -155,8 +151,7 @@ public class LineageResource {
           @Min(0)
           @Max(3)
           @QueryParam("downstreamDepth")
-          int downStreamDepth)
-      throws IOException {
+          int downStreamDepth) {
     return addHref(uriInfo, dao.getByName(entity, fqn, upstreamDepth, downStreamDepth));
   }
 
@@ -170,8 +165,7 @@ public class LineageResource {
         @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
       })
   public Response addLineage(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage)
-      throws IOException {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid AddLineage addLineage) {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
@@ -208,8 +202,7 @@ public class LineageResource {
           @PathParam("toEntity")
           String toEntity,
       @Parameter(description = "Entity id", required = true, schema = @Schema(type = "string")) @PathParam("toId")
-          String toId)
-      throws IOException {
+          String toId) {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),

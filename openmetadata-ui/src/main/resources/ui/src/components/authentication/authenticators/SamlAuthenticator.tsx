@@ -23,7 +23,6 @@
  *  limitations under the License.
  */
 
-import { SamlSSOClientConfig } from 'generated/configuration/authenticationConfiguration';
 import React, {
   forwardRef,
   Fragment,
@@ -31,6 +30,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { oidcTokenKey } from '../../../constants/constants';
+import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';

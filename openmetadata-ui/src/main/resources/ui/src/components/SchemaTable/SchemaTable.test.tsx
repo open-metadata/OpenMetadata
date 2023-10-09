@@ -12,9 +12,9 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { Column } from 'generated/entity/data/container';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Column } from '../../generated/entity/data/container';
 import { Table } from '../../generated/entity/data/table';
 import EntityTableV1 from './SchemaTable.component';
 
@@ -140,7 +140,7 @@ jest.mock('../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor', () => ({
 }));
 
 jest.mock(
-  'components/common/error-with-placeholder/FilterTablePlaceHolder',
+  '../../components/common/error-with-placeholder/FilterTablePlaceHolder',
   () => {
     return jest.fn().mockReturnValue(<p>FilterTablePlaceHolder</p>);
   }
@@ -156,17 +156,20 @@ jest.mock('../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('components/TableTags/TableTags.component', () => {
+jest.mock('../../components/TableTags/TableTags.component', () => {
   return jest.fn().mockReturnValue(<p>TableTags</p>);
 });
 
-jest.mock('components/TableDescription/TableDescription.component', () => {
-  return jest.fn().mockReturnValue(<p>TableDescription</p>);
-});
+jest.mock(
+  '../../components/TableDescription/TableDescription.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>TableDescription</p>);
+  }
+);
 
 const mockTableScrollValue = jest.fn();
 
-jest.mock('constants/Table.constants', () => ({
+jest.mock('../../constants/Table.constants', () => ({
   get TABLE_SCROLL_VALUE() {
     return mockTableScrollValue();
   },

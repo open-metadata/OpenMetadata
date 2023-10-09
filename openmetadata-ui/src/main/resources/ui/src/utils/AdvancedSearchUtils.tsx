@@ -13,24 +13,12 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { SearchDropdownOption } from 'components/SearchDropdown/SearchDropdown.interface';
 import i18next from 'i18next';
-import {
-  Bucket,
-  ContainerSearchSource,
-  DashboardSearchSource,
-  ExploreSearchSource,
-  MlmodelSearchSource,
-  PipelineSearchSource,
-  SuggestOption,
-  TableSearchSource,
-  TopicSearchSource,
-} from 'interface/search.interface';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { RenderSettings } from 'react-awesome-query-builder';
-import { getCountBadge } from 'utils/CommonUtils';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
@@ -45,6 +33,18 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import {
+  Bucket,
+  ContainerSearchSource,
+  DashboardSearchSource,
+  ExploreSearchSource,
+  MlmodelSearchSource,
+  PipelineSearchSource,
+  SuggestOption,
+  TableSearchSource,
+  TopicSearchSource,
+} from '../interface/search.interface';
+import { getCountBadge } from '../utils/CommonUtils';
 import { getEntityName } from './EntityUtils';
 import SVGIcons, { Icons } from './SvgUtils';
 

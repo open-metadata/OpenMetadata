@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchIndexRepository;
 import org.openmetadata.service.resources.Collection;
@@ -84,8 +83,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return searchIndex;
   }
 
-  public SearchIndexResource(CollectionDAO dao, Authorizer authorizer) {
-    super(SearchIndex.class, new SearchIndexRepository(dao), authorizer);
+  public SearchIndexResource(Authorizer authorizer) {
+    super(Entity.SEARCH_INDEX, authorizer);
   }
 
   @Override

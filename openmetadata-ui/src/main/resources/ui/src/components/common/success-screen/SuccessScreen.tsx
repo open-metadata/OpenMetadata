@@ -12,14 +12,14 @@
  */
 
 import { Button, Card, Space, Typography } from 'antd';
-import { ReactComponent as IconCollateSupport } from 'assets/svg/ic-collate-support.svg';
-import { ReactComponent as IconSuccessBadge } from 'assets/svg/success-badge.svg';
-import Loader from 'components/Loader/Loader';
-import { AIRFLOW_DOCS } from 'constants/docs.constants';
-import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
 import { isUndefined } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
+import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
+import Loader from '../../../components/Loader/Loader';
+import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
+import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';

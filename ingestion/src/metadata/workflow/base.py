@@ -41,6 +41,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
 from metadata.utils.class_helper import (
@@ -96,7 +97,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
-        self.metadata = OpenMetadata(config=self.metadata_config)
+
+        # We create the ometa client at the workflow level and pass it to the steps
+        self.metadata = create_ometa_client(self.metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
@@ -165,11 +168,16 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         Main stopping logic
         """
-        for step in self.steps:
-            step.close()
-
-        self.metadata.close()
+        # Stop the timer first. This runs in a separate thread and if not properly closed
+        # it can hung the workflow
         self.timer.stop()
+        self.metadata.close()
+
+        for step in self.steps:
+            try:
+                step.close()
+            except Exception as exc:
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
     @property
     def timer(self) -> RepeatedTimer:

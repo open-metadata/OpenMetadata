@@ -17,8 +17,8 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, patch
 
-from metadata.data_insight.processor.data_processor import DataProcessor
-from metadata.data_insight.processor.entity_report_data_processor import (
+from metadata.data_insight.processor.reports.data_processor import DataProcessor
+from metadata.data_insight.processor.reports.entity_report_data_processor import (
     EntityReportDataProcessor,
 )
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -183,8 +183,13 @@ class EntityReportProcessorTest(unittest.TestCase):
         ]
 
         processed = []
+        processor = EntityReportDataProcessor(mocked_om)
+        processor._refined_data = (
+            data  # we'll patch the refined data with the mock data
+        )
+        processor._post_hook_fn()  # we'll call the post hook function to flatten the data
 
-        for flat_result in EntityReportDataProcessor(mocked_om)._flatten_results(data):
+        for flat_result in processor.yield_refined_data():
             flat_result.timestamp = 1695324826495
             processed.append(flat_result)
             assert all(

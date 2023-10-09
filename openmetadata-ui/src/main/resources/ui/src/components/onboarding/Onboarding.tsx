@@ -12,10 +12,10 @@
  */
 
 import { Card } from 'antd';
-import { ONBOARDING_STEPS_DATA } from 'constants/Onboarding.constants';
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React, { FC } from 'react';
+import { ONBOARDING_STEPS_DATA } from '../../constants/Onboarding.constants';
 
 const Onboarding: FC = () => {
   return (

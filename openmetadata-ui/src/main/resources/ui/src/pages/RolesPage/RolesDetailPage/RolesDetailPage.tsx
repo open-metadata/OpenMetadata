@@ -13,27 +13,27 @@
 
 import { Button, Modal, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import Description from 'components/common/description/Description';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getRoleByName, patchRole } from 'rest/rolesAPIV1';
-import { getTeamByName, patchTeamDetail } from 'rest/teamsAPI';
-import { getUserByName, updateUserDetail } from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import Description from '../../../components/common/description/Description';
+import ErrorPlaceHolder from '../../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '../../../components/Loader/Loader';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
+import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
+import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';

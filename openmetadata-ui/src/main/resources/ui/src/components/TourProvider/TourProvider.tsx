@@ -10,9 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ROUTES } from 'constants/constants';
-import { EntityTabs } from 'enums/entity.enum';
-import { CurrentTourPageType } from 'enums/tour.enum';
 import React, {
   createContext,
   FC,
@@ -22,6 +19,9 @@ import React, {
   useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
+import { EntityTabs } from '../../enums/entity.enum';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 
 interface Props {
   children: ReactNode;

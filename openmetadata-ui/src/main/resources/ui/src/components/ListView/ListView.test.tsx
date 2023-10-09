@@ -17,11 +17,11 @@ import { ListView } from './ListView.component';
 const mockCardRenderer = jest.fn().mockImplementation(() => <>Card</>);
 const mockOnSearch = jest.fn();
 
-jest.mock('components/common/Table/Table', () => {
+jest.mock('../../components/common/Table/Table', () => {
   return jest.fn(() => <p>Table</p>);
 });
 
-jest.mock('components/common/searchbar/Searchbar', () => {
+jest.mock('../../components/common/searchbar/Searchbar', () => {
   return jest.fn().mockImplementation(() => <p>Searchbar</p>);
 });
 

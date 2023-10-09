@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTimeFromSeconds } from 'utils/date-time/DateTimeUtils';
+import { formatDateTimeFromSeconds } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,

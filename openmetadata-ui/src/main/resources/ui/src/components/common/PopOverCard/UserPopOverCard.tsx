@@ -22,15 +22,15 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
-import { getUserByName } from 'rest/userAPI';
-import { getEntityName } from 'utils/EntityUtils';
 import AppState from '../../../AppState';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { getUserPath, TERM_ADMIN } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 

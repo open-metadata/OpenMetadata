@@ -12,12 +12,12 @@
  */
 
 import { AxiosError } from 'axios';
-import AddDataQualityTestV1 from 'components/AddDataQualityTest/AddDataQualityTestV1';
-import Loader from 'components/Loader/Loader';
-import { Table } from 'generated/entity/data/table';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getTableDetailsByFQN } from 'rest/tableAPI';
+import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
+import Loader from '../../components/Loader/Loader';
+import { Table } from '../../generated/entity/data/table';
+import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {

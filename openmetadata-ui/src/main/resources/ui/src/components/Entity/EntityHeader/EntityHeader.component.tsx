@@ -12,11 +12,11 @@
  */
 
 import classNames from 'classnames';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import { TitleBreadcrumbProps } from 'components/common/title-breadcrumb/title-breadcrumb.interface';
-import { EntityType } from 'enums/entity.enum';
 import React, { ReactNode } from 'react';
-import { getEntityLinkFromType } from 'utils/EntityUtils';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import { EntityType } from '../../../enums/entity.enum';
+import { getEntityLinkFromType } from '../../../utils/EntityUtils';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 
 interface Props {

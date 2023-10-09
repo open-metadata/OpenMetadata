@@ -12,15 +12,6 @@
  */
 
 import { Col, Divider, Row, Typography } from 'antd';
-import SummaryTagsDescription from 'components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { mockTablePermission } from 'constants/mockTourData.constants';
-import { ExplorePageTabs } from 'enums/Explore.enum';
 import { isEmpty, isUndefined } from 'lodash';
 import {
   default as React,
@@ -31,20 +22,29 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import { ROUTES } from '../../../../constants/constants';
+import { mockTablePermission } from '../../../../constants/mockTourData.constants';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { Table, TestSummary } from '../../../../generated/entity/data/table';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
-} from 'rest/tableAPI';
+} from '../../../../rest/tableAPI';
+import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
-} from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { ROUTES } from '../../../../constants/constants';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
-import { Table, TestSummary } from '../../../../generated/entity/data/table';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
-import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+} from '../../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { usePermissionProvider } from '../../../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../PermissionProvider/PermissionProvider.interface';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -234,7 +234,7 @@ function TableSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={tags ?? entityDetails.tags ?? []}
         />
         <Divider className="m-y-xs" />
 

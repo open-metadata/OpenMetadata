@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, Space, Tooltip, Typography } from 'antd';
+import { Select, SelectProps, Space, Tooltip, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { Paging } from 'generated/type/paging';
-import { debounce } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
-import { tagRender } from 'utils/TagsUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import Loader from '../../components/Loader/Loader';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import { Paging } from '../../generated/type/paging';
 import Fqn from '../../utils/Fqn';
+import { tagRender } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import {
   AsyncSelectListProps,
   SelectOption,
@@ -67,8 +68,11 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
     const newTags = options
       .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
       .map((tag) => {
+        const displayName = tag.data?.displayName;
         const parts = Fqn.split(tag.label);
-        const lastPartOfTag = parts.slice(-1).join(FQN_SEPARATOR_CHAR);
+        const lastPartOfTag = isEmpty(displayName)
+          ? parts.slice(-1).join(FQN_SEPARATOR_CHAR)
+          : displayName;
         parts.pop();
 
         return {
@@ -84,6 +88,7 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
             </Space>
           ),
           value: tag.value,
+          data: tag.data,
         };
       });
 
@@ -119,6 +124,18 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
     </>
   );
 
+  const handleChange: SelectProps['onChange'] = (values: string[], options) => {
+    const selectedValues = values.map((value) => {
+      const data = (options as DefaultOptionType[]).find(
+        (option) => option.value === value
+      );
+
+      return data ?? { value, label: value };
+    });
+
+    onChange?.(selectedValues);
+  };
+
   return (
     <Select
       autoFocus
@@ -136,13 +153,17 @@ const AsyncSelectList: FC<AsyncSelectListProps> = ({
         setSearchValue('');
         setOptions([]);
       }}
-      onChange={onChange}
+      onChange={handleChange}
       onFocus={() => loadOptions('')}
       onPopupScroll={onScroll}
       onSearch={debounceFetcher}
       {...props}>
-      {tagOptions.map(({ label, value, displayName }) => (
-        <Select.Option data-testid={`tag-${value}`} key={label} value={value}>
+      {tagOptions.map(({ label, value, displayName, data }) => (
+        <Select.Option
+          data={data}
+          data-testid={`tag-${value}`}
+          key={label}
+          value={value}>
           <Tooltip
             destroyTooltipOnHide
             mouseEnterDelay={1.5}

@@ -16,7 +16,6 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +64,7 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public GChatMessage buildMessage(ChangeEvent event) throws IOException {
+  public GChatMessage buildMessage(ChangeEvent event) {
     GChatMessage gChatMessage = new GChatMessage();
     GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
     GChatMessage.Card card = new GChatMessage.Card();

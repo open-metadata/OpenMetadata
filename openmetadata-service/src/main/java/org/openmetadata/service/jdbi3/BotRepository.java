@@ -25,11 +25,11 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class BotRepository extends EntityRepository<Bot> {
-
   static final String BOT_UPDATE_FIELDS = "botUser";
 
-  public BotRepository(CollectionDAO dao) {
-    super(BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, dao.botDAO(), dao, "", BOT_UPDATE_FIELDS);
+  public BotRepository() {
+    super(
+        BotResource.COLLECTION_PATH, Entity.BOT, Bot.class, Entity.getCollectionDAO().botDAO(), "", BOT_UPDATE_FIELDS);
     quoteFqn = true;
   }
 

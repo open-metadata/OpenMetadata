@@ -12,15 +12,15 @@
  */
 
 import { Col, Divider, Row, Space, Typography } from 'antd';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import SummaryPanelSkeleton from 'components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagButton from 'components/TagButton/TagButton.component';
-import { SummaryEntityType } from 'enums/EntitySummary.enum';
-import { GlossaryTerm } from 'generated/entity/data/glossaryTerm';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getGlossaryTermByFQN } from 'rest/glossaryAPI';
-import { getFormattedEntityData } from 'utils/EntitySummaryPanelUtils';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
+import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagButton from '../../../TagButton/TagButton.component';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { GlossaryTermSummaryProps } from './GlossaryTermSummary.interface';

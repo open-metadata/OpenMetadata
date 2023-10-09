@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { AnalyticsData } from 'components/WebAnalytics/WebAnalytics.interface';
-import { postWebAnalyticEvent } from 'rest/WebAnalyticsAPI';
+import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
+import { postWebAnalyticEvent } from './../rest/WebAnalyticsAPI';
 import {
   getAnalyticInstance,
   getReferrerPath,

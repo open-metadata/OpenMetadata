@@ -42,6 +42,7 @@ export const SEARCH_INDEX = {
   dashboards: 'dashboard_search_index',
   pipelines: 'pipeline_search_index',
   mlmodels: 'mlmodel_search_index',
+  containers: 'container_search_index',
 };
 
 export const DATA_QUALITY_SAMPLE_DATA_TABLE = {
@@ -288,6 +289,8 @@ export const NEW_TAG = {
   renamedName: 'CypressTag-1',
   fqn: `${NEW_CLASSIFICATION.name}.CypressTag`,
   description: 'This is the CypressTag',
+  color: '#FF5733',
+  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
 };
 
 export const NEW_GLOSSARY = {
@@ -334,12 +337,16 @@ export const NEW_GLOSSARY_1_TERMS = {
     description: 'This is the Features',
     synonyms: 'data,collect,time',
     fullyQualifiedName: 'Cypress Product%Glossary.Features%Term',
+    color: '#FF5733',
+    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
   },
   term_2: {
     name: 'Uses',
     description: 'This is the Uses',
     synonyms: 'home,business,adventure',
     fullyQualifiedName: 'Cypress Product%Glossary.Uses',
+    color: '#50C878',
+    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKEAAAB5CAMAAABm4rHGAAAAA1BMVEUA7gBnh+O4AAAAKUlEQVR4nO3BAQEAAACCIP+vbkhAAQAAAAAAAAAAAAAAAAAAAAAAAL8GTJIAAVDbVToAAAAASUVORK5CYII=',
   },
 };
 

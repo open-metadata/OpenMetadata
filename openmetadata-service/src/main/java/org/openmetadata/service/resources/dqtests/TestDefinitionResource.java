@@ -41,8 +41,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.resources.Collection;
@@ -64,8 +64,8 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
   static final String FIELDS = "owner";
 
-  public TestDefinitionResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestDefinition.class, new TestDefinitionRepository(dao), authorizer);
+  public TestDefinitionResource(Authorizer authorizer) {
+    super(Entity.TEST_DEFINITION, authorizer);
   }
 
   @Override

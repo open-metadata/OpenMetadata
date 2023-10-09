@@ -12,13 +12,13 @@
  */
 
 import { AxiosResponse } from 'axios';
-import { Edge } from 'components/Entity/EntityLineage/EntityLineage.interface';
-import { ExploreSearchIndex } from 'components/Explore/explore.interface';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { ApplicationConfiguration } from 'generated/configuration/applicationConfiguration';
-import { AuthorizerConfiguration } from 'generated/configuration/authorizerConfiguration';
+import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { ExploreSearchIndex } from '../components/Explore/explore.interface';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SearchIndex } from '../enums/search.enum';
+import { ApplicationConfiguration } from '../generated/configuration/applicationConfiguration';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
 import { Paging } from '../generated/type/paging';
 import {

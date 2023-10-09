@@ -17,11 +17,11 @@ import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataIns
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TIER;
 import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TYPE;
+import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.Entity.EVENT_SUBSCRIPTION;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.events.scheduled.ReportsHandler.SEARCH_CLIENT;
-import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.SubscriptionUtil.getNumberOfDays;
 
@@ -100,8 +100,7 @@ public class DataInsightsReportJob implements Job {
   }
 
   private void sendReportsToTeams(
-      SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange)
-      throws IOException {
+      SearchRepository searchRepository, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
@@ -185,7 +184,7 @@ public class DataInsightsReportJob implements Job {
     // Get total Assets Data
     TreeMap<Long, List<Object>> dateWithDataMap =
         searchRepository.getSortedDate(
-            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TYPE, ENTITY_REPORT_DATA_INDEX.indexName);
+            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TYPE, ENTITY_REPORT_DATA_INDEX.value());
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
 
       List<TotalEntitiesByType> first =
@@ -218,7 +217,7 @@ public class DataInsightsReportJob implements Job {
             scheduleTime,
             currentTime,
             PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.indexName);
+            ENTITY_REPORT_DATA_INDEX.value());
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
       List<PercentageOfEntitiesWithDescriptionByType> first =
           JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
@@ -267,7 +266,7 @@ public class DataInsightsReportJob implements Job {
             scheduleTime,
             currentTime,
             PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.indexName);
+            ENTITY_REPORT_DATA_INDEX.value());
     if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
       List<PercentageOfEntitiesWithOwnerByType> first =
           JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
@@ -313,7 +312,7 @@ public class DataInsightsReportJob implements Job {
     // This assumes that on a particular date the correct count per entities are given
     TreeMap<Long, List<Object>> dateWithDataMap =
         searchRepository.getSortedDate(
-            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TIER, ENTITY_REPORT_DATA_INDEX.indexName);
+            team, scheduleTime, currentTime, TOTAL_ENTITIES_BY_TIER, ENTITY_REPORT_DATA_INDEX.value());
     if (dateWithDataMap.lastEntry() != null) {
       List<TotalEntitiesByTier> last =
           JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});

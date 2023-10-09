@@ -16,6 +16,7 @@ from sqlalchemy.dialects import registry
 from .dialect import HiveMysqlMetaStoreDialect
 
 __version__ = "0.1.0"
+__all__ = ["HiveMysqlMetaStoreDialect"]
 registry.register(
     "hive.mysql",
     "metadata.ingestion.source.database.hive.metastore_dialects.mysql.dialect",

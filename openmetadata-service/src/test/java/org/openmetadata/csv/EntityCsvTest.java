@@ -40,7 +40,7 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class), null);
+    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
   }
 
   @Test

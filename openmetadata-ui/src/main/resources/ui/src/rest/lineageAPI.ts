@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AddLineage } from 'generated/api/lineage/addLineage';
+import { AddLineage } from '../generated/api/lineage/addLineage';
 import { EntityLineage } from '../generated/type/entityLineage';
 import APIClient from './index';
 

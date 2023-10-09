@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from 'generated/entity/type';
+import { EntityReference } from '../../../generated/entity/type';
 
 export interface ChipProps {
   data: EntityReference[];

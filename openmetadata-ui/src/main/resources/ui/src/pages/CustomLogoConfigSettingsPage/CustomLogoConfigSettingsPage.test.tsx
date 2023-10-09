@@ -17,12 +17,12 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { getSettingsConfigFromConfigType } from 'rest/settingConfigAPI';
+import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import CustomLogoConfigSettingsPage from './CustomLogoConfigSettingsPage';
 
 const mockPush = jest.fn();
 
-jest.mock('rest/settingConfigAPI', () => ({
+jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: {

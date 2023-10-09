@@ -241,17 +241,17 @@ def _build_table_lineage(
     """
     Prepare the lineage request generator
     """
-    col_lineage = get_column_lineage(
-        to_entity=to_entity,
-        to_table_raw_name=str(to_table_raw_name),
-        from_entity=from_entity,
-        from_table_raw_name=str(from_table_raw_name),
-        column_lineage_map=column_lineage_map,
-    )
-    lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
-    if col_lineage:
-        lineage_details.columnsLineage = col_lineage
     if from_entity and to_entity:
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name=str(to_table_raw_name),
+            from_entity=from_entity,
+            from_table_raw_name=str(from_table_raw_name),
+            column_lineage_map=column_lineage_map,
+        )
+        lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
+        if col_lineage:
+            lineage_details.columnsLineage = col_lineage
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(

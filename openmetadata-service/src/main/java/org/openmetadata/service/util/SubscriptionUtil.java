@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
-import java.io.IOException;
 import java.time.Period;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -201,8 +200,7 @@ public class SubscriptionUtil {
       CreateEventSubscription.SubscriptionType type,
       Client client,
       CollectionDAO daoCollection,
-      ChangeEvent event)
-      throws IOException {
+      ChangeEvent event) {
     EntityInterface entityInterface = getEntity(event);
     List<Invocation.Builder> targets = new ArrayList<>();
     Set<String> receiversUrls =

@@ -40,7 +40,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
@@ -70,8 +69,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return container;
   }
 
-  public ContainerResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Container.class, new ContainerRepository(dao), authorizer);
+  public ContainerResource(Authorizer authorizer) {
+    super(Entity.CONTAINER, authorizer);
   }
 
   @Override

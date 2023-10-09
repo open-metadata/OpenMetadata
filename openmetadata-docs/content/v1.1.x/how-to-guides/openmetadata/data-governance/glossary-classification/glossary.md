@@ -12,7 +12,7 @@ Glossary adds semantics or meaning to data. OpenMetadata models a Glossary as a 
 The Glossary in OpenMetadata can be accessed from **Govern >>  Glossary**. All the Glossaries are displayed in the left nav bar. Clicking on a specific glossary will display the expanded view to show the entire hierarchy of the glossary terms (parent-child terms).
 
 {% image
-src="/images/v1.1/how-to-guides/governance/glossary0.png"
+src="/images/v1.1/how-to-guides/governance/banking.png"
 alt="Banking Glossary"
 caption="Banking Glossary"
 /%}

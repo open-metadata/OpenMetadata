@@ -13,46 +13,46 @@
 
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  pagingObject,
-} from 'constants/constants';
-import { USAGE_DOCS } from 'constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from 'constants/HelperTextUtil';
-import {
-  QUERY_PAGE_ERROR_STATE,
-  QUERY_PAGE_LOADING_STATE,
-} from 'constants/Query.constant';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { Query } from 'generated/entity/data/query';
 import { isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  pagingObject,
+} from '../../constants/constants';
+import { USAGE_DOCS } from '../../constants/docs.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../constants/HelperTextUtil';
+import {
+  QUERY_PAGE_ERROR_STATE,
+  QUERY_PAGE_LOADING_STATE,
+} from '../../constants/Query.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { Query } from '../../generated/entity/data/query';
 import {
   getQueriesList,
   getQueryById,
   ListQueriesParams,
   patchQueries,
   updateQueryVote,
-} from 'rest/queryAPI';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
+} from '../../rest/queryAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   parseSearchParams,
   stringifySearchParams,
-} from 'utils/Query/QueryUtils';
-import { getAddQueryPath } from 'utils/RouterUtils';
+} from '../../utils/Query/QueryUtils';
+import { getAddQueryPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import Loader from '../Loader/Loader';

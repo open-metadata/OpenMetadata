@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/teams/persona.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team",
+  "description": "This schema defines the Persona entity. A `Persona` is a job function associated with a user. An Example, Data Engineer or Data Consumer is a Persona of a user in Metadata world.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.teams.Persona",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "properties": {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "A unique name of Persona. Example 'data engineer'",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Data Steward'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the persona.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "users": {
+      "description": "Users that are assigned a persona.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

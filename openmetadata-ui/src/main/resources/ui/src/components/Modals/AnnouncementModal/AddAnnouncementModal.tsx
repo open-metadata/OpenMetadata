@@ -13,18 +13,18 @@
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { VALIDATION_MESSAGES } from 'constants/constants';
 import { observer } from 'mobx-react';
 import { Moment } from 'moment';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { postThread } from 'rest/feedsAPI';
-import { getTimeZone } from 'utils/date-time/DateTimeUtils';
 import AppState from '../../../AppState';
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   CreateThread,
   ThreadType,
 } from '../../../generated/api/feed/createThread';
+import { postThread } from '../../../rest/feedsAPI';
+import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/rich-text-editor/RichTextEditor';

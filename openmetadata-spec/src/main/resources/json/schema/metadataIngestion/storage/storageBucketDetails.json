@@ -6,17 +6,17 @@
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails",
   "type": "object",
   "properties": {
-    "bucketName": {
-      "title": "Storage Metadata Bucket Name",
-      "description": "Name of the bucket where the storage metadata file is stored",
+    "containerName": {
+      "title": "Storage Metadata Container Name",
+      "description": "Name of the top level container where the storage metadata file is stored",
       "type": "string"
     },
     "objectPrefix": {
       "title": "Storage Metadata Object Prefix",
-      "description": "Path of the folder where the storage metadata file is stored, '/' for root",
+      "description": "Path of the folder where the storage metadata file is stored. If the file is at the root, you can keep it empty.",
       "type": "string"
     }
   },
   "additionalProperties": false,
-  "required": ["bucketName", "objectPrefix"]
+  "required": ["containerName"]
 }

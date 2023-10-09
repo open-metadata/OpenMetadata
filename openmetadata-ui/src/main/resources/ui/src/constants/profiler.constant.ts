@@ -13,11 +13,6 @@
 
 import { t } from 'i18next';
 import { StepperStepType } from 'Models';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
-import i18n from 'utils/i18next/LocalUtil';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -28,6 +23,11 @@ import {
   ProfileSampleType,
 } from '../generated/entity/data/table';
 import { TestCaseStatus } from '../generated/tests/testCase';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../utils/date-time/DateTimeUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 import { JSON_TAB_SIZE } from './constants';
 

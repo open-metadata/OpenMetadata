@@ -13,19 +13,19 @@
 
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import { useAuthContext } from 'components/authentication/auth-provider/AuthProvider';
-import { useBasicAuth } from 'components/authentication/auth-provider/basic-auth.provider';
-import BrandImage from 'components/common/BrandImage/BrandImage';
-import Loader from 'components/Loader/Loader';
-import LoginButton from 'components/LoginButton/LoginButton';
-import { AuthProvider } from 'generated/settings/settings';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
+import { useBasicAuth } from '../../components/authentication/auth-provider/basic-auth.provider';
+import BrandImage from '../../components/common/BrandImage/BrandImage';
+import Loader from '../../components/Loader/Loader';
+import LoginButton from '../../components/LoginButton/LoginButton';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { AuthProvider } from '../../generated/settings/settings';
 import localState from '../../utils/LocalStorageUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import './login.style.less';

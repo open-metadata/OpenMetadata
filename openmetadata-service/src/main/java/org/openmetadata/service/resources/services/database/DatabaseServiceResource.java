@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -93,8 +92,8 @@ public class DatabaseServiceResource
     return null;
   }
 
-  public DatabaseServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(DatabaseService.class, new DatabaseServiceRepository(dao), authorizer, ServiceType.DATABASE);
+  public DatabaseServiceResource(Authorizer authorizer) {
+    super(Entity.DATABASE_SERVICE, authorizer, ServiceType.DATABASE);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {

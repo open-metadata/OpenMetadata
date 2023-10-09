@@ -16,7 +16,7 @@ import {
   SearchIndexField,
   State,
   TagSource,
-} from 'generated/entity/data/searchIndex';
+} from '../generated/entity/data/searchIndex';
 
 export const MOCK_SEARCH_INDEX_FIELDS: SearchIndexField[] = [
   {

@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import { uniqueId } from 'lodash';
 import {
   PLACEHOLDER_ROUTE_FQN,
   PLACEHOLDER_ROUTE_SUB_TAB,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
-} from 'constants/constants';
-import { EntityTabs, TabSpecificField } from 'enums/entity.enum';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { uniqueId } from 'lodash';
+} from '../constants/constants';
+import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN}`;

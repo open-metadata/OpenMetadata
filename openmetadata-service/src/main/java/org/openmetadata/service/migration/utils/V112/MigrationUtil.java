@@ -7,6 +7,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
@@ -18,7 +19,7 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   public static void fixExecutableTestSuiteFQN(CollectionDAO collectionDAO) {
-    TestSuiteRepository testSuiteRepository = new TestSuiteRepository(collectionDAO);
+    TestSuiteRepository testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     List<TestSuite> testSuites =
         testSuiteRepository.listAll(new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {

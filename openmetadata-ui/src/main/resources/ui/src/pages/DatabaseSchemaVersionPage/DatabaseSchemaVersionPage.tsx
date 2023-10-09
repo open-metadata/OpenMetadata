@@ -13,53 +13,53 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
+import { isEmpty, toString } from 'lodash';
+import { PagingResponse } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDatabaseSchemaDetailsPath,
   getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
-} from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { Table } from 'generated/entity/data/table';
-import { ChangeDescription } from 'generated/entity/type';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { TagSource } from 'generated/type/tagLabel';
-import { isEmpty, toString } from 'lodash';
-import { PagingResponse } from 'Models';
-import SchemaTablesTab from 'pages/DatabaseSchemaPage/SchemaTablesTab';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+} from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Table } from '../../generated/entity/data/table';
+import { ChangeDescription } from '../../generated/entity/type';
+import { EntityHistory } from '../../generated/type/entityHistory';
+import { TagSource } from '../../generated/type/tagLabel';
+import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
   getDatabaseSchemaDetailsByFQN,
   getDatabaseSchemaVersionData,
   getDatabaseSchemaVersions,
-} from 'rest/databaseAPI';
-import { getTableList, TableListParams } from 'rest/tableAPI';
-import { getEntityName } from 'utils/EntityUtils';
+} from '../../rest/databaseAPI';
+import { getTableList, TableListParams } from '../../rest/tableAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
-} from 'utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
+} from '../../utils/EntityVersionUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();

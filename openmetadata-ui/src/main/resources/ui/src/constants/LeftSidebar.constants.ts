@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ClassificationIcon } from 'assets/svg/classification.svg';
-import { ReactComponent as ExploreIcon } from 'assets/svg/globalsearch.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as DomainsIcon } from 'assets/svg/ic-domain.svg';
-import { ReactComponent as QualityIcon } from 'assets/svg/ic-quality-v1.svg';
-import { ReactComponent as SettingsIcon } from 'assets/svg/ic-settings-v1.svg';
-import { ReactComponent as InsightsIcon } from 'assets/svg/lampcharge.svg';
 import i18next from 'i18next';
+import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as ExploreIcon } from '../assets/svg/globalsearch.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as QualityIcon } from '../assets/svg/ic-quality-v1.svg';
+import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as InsightsIcon } from '../assets/svg/lampcharge.svg';
 import { ROUTES } from './constants';
 
 export const SIDEBAR_LIST = [
