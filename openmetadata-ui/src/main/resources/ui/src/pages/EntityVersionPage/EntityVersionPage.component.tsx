@@ -38,7 +38,6 @@ import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexV
 import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/TableVersion/TableVersion.component';
 import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
@@ -109,7 +108,6 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from '../../rest/topicsAPI';
-import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
@@ -336,14 +334,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getTopicByFqn(entityFQN, '');
 
           setEntityId(id);
 
@@ -367,14 +358,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getPipelineByFqn(entityFQN, '');
 
           setEntityId(id);
 
@@ -386,14 +370,7 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(
-            getPartialNameFromFQN(
-              entityFQN,
-              ['service', 'database'],
-              FQN_SEPARATOR_CHAR
-            ),
-            ''
-          );
+          const { id } = await getMlModelByFQN(entityFQN, '');
 
           setEntityId(id);
 
