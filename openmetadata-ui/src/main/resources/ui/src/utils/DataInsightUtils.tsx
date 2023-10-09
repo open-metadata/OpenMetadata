@@ -113,7 +113,7 @@ export const renderLegend = (
   );
 };
 
-const getEntryFormattedValue = (
+export const getEntryFormattedValue = (
   value: number | string | undefined,
   dataKey: number | string | undefined,
   kpiTooltipRecord: DataInsightChartTooltipProps['kpiTooltipRecord'],
