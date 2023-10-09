@@ -106,10 +106,13 @@ class StdDev(StaticMetric):
 
         if is_quantifiable(self.col.type):
             try:
-                return pd.concat(df[self.col.name] for df in dfs).std()
+                merged_df = pd.to_numeric(pd.concat(df[self.col.name] for df in dfs))
+                if len(merged_df) > 1:
+                    return merged_df.std()
+                return 0
             except MemoryError:
                 logger.error(
-                    f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
+                    f"Unable to compute Standard Deviation for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None

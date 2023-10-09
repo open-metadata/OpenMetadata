@@ -22,7 +22,7 @@ public class MicrometerBundleSingleton {
   private static final MicrometerBundle instance = new MicrometerBundle();
   public static Timer webAnalyticEvents;
   // We'll use this registry to add monitoring around Ingestion Pipelines
-  public static PrometheusMeterRegistry prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
+  public static final PrometheusMeterRegistry prometheusMeterRegistry = MicrometerBundle.prometheusRegistry;
 
   private MicrometerBundleSingleton() {}
 

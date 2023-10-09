@@ -17,9 +17,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.SSLUtil;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.RequestOptions;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
 
@@ -110,8 +110,8 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default org.elasticsearch.action.bulk.BulkResponse bulk(
-      org.elasticsearch.action.bulk.BulkRequest data, org.elasticsearch.client.RequestOptions options)
+  default es.org.elasticsearch.action.bulk.BulkResponse bulk(
+      es.org.elasticsearch.action.bulk.BulkRequest data, es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
@@ -120,7 +120,7 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default int getSuccessFromBulkResponse(org.elasticsearch.action.bulk.BulkResponse response) {
+  default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 

@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.toUnmodifiableList;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -942,7 +941,7 @@ public class TableRepository extends EntityRepository<Table> {
                 Relationship.JOINED_WITH.ordinal())
             .stream()
             .map(rethrowFunction(er -> Pair.of(er.getMiddle(), JsonUtils.readObjects(er.getRight(), DailyCount.class))))
-            .collect(toUnmodifiableList());
+            .toList();
 
     return entityRelations.stream()
         .map(
@@ -970,7 +969,7 @@ public class TableRepository extends EntityRepository<Table> {
                             FullyQualifiedName.getColumnName(er.getLeft()),
                             er.getMiddle(),
                             JsonUtils.readObjects(er.getRight(), DailyCount.class))))
-            .collect(toUnmodifiableList());
+            .toList();
 
     return entityRelations.stream()
         .collect(groupingBy(Triple::getLeft))
@@ -991,8 +990,8 @@ public class TableRepository extends EntityRepository<Table> {
                                                 .filter(inLast30Days())
                                                 .mapToInt(DailyCount::getCount)
                                                 .sum()))
-                            .collect(toUnmodifiableList())))
-        .collect(toUnmodifiableList());
+                            .toList()))
+        .toList();
   }
 
   private Predicate<DailyCount> inLast30Days() {

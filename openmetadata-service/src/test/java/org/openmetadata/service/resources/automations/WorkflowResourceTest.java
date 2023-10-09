@@ -6,7 +6,6 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 
-import java.io.IOException;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -79,7 +78,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

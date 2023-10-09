@@ -14,6 +14,7 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedT
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -154,6 +156,10 @@ const RequestTag = () => {
       assignees: defaultAssignee,
     });
   }, [entityData]);
+
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels

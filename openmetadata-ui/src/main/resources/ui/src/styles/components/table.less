@@ -89,21 +89,33 @@
 }
 
 .drop-over-background {
-  .drop-over-upward {
+  .drop-over-child {
     td {
       background: @active-color;
-      border-bottom: 2px solid @primary-color;
+      border: 2px dashed @primary-color;
+      border-left: transparent;
+
+      &:first-child {
+        border-left: 2px dashed @primary-color;
+      }
+      &:last-child {
+        border-right: 2px dashed @primary-color !important;
+      }
     }
   }
 }
 
 .drop-over-table {
-  .ant-table-tbody {
-    .ant-table-cell {
-      background: @active-color;
-    }
-    tr.ant-table-row:hover > td {
-      background: @active-color;
+  .ant-table {
+    table {
+      border-collapse: collapse;
+      .ant-table-tbody {
+        border: 2px dashed @primary-color;
+
+        td {
+          background: @active-color;
+        }
+      }
     }
   }
 }

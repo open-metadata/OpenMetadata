@@ -13,6 +13,9 @@ import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -22,9 +25,6 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -45,7 +45,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  void report_data_admin_200() throws HttpResponseException, ParseException, IOException {
+  void report_data_admin_200() throws ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -120,7 +120,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws HttpResponseException, ParseException, IOException {
+  void delete_endpoint_200() throws ParseException, IOException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data

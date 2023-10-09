@@ -20,7 +20,9 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getT
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.io.IOException;
+import es.org.elasticsearch.action.bulk.BulkItemResponse;
+import es.org.elasticsearch.action.bulk.BulkRequest;
+import es.org.elasticsearch.action.bulk.BulkResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -29,9 +31,6 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -152,11 +151,11 @@ public class SearchIndexWorkflow implements Runnable {
           if (!resultList.getData().isEmpty()) {
             if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
               // process data to build Reindex Request
-              org.opensearch.action.bulk.BulkRequest requests =
-                  (org.opensearch.action.bulk.BulkRequest) entityProcessor.process(resultList, contextData);
+              os.org.opensearch.action.bulk.BulkRequest requests =
+                  (os.org.opensearch.action.bulk.BulkRequest) entityProcessor.process(resultList, contextData);
               // process data to build Reindex Request
-              org.opensearch.action.bulk.BulkResponse response =
-                  (org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
+              os.org.opensearch.action.bulk.BulkResponse response =
+                  (os.org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
               // update Status
               handleErrorsOs(resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
               // Update stats
@@ -175,15 +174,6 @@ public class SearchIndexWorkflow implements Runnable {
           } else {
             failed = 0;
           }
-        } catch (SourceException rx) {
-          handleSourceError(
-              rx.getMessage(),
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  rx.getCause(),
-                  ExceptionUtils.getStackTrace(rx)),
-              currentTime);
         } catch (ProcessorException px) {
           handleProcessorError(
               px.getMessage(),
@@ -232,11 +222,11 @@ public class SearchIndexWorkflow implements Runnable {
           if (!resultList.getData().isEmpty()) {
             if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
               // process data to build Reindex Request
-              org.opensearch.action.bulk.BulkRequest requests =
-                  (org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(resultList, contextData);
+              os.org.opensearch.action.bulk.BulkRequest requests =
+                  (os.org.opensearch.action.bulk.BulkRequest) dataInsightProcessor.process(resultList, contextData);
               // process data to build Reindex Request
-              org.opensearch.action.bulk.BulkResponse response =
-                  (org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
+              os.org.opensearch.action.bulk.BulkResponse response =
+                  (os.org.opensearch.action.bulk.BulkResponse) searchIndexSink.write(requests, contextData);
               handleErrorsOs(resultList, "", response, currentTime);
               // Update stats
               success = searchRepository.getSearchClient().getSuccessFromBulkResponse(response);
@@ -327,7 +317,7 @@ public class SearchIndexWorkflow implements Runnable {
     jobData.setStats(jobDataStats);
   }
 
-  public void updateRecordToDb() throws IOException {
+  public void updateRecordToDb() {
     String recordString =
         dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
     EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
@@ -348,7 +338,7 @@ public class SearchIndexWorkflow implements Runnable {
   }
 
   private void handleErrorsOs(
-      ResultList<?> data, String lastCursor, org.opensearch.action.bulk.BulkResponse response, long time) {
+      ResultList<?> data, String lastCursor, os.org.opensearch.action.bulk.BulkResponse response, long time) {
     handleSourceError(data, lastCursor, time);
     handleOsSinkErrors(response, time);
   }
@@ -398,11 +388,11 @@ public class SearchIndexWorkflow implements Runnable {
   }
 
   @SneakyThrows
-  private void handleOsSinkErrors(org.opensearch.action.bulk.BulkResponse response, long time) {
+  private void handleOsSinkErrors(os.org.opensearch.action.bulk.BulkResponse response, long time) {
     List<FailureDetails> details = new ArrayList<>();
-    for (org.opensearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
+    for (os.org.opensearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (bulkItemResponse.isFailed()) {
-        org.opensearch.action.bulk.BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+        os.org.opensearch.action.bulk.BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
         FailureDetails esFailure =
             new FailureDetails()
                 .withContext(

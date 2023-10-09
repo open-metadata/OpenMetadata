@@ -127,8 +127,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
 
-  private static SearchRepository searchRepository;
-
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
@@ -149,7 +147,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
     // repository
-    searchRepository = new SearchRepository(catalogConfig.getElasticSearchConfiguration());
+    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
     Entity.initializeRepositories(jdbi);
 
@@ -345,7 +343,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Validating native migrations");
     ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
     MigrationWorkflow migrationWorkflow =
-        new MigrationWorkflow(jdbi, conf.getMigrationConfiguration().getNativePath(), connectionType, false);
+        new MigrationWorkflow(
+            jdbi,
+            conf.getMigrationConfiguration().getNativePath(),
+            connectionType,
+            conf.getMigrationConfiguration().getExtensionPath(),
+            false);
+    migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();
   }
 

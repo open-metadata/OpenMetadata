@@ -146,8 +146,7 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
 
   @Override
   public void validateCreatedEntity(
-      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders)
-      throws HttpResponseException {
+      SearchService service, CreateSearchService createRequest, Map<String, String> authHeaders) {
     assertEquals(createRequest.getName(), service.getName());
     SearchConnection expectedConnection = createRequest.getConnection();
     SearchConnection actualConnection = service.getConnection();
@@ -155,10 +154,8 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   }
 
   @Override
-  public void compareEntities(SearchService expected, SearchService updated, Map<String, String> authHeaders)
-      throws HttpResponseException {
+  public void compareEntities(SearchService expected, SearchService updated, Map<String, String> authHeaders) {
     // PATCH operation is not supported by this entity
-
   }
 
   @Override
@@ -181,7 +178,7 @@ public class SearchServiceResourceTest extends ServiceResourceTest<SearchService
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {
