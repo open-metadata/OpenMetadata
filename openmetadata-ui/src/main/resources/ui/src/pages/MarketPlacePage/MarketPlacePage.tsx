@@ -3,6 +3,7 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as HeadingIcon } from '../../assets/svg/marketplace-heading.svg';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
 import Loader from '../../components/Loader/Loader';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -10,6 +11,7 @@ import { PagingHandlerParams } from '../../components/common/next-previous/NextP
 import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import PageHeader from '../../components/header/PageHeader.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
@@ -18,8 +20,6 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { getMarketPlaceAppDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './market-place.less';
-import { ReactComponent as HeadingIcon } from '/assets/svg/marketplace-heading.svg';
-import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 
 const MarketPlacePage = () => {
   const { t } = useTranslation();

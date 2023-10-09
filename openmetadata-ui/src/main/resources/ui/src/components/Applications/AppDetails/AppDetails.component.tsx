@@ -4,8 +4,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Col, Row, Space, Tabs, Typography } from 'antd';
-import { ReactComponent as AppIcon } from 'assets/svg/application.svg';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
+import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

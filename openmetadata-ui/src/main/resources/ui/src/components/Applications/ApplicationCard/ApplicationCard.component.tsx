@@ -1,5 +1,5 @@
 import { Avatar, Button, Card, Space, Typography } from 'antd';
-import { ReactComponent as AppIcon } from 'assets/svg/application.svg';
+import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
 import classNames from 'classnames';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import React from 'react';

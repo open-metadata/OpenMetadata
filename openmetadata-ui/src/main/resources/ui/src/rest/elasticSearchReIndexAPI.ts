@@ -13,9 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
-import { CreateEventPublisherJob } from 'generated/api/createEventPublisherJob';
-import { EventPublisherJob } from 'generated/system/eventPublisherJob';
-import { PublisherType } from 'enums/search.enum';
+import { CreateEventPublisherJob } from '../generated/api/createEventPublisherJob';
+import { EventPublisherJob } from '../generated/system/eventPublisherJob';
+import { PublisherType } from '../enums/search.enum';
 
 export const getStreamJobReIndexStatus = async () => {
   const res = await axiosClient.get<EventPublisherJob>(

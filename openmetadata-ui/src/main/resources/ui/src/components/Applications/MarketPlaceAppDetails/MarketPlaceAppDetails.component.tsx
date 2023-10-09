@@ -1,7 +1,7 @@
 import { LeftOutlined } from '@ant-design/icons';
 import { Avatar, Button, Col, Row, Typography } from 'antd';
-import { ReactComponent as AppIcon } from 'assets/svg/application.svg';
-import { ReactComponent as CheckMarkIcon } from 'assets/svg/ic-cloud-checkmark.svg';
+import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
+import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

@@ -60,7 +60,7 @@ const AddCustomProperty = withSuspenseFallback(
 );
 
 const MarketPlacePage = withSuspenseFallback(
-  React.lazy(() => import('pages/MarketPlacePage/MarketPlacePage'))
+  React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
 const PipelineDetailsPage = withSuspenseFallback(
@@ -134,14 +134,15 @@ const MarketPlaceAppDetails = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        'components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+        '../../components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
       )
   )
 );
 
 const AppInstallPage = withSuspenseFallback(
   React.lazy(
-    () => import('components/Applications/AppInstall/AppInstall.component')
+    () =>
+      import('../../components/Applications/AppInstall/AppInstall.component')
   )
 );
 

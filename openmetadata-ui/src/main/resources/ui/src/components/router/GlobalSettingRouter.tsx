@@ -83,7 +83,8 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
 
 const AppDetailsPage = withSuspenseFallback(
   React.lazy(
-    () => import('components/Applications/AppDetails/AppDetails.component')
+    () =>
+      import('../../components/Applications/AppDetails/AppDetails.component')
   )
 );
 
@@ -148,7 +149,7 @@ const CustomLogoConfigSettingsPage = withSuspenseFallback(
 );
 
 const ApplicationPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/Application/ApplicationPage'))
+  React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
 
 ApplicationPageV1;

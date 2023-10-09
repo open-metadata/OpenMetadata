@@ -1,7 +1,7 @@
 import { PagingResponse } from 'Models';
-import { AppMarketPlaceDefinition } from 'generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { ListParams } from 'interface/API.interface';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import { AppMarketPlaceDefinition } from '../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { ListParams } from '../interface/API.interface';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const BASE_URL = '/apps/marketplace';

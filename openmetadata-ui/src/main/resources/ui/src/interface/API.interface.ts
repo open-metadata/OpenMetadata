@@ -1,4 +1,4 @@
-import { Include } from 'generated/type/include';
+import { Include } from '../generated/type/include';
 
 export type ListParams = {
   fields?: string;

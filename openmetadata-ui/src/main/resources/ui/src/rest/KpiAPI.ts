@@ -18,7 +18,7 @@ import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequ
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 
 import APIClient from './index';
-import { ListParams } from 'interface/API.interface';
+import { ListParams } from '../interface/API.interface';
 
 export type KpiResultParam = {
   startTs: number;
