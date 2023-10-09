@@ -1,6 +1,6 @@
 {
   "type": "Mlflow",
-  "serviceName": "mlflow_svc",
+  "serviceName": "mlflow%svc.12",
   "serviceConnection": {
     "config": {
       "type": "Mlflow",

@@ -894,57 +894,57 @@ class SampleDataSource(
                     f"Unexpected exception ingesting dashboard [{dashboard}]: {err}"
                 )
 
-        orders_view = self.metadata.get_by_name(
-            entity=DashboardDataModel, fqn="sample_looker.model.orders_view"
-        )
-        operations_view = self.metadata.get_by_name(
-            entity=DashboardDataModel, fqn="sample_looker.model.operations_view"
-        )
-        orders_explore = self.metadata.get_by_name(
-            entity=DashboardDataModel, fqn="sample_looker.model.orders"
-        )
-        orders_dashboard = self.metadata.get_by_name(
-            entity=Dashboard, fqn="sample_looker.orders"
-        )
+        # orders_view = self.metadata.get_by_name(
+        #     entity=DashboardDataModel, fqn="sample_looker.model.orders_view"
+        # )
+        # operations_view = self.metadata.get_by_name(
+        #     entity=DashboardDataModel, fqn="sample_looker.model.operations_view"
+        # )
+        # orders_explore = self.metadata.get_by_name(
+        #     entity=DashboardDataModel, fqn="sample_looker.model.orders"
+        # )
+        # orders_dashboard = self.metadata.get_by_name(
+        #     entity=Dashboard, fqn="sample_looker.orders"
+        # )
 
-        yield Either(
-            right=AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=orders_view.id.__root__, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=orders_explore.id.__root__, type="dashboardDataModel"
-                    ),
-                )
-            )
-        )
+        # yield Either(
+        #     right=AddLineageRequest(
+        #         edge=EntitiesEdge(
+        #             fromEntity=EntityReference(
+        #                 id=orders_view.id.__root__, type="dashboardDataModel"
+        #             ),
+        #             toEntity=EntityReference(
+        #                 id=orders_explore.id.__root__, type="dashboardDataModel"
+        #             ),
+        #         )
+        #     )
+        # )
 
-        yield Either(
-            right=AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=operations_view.id.__root__, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=orders_explore.id.__root__, type="dashboardDataModel"
-                    ),
-                )
-            )
-        )
+        # yield Either(
+        #     right=AddLineageRequest(
+        #         edge=EntitiesEdge(
+        #             fromEntity=EntityReference(
+        #                 id=operations_view.id.__root__, type="dashboardDataModel"
+        #             ),
+        #             toEntity=EntityReference(
+        #                 id=orders_explore.id.__root__, type="dashboardDataModel"
+        #             ),
+        #         )
+        #     )
+        # )
 
-        yield Either(
-            right=AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=EntityReference(
-                        id=orders_explore.id.__root__, type="dashboardDataModel"
-                    ),
-                    toEntity=EntityReference(
-                        id=orders_dashboard.id.__root__, type="dashboard"
-                    ),
-                )
-            )
-        )
+        # yield Either(
+        #     right=AddLineageRequest(
+        #         edge=EntitiesEdge(
+        #             fromEntity=EntityReference(
+        #                 id=orders_explore.id.__root__, type="dashboardDataModel"
+        #             ),
+        #             toEntity=EntityReference(
+        #                 id=orders_dashboard.id.__root__, type="dashboard"
+        #             ),
+        #         )
+        #     )
+        # )
 
     def ingest_charts(self) -> Iterable[CreateChartRequest]:
         for chart in self.charts["charts"]:

@@ -1,6 +1,6 @@
 [
   {
-    "pipeline": "sample_airflow.dim_address_etl",
+    "pipeline": "\"sample%airflow.00\".dim_address_etl",
     "pipelineStatus": [
       {
         "timestamp": 1649582444000,

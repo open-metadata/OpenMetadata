@@ -1,6 +1,6 @@
 {
   "type": "kafka",
-  "serviceName": "sample_kafka",
+  "serviceName": "sample%kafka.11",
   "serviceConnection": {
     "config": {
       "type": "Kafka",

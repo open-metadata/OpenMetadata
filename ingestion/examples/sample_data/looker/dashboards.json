@@ -4,14 +4,13 @@
       "displayName": "Customers dashboard",
       "description": "This is a sample Dashboard for Looker",
       "sourceUrl": "http://localhost:808/looker/dashboard/1/",
-      "charts": ["sample_looker.chart_1", "sample_looker.chart_2"]
+      "charts": ["\"sample%looker.00\".chart_1", "\"sample%looker.00\".chart_2"]
     },
     {
       "name": "orders",
       "displayName": "Orders Dashboard",
       "description": "This is a sample Dashboard for Looker",
       "sourceUrl": "http://localhost:808/looker/dashboard/8/",
-      "charts": ["sample_looker.chart_3", "sample_looker.chart_4"],
-      "dataModels": ["sample_looker.model.orders", "sample_looker.model.operations"]
+      "charts": ["\"sample%looker.00\".chart_3", "\"sample%looker.00\".chart_4"]
     }
   ]

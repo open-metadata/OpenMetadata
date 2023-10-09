@@ -1,6 +1,6 @@
 {
 	"type": "airflow",
-	"serviceName": "sample_airflow",
+	"serviceName": "sample%airflow.00",
 	"serviceConnection": {
 		"config": {
 			"type": "Airflow",

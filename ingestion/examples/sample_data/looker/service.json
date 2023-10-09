@@ -1,6 +1,6 @@
 {
   "type": "looker",
-  "serviceName": "sample_looker",
+  "serviceName": "sample%looker.00",
   "serviceConnection": {
     "config": {
       "type": "Looker",
