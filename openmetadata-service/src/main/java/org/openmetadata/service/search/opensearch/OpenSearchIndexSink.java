@@ -9,9 +9,9 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.RequestOptions;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.client.RequestOptions;
 
 @Slf4j
 public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {

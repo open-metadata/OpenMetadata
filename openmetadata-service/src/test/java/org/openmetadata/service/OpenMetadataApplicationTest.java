@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static java.lang.String.format;
 import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
+import es.org.elasticsearch.client.RestClient;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -27,7 +28,6 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHost;
-import org.elasticsearch.client.RestClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
