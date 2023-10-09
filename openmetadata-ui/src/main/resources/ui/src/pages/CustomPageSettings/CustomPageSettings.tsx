@@ -10,42 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row, Skeleton } from 'antd';
 import Card from 'antd/lib/card/Card';
-import Table, { ColumnsType } from 'antd/lib/table';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconEdit } from '../../assets/svg/ic-edit.svg';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import { AddEditCustomizePage } from '../../components/CustomizablePages/AddEditCustomizePages/AddEditCustomizePage.component';
 import PageHeader from '../../components/header/PageHeader.component';
-import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
-import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { getAllKnowledgePanels } from '../../rest/DocStoreAPI';
 import { getAllPersonas } from '../../rest/PersonaAPI';
+import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getCustomisePagePath } from '../../utils/GlobalSettingsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 export const CustomPageSettings = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { isAdminUser } = useAuth();
+
   const [pageEditing, setPageEditing] = useState<Document>();
   const [isLoading, setIsLoading] = useState(true);
-  const [pages, setPages] = useState<Document[]>();
+
   const [personas, setPersonas] = useState<Persona[]>();
-  const [deletingKnowledgePanel, setDeletingKnowledgePanel] =
-    useState<Document>();
   const {
     currentPage,
     handlePageChange,
@@ -55,110 +48,25 @@ export const CustomPageSettings = () => {
     handlePagingChange,
   } = usePaging();
 
-  const fetchPages = useCallback(async () => {
-    const { data, paging } = await getAllKnowledgePanels({
-      fqnPrefix: 'KnowledgePanel',
-    });
-    setPages(data);
-    handlePagingChange(paging);
-    setIsLoading(false);
-  }, []);
-
   const fetchPersonas = async () => {
-    const { data } = await getAllPersonas({});
-    setPersonas(data);
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      const { data, paging } = await getAllPersonas({});
+      setPersonas(data);
+      handlePagingChange(paging);
+    } catch (error) {
+      showErrorToast(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchPages();
     fetchPersonas();
-  }, []);
-
-  const handleAddNewPage = () => {
-    setPageEditing({} as Document);
-  };
-
-  const columns: ColumnsType<Document> = useMemo(() => {
-    return [
-      {
-        title: t('label.document'),
-        dataIndex: 'name',
-        key: 'name',
-      },
-      {
-        title: t('label.display-name'),
-        dataIndex: 'displayName',
-        key: 'displayName',
-      },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: string) => (
-          <RichTextEditorPreviewer markdown={description} />
-        ),
-      },
-      {
-        title: t('label.entity'),
-        dataIndex: 'entityType',
-        key: 'entityType',
-        render: (description: string) => (
-          <RichTextEditorPreviewer markdown={description} />
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 90,
-        render: (_, record) => (
-          <Space
-            align="center"
-            className="w-full justify-center action-icons"
-            size={8}>
-            <Tooltip
-              placement="left"
-              title={
-                isAdminUser
-                  ? t('label.edit')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                className="flex-center"
-                data-testid={`edit-action-${getEntityName(record)}`}
-                disabled={!isAdminUser}
-                icon={<IconEdit width="16px" />}
-                type="text"
-                onClick={() => setPageEditing(record)}
-              />
-            </Tooltip>
-            <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
-              <Button
-                disabled={!isAdminUser}
-                icon={
-                  <IconDelete
-                    data-testid={`delete-user-btn-${getEntityName(record)}`}
-                    name={t('label.delete')}
-                    width="16px"
-                  />
-                }
-                size="small"
-                type="text"
-                onClick={() => {
-                  setDeletingKnowledgePanel(record);
-                }}
-              />
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ];
   }, []);
 
   const handleDocumentSave = () => {
     setPageEditing(undefined);
-    fetchPages();
   };
 
   const handleCustomisePersona = (persona: Persona) => {
@@ -169,6 +77,12 @@ export const CustomPageSettings = () => {
     }
   };
 
+  const handlePersonaPageChange: NextPreviousProps['pagingHandler'] = ({
+    currentPage,
+  }) => {
+    handlePageChange(currentPage);
+  };
+
   return (
     <Row
       className="user-listing p-b-md"
@@ -177,75 +91,47 @@ export const CustomPageSettings = () => {
       <Col span={18}>
         <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
       </Col>
-      <Col span={6}>
-        <Space align="center" className="w-full justify-end" size={16}>
-          <Button
-            data-testid="add-user"
-            type="primary"
-            onClick={handleAddNewPage}>
-            {t('label.add-entity', { entity: t('label.custom-page') })}
-          </Button>
-        </Space>
-      </Col>
 
-      <Col span={24}>
-        <Table
-          bordered
-          className="user-list-table"
-          columns={columns}
-          data-testid="user-list-table"
-          dataSource={pages}
-          loading={isLoading}
-          // locale={{
-          //   emptyText: errorPlaceHolder,
-          // }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        <NextPrevious
-          currentPage={currentPage}
-          pageSize={pageSize}
-          paging={paging}
-          pagingHandler={({ currentPage }) => handlePageChange(currentPage)}
-          onShowSizeChange={handlePageSizeChange}
-        />
-      </Col>
+      {isLoading &&
+        [1, 2, 3].map((key) => (
+          <Col key={key} span={8}>
+            <Card>
+              <Skeleton active paragraph title />
+            </Card>
+          </Col>
+        ))}
 
       {personas?.map((persona) => (
         <Col key={persona.id} span={8}>
           <Card
             extra={
-              <Button onClick={() => handleCustomisePersona(persona)}>
+              <Button
+                className="text-link-color"
+                size="small"
+                type="text"
+                onClick={() => handleCustomisePersona(persona)}>
                 {t('label.customise')}
               </Button>
             }
             title={getEntityName(persona)}>
-            {persona.description}
+            <RichTextEditorPreviewer markdown={persona.description ?? ''} />
           </Card>
         </Col>
       ))}
+      {showPagination(paging) && (
+        <NextPrevious
+          currentPage={currentPage}
+          pageSize={pageSize}
+          paging={paging}
+          pagingHandler={handlePersonaPageChange}
+          onShowSizeChange={handlePageSizeChange}
+        />
+      )}
       {pageEditing && (
         <AddEditCustomizePage
           page={pageEditing}
           onCancel={() => setPageEditing(undefined)}
           onSave={handleDocumentSave}
-        />
-      )}
-      {deletingKnowledgePanel && (
-        <DeleteWidgetModal
-          afterDeleteAction={fetchPages}
-          allowSoftDelete={false}
-          entityId={deletingKnowledgePanel?.id ?? ''}
-          entityName={deletingKnowledgePanel?.name ?? ''}
-          entityType={EntityType.DOC_STORE}
-          prepareType={false}
-          visible={Boolean(deletingKnowledgePanel)}
-          onCancel={() => {
-            setDeletingKnowledgePanel(undefined);
-          }}
         />
       )}
     </Row>
