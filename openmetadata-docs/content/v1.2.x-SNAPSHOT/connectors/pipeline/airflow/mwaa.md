@@ -326,6 +326,12 @@ with DAG(
 
 After running the DAG, we can store the connection details and remove the dag file from S3.
 
+Note that trying to log the `conf.get("core", "sql_alchemy_conn", fallback=None)` details might either result in:
+1. An empty string, depending on the Airflow version: If that's the case, you can use update the line to be `conf.get("database", "sql_alchemy_conn", fallback=None)`.
+2. The password masked in `****`. If that's the case, you can use `sqlalchemy_conn = list(conf.get("core", "sql_alchemy_conn", fallback=None))`,
+  which will return the results separated by commas.
+
+
 #### Preparing the metadata extraction
 
 We will use ECS here as well to get the metadata out of MWAA. The only important detail is to ensure that we are
