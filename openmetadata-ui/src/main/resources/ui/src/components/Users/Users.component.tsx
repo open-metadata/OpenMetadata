@@ -26,7 +26,7 @@ import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/Enti
 import SearchedData from '../../components/searched-data/SearchedData';
 import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { getUserPath } from '../../constants/constants';
+import { getUserPath, NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
@@ -200,11 +200,8 @@ const Users = ({
   return (
     <PageLayoutV1 className="user-layout h-full" pageTitle={t('label.user')}>
       <div data-testid="table-container">
-        <Row
-          className="user-profile-container"
-          data-testid="user-profile"
-          gutter={[16, 16]}>
-          <Col className="flex-center border-right" flex="120px">
+        <Row className="user-profile-container" data-testid="user-profile">
+          <Col className="flex-center border-right" span={4}>
             <UserProfileImage
               userData={{
                 id: userData.id,
@@ -232,63 +229,69 @@ const Users = ({
             />
           </Col>
           <Col className="p-x-sm border-right" span={5}>
-            <UserProfileRoles
-              isUserAdmin={userData.isAdmin}
-              updateUserDetails={updateUserDetails}
-              userRoles={userData.roles}
-            />
-            <UserProfileInheritedRoles
-              inheritedRoles={userData.inheritedRoles}
-            />
+            <div className="d-flex flex-col justify-between h-full">
+              <UserProfileRoles
+                isUserAdmin={userData.isAdmin}
+                updateUserDetails={updateUserDetails}
+                userRoles={userData.roles}
+              />
+              <UserProfileInheritedRoles
+                inheritedRoles={userData.inheritedRoles}
+              />
+            </div>
           </Col>
-          <Col span={5}>
-            <Card
-              className="ant-card-feed relative card-body-border-none card-padding-y-0"
-              title={
-                <Typography.Text
-                  className="right-panel-label items-center d-flex gap-2"
-                  data-testid="inherited-roles">
-                  {t('label.persona')}
-                  <PersonaSelectableList
-                    hasPermission
-                    multiSelect
-                    selectedPersonas={userData.personas ?? []}
-                    onUpdate={handlePersonaUpdate}
-                  />
-                </Typography.Text>
-              }>
-              <Chip
-                showNoDataPlaceholder
-                data={userData.personas ?? []}
-                icon={<PersonaIcon height={18} />}
-                noDataPlaceholder={t('message.no-persona')}
-              />
-            </Card>
-            <Card
-              className="ant-card-feed relative card-body-border-none card-padding-y-0"
-              title={
-                <Typography.Text
-                  className="right-panel-label m-b-0 d-flex gap-2"
-                  data-testid="inherited-roles">
-                  {t('label.default-persona')}
-                  <PersonaSelectableList
-                    hasPermission
-                    multiSelect={false}
-                    personaList={userData.personas}
-                    selectedPersonas={
-                      userData.defaultPersona ? [userData.defaultPersona] : []
-                    }
-                    onUpdate={handleDefaultPersonaUpdate}
-                  />
-                </Typography.Text>
-              }>
-              <Chip
-                showNoDataPlaceholder
-                data={userData.defaultPersona ? [userData.defaultPersona] : []}
-                icon={<PersonaIcon height={18} />}
-                noDataPlaceholder={t('message.no-default-persona')}
-              />
-            </Card>
+          <Col className="p-x-sm border-right" span={5}>
+            <div className="d-flex flex-col justify-between h-full">
+              <Card
+                className="ant-card-feed relative card-body-border-none card-padding-y-0 m-b-md"
+                title={
+                  <Typography.Text
+                    className="right-panel-label items-center d-flex gap-2"
+                    data-testid="inherited-roles">
+                    {t('label.persona')}
+                    <PersonaSelectableList
+                      hasPermission
+                      multiSelect
+                      selectedPersonas={userData.personas ?? []}
+                      onUpdate={handlePersonaUpdate}
+                    />
+                  </Typography.Text>
+                }>
+                <Chip
+                  showNoDataPlaceholder
+                  data={userData.personas ?? []}
+                  icon={<PersonaIcon height={18} />}
+                  noDataPlaceholder={t('message.no-persona-assigned')}
+                />
+              </Card>
+              <Card
+                className="ant-card-feed relative card-body-border-none card-padding-y-0"
+                title={
+                  <Typography.Text
+                    className="right-panel-label m-b-0 d-flex gap-2"
+                    data-testid="inherited-roles">
+                    {t('label.default-persona')}
+                    <PersonaSelectableList
+                      hasPermission
+                      multiSelect={false}
+                      personaList={userData.personas}
+                      selectedPersonas={
+                        userData.defaultPersona ? [userData.defaultPersona] : []
+                      }
+                      onUpdate={handleDefaultPersonaUpdate}
+                    />
+                  </Typography.Text>
+                }>
+                <Chip
+                  showNoDataPlaceholder
+                  data={
+                    userData.defaultPersona ? [userData.defaultPersona] : []
+                  }
+                  icon={<PersonaIcon height={18} />}
+                  noDataPlaceholder={NO_DATA_PLACEHOLDER}
+                />
+              </Card>
+            </div>
           </Col>
         </Row>
         <Tabs

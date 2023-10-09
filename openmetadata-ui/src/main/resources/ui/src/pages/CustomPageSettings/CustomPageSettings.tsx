@@ -104,6 +104,8 @@ export const CustomPageSettings = () => {
       {personas?.map((persona) => (
         <Col key={persona.id} span={8}>
           <Card
+            bodyStyle={{ height: '100%' }}
+            className="h-full"
             extra={
               <Button
                 className="text-link-color"

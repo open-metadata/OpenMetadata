@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space } from 'antd';
+import { Card, Space } from 'antd';
 import React, { useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -24,15 +23,8 @@ interface PersonaDetailsCardProps {
   onEdit: (persona: Persona) => void;
 }
 
-export const PersonaDetailsCard = ({
-  persona,
-  onEdit,
-}: PersonaDetailsCardProps) => {
-  const { t } = useTranslation();
+export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
   const history = useHistory();
-  const handleEdit = useCallback(() => {
-    onEdit(persona);
-  }, [persona, onEdit]);
 
   const handleCardClick = useCallback(() => {
     if (persona.fullyQualifiedName) {
@@ -43,7 +35,7 @@ export const PersonaDetailsCard = ({
   return (
     <Card
       bodyStyle={{ height: '100%' }}
-      className="h-full border-none cursor-pointer"
+      className="h-full cursor-pointer"
       onClick={handleCardClick}>
       <Space className="justify-between h-full" direction="vertical">
         <Card.Meta
@@ -55,14 +47,6 @@ export const PersonaDetailsCard = ({
           }
           title={getEntityName(persona)}
         />
-        <Button
-          className="text-undeline text-link-color p-0"
-          key="edit"
-          size="small"
-          type="text"
-          onClick={handleEdit}>
-          {t('label.edit')}
-        </Button>
       </Space>
     </Card>
   );
