@@ -24,7 +24,7 @@ RUN apt-get -qq update \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
-    openjdk-17-jre \
+    openjdk-11-jre \
     openssl \
     postgresql \
     postgresql-contrib \
