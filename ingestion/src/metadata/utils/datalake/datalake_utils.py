@@ -14,12 +14,13 @@ Module to define helper methods for datalake and to fetch data and metadata
 from different auths and different file systems.
 """
 import ast
+import json
 import traceback
+from functools import reduce
 from typing import List, Optional
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
-from metadata.ingestion.source.database.datalake.columns import clean_dataframe
 from metadata.readers.dataframe.models import (
     DatalakeColumnWrapper,
     DatalakeTableSchemaWrapper,
@@ -100,127 +101,53 @@ def get_file_format_type(key_name, metadata_entry=None):
     return False
 
 
-def _parse_complex_column(
-    data_frame,
-    column,
-    final_column_list: List[Column],
-    complex_col_dict: dict,
-    processed_complex_columns: set,
-) -> None:
-    """
-    This class parses the complex columns
-
-    for example consider this data:
-        {
-            "level1": {
-                "level2":{
-                    "level3": 1
-                }
-            }
-        }
-
-    pandas would name this column as: _##level1_##level2_##level3
-    (_## being the custom separator)
-
-    this function would parse this column name and prepare a Column object like
-    Column(
-        name="level1",
-        dataType="RECORD",
-        children=[
-            Column(
-                name="level2",
-                dataType="RECORD",
-                children=[
-                    Column(
-                        name="level3",
-                        dataType="INT",
-                    )
-                ]
-            )
-        ]
+def get_parent_col(data_frame, complex_cols, parent_col_fqn=""):
+    """Get Complex Column Objects"""
+    cols = []
+    parent_cols = [top_level[0] for top_level in complex_cols if len(top_level) > 0]
+    filter_unique = (
+        lambda l, x: l  # pylint: disable=unnecessary-lambda-assignment
+        if x in l
+        else l + [x]
     )
-    """
-    try:
-        # pylint: disable=bad-str-strip-call
-        column_name = str(column).strip(COMPLEX_COLUMN_SEPARATOR)
-        col_hierarchy = tuple(column_name.split(COMPLEX_COLUMN_SEPARATOR))
-        parent_col: Optional[Column] = None
-        root_col: Optional[Column] = None
-
-        # here we are only processing col_hierarchy till [:-1]
-        # because all the column/node before -1 would be treated
-        # as a record and the column at -1 would be the column
-        # having a primitive datatype
-        # for example if col_hierarchy is ("image", "properties", "size")
-        # then image would be the record having child properties which is
-        # also a record  but the "size" will not be handled in this loop
-        # as it will be of primitive type for ex. int
-        for index, col_name in enumerate(col_hierarchy[:-1]):
-
-            if complex_col_dict.get(col_hierarchy[: index + 1]):
-                # if we have already seen this column fetch that column
-                parent_col = complex_col_dict.get(col_hierarchy[: index + 1])
-            else:
-                # if we have not seen this column than create the column and
-                # append to the parent if available
-                intermediate_column = Column(
-                    name=truncate_column_name(col_name),
-                    displayName=col_name,
-                    dataType=DataType.RECORD,
-                    children=[],
-                    dataTypeDisplay=DataType.RECORD.value,
-                )
-                if parent_col:
-                    parent_col.children.append(intermediate_column)
-                    root_col = parent_col
-                parent_col = intermediate_column
-                complex_col_dict[col_hierarchy[: index + 1]] = parent_col
-
-        # prepare the leaf node
-        # use String as default type
-        data_type = DataType.STRING
-        if hasattr(data_frame[column], "dtypes"):
-            data_type = fetch_col_types(data_frame, column_name=column)
-
-        leaf_column = Column(
-            name=col_hierarchy[-1],
-            dataType=data_type,
-            dataTypeDisplay=data_type.value,
-            arrayDataType=DataType.UNKNOWN if data_type == DataType.ARRAY else None,
-        )
-
-        parent_col.children.append(leaf_column)
-
-        # finally add the top level node in the column list
-        if col_hierarchy[0] not in processed_complex_columns:
-            processed_complex_columns.add(col_hierarchy[0])
-            final_column_list.append(root_col or parent_col)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
+    parent_cols = reduce(filter_unique, parent_cols, [])
+    for top_level in parent_cols:
+        if parent_col_fqn.startswith(COMPLEX_COLUMN_SEPARATOR) or not parent_col_fqn:
+            col_fqn = COMPLEX_COLUMN_SEPARATOR.join([parent_col_fqn, top_level])
+        else:
+            col_fqn = COMPLEX_COLUMN_SEPARATOR.join(["", parent_col_fqn, top_level])
+        col_obj = {
+            "name": truncate_column_name(top_level),
+            "displayName": top_level,
+        }
+        leaf_node = [
+            leaf_parse[1:] for leaf_parse in complex_cols if top_level == leaf_parse[0]
+        ]
+        if any(leaf_node):
+            col_obj["children"] = []
+            col_obj["dataTypeDisplay"] = DataType.RECORD.value
+            col_obj["dataType"] = DataType.RECORD
+            col_obj["children"].extend(get_parent_col(data_frame, leaf_node, col_fqn))
+        else:
+            col_type = fetch_col_types(data_frame, col_fqn)
+            col_obj["dataTypeDisplay"] = col_type.value
+            col_obj["dataType"] = col_type
+            col_obj["arrayDataType"] = (
+                DataType.UNKNOWN if col_type == DataType.ARRAY else None
+            )
+        cols.append(Column(**col_obj))
+    return cols
 
 
 def get_columns(data_frame: "DataFrame"):
     """
     method to process column details
     """
-    data_frame = clean_dataframe(data_frame)
     cols = []
-    complex_col_dict = {}
-
-    processed_complex_columns = set()
     if hasattr(data_frame, "columns"):
         df_columns = list(data_frame.columns)
         for column in df_columns:
-            if COMPLEX_COLUMN_SEPARATOR in column:
-                _parse_complex_column(
-                    data_frame,
-                    column,
-                    cols,
-                    complex_col_dict,
-                    processed_complex_columns,
-                )
-            else:
+            if COMPLEX_COLUMN_SEPARATOR not in column:
                 # use String by default
                 data_type = DataType.STRING
                 try:
@@ -242,7 +169,14 @@ def get_columns(data_frame: "DataFrame"):
                     logger.warning(
                         f"Unexpected exception parsing column [{column}]: {exc}"
                     )
-    complex_col_dict.clear()
+    complex_cols = [
+        complex_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
+        for complex_col in json.loads(
+            data_frame.apply(lambda row: row.to_json(), axis=1).values[0]
+        ).keys()
+        if COMPLEX_COLUMN_SEPARATOR in complex_col
+    ]
+    cols.extend(get_parent_col(data_frame, complex_cols))
     return cols
 
 
@@ -261,7 +195,7 @@ def fetch_col_types(data_frame, column_name):
             try:
                 # Safely evaluate the input string
                 df_row_val = data_frame[column_name].dropna().values[0]
-                parsed_object = ast.literal_eval(df_row_val)
+                parsed_object = ast.literal_eval(str(df_row_val))
                 # Determine the data type of the parsed object
                 data_type = type(parsed_object).__name__.lower()
             except (ValueError, SyntaxError):

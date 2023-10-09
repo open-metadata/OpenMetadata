@@ -16,6 +16,8 @@ package org.openmetadata.service.resources.search;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
 
+import es.org.elasticsearch.action.search.SearchResponse;
+import es.org.elasticsearch.search.suggest.Suggest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -35,8 +37,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.suggest.Suggest;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;

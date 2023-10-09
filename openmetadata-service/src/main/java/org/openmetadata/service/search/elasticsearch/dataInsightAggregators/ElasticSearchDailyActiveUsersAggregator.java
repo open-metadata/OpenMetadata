@@ -1,8 +1,8 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
+import es.org.elasticsearch.search.aggregations.Aggregations;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import java.util.List;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import org.openmetadata.service.dataInsight.DailyActiveUsersAggregator;
 
 public class ElasticSearchDailyActiveUsersAggregator
