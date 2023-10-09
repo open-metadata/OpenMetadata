@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppRunType;
@@ -72,11 +73,9 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     } else {
       runRecord.withStatus(AppRunRecord.Status.FAILED);
       FailureContext context = new FailureContext();
-      context.withAdditionalProperty("cause", jobException.getCause());
       context.withAdditionalProperty("message", jobException.getMessage());
-      context.withAdditionalProperty("stackTrace", jobException.getStackTrace());
+      context.withAdditionalProperty("stackTrace", ExceptionUtils.getStackTrace(jobException));
       runRecord.setFailureContext(context);
-      // TODO: Add More Info here
     }
 
     collectionDAO

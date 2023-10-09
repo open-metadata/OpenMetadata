@@ -40,6 +40,6 @@
   },
   "appSchedule": {
     "scheduleType": "Custom",
-    "cronExpression": "*/10 * * * * ?"
+    "cronExpression": "0 0 0 1/1 * ? *"
   }
 }

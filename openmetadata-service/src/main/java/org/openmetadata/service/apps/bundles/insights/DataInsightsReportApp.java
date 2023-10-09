@@ -12,6 +12,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
@@ -50,6 +51,7 @@ import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -60,30 +62,31 @@ import org.quartz.Trigger;
 
 @Slf4j
 public class DataInsightsReportApp extends AbstractNativeApplication {
+  private static final String MISSING_DATA =
+      "Data Insight Report Data Unavailable or too short of a span for Reporting.";
   private static final String KPI_NOT_SET = "No Kpi Set";
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    SearchClient searchClient =
-        (SearchClient) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
+    SearchRepository searchRepository =
+        (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
     App app = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     AppSchedule scheduleConfiguration = app.getAppSchedule();
-    long scheduleTime = currentTime - getTimeFromSchedule(scheduleConfiguration);
-    // TODO: Add Checks
+    long scheduleTime = currentTime - getTimeFromSchedule(scheduleConfiguration, jobExecutionContext);
     int numberOfDaysChange = getNumberOfDays(scheduleConfiguration);
     try {
       DataInsightAppConfig insightAlertConfig =
           JsonUtils.convertValue(app.getAppConfiguration(), DataInsightAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
-        sendToAdmins(searchClient, scheduleTime, currentTime, numberOfDaysChange);
+        sendToAdmins(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
       }
 
       // Send to Teams
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
-        sendReportsToTeams(searchClient, scheduleTime, currentTime, numberOfDaysChange);
+        sendReportsToTeams(searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
       }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
@@ -92,7 +95,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private void sendReportsToTeams(
-      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) throws IOException {
+      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      throws IOException, ParseException, TemplateException {
     PaginatedEntitiesSource teamReader = new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
     while (!teamReader.isDone()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
@@ -107,55 +111,47 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
             emails.add(user.getEmail());
           }
         }
-        try {
-          DataInsightTotalAssetTemplate totalAssetTemplate =
-              createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-              createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          DataInsightDescriptionAndOwnerTemplate tierTemplate =
-              createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
-          EmailUtil.sendDataInsightEmailNotificationToUser(
-              emails,
-              totalAssetTemplate,
-              descriptionTemplate,
-              ownershipTemplate,
-              tierTemplate,
-              EmailUtil.getDataInsightReportSubject(),
-              EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
-        } catch (Exception ex) {
-          LOG.error("[DataInsightReport] Failed for Team: {}, Reason : {}", team.getName(), ex.getMessage());
-        }
+        DataInsightTotalAssetTemplate totalAssetTemplate =
+            createTotalAssetTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+        DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+            createDescriptionTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+        DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+            createOwnershipTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+        DataInsightDescriptionAndOwnerTemplate tierTemplate =
+            createTierTemplate(searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+        EmailUtil.sendDataInsightEmailNotificationToUser(
+            emails,
+            totalAssetTemplate,
+            descriptionTemplate,
+            ownershipTemplate,
+            tierTemplate,
+            EmailUtil.getDataInsightReportSubject(),
+            EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
       }
     }
   }
 
-  private void sendToAdmins(SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
+  private void sendToAdmins(SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+      throws ParseException, IOException, TemplateException {
     // Get Admins
     Set<String> emailList = getAdminsData(CreateEventSubscription.SubscriptionType.DATA_INSIGHT);
 
-    try {
-      // Build Insights Report
-      DataInsightTotalAssetTemplate totalAssetTemplate =
-          createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-          createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-          createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      DataInsightDescriptionAndOwnerTemplate tierTemplate =
-          createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
-      EmailUtil.sendDataInsightEmailNotificationToUser(
-          emailList,
-          totalAssetTemplate,
-          descriptionTemplate,
-          ownershipTemplate,
-          tierTemplate,
-          EmailUtil.getDataInsightReportSubject(),
-          EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
-    } catch (Exception ex) {
-      LOG.error("[DataInsightReport] Failed for Admin, Reason : {}", ex.getMessage(), ex);
-    }
+    DataInsightTotalAssetTemplate totalAssetTemplate =
+        createTotalAssetTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+    DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
+        createDescriptionTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+    DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
+        createOwnershipTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+    DataInsightDescriptionAndOwnerTemplate tierTemplate =
+        createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+    EmailUtil.sendDataInsightEmailNotificationToUser(
+        emailList,
+        totalAssetTemplate,
+        descriptionTemplate,
+        ownershipTemplate,
+        tierTemplate,
+        EmailUtil.getDataInsightReportSubject(),
+        EmailUtil.DATA_INSIGHT_REPORT_TEMPLATE);
   }
 
   private List<Kpi> getAvailableKpi() {
@@ -193,7 +189,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       }
     }
 
-    throw new IOException("Failed to get Total Asset Template Data.");
+    throw new IOException(MISSING_DATA);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
@@ -242,7 +238,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           numberOfDaysChange);
     }
 
-    throw new IOException("Failed to get Description Template Data.");
+    throw new IOException(MISSING_DATA);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
@@ -292,7 +288,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           numberOfDaysChange);
     }
 
-    throw new IOException("Failed to get OwnerShip Template Data.");
+    throw new IOException(MISSING_DATA);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
@@ -319,7 +315,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           tierData);
     }
 
-    throw new IOException("Failed to get Tier Template Data.");
+    throw new IOException(MISSING_DATA);
   }
 
   private Double getCountOfEntitiesFromList(List<TotalEntitiesByType> entitiesByTypeList) {
@@ -430,23 +426,35 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         null);
   }
 
-  private long getTimeFromSchedule(AppSchedule appSchedule) {
+  private long getTimeFromSchedule(AppSchedule appSchedule, JobExecutionContext jobExecutionContext) {
     AppSchedule.ScheduleTimeline timeline = appSchedule.getScheduleType();
     switch (timeline) {
+      case HOURLY:
+        return 3600000L;
       case DAILY:
         return 86400000L;
       case WEEKLY:
         return 604800000L;
       case MONTHLY:
         return 2592000000L;
+      case CUSTOM:
+        if (jobExecutionContext.getTrigger() != null) {
+          Trigger triggerQrz = jobExecutionContext.getTrigger();
+          Date previousFire =
+              triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
+          return previousFire.toInstant().toEpochMilli();
+        }
+        return 86400000L;
       default:
-        throw new IllegalArgumentException("Invalid Trigger Type, Cannot be Scheduled.");
+        throw new IllegalArgumentException("Invalid Trigger Type.");
     }
   }
 
   public static int getNumberOfDays(AppSchedule appSchedule) {
     AppSchedule.ScheduleTimeline timeline = appSchedule.getScheduleType();
     switch (timeline) {
+      case HOURLY:
+        return 0;
       case DAILY:
         return 1;
       case WEEKLY:
