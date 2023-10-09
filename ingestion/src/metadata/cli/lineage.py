@@ -12,9 +12,9 @@
 """
 Lineage utility for the metadata CLI
 """
-import pathlib
 import sys
 import traceback
+from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel
@@ -38,17 +38,16 @@ class LineageWorkflow(BaseModel):
     parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
 
 
-def run_lineage(config_path: str) -> None:
+def run_lineage(config_path: Path) -> None:
     """
     Run the ingestion workflow from a config path
     to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
-    config_file = pathlib.Path(config_path)
     config_dict = None
     try:
-        config_dict = load_config_file(config_file)
+        config_dict = load_config_file(config_path)
         workflow = LineageWorkflow.parse_obj(config_dict)
 
     except Exception as exc:

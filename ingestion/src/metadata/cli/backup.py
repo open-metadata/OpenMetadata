@@ -46,11 +46,12 @@ def get_output(output: Optional[str] = None) -> Path:
     name = f"openmetadata_{now}_backup.sql"
 
     if output:
+        path = Path(output).expanduser()
         # Create the output directory if it does not exist
-        if not Path(output).is_dir():
-            Path(output).mkdir(parents=True, exist_ok=True)
+        if not path.is_dir():
+            path.mkdir(parents=True, exist_ok=True)
 
-        return Path(output) / name
+        return path / name
 
     return Path(name)
 

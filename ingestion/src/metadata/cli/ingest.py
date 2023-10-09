@@ -12,9 +12,9 @@
 """
 Profiler utility for the metadata CLI
 """
-import pathlib
 import sys
 import traceback
+from pathlib import Path
 
 from metadata.config.common import load_config_file
 from metadata.utils.logger import cli_logger
@@ -28,17 +28,16 @@ from metadata.workflow.workflow_output_handler import (
 logger = cli_logger()
 
 
-def run_ingest(config_path: str) -> None:
+def run_ingest(config_path: Path) -> None:
     """
     Run the ingestion workflow from a config path
     to a JSON or YAML file
     :param config_path: Path to load JSON config
     """
 
-    config_file = pathlib.Path(config_path)
     config_dict = None
     try:
-        config_dict = load_config_file(config_file)
+        config_dict = load_config_file(config_path)
         workflow = MetadataWorkflow.create(config_dict)
         logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
