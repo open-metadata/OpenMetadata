@@ -42,6 +42,7 @@ export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   isPercentage?: boolean;
   isTier?: boolean;
   kpiTooltipRecord?: Record<string, KpiTargetType>;
+  valueFormatter?: (value: number | string) => string;
 }
 
 export interface UIKpiResult extends KpiResult {

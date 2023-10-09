@@ -52,10 +52,27 @@ function DatePickerMenu({
   allowCustomRange = true,
 }: DatePickerMenuProps) {
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOptions =
-      options && defaultValue && !isUndefined(options[defaultValue]?.title)
-        ? { title: options[defaultValue].title, key: defaultValue }
-        : DEFAULT_SELECTED_RANGE;
+    let defaultOptions = DEFAULT_SELECTED_RANGE;
+
+    if (defaultValue) {
+      if (options && !isUndefined(options[defaultValue]?.title)) {
+        defaultOptions = {
+          title: options[defaultValue].title,
+          key: defaultValue,
+          days: options[defaultValue].days,
+        };
+      } else if (
+        !isUndefined(
+          PROFILER_FILTER_RANGE[defaultValue as keyof DateFilterType]?.title
+        )
+      ) {
+        defaultOptions = {
+          title: PROFILER_FILTER_RANGE[defaultValue].title,
+          key: defaultValue,
+          days: PROFILER_FILTER_RANGE[defaultValue].days,
+        };
+      }
+    }
 
     return {
       menuOptions: options ?? PROFILER_FILTER_RANGE,

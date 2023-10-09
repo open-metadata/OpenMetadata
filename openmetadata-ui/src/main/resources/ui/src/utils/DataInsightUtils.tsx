@@ -25,6 +25,7 @@ import {
   omit,
   round,
   sortBy,
+  startCase,
   sumBy,
   toNumber,
 } from 'lodash';
@@ -68,7 +69,8 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  activeKeys = [] as string[]
+  activeKeys = [] as string[],
+  valueFormatter?: (value: string) => string
 ) => {
   const { payload = [] } = legendData;
 
@@ -102,7 +104,7 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {entry.value}
+              {valueFormatter ? valueFormatter(entry.value) : entry.value}
             </span>
           </li>
         );
@@ -147,7 +149,13 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
+  const {
+    active,
+    payload = [],
+    isPercentage,
+    valueFormatter,
+    kpiTooltipRecord,
+  } = props;
 
   if (active && payload && payload.length) {
     const timestamp = formatDate(payload[0].payload.timestampValue || 0);
@@ -164,15 +172,17 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               <Surface className="mr-2" height={12} version="1.1" width={12}>
                 <rect fill={entry.color} height="14" rx="2" width="14" />
               </Surface>
-              {entry.dataKey}
+              {startCase(entry.dataKey as string)}
             </span>
             <span className="font-medium">
-              {getEntryFormattedValue(
-                entry.value,
-                entry.dataKey,
-                kpiTooltipRecord,
-                isPercentage
-              )}
+              {valueFormatter
+                ? valueFormatter(entry.value)
+                : getEntryFormattedValue(
+                    entry.value,
+                    entry.dataKey,
+                    kpiTooltipRecord,
+                    isPercentage
+                  )}
             </span>
           </li>
         ))}
