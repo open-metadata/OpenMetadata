@@ -298,14 +298,25 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     // Update for the Job
     jobDataStats.setJobStats(stats);
-    // Reader Stats
-    jobDataStats.setSourceStats(reader);
+    // Source Stats
+    jobDataStats.setSourceStats(getTotalStatsTillCurrentRun(jobDataStats.getSourceStats(), reader));
     // Processor
     jobDataStats.setProcessorStats(processor);
     // Writer
     jobDataStats.setSinkStats(writer);
 
     jobData.setStats(jobDataStats);
+  }
+
+  private StepStats getTotalStatsTillCurrentRun(StepStats sourceStat, StepStats newInputStat) {
+    if (sourceStat == null) {
+      sourceStat = new StepStats();
+    }
+    sourceStat.setTotalRecords(sourceStat.getTotalRecords() + newInputStat.getTotalRecords());
+    sourceStat.setProcessedRecords(sourceStat.getProcessedRecords() + newInputStat.getProcessedRecords());
+    sourceStat.setSuccessRecords(sourceStat.getSuccessRecords() + newInputStat.getSuccessRecords());
+    sourceStat.setFailedRecords(sourceStat.getFailedRecords() + newInputStat.getFailedRecords());
+    return sourceStat;
   }
 
   private void reCreateIndexes(String entityType) {
