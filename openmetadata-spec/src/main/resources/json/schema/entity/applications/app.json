@@ -104,6 +104,10 @@
       "description": "Description of the Application.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "features": {
+      "description": "Features of the Application.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"

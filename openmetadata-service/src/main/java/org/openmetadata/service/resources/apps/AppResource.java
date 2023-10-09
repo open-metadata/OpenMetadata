@@ -158,7 +158,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "List of Installed Applications Runs",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunList.class)))
       })
   public ResultList<AppRunRecord> listAppRuns(
       @Context UriInfo uriInfo,
@@ -523,7 +523,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withRuntime(marketPlaceDefinition.getRuntime())
             .withPermission(marketPlaceDefinition.getPermission())
             .withAppSchedule(createAppRequest.getAppSchedule())
-            .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl());
+            .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
+            .withFeatures(marketPlaceDefinition.getFeatures());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());

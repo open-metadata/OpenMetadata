@@ -371,7 +371,9 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withScheduleType(create.getScheduleType())
             .withRuntime(create.getRuntime())
             .withAppConfiguration(create.getAppConfiguration())
-            .withPermission(create.getPermission());
+            .withPermission(create.getPermission())
+            .withAppLogoUrl(create.getAppLogoUrl())
+            .withFeatures(create.getFeatures());
 
     // Validate App
     validateApplication(app);

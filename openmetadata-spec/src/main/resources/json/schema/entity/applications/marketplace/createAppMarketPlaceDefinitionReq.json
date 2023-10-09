@@ -19,6 +19,10 @@
       "description": "Description of the Application.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
+    "features": {
+      "description": "Features of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
     "owner": {
       "description": "Owner of this workflow.",
       "$ref": "../../../type/entityReference.json",
@@ -62,6 +66,11 @@
     },
     "appConfiguration": {
       "description": "Application Configuration object."
+    },
+    "appLogoUrl": {
+      "description": "Application Logo Url.",
+      "type": "string",
+      "format": "uri"
     }
   },
   "additionalProperties": false,
