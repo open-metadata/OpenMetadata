@@ -6,8 +6,8 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -20,11 +20,11 @@ import org.quartz.JobExecutionException;
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
-  private Application app;
+  private App app;
   protected SearchRepository searchRepository;
 
   @Override
-  public void init(Application app, CollectionDAO dao, SearchRepository searchRepository) {
+  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
     this.collectionDAO = dao;
     this.searchRepository = searchRepository;
     this.app = app;
@@ -72,7 +72,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // This is the part of the code that is executed by the scheduler
-    Application jobApp = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     CollectionDAO dao = (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
     SearchRepository searchRepositoryForJob =
         (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
@@ -83,7 +83,7 @@ public class AbstractNativeApplication implements NativeApplication {
     this.startApp(jobExecutionContext);
   }
 
-  public static AppRuntime getAppRuntime(Application app) {
+  public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 }

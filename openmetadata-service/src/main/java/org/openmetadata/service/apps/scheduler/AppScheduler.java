@@ -9,9 +9,9 @@ import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.AppRuntime;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
@@ -67,7 +67,7 @@ public class AppScheduler {
     return appJobsKeyMap;
   }
 
-  public void addApplicationSchedule(Application application) {
+  public void addApplicationSchedule(App application) {
     try {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {
@@ -84,7 +84,7 @@ public class AppScheduler {
     }
   }
 
-  public void deleteScheduledApplication(Application app) throws SchedulerException {
+  public void deleteScheduledApplication(App app) throws SchedulerException {
     JobDetail jobDetail = getJobKey(app.getId());
     if (jobDetail != null) {
       appScheduler.deleteJob(jobDetail.getKey());
@@ -92,7 +92,7 @@ public class AppScheduler {
     }
   }
 
-  private JobDetail jobBuilder(Application app, String jobIdentity) throws ClassNotFoundException {
+  private JobDetail jobBuilder(App app, String jobIdentity) throws ClassNotFoundException {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(APP_INFO_KEY, app);
     dataMap.put(COLLECTION_DAO_KEY, collectionDAO);
@@ -103,7 +103,7 @@ public class AppScheduler {
     return jobBuilder.build();
   }
 
-  private Trigger trigger(Application app) {
+  private Trigger trigger(App app) {
     return TriggerBuilder.newTrigger()
         .withIdentity(app.getId().toString(), APPS_TRIGGER_GROUP)
         .withSchedule(getCronSchedule(app.getAppSchedule()))
@@ -140,7 +140,7 @@ public class AppScheduler {
     throw new IllegalArgumentException("Invalid Trigger Info for the scheduled application.");
   }
 
-  public void triggerOnDemandApplication(Application application) {
+  public void triggerOnDemandApplication(App application) {
     try {
       AppRuntime context = getAppRuntime(application);
       if (Boolean.TRUE.equals(context.getEnabled())) {

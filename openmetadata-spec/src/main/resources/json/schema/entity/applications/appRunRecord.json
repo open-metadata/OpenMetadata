@@ -1,9 +1,9 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/applicationRunRecord.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/appRunRecord.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AppRunRecord",
   "javaType": "org.openmetadata.schema.entity.app.AppRunRecord",
-  "description": "ApplicationRunRecord.",
+  "description": "App Run Record.",
   "type": "object",
   "properties": {
     "appId": {
@@ -61,7 +61,7 @@
       "type": "object"
     },
     "scheduleInfo": {
-      "$ref": "./application.json#/definitions/appSchedule"
+      "$ref": "./app.json#/definitions/appSchedule"
     }
   },
   "additionalProperties": false

@@ -1,8 +1,8 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/application.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/app.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Application",
-  "javaType": "org.openmetadata.schema.entity.app.Application",
+  "title": "App",
+  "javaType": "org.openmetadata.schema.entity.app.App",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
@@ -195,6 +195,11 @@
     },
     "openMetadataServerConnection": {
       "$ref": "../services/connections/metadata/openMetadataConnection.json"
+    },
+    "appLogoUrl": {
+      "description": "Application Logo Url.",
+      "type": "string",
+      "format": "uri"
     }
   },
   "additionalProperties": false,

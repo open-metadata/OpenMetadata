@@ -35,8 +35,8 @@ import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescript
 import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
 import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.app.DataInsightAppConfig;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -66,7 +66,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     SearchClient searchClient =
         (SearchClient) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
-    Application app = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    App app = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     // Calculate time diff
     long currentTime = Instant.now().toEpochMilli();
     AppSchedule scheduleConfiguration = app.getAppSchedule();

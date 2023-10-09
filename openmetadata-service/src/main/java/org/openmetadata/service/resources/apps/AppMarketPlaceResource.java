@@ -32,9 +32,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.type.EntityHistory;
@@ -233,7 +233,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(
             responseCode = "404",
             description = "App for instance {id} and version {version} is " + "not found")
@@ -306,7 +306,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "The updated Application Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,

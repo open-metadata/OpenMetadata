@@ -1,8 +1,8 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/createApplication.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/createAppRequest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateApplication",
-  "javaType": "org.openmetadata.schema.entity.app.CreateApplication",
+  "title": "CreateApp",
+  "javaType": "org.openmetadata.schema.entity.app.CreateApp",
   "description": "This schema defines the create applications request for Open-Metadata.",
   "type": "object",
   "properties": {
@@ -20,7 +20,7 @@
       "description": "Application Configuration object."
     },
     "appSchedule": {
-      "$ref": "./application.json#/definitions/appSchedule"
+      "$ref": "./app.json#/definitions/appSchedule"
     }
   },
   "required": ["appConfiguration", "appSchedule"],

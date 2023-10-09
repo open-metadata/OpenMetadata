@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.resources.teams.UserResource.getUser;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -11,8 +12,9 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -26,31 +28,27 @@ import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
 @Slf4j
-public class AppRepository extends EntityRepository<Application> {
+public class AppRepository extends EntityRepository<App> {
   public static String APP_BOT_ROLE = "ApplicationBotRole";
   public static String APP_SCHEDULE_EXTENSION = "ScheduleExtension";
 
-  public AppRepository(CollectionDAO dao) {
+  public AppRepository() {
     super(
-        AppResource.COLLECTION_PATH,
-        Entity.APPLICATION,
-        Application.class,
-        Entity.getCollectionDAO().applicationDAO(),
-        "",
-        "");
+        AppResource.COLLECTION_PATH, Entity.APPLICATION, App.class, Entity.getCollectionDAO().applicationDAO(), "", "");
     supportsSearch = false;
   }
 
   @Override
-  public Application setFields(Application entity, EntityUtil.Fields fields) {
+  public App setFields(App entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     return entity.withBot(getBotUser(entity));
   }
 
-  private List<AppSchedule> getApplicationSchedule(Application app) {
+  private List<AppSchedule> getApplicationSchedule(App app) {
     List<CollectionDAO.ExtensionRecord> schedules =
         daoCollection.entityExtensionDAO().getExtensions(app.getId(), APP_SCHEDULE_EXTENSION);
     return schedules.stream()
@@ -63,16 +61,16 @@ public class AppRepository extends EntityRepository<Application> {
   }
 
   @Override
-  public Application clearFields(Application entity, EntityUtil.Fields fields) {
+  public App clearFields(App entity, EntityUtil.Fields fields) {
     return entity;
   }
 
   @Override
-  public void prepare(Application entity, boolean update) {
+  public void prepare(App entity, boolean update) {
     if (entity.getBot() == null) {}
   }
 
-  public EntityReference createNewAppBot(Application application) {
+  public EntityReference createNewAppBot(App application) {
     String botName = String.format("%sBot", application.getName());
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
@@ -136,7 +134,7 @@ public class AppRepository extends EntityRepository<Application> {
   }
 
   @Override
-  public void storeEntity(Application entity, boolean update) {
+  public void storeEntity(App entity, boolean update) {
     EntityReference botUserRef = entity.getBot();
     EntityReference ownerRef = entity.getOwner();
     entity.withBot(null).withOwner(null);
@@ -149,13 +147,13 @@ public class AppRepository extends EntityRepository<Application> {
   }
 
   @SuppressWarnings("unused")
-  protected void postUpdate(Application original, Application updated) {
+  protected void postUpdate(App original, App updated) {
     super.postUpdate(original, updated);
     // TODO: here we should handle Live as well
 
   }
 
-  public void postDelete(Application entity) {
+  public void postDelete(App entity) {
     try {
       AppScheduler.getInstance().deleteScheduledApplication(entity);
     } catch (SchedulerException ex) {
@@ -164,16 +162,47 @@ public class AppRepository extends EntityRepository<Application> {
     }
   }
 
-  public EntityReference getBotUser(Application application) {
+  public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
         : getToEntityRef(application.getId(), Relationship.HAS, Entity.BOT, false);
   }
 
   @Override
-  public void storeRelationships(Application entity) {
+  public void storeRelationships(App entity) {
     if (entity.getBot() != null) {
       addRelationship(entity.getId(), entity.getBot().getId(), Entity.APPLICATION, Entity.BOT, Relationship.HAS);
+    }
+  }
+
+  public final List<AppRunRecord> listAll() {
+    // forward scrolling, if after == null then first page is being asked
+    List<String> jsons = dao.listAfterWithOffset(Integer.MAX_VALUE, 0);
+    List<AppRunRecord> entities = new ArrayList<>();
+    for (String json : jsons) {
+      AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
+      entities.add(entity);
+    }
+    return entities;
+  }
+
+  public ResultList<AppRunRecord> listAppRuns(UUID appId, int limitParam, int offset) {
+    int total = daoCollection.appExtensionTimeSeriesDao().listAppRunRecordCount(appId.toString());
+    List<AppRunRecord> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons =
+          daoCollection.appExtensionTimeSeriesDao().listAppRunRecord(appId.toString(), limitParam, offset);
+
+      for (String json : jsons) {
+        AppRunRecord entity = JsonUtils.readValue(json, AppRunRecord.class);
+        entities.add(entity);
+      }
+
+      return new ResultList<>(entities, offset, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return new ResultList<>(entities, null, total);
     }
   }
 }

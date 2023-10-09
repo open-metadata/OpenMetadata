@@ -2,9 +2,9 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppRunType;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
@@ -32,7 +32,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   public void jobToBeExecuted(JobExecutionContext jobExecutionContext) {
     AppRunType runType =
         AppRunType.fromValue((String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
-    Application jobApp = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     JobDataMap dataMap = jobExecutionContext.getJobDetail().getJobDataMap();
     long jobStartTime = System.currentTimeMillis();
     AppRunRecord runRecord =

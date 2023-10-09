@@ -3,7 +3,7 @@ package org.openmetadata.service.apps;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.entity.app.Application;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -15,15 +15,14 @@ public class ApplicationHandler {
   }
 
   public static void triggerApplicationOnDemand(
-      Application app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod =
-          resource.getClass().getMethod("init", Application.class, CollectionDAO.class, SearchRepository.class);
+      Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection);
 
       // Call Trigger On Demand Method
@@ -37,16 +36,14 @@ public class ApplicationHandler {
     }
   }
 
-  public static void scheduleApplication(
-      Application app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+  public static void scheduleApplication(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     // Native Application
     try {
       Class<?> clz = Class.forName(app.getClassName());
       Object resource = clz.getConstructor().newInstance();
 
       // Call init Method
-      Method initMethod =
-          resource.getClass().getMethod("init", Application.class, CollectionDAO.class, SearchRepository.class);
+      Method initMethod = resource.getClass().getMethod("init", App.class, CollectionDAO.class, SearchRepository.class);
       initMethod.invoke(resource, app, daoCollection, searchRepository);
 
       // Call Trigger On Demand Method
