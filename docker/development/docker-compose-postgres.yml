@@ -345,7 +345,7 @@ services:
       - "8586:8586"
       - "5005:5005"
     depends_on:
-      ingestion:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
