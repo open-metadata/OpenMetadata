@@ -36,7 +36,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -72,7 +71,7 @@ import org.quartz.SchedulerException;
 @Tag(name = "Apps", description = "Apps are internal/external apps used to something on top of Open-metadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps", order = 8)
+@Collection(name = "apps")
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
@@ -82,7 +81,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private SearchRepository searchRepository;
 
   @Override
-  @SneakyThrows
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
     this.pipelineServiceClient =
@@ -91,9 +89,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // Create an On Demand DAO
     CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
     searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
-    AppScheduler.initialize(dao, searchRepository);
 
     try {
+      AppScheduler.initialize(dao, searchRepository);
+
       // Get Create App Requests
       List<CreateApp> createAppsReq =
           getEntitiesFromSeedData(APPLICATION, String.format(".*json/data/%s/.*\\.json$", entityType), CreateApp.class);

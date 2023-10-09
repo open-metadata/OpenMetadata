@@ -7,6 +7,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.FailureContext;
+import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
@@ -18,6 +19,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   private CollectionDAO collectionDAO;
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   private static final String SCHEDULED_APP_RUN_RECORD_SCHEMA = "applicationRunRecord.json";
+  public static final String APP_RUN_STATS = "AppRunStats";
   static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
 
   protected AbstractOmAppJobListener(CollectionDAO dao) {
@@ -63,13 +65,16 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   public void jobWasExecuted(JobExecutionContext jobExecutionContext, JobExecutionException jobException) {
     AppRunRecord runRecord =
         (AppRunRecord) jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION);
+    Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
 
     boolean success = jobException == null;
     if (success) {
       runRecord.withStatus(AppRunRecord.Status.SUCCESS);
-      // TODO: Add Failure Context
+      SuccessContext context = new SuccessContext();
+      context.getAdditionalProperties().put("stats", JsonUtils.getMap(jobStats));
+      runRecord.setSuccessContext(context);
     } else {
       runRecord.withStatus(AppRunRecord.Status.FAILED);
       FailureContext context = new FailureContext();
