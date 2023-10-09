@@ -119,13 +119,9 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
     Map<String, String> authHeaders = ADMIN_AUTH_HEADERS;
     createAndCheckEntity(createRequest(test, 1).withDescription(null), authHeaders);
     createAndCheckEntity(createRequest(test, 2).withDescription("description"), authHeaders);
-  }
 
-  @Test
-  void post_invalidDatabaseServiceNoConnection_4xx(TestInfo test) {
-    // No jdbc connection set
-    CreateDatabaseService create = createRequest(test).withConnection(null);
-    assertResponseContains(() -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "connection must not be null");
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -332,7 +328,7 @@ public class DatabaseServiceResourceTest extends ServiceResourceTest<DatabaseSer
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("ingestionSchedule")) {
       Schedule expectedSchedule = (Schedule) expected;
       Schedule actualSchedule = JsonUtils.readValue((String) actual, Schedule.class);

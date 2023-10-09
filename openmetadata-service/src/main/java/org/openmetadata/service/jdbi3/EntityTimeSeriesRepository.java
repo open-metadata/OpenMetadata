@@ -11,22 +11,16 @@ import org.openmetadata.service.util.JsonUtils;
 public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInterface> {
   @Getter protected final String collectionPath;
   @Getter protected final EntityTimeSeriesDAO timeSeriesDao;
-  @Getter protected final CollectionDAO daoCollection;
   @Getter protected final SearchRepository searchRepository;
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
 
-  protected boolean supportsSearchIndex = true;
+  protected final boolean supportsSearchIndex = true;
 
   protected EntityTimeSeriesRepository(
-      String collectionPath,
-      CollectionDAO daoCollection,
-      EntityTimeSeriesDAO timeSeriesDao,
-      Class<T> entityClass,
-      String entityType) {
+      String collectionPath, EntityTimeSeriesDAO timeSeriesDao, Class<T> entityClass, String entityType) {
     this.collectionPath = collectionPath;
     this.timeSeriesDao = timeSeriesDao;
-    this.daoCollection = daoCollection;
     this.entityClass = entityClass;
     this.entityType = entityType;
     this.searchRepository = Entity.getSearchRepository();

@@ -59,6 +59,7 @@ public final class TablesInitializer {
   private static final String OPTION_FLYWAY_SCRIPT_ROOT_PATH = "flyway-sql-root";
 
   private static final String OPTION_NATIVE_SQL_ROOT_PATH = "native-sql-root";
+  private static final String OPTION_EXTENSION_SQL_ROOT_PATH = "extension-sql-root";
   private static final String OPTION_CONFIG_FILE_PATH = "config";
   private static final String OPTION_FORCE_MIGRATIONS = "force";
   private static final String DISABLE_VALIDATE_ON_MIGRATE = "disable-validate-on-migrate";
@@ -71,6 +72,7 @@ public final class TablesInitializer {
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
     OPTIONS.addOption("s", OPTION_FLYWAY_SCRIPT_ROOT_PATH, true, "Root directory of flyway sql script path");
     OPTIONS.addOption("n", OPTION_NATIVE_SQL_ROOT_PATH, true, "Root directory of native sql script path");
+    OPTIONS.addOption("e", OPTION_EXTENSION_SQL_ROOT_PATH, true, "Root directory for extension migrations to execute");
 
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
@@ -204,6 +206,7 @@ public final class TablesInitializer {
     }
     String nativeSQLScriptRootPath = commandLine.getOptionValue(OPTION_NATIVE_SQL_ROOT_PATH);
     String scriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
+    String extensionSQLScriptRootPath = commandLine.getOptionValue(OPTION_EXTENSION_SQL_ROOT_PATH);
     Flyway flyway =
         get(
             jdbcUrl,
@@ -213,7 +216,7 @@ public final class TablesInitializer {
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
     try {
-      execute(config, flyway, schemaMigrationOptionSpecified, nativeSQLScriptRootPath);
+      execute(config, flyway, schemaMigrationOptionSpecified, nativeSQLScriptRootPath, extensionSQLScriptRootPath);
       printToConsoleInDebug(schemaMigrationOptionSpecified + "option successful");
     } catch (Exception e) {
       printError(schemaMigrationOptionSpecified + "option failed with : " + ExceptionUtils.getStackTrace(e));
@@ -255,7 +258,8 @@ public final class TablesInitializer {
       OpenMetadataApplicationConfig config,
       Flyway flyway,
       SchemaMigrationOption schemaMigrationOption,
-      String nativeSQLRootPath)
+      String nativeSQLRootPath,
+      String extensionSQLScriptRootPath)
       throws SQLException {
     final Jdbi jdbi =
         Jdbi.create(
@@ -265,8 +269,7 @@ public final class TablesInitializer {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(config.getDataSourceFactory().getDriverClass()));
-    SearchRepository searchRepository =
-        new SearchRepository(config.getElasticSearchConfiguration(), jdbi.onDemand(CollectionDAO.class));
+    SearchRepository searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     // Initialize secrets manager
     SecretsManagerFactory.createSecretsManager(config.getSecretsManagerConfiguration(), config.getClusterName());
@@ -292,6 +295,7 @@ public final class TablesInitializer {
             jdbi,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
+            extensionSQLScriptRootPath,
             forceMigrations);
         break;
       case MIGRATE:
@@ -301,6 +305,7 @@ public final class TablesInitializer {
             jdbi,
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
+            extensionSQLScriptRootPath,
             forceMigrations);
         break;
       case INFO:
@@ -349,10 +354,17 @@ public final class TablesInitializer {
   }
 
   public static void validateAndRunSystemDataMigrations(
-      Jdbi jdbi, ConnectionType connType, String nativeMigrationSQLPath, boolean forceMigrations) {
+      Jdbi jdbi,
+      ConnectionType connType,
+      String nativeMigrationSQLPath,
+      String extensionSQLScriptRootPath,
+      boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
-    MigrationWorkflow workflow = new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, forceMigrations);
-    Entity.initializeRepositories(jdbi, jdbi.onDemand(CollectionDAO.class));
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(jdbi);
+    workflow.loadMigrations();
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }

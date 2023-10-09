@@ -19,6 +19,73 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
+import es.org.elasticsearch.action.ActionListener;
+import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import es.org.elasticsearch.action.bulk.BulkItemResponse;
+import es.org.elasticsearch.action.bulk.BulkRequest;
+import es.org.elasticsearch.action.bulk.BulkResponse;
+import es.org.elasticsearch.action.delete.DeleteRequest;
+import es.org.elasticsearch.action.delete.DeleteResponse;
+import es.org.elasticsearch.action.search.SearchResponse;
+import es.org.elasticsearch.action.support.WriteRequest;
+import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
+import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.action.update.UpdateResponse;
+import es.org.elasticsearch.client.RequestOptions;
+import es.org.elasticsearch.client.RestClient;
+import es.org.elasticsearch.client.RestClientBuilder;
+import es.org.elasticsearch.client.RestHighLevelClient;
+import es.org.elasticsearch.client.RestHighLevelClientBuilder;
+import es.org.elasticsearch.client.indices.CreateIndexRequest;
+import es.org.elasticsearch.client.indices.CreateIndexResponse;
+import es.org.elasticsearch.client.indices.GetIndexRequest;
+import es.org.elasticsearch.client.indices.PutMappingRequest;
+import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
+import es.org.elasticsearch.common.settings.Settings;
+import es.org.elasticsearch.common.unit.Fuzziness;
+import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
+import es.org.elasticsearch.core.TimeValue;
+import es.org.elasticsearch.index.query.BoolQueryBuilder;
+import es.org.elasticsearch.index.query.MatchQueryBuilder;
+import es.org.elasticsearch.index.query.MultiMatchQueryBuilder;
+import es.org.elasticsearch.index.query.Operator;
+import es.org.elasticsearch.index.query.QueryBuilder;
+import es.org.elasticsearch.index.query.QueryBuilders;
+import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
+import es.org.elasticsearch.index.query.RangeQueryBuilder;
+import es.org.elasticsearch.index.query.ScriptQueryBuilder;
+import es.org.elasticsearch.index.query.TermQueryBuilder;
+import es.org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
+import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
+import es.org.elasticsearch.index.reindex.BulkByScrollResponse;
+import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
+import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
+import es.org.elasticsearch.script.Script;
+import es.org.elasticsearch.script.ScriptType;
+import es.org.elasticsearch.search.SearchModule;
+import es.org.elasticsearch.search.aggregations.AggregationBuilder;
+import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.BucketOrder;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
+import es.org.elasticsearch.search.builder.SearchSourceBuilder;
+import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
+import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+import es.org.elasticsearch.search.sort.SortOrder;
+import es.org.elasticsearch.search.suggest.Suggest;
+import es.org.elasticsearch.search.suggest.SuggestBuilder;
+import es.org.elasticsearch.search.suggest.SuggestBuilders;
+import es.org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import es.org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
+import es.org.elasticsearch.xcontent.NamedXContentRegistry;
+import es.org.elasticsearch.xcontent.XContentParser;
+import es.org.elasticsearch.xcontent.XContentType;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -41,72 +108,6 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.delete.DeleteRequest;
-import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.action.support.WriteRequest;
-import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.action.update.UpdateResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.client.indices.PutMappingRequest;
-import org.elasticsearch.common.lucene.search.function.CombineFunction;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.unit.Fuzziness;
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.MatchQueryBuilder;
-import org.elasticsearch.index.query.MultiMatchQueryBuilder;
-import org.elasticsearch.index.query.Operator;
-import org.elasticsearch.index.query.QueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.QueryStringQueryBuilder;
-import org.elasticsearch.index.query.RangeQueryBuilder;
-import org.elasticsearch.index.query.ScriptQueryBuilder;
-import org.elasticsearch.index.query.TermQueryBuilder;
-import org.elasticsearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
-import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.elasticsearch.index.reindex.BulkByScrollResponse;
-import org.elasticsearch.index.reindex.DeleteByQueryRequest;
-import org.elasticsearch.index.reindex.UpdateByQueryRequest;
-import org.elasticsearch.script.Script;
-import org.elasticsearch.script.ScriptType;
-import org.elasticsearch.search.SearchModule;
-import org.elasticsearch.search.aggregations.AggregationBuilder;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-import org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
-import org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.search.fetch.subphase.FetchSourceContext;
-import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.elasticsearch.search.sort.SortOrder;
-import org.elasticsearch.search.suggest.Suggest;
-import org.elasticsearch.search.suggest.SuggestBuilder;
-import org.elasticsearch.search.suggest.SuggestBuilders;
-import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
-import org.elasticsearch.search.suggest.completion.context.CategoryQueryContext;
-import org.elasticsearch.xcontent.NamedXContentRegistry;
-import org.elasticsearch.xcontent.XContentParser;
-import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -116,6 +117,21 @@ import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchServicesDescriptionAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchServicesOwnerAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchTotalEntitiesByTierAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -196,18 +212,6 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      ActionListener<AcknowledgedResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(AcknowledgedResponse acknowledgedResponse) {
-              LOG.debug("Created successfully: " + acknowledgedResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases());
       aliases.add(indexMapping.getAlias());
       IndicesAliasesRequest.AliasActions aliasAction =
@@ -216,7 +220,7 @@ public class ElasticSearchClient implements SearchClient {
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
     } catch (Exception e) {
       LOG.error(String.format("Failed to create alias for %s due to", indexMapping.getIndexName()), e);
     }
@@ -297,8 +301,9 @@ public class ElasticSearchClient implements SearchClient {
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
+      case "aggregated_cost_analysis_report_data_index":
         searchSourceBuilder =
-            buildRawCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
+            buildCostAnalysisReportDataSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       default:
         searchSourceBuilder = buildAggregateSearchBuilder(request.getQuery(), request.getFrom(), request.getSize());
@@ -335,7 +340,8 @@ public class ElasticSearchClient implements SearchClient {
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
         || request.getIndex().equalsIgnoreCase("data_products_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")) {
+        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
+        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -367,7 +373,7 @@ public class ElasticSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new org.elasticsearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
+                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
@@ -375,8 +381,8 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
-    org.elasticsearch.action.search.SearchRequest searchRequest =
-        new org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.termQuery("sourceUrl", sourceUrl)));
     searchRequest.source(searchSourceBuilder);
@@ -386,8 +392,8 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
-    org.elasticsearch.action.search.SearchRequest searchRequest =
-        new org.elasticsearch.action.search.SearchRequest(index);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
@@ -416,7 +422,7 @@ public class ElasticSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new org.elasticsearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+                new es.org.elasticsearch.action.search.SearchRequest(index).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
@@ -446,8 +452,8 @@ public class ElasticSearchClient implements SearchClient {
         .fetchSource(
             new FetchSourceContext(
                 request.fetchSource(), request.getIncludeSourceFields().toArray(String[]::new), new String[] {}));
-    org.elasticsearch.action.search.SearchRequest searchRequest =
-        new org.elasticsearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
     return Response.status(OK).entity(suggest.toString()).build();
@@ -807,7 +813,7 @@ public class ElasticSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-  private static SearchSourceBuilder buildRawCostAnalysisReportDataSearch(String query, int from, int size) {
+  private static SearchSourceBuilder buildCostAnalysisReportDataSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder = QueryBuilders.queryStringQuery(query);
     return searchBuilder(queryBuilder, null, from, size);
   }
@@ -1102,7 +1108,7 @@ public class ElasticSearchClient implements SearchClient {
       DataInsightChartResult.DataInsightChartType chartType,
       String indexName)
       throws IOException, ParseException {
-    org.elasticsearch.action.search.SearchRequest searchRequestTotalAssets =
+    es.org.elasticsearch.action.search.SearchRequest searchRequestTotalAssets =
         buildSearchRequest(scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
     SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
     DataInsightChartResult processedDataTotalAssets =
@@ -1133,17 +1139,17 @@ public class ElasticSearchClient implements SearchClient {
       String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException {
-    org.elasticsearch.action.search.SearchRequest searchRequest =
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
   }
 
   private static DataInsightChartResult processDataInsightChartResult(
-      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartName)
+      SearchResponse searchResponse, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws ParseException {
-    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartName);
-    return processor.process();
+    DataInsightAggregatorInterface processor = createDataAggregator(searchResponse, dataInsightChartType);
+    return processor.process(dataInsightChartType);
   }
 
   private static DataInsightAggregatorInterface createDataAggregator(
@@ -1151,36 +1157,42 @@ public class ElasticSearchClient implements SearchClient {
       throws IllegalArgumentException {
     switch (dataInsightChartType) {
       case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        return new EsEntitiesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchEntitiesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        return new EsServicesDescriptionAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchServicesDescriptionAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        return new EsEntitiesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchEntitiesOwnerAggregator(aggregations.getAggregations());
       case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        return new EsServicesOwnerAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchServicesOwnerAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TYPE:
-        return new EsTotalEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchTotalEntitiesAggregator(aggregations.getAggregations());
       case TOTAL_ENTITIES_BY_TIER:
-        return new EsTotalEntitiesByTierAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchTotalEntitiesByTierAggregator(aggregations.getAggregations());
       case DAILY_ACTIVE_USERS:
-        return new EsDailyActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchDailyActiveUsersAggregator(aggregations.getAggregations());
       case PAGE_VIEWS_BY_ENTITIES:
-        return new EsPageViewsByEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchPageViewsByEntitiesAggregator(aggregations.getAggregations());
       case MOST_ACTIVE_USERS:
-        return new EsMostActiveUsersAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchMostActiveUsersAggregator(aggregations.getAggregations());
       case MOST_VIEWED_ENTITIES:
-        return new EsMostViewedEntitiesAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchMostViewedEntitiesAggregator(aggregations.getAggregations());
       case UNUSED_ASSETS:
-        return new EsUnusedAssetsAggregator(aggregations.getHits(), dataInsightChartType);
-      case AGGREGATED_UNUSED_ASSETS:
-        return new EsAggregatedUnusedAssetsAggregator(aggregations.getAggregations(), dataInsightChartType);
+        return new ElasticSearchUnusedAssetsAggregator(aggregations.getHits());
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+        return new ElasticSearchAggregatedUnusedAssetsSizeAggregator(aggregations.getAggregations());
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        return new ElasticSearchAggregatedUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        return new ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator(aggregations.getAggregations());
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+        return new ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator(aggregations.getAggregations());
       default:
         throw new IllegalArgumentException(
             String.format("No processor found for chart Type %s ", dataInsightChartType));
     }
   }
 
-  private static org.elasticsearch.action.search.SearchRequest buildSearchRequest(
+  private static es.org.elasticsearch.action.search.SearchRequest buildSearchRequest(
       Long startTs,
       Long endTs,
       String tier,
@@ -1206,8 +1218,8 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
     }
 
-    org.elasticsearch.action.search.SearchRequest searchRequest =
-        new org.elasticsearch.action.search.SearchRequest(dataReportIndex);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(dataReportIndex);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
@@ -1292,23 +1304,48 @@ public class ElasticSearchClient implements SearchClient {
             termsAggregationBuilder
                 .subAggregation(sumAggregationBuilder)
                 .subAggregation(sumEntityCountAggregationBuilder));
-      case AGGREGATED_UNUSED_ASSETS:
+      case AGGREGATED_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_UNUSED_ASSETS_COUNT:
+        boolean isSize =
+            dataInsightChartName.equals(DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
+        String fieldType = isSize ? "size" : "count";
+        String totalField = isSize ? "totalSize" : "totalCount";
         SumAggregationBuilder threeDaysAgg =
-            AggregationBuilders.sum("threeDays").field("data.unusedDataAssets.threeDays");
+            AggregationBuilders.sum("threeDays").field(String.format("data.unusedDataAssets.%s.threeDays", fieldType));
         SumAggregationBuilder sevenDaysAgg =
-            AggregationBuilders.sum("sevenDays").field("data.unusedDataAssets.sevenDays");
+            AggregationBuilders.sum("sevenDays").field(String.format("data.unusedDataAssets.%s.sevenDays", fieldType));
         SumAggregationBuilder fourteenDaysAgg =
-            AggregationBuilders.sum("fourteenDays").field("data.unusedDataAssets.fourteenDays");
+            AggregationBuilders.sum("fourteenDays")
+                .field(String.format("data.unusedDataAssets.%s.fourteenDays", fieldType));
         SumAggregationBuilder thirtyDaysAgg =
-            AggregationBuilders.sum("thirtyDays").field("data.unusedDataAssets.thirtyDays");
+            AggregationBuilders.sum("thirtyDays")
+                .field(String.format("data.unusedDataAssets.%s.thirtyDays", fieldType));
         SumAggregationBuilder sixtyDaysAgg =
-            AggregationBuilders.sum("sixtyDays").field("data.unusedDataAssets.sixtyDays");
+            AggregationBuilders.sum("sixtyDays").field(String.format("data.unusedDataAssets.%s.sixtyDays", fieldType));
+        SumAggregationBuilder totalUnused =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalField));
+        SumAggregationBuilder totalUsed =
+            AggregationBuilders.sum("totalUsed").field(String.format("data.frequentlyUsedDataAssets.%s", totalField));
         return dateHistogramAggregationBuilder
             .subAggregation(threeDaysAgg)
             .subAggregation(sevenDaysAgg)
             .subAggregation(fourteenDaysAgg)
             .subAggregation(thirtyDaysAgg)
-            .subAggregation(sixtyDaysAgg);
+            .subAggregation(sixtyDaysAgg)
+            .subAggregation(totalUnused)
+            .subAggregation(totalUsed);
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
+      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
+        boolean isSizeReport =
+            dataInsightChartName.equals(
+                DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);
+        String totalFieldString = isSizeReport ? "totalSize" : "totalCount";
+        SumAggregationBuilder totalUnusedAssets =
+            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalFieldString));
+        SumAggregationBuilder totalUsedAssets =
+            AggregationBuilders.sum("totalUsed")
+                .field(String.format("data.frequentlyUsedDataAssets.%s", totalFieldString));
+        return dateHistogramAggregationBuilder.subAggregation(totalUnusedAssets).subAggregation(totalUsedAssets);
       case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
         termsAggregationBuilder =
             AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
@@ -1430,6 +1467,10 @@ public class ElasticSearchClient implements SearchClient {
       try {
         RestClientBuilder restClientBuilder =
             RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
+
+        RestClient restClient =
+            RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme())).build();
+
         if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
           CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
           credentialsProvider.setCredentials(
@@ -1454,7 +1495,8 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        return new RestHighLevelClient(restClientBuilder);
+        //        return new RestHighLevelClient(restClientBuilder);
+        return new RestHighLevelClientBuilder(restClient).setApiCompatibilityMode(true).build();
       } catch (Exception e) {
         LOG.error("Failed to create elastic search client ", e);
         return null;

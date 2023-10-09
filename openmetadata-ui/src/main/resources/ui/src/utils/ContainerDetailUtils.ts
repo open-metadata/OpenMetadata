@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { isEmpty, omit } from 'lodash';
+import { EntityTags } from 'Models';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Column, ContainerDataModel } from '../generated/entity/data/container';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 
 const getUpdatedContainerColumnTags = (
   containerColumn: Column,
-  newContainerColumnTags: TagOption[] = []
+  newContainerColumnTags: EntityTags[] = []
 ) => {
-  const newTagsFqnList = newContainerColumnTags.map((newTag) => newTag.fqn);
+  const newTagsFqnList = newContainerColumnTags.map((newTag) => newTag.tagFQN);
 
   const prevTags = containerColumn?.tags?.filter((tag) =>
     newTagsFqnList.includes(tag.tagFQN)
@@ -29,17 +29,16 @@ const getUpdatedContainerColumnTags = (
   const prevTagsFqnList = prevTags?.map((prevTag) => prevTag.tagFQN);
 
   const newTags: EntityTags[] = newContainerColumnTags.reduce((prev, curr) => {
-    const isExistingTag = prevTagsFqnList?.includes(curr.fqn);
+    const isExistingTag = prevTagsFqnList?.includes(curr.tagFQN);
 
     return isExistingTag
       ? prev
       : [
           ...prev,
           {
+            ...omit(curr, 'isRemovable'),
             labelType: LabelType.Manual,
             state: State.Confirmed,
-            source: curr.source,
-            tagFQN: curr.fqn,
           },
         ];
   }, [] as EntityTags[]);
@@ -50,7 +49,7 @@ const getUpdatedContainerColumnTags = (
 export const updateContainerColumnTags = (
   containerColumns: ContainerDataModel['columns'] = [],
   changedColumnFQN: string,
-  newColumnTags: TagOption[] = []
+  newColumnTags: EntityTags[] = []
 ) => {
   containerColumns.forEach((containerColumn) => {
     if (containerColumn.fullyQualifiedName === changedColumnFQN) {

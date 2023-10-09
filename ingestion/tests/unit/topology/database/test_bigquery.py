@@ -53,7 +53,7 @@ EXPECTED_URL = "https://console.cloud.google.com/bigquery?project=random-project
 
 class BigqueryUnitTest(TestCase):
     @patch(
-        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.test_connection"
+        "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
     )
     @patch(
         "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"

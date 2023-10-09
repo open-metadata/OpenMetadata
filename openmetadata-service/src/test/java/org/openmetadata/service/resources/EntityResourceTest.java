@@ -52,6 +52,22 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import es.org.elasticsearch.action.search.SearchResponse;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
+import es.org.elasticsearch.search.SearchHit;
+import es.org.elasticsearch.search.aggregations.Aggregation;
+import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import es.org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
+import es.org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
+import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
+import es.org.elasticsearch.xcontent.ContextParser;
+import es.org.elasticsearch.xcontent.DeprecationHandler;
+import es.org.elasticsearch.xcontent.NamedXContentRegistry;
+import es.org.elasticsearch.xcontent.ParseField;
+import es.org.elasticsearch.xcontent.XContentParser;
+import es.org.elasticsearch.xcontent.json.JsonXContent;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.Duration;
@@ -80,22 +96,6 @@ import org.apache.commons.text.RandomStringGenerator.Builder;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
 import org.awaitility.Awaitility;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.aggregations.Aggregation;
-import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
-import org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
-import org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
-import org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
-import org.elasticsearch.xcontent.ContextParser;
-import org.elasticsearch.xcontent.DeprecationHandler;
-import org.elasticsearch.xcontent.NamedXContentRegistry;
-import org.elasticsearch.xcontent.ParseField;
-import org.elasticsearch.xcontent.XContentParser;
-import org.elasticsearch.xcontent.json.JsonXContent;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
@@ -2451,7 +2451,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }
@@ -2782,8 +2782,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<CsvHeader> csvHeaders,
       List<String> createRecords,
       List<String> updateRecords,
-      List<String> newRecords)
-      throws IOException {
+      List<String> newRecords) {
     // Create new records
     importCsvAndValidate(entityName, csvHeaders, createRecords, null); // Dry run
 

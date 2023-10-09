@@ -3,11 +3,11 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSuccessFromBulkResponseEs;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import es.org.elasticsearch.action.bulk.BulkRequest;
+import es.org.elasticsearch.action.bulk.BulkResponse;
+import es.org.elasticsearch.client.RequestOptions;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.RequestOptions;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.search.SearchRepository;

@@ -75,12 +75,6 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
         () -> createEntity(createRequest(test).withServiceType(null), ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         "[serviceType must not be null]");
-
-    // Create MlModel with mandatory MlModelUrl field empty
-    assertResponse(
-        () -> createEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "[connection must not be null]");
   }
 
   @Test
@@ -93,6 +87,9 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
         new MlflowConnection().withRegistryUri("http://localhost:8080").withTrackingUri("http://localhost:5000");
     createAndCheckEntity(
         createRequest(test, 3).withConnection(new MlModelConnection().withConfig(mlflowConnection)), authHeaders);
+
+    // We can create the service without connection
+    createAndCheckEntity(createRequest(test).withConnection(null), ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -196,7 +193,7 @@ public class MlModelServiceResourceTest extends ServiceResourceTest<MlModelServi
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (fieldName.equals("connection")) {
       assertTrue(((String) actual).contains("-encrypted-value"));
     } else {

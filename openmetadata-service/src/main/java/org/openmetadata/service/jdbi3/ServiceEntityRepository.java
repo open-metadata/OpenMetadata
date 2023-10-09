@@ -34,12 +34,11 @@ public abstract class ServiceEntityRepository<
   protected ServiceEntityRepository(
       String collectionPath,
       String service,
-      CollectionDAO dao,
       EntityDAO<T> entityDAO,
       Class<S> serviceConnectionClass,
       String updateFields,
       ServiceType serviceType) {
-    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, dao, "", updateFields);
+    super(collectionPath, service, entityDAO.getEntityClass(), entityDAO, "", updateFields);
     this.serviceConnectionClass = serviceConnectionClass;
     this.serviceType = serviceType;
     quoteFqn = true;
@@ -61,16 +60,17 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void prepare(T service, boolean update) {
-    /* Nothing to do */
-    service
-        .getConnection()
-        .setConfig(
-            SecretsManagerFactory.getSecretsManager()
-                .encryptServiceConnectionConfig(
-                    service.getConnection().getConfig(),
-                    service.getServiceType().value(),
-                    service.getName(),
-                    serviceType));
+    if (service.getConnection() != null) {
+      service
+          .getConnection()
+          .setConfig(
+              SecretsManagerFactory.getSecretsManager()
+                  .encryptServiceConnectionConfig(
+                      service.getConnection().getConfig(),
+                      service.getServiceType().value(),
+                      service.getName(),
+                      serviceType));
+    }
   }
 
   @Override
@@ -93,9 +93,11 @@ public abstract class ServiceEntityRepository<
   /** Remove the secrets from the secret manager */
   @Override
   protected void postDelete(T service) {
-    SecretsManagerFactory.getSecretsManager()
-        .deleteSecretsFromServiceConnectionConfig(
-            service.getConnection().getConfig(), service.getServiceType().value(), service.getName(), serviceType);
+    if (service.getConnection() != null) {
+      SecretsManagerFactory.getSecretsManager()
+          .deleteSecretsFromServiceConnectionConfig(
+              service.getConnection().getConfig(), service.getServiceType().value(), service.getName(), serviceType);
+    }
   }
 
   @Override

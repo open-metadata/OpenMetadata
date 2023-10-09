@@ -1,0 +1,10 @@
+{
+  "name": "MyData",
+  "displayName": "MyData KnowledgePanel",
+  "description": "MyData KnowledgePanel shows the list of Assets that is owned by User or User's Team.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.MyData",
+  "data": {
+    "gridSizes": ["small"]
+  }
+}

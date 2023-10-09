@@ -33,6 +33,8 @@ export interface SubmitProps {
   description: string;
   displayName: string;
   mutuallyExclusive?: boolean;
+  iconURL?: string;
+  color?: string;
 }
 
 export interface RenameFormProps {

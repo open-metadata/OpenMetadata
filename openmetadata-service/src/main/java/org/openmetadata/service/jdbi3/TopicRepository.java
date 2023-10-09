@@ -55,17 +55,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TopicRepository extends EntityRepository<Topic> {
+
+  public TopicRepository() {
+    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, Entity.getCollectionDAO().topicDAO(), "", "");
+    supportsSearch = true;
+  }
+
   @Override
   public void setFullyQualifiedName(Topic topic) {
     topic.setFullyQualifiedName(FullyQualifiedName.add(topic.getService().getFullyQualifiedName(), topic.getName()));
     if (topic.getMessageSchema() != null) {
       setFieldFQN(topic.getFullyQualifiedName(), topic.getMessageSchema().getSchemaFields());
     }
-  }
-
-  public TopicRepository(CollectionDAO dao) {
-    super(TopicResource.COLLECTION_PATH, Entity.TOPIC, Topic.class, dao.topicDAO(), dao, "", "");
-    supportsSearch = true;
   }
 
   @Override

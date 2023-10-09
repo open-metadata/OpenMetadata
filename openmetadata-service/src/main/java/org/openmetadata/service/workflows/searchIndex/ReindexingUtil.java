@@ -18,8 +18,8 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.opensearch.action.bulk.BulkItemResponse;
-import org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.action.bulk.BulkItemResponse;
+import os.org.opensearch.action.bulk.BulkResponse;
 
 public class ReindexingUtil {
   public static final String ENTITY_TYPE_KEY = "entityType";
@@ -57,9 +57,9 @@ public class ReindexingUtil {
     return success;
   }
 
-  public static int getSuccessFromBulkResponseEs(org.elasticsearch.action.bulk.BulkResponse response) {
+  public static int getSuccessFromBulkResponseEs(es.org.elasticsearch.action.bulk.BulkResponse response) {
     int success = 0;
-    for (org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
+    for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
       if (!bulkItemResponse.isFailed()) {
         success++;
       }

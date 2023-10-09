@@ -336,14 +336,16 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const updateTeamSubscription = async (data: SubscriptionWebhook) => {
+  const updateTeamSubscription = async (data?: SubscriptionWebhook) => {
     if (currentTeam) {
       const updatedData: Team = {
         ...currentTeam,
         profile: {
-          subscription: {
-            [data.webhook]: { endpoint: data.endpoint },
-          },
+          subscription: isEmpty(data)
+            ? undefined
+            : {
+                [data?.webhook ?? '']: { endpoint: data?.endpoint },
+              },
         },
       };
 

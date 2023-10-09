@@ -58,7 +58,7 @@ public class ChangeEventHandler implements EventHandler {
     try {
       CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
       CollectionDAO.ChangeEventDAO changeEventDAO = collectionDAO.changeEventDAO();
-      FeedRepository feedRepository = new FeedRepository(collectionDAO);
+      FeedRepository feedRepository = new FeedRepository();
       if (responseContext.getEntity() != null && responseContext.getEntity().getClass().equals(Thread.class)) {
         // we should move this to Email Application notifications instead of processing it here.
         notificationHandler.processNotifications(responseContext);

@@ -152,10 +152,10 @@
   "rawCostAnalysisReportData": {
     "indexName": "raw_cost_analysis_report_data_index",
     "indexMappingFile": "/elasticsearch/raw_cost_analysis_report_data_index.json",
-    "alias": "rawCostAnalysisReportData",
+    "alias": "RawCostAnalysisReportData",
     "parentAliases": []
   },
-  "AggregatedCostAnalysisReportData": {
+  "aggregatedCostAnalysisReportData": {
     "indexName": "aggregated_cost_analysis_report_data_index",
     "indexMappingFile": "/elasticsearch/aggregated_cost_analysis_report_data_index.json",
     "alias": "AggregatedCostAnalysisReportData",
