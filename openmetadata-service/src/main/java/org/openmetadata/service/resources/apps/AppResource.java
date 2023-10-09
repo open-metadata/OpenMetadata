@@ -103,7 +103,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 .getMarketPlace()
                 .getByName(
                     null, createApp.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-        App app = getApplication(definition, createApp, "admin");
+        App app = getApplication(definition, createApp, "admin").withFullyQualifiedName(createApp.getName());
 
         // Initialize
         repository.initializeEntity(app);
