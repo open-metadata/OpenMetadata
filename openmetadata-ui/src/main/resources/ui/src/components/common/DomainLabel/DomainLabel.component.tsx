@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import { ReactComponent as DomainIcon } from 'assets/svg/ic-domain.svg';
 import { AxiosError } from 'axios';
-import { AssetsUnion } from 'components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
 import { compare } from 'fast-json-patch';
-import { EntityReference } from 'generated/entity/type';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { AssetsUnion } from '../../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
-} from 'utils/Assets/AssetsUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getDomainPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/Assets/AssetsUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import { DomainLabelProps } from './DomainLabel.interface';
 

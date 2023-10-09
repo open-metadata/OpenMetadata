@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MOCK_DOMAIN } from 'mocks/Domains.mock';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_DOMAIN } from '../../../../mocks/Domains.mock';
 import DocumentationTab from './DocumentationTab.component';
 
 // Mock the onUpdate function
@@ -25,7 +25,7 @@ const defaultProps = {
   isVersionsView: false,
 };
 
-jest.mock('components/common/description/DescriptionV1', () => {
+jest.mock('../../../common/description/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
 

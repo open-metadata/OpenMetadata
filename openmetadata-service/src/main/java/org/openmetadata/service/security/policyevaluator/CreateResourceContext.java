@@ -21,7 +21,7 @@ import org.openmetadata.service.util.EntityUtil;
 public class CreateResourceContext<T extends EntityInterface> implements ResourceContextInterface {
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
-  private T entity; // Entity being created
+  private final T entity; // Entity being created
   private EntityInterface parentEntity; // Entity being created
 
   public CreateResourceContext(String resource, @NotNull T entity) {

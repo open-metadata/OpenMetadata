@@ -30,7 +30,6 @@ import org.openmetadata.service.resources.domains.DataProductResource.DataProduc
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
-import org.openmetadata.service.util.TestUtils.UpdateType;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
   public DataProductResourceTest() {
@@ -204,7 +203,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
   }
 
   @Override
-  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+  public void assertFieldChange(String fieldName, Object expected, Object actual) {
     if (expected == actual) {
       return;
     }

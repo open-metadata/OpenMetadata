@@ -13,12 +13,12 @@
 
 import ReactTutorial, { TourSteps } from '@deuex-solutions/react-tour';
 import { Button } from 'antd';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { PRIMERY_COLOR } from 'constants/constants';
-import { CurrentTourPageType } from 'enums/tour.enum';
 import { observer } from 'mobx-react';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useTourProvider } from '../../components/TourProvider/TourProvider';
+import { PRIMERY_COLOR } from '../../constants/constants';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourEndModal from '../Modals/TourEndModal/TourEndModal';
 import './tour.style.less';
 

@@ -12,16 +12,19 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import Chip from 'components/common/Chip/Chip.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import TeamsSelectable from 'components/TeamsSelectable/TeamsSelectable';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from 'constants/constants';
-import { useAuth } from 'hooks/authHooks';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getNonDeletedTeams } from 'utils/CommonUtils';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../assets/svg/teams-grey.svg';
+import Chip from '../../../../components/common/Chip/Chip.component';
+import InlineEdit from '../../../../components/InlineEdit/InlineEdit.component';
+import TeamsSelectable from '../../../../components/TeamsSelectable/TeamsSelectable';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+} from '../../../../constants/constants';
+import { useAuth } from '../../../../hooks/authHooks';
+import { getNonDeletedTeams } from '../../../../utils/CommonUtils';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
 const UserProfileTeams = ({

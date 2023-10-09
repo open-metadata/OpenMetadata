@@ -15,13 +15,13 @@ import os
 
 import yaml
 
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.utils.logger import set_loggers_level
 from metadata.workflow.data_insight import DataInsightWorkflow
+from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow

@@ -36,10 +36,11 @@ import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.Application;
-import org.openmetadata.schema.entity.app.CreateApplication;
+import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -56,7 +57,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
@@ -69,7 +69,7 @@ import org.quartz.SchedulerException;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "apps")
-public class AppResource extends EntityResource<Application, AppRepository> {
+public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClient pipelineServiceClient;
@@ -85,7 +85,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
 
     // Create an On Demand DAO
     CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
-    searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
+    searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
     AppScheduler.initialize(dao, searchRepository);
   }
 
@@ -93,7 +93,11 @@ public class AppResource extends EntityResource<Application, AppRepository> {
     super(Entity.APPLICATION, authorizer);
   }
 
-  public static class AppList extends ResultList<Application> {
+  public static class AppList extends ResultList<App> {
+    /* Required for serde */
+  }
+
+  public static class AppRunList extends ResultList<AppRunRecord> {
     /* Required for serde */
   }
 
@@ -111,7 +115,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             description = "List of Installed Applications",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppList.class)))
       })
-  public ResultList<Application> list(
+  public ResultList<App> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -142,6 +146,41 @@ public class AppResource extends EntityResource<Application, AppRepository> {
   }
 
   @GET
+  @Path("/name/{name}/runs")
+  @Operation(
+      operationId = "listAppRunRecords",
+      summary = "List App Run Records",
+      description =
+          "Get a list of applications Run Record."
+              + " Use cursor-based pagination to limit the number "
+              + "entries in the list using `offset` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunList.class)))
+      })
+  public ResultList<AppRunRecord> listAppRuns(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Limit records. (1 to 1000000, default = " + "10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000000)
+          int limitParam,
+      @Parameter(description = "Offset records. (0 to 1000000, default = " + "0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          @Max(1000000)
+          int offset) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
+    return repository.listAppRuns(installation.getId(), limitParam, offset);
+  }
+
+  @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllInstalledApplications",
@@ -169,10 +208,10 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
       })
-  public Application get(
+  public App get(
       @Context UriInfo uriInfo,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Context SecurityContext securityContext,
@@ -200,10 +239,10 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "404", description = "App for instance {name} is not found")
       })
-  public Application getByName(
+  public App getByName(
       @Context UriInfo uriInfo,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Context SecurityContext securityContext,
@@ -231,12 +270,12 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(
             responseCode = "404",
             description = "App for instance {id} and version {version} is " + "not found")
       })
-  public Application getVersion(
+  public App getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
@@ -258,7 +297,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The Application",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -266,12 +305,12 @@ public class AppResource extends EntityResource<Application, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("appName")
           String appName,
-      @Valid CreateApplication create) {
+      @Valid CreateApp create) {
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
             .getByName(uriInfo, appName, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-    Application app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(
           app,
@@ -314,18 +353,18 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "The updated Application Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("appId") UUID appId,
-      @Valid CreateApplication create) {
+      @Valid CreateApp create) {
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
             .get(uriInfo, appId, new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-    Application app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     try {
       AppScheduler.getInstance().deleteScheduledApplication(app);
       if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
@@ -392,7 +431,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
         @ApiResponse(
             responseCode = "200",
             description = "Successfully restored the App. ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
       })
   public Response restoreApp(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid RestoreEntity restore) {
@@ -416,7 +455,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
       @Context UriInfo uriInfo,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
       @Context SecurityContext securityContext) {
-    Application app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(
           app,
@@ -446,7 +485,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
       @Parameter(description = "App Type", schema = @Schema(type = "UUID")) @PathParam("appType") String appType,
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
-    Application app = repository.getByName(uriInfo, name, fields);
+    App app = repository.getByName(uriInfo, name, fields);
     AppType applicationType = AppType.fromValue(appType);
     if (applicationType.equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
@@ -461,11 +500,11 @@ public class AppResource extends EntityResource<Application, AppRepository> {
     }
   }
 
-  private Application getApplication(
-      AppMarketPlaceDefinition marketPlaceDefinition, CreateApplication createAppRequest, String updatedBy) {
+  private App getApplication(
+      AppMarketPlaceDefinition marketPlaceDefinition, CreateApp createAppRequest, String updatedBy) {
     EntityReference owner = repository.validateOwner(createAppRequest.getOwner());
-    Application app =
-        new Application()
+    App app =
+        new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
             .withDisplayName(marketPlaceDefinition.getDisplayName())
@@ -483,7 +522,9 @@ public class AppResource extends EntityResource<Application, AppRepository> {
             .withAppConfiguration(createAppRequest.getAppConfiguration())
             .withRuntime(marketPlaceDefinition.getRuntime())
             .withPermission(marketPlaceDefinition.getPermission())
-            .withAppSchedule(createAppRequest.getAppSchedule());
+            .withAppSchedule(createAppRequest.getAppSchedule())
+            .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
+            .withFeatures(marketPlaceDefinition.getFeatures());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
@@ -491,7 +532,7 @@ public class AppResource extends EntityResource<Application, AppRepository> {
     return app;
   }
 
-  private void validateAndAddBot(Application app, String botName) {
+  private void validateAndAddBot(App app, String botName) {
     if (!CommonUtil.nullOrEmpty(botName)) {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {

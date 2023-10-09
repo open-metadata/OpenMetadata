@@ -47,4 +47,5 @@ export enum IngestionType {
   POSTGRES = 'postgres',
   TRINO = 'trino',
   VERTICA = 'vertica',
+  GREENPLUM = 'greenplum',
 }

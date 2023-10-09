@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DomainType } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
+import { DomainType } from '../generated/api/domains/createDomain';
+import { Domain } from '../generated/entity/domains/domain';
 
 export const MOCK_DOMAIN = {
   id: '5f4326d3-9dfc-4e43-8f0c-d88d4a293ede',

@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
-import { EDITOR_OPTIONS } from 'constants/BlockEditor.constants';
 import { isEmpty, isNil } from 'lodash';
 import React, { FC, useEffect, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import {
   getBackendFormat,
   getFrontEndFormat,
   HTMLToMarkdown,
   MarkdownToHTMLConverter,
-} from 'utils/FeedUtils';
+} from '../../utils/FeedUtils';
 import './block-editor.less';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import ImageModal, { ImageData } from './ImageModal/ImageModal';

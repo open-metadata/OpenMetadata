@@ -23,6 +23,10 @@
       "description": "Description of the Application.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
+    "features": {
+      "description": "Features of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
@@ -87,22 +91,27 @@
     },
     "appType": {
       "description": "This schema defines the type of application.",
-      "$ref": "../application.json#/definitions/appType"
+      "$ref": "../app.json#/definitions/appType"
     },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",
-      "$ref": "../application.json#/definitions/scheduleType"
+      "$ref": "../app.json#/definitions/scheduleType"
     },
     "permission": {
       "description": "Permission used by Native Applications.",
-      "$ref": "../application.json#/definitions/permissions"
+      "$ref": "../app.json#/definitions/permissions"
     },
     "runtime": {
       "description": "If app type is live, user can provide additional runtime context.",
-      "$ref": "../application.json#/definitions/executionContext"
+      "$ref": "../app.json#/definitions/executionContext"
     },
     "appConfiguration": {
       "description": "Application Configuration object."
+    },
+    "appLogoUrl": {
+      "description": "Application Logo Url.",
+      "type": "string",
+      "format": "uri"
     }
   },
   "additionalProperties": false,

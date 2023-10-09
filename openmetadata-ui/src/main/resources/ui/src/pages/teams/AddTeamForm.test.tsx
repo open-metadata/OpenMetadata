@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { TeamType } from 'generated/entity/teams/team';
 import React from 'react';
+import { TeamType } from '../../generated/entity/teams/team';
 import AddTeamForm from './AddTeamForm';
 
 const mockCancel = jest.fn();

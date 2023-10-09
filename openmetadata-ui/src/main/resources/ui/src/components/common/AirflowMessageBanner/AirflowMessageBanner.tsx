@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Space, SpaceProps, Typography } from 'antd';
-import { ReactComponent as IconRetry } from 'assets/svg/ic-retry-icon.svg';
 import classNames from 'classnames';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import { isEmpty } from 'lodash';
 import React, { FC } from 'react';
+import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import './airflow-message-banner.less';
 
 const AirflowMessageBanner: FC<SpaceProps> = ({ className }) => {

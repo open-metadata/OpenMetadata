@@ -12,8 +12,8 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import { ReactComponent as AnnouncementIcon } from 'assets/svg/announcements-v1.svg';
 import React, { FC, useMemo } from 'react';
+import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import './AnnouncementCard.less';
 

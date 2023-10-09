@@ -14,30 +14,41 @@
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ClassificationDetails from 'components/ClassificationDetails/ClassificationDetails';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import LeftPanelCard from 'components/common/LeftPanelCard/LeftPanelCard';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import EntityDeleteModal from 'components/Modals/EntityDeleteModal/EntityDeleteModal';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import TagsLeftPanelSkeleton from 'components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
-import { LOADING_STATE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import {
-  CreateTag,
-  ProviderType,
-} from 'generated/api/classification/createTag';
-import { isUndefined } from 'lodash';
+import { isUndefined, omit } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
+import ClassificationDetails from '../../components/ClassificationDetails/ClassificationDetails';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
+import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import TagsLeftPanelSkeleton from '../../components/Skeleton/Tags/TagsLeftPanelSkeleton.component';
+import { HTTP_STATUS_CODE } from '../../constants/auth.constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
+  TIER_CATEGORY,
+} from '../../constants/constants';
+import { LOADING_STATE } from '../../enums/common.enum';
+import { CreateClassification } from '../../generated/api/classification/createClassification';
+import {
+  CreateTag,
+  ProviderType,
+} from '../../generated/api/classification/createTag';
+import { Classification } from '../../generated/entity/classification/classification';
+import { Tag } from '../../generated/entity/classification/tag';
+import { Operation } from '../../generated/entity/policies/accessControl/rule';
+import { Paging } from '../../generated/type/paging';
 import {
   createClassification,
   createTag,
@@ -47,20 +58,9 @@ import {
   getTags,
   patchClassification,
   patchTag,
-} from 'rest/tagAPI';
-import { getEntityName } from 'utils/EntityUtils';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
-  TIER_CATEGORY,
-} from '../../constants/constants';
-import { CreateClassification } from '../../generated/api/classification/createClassification';
-import { Classification } from '../../generated/entity/classification/classification';
-import { Tag } from '../../generated/entity/classification/tag';
-import { Operation } from '../../generated/entity/policies/accessControl/rule';
-import { Paging } from '../../generated/type/paging';
+} from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -591,10 +591,15 @@ const TagsPage = () => {
   );
 
   const handleAddTagSubmit = (data: SubmitProps) => {
+    const updatedData = omit(data, 'color', 'iconURL');
+    const style = {
+      color: data.color,
+      iconURL: data.iconURL,
+    };
     if (editTag) {
-      handleUpdatePrimaryTag({ ...editTag, ...data });
+      handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
     } else {
-      handleCreatePrimaryTag(data);
+      handleCreatePrimaryTag({ ...updatedData, style });
     }
   };
 

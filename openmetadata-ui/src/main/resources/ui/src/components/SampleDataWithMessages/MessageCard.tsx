@@ -12,9 +12,9 @@
  */
 
 import { Collapse, Tag, Typography } from 'antd';
-import SchemaEditor from 'components/schema-editor/SchemaEditor';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import './MessageCard.less';
 
 const { Panel } = Collapse;

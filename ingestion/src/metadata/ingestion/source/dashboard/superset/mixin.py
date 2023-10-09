@@ -34,6 +34,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.superset.models import (
     DashboardResult,
@@ -61,19 +62,19 @@ class SupersetSourceMixin(DashboardServiceSource):
     service_type = DashboardServiceType.Superset.value
     service_connection: SupersetConnection
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
-        super().__init__(config, metadata_config)
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
         self.all_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict: dict, metadata: OpenMetadata):
         config = WorkflowSource.parse_obj(config_dict)
         connection: SupersetConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, SupersetConnection):
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_dashboard_name(
         self, dashboard: Union[FetchDashboard, DashboardResult]
@@ -91,9 +92,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         return dashboard
 
-    def _get_user_by_email(
-        self, email: Union[FetchDashboard, DashboardResult]
-    ) -> EntityReference:
+    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
         if email:
             user = self.metadata.get_user_by_email(email)
             if user:
@@ -104,11 +103,12 @@ class SupersetSourceMixin(DashboardServiceSource):
     def get_owner_details(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> EntityReference:
-        for owner in dashboard_details.owners:
-            if owner.email:
-                user = self._get_user_by_email(owner.email)
-                if user:
-                    return user
+        if hasattr(dashboard_details, "owner"):
+            for owner in dashboard_details.owners or []:
+                if owner.email:
+                    user = self._get_user_by_email(owner.email)
+                    if user:
+                        return user
         if dashboard_details.email:
             user = self._get_user_by_email(dashboard_details.email)
             if user:
@@ -203,7 +203,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         return None
 
     def get_column_info(
-        self, data_source: Union[DataSourceResult, FetchColumn]
+        self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
         """
         Args:

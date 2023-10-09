@@ -3,11 +3,12 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.AppRuntime;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -20,11 +21,11 @@ import org.quartz.JobExecutionException;
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
-  private Application app;
+  private App app;
   protected SearchRepository searchRepository;
 
   @Override
-  public void init(Application app, CollectionDAO dao, SearchRepository searchRepository) {
+  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
     this.collectionDAO = dao;
     this.searchRepository = searchRepository;
     this.app = app;
@@ -39,7 +40,7 @@ public class AbstractNativeApplication implements NativeApplication {
       // Trigger the application
       AppScheduler.getInstance().triggerOnDemandApplication(app);
     } else {
-      throw new IllegalArgumentException("Live Application cannot scheduled.");
+      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
     }
   }
 
@@ -52,14 +53,15 @@ public class AbstractNativeApplication implements NativeApplication {
       // Schedule New Application Run
       AppScheduler.getInstance().addApplicationSchedule(app);
     } else {
-      throw new IllegalArgumentException("Live Application cannot scheduled.");
+      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
     }
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {
     // Server apps are native
     if (!app.getAppType().equals(AppType.Internal)) {
-      throw new IllegalArgumentException("Application Type is not Native.");
+      throw new IllegalArgumentException(
+          "Application cannot be executed internally in Server. Please check if the App supports internal Server Execution.");
     }
 
     // Check OnDemand Execution is supported
@@ -72,7 +74,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
     // This is the part of the code that is executed by the scheduler
-    Application jobApp = (Application) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
+    App jobApp = (App) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_INFO_KEY);
     CollectionDAO dao = (CollectionDAO) jobExecutionContext.getJobDetail().getJobDataMap().get(COLLECTION_DAO_KEY);
     SearchRepository searchRepositoryForJob =
         (SearchRepository) jobExecutionContext.getJobDetail().getJobDataMap().get(SEARCH_CLIENT_KEY);
@@ -83,7 +85,7 @@ public class AbstractNativeApplication implements NativeApplication {
     this.startApp(jobExecutionContext);
   }
 
-  public static AppRuntime getAppRuntime(Application app) {
+  public static AppRuntime getAppRuntime(App app) {
     return JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
   }
 }

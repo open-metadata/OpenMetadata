@@ -19,7 +19,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class SearchEntityIndex implements ElasticSearchIndex {
+public class SearchEntityIndex implements SearchIndex {
 
   final org.openmetadata.schema.entity.data.SearchIndex searchIndex;
 

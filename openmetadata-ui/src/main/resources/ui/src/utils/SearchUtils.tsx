@@ -12,7 +12,6 @@
  */
 
 import { Button } from 'antd';
-import { FqnPart } from 'enums/entity.enum';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -25,6 +24,7 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../constants/char.constants';
+import { FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { serviceTypeLogo } from './ServiceUtils';
@@ -52,10 +52,12 @@ export const getSearchAPIQueryParams = (
   trackTotalHits = false
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
+
+  const encodedQueryString = queryString ? encodeURIComponent(queryString) : '';
   const query =
-    queryString && queryString === WILD_CARD_CHAR
-      ? queryString
-      : `*${queryString}*`;
+    encodedQueryString === WILD_CARD_CHAR
+      ? encodedQueryString
+      : `*${encodedQueryString}*`;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),

@@ -186,7 +186,12 @@ CREATE TABLE IF NOT EXISTS doc_store (
     INDEX doc_store_name_index(name)
 );
 
-CREATE TABLE IF NOT EXISTS installed_application (
+-- Remove Mark All Deleted Field
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceConfig.config.markAllDeletedTables')
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
+
+CREATE TABLE IF NOT EXISTS installed_apps (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
@@ -198,7 +203,7 @@ CREATE TABLE IF NOT EXISTS installed_application (
     UNIQUE (nameHash)
     );
    
-CREATE TABLE IF NOT EXISTS app_marketplace (
+CREATE TABLE IF NOT EXISTS apps_marketplace (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
@@ -217,5 +222,3 @@ CREATE TABLE IF NOT EXISTS apps_extension_time_series (
     json JSON NOT NULL,
 	timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
 );  
-
-

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { Domain } from 'generated/entity/domains/domain';
+import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface DomainContextType {
   domains: Domain[];

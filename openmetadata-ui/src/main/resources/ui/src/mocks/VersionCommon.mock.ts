@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
+import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
 export const mockOwner = {
   id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',

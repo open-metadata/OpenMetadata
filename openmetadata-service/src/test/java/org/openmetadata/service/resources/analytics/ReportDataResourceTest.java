@@ -3,9 +3,9 @@ package org.openmetadata.service.resources.analytics;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
+import static org.openmetadata.schema.type.DataReportIndex.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
-import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.ENTITY_REPORT_DATA_INDEX;
-import static org.openmetadata.service.search.SearchIndexDefinition.ElasticSearchIndexType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -13,6 +13,9 @@ import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -22,9 +25,6 @@ import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -45,7 +45,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  void report_data_admin_200() throws HttpResponseException, ParseException, IOException {
+  void report_data_admin_200() throws ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -66,7 +66,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
-      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.indexName, 1);
+      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 1);
     }
 
     assertNotEquals(0, reportDataList.getData().size());
@@ -120,7 +120,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws HttpResponseException, ParseException, IOException {
+  void delete_endpoint_200() throws ParseException, IOException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data
@@ -168,8 +168,8 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     assertNotEquals(0, webAnalyticsReportDataList.getData().size());
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       List<String> indices = new ArrayList<>();
-      indices.add(ENTITY_REPORT_DATA_INDEX.indexName);
-      indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.indexName);
+      indices.add(ENTITY_REPORT_DATA_INDEX.value());
+      indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.value());
       for (String index : indices) {
         String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
         assertDocumentCountEquals(jsonQuery, index, 1);
@@ -184,7 +184,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     if (RUN_ELASTIC_SEARCH_TESTCASES) {
       // Check document has been deleted from elasticsearch
       String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
-      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.indexName, 0);
+      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
     }
     webAnalyticsReportDataList =
         getReportData(

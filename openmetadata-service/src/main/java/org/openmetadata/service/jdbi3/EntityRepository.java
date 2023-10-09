@@ -42,12 +42,6 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.resources.EntityResource.searchRepository;
-import static org.openmetadata.service.search.SearchIndexDefinition.ENTITY_TO_CHILDREN_MAPPING;
-import static org.openmetadata.service.search.SearchRepository.ADD;
-import static org.openmetadata.service.search.SearchRepository.DEFAULT_UPDATE_SCRIPT;
-import static org.openmetadata.service.search.SearchRepository.DELETE;
-import static org.openmetadata.service.search.SearchRepository.UPDATE;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -101,7 +95,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
@@ -137,6 +130,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -199,6 +193,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   @Getter protected final CollectionDAO daoCollection;
+  @Getter protected final SearchRepository searchRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
@@ -212,7 +207,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected final boolean supportsDataProducts;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
-  protected boolean quoteFqn = false; // Entity fqns not hierarchical such user, teams, services need to be quoted
+  protected boolean quoteFqn = false; // Entity FQNS not hierarchical such user, teams, services need to be quoted
 
   /** Fields that can be updated during PATCH operation */
   @Getter private final Fields patchFields;
@@ -227,14 +222,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String entityType,
       Class<T> entityClass,
       EntityDAO<T> entityDAO,
-      CollectionDAO collectionDAO,
       String patchFields,
       String putFields) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
-    this.daoCollection = collectionDAO;
+    this.daoCollection = Entity.getCollectionDAO();
+    this.searchRepository = Entity.getSearchRepository();
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
     this.putFields = getFields(putFields);
@@ -576,7 +571,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public ResultList<T> listAfterWithSkipFailure(
-      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) throws IOException {
+      UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     List<String> errors = new ArrayList<>();
     List<T> entities = new ArrayList<>();
     int beforeOffset = Integer.parseInt(RestUtil.decodeCursor(after));
@@ -736,38 +731,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @SuppressWarnings("unused")
   protected void postUpdate(T original, T updated) {
     if (supportsSearch) {
-      searchRepository.updateEntity(updated, DEFAULT_UPDATE_SCRIPT, "");
-      if (ENTITY_TO_CHILDREN_MAPPING.get(updated.getEntityReference().getType()) != null
-          && (updated.getChangeDescription() != null)) {
-        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsAdded()) {
-          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-            searchRepository.handleOwnerUpdates(original, updated, ADD);
-          }
-          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-            searchRepository.handleDomainUpdates(original, updated, ADD);
-          }
-        }
-        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsUpdated()) {
-          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-            searchRepository.handleOwnerUpdates(original, updated, UPDATE);
-          }
-          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-            searchRepository.handleDomainUpdates(original, updated, UPDATE);
-          }
-          if (fieldChange.getName().equalsIgnoreCase("disabled")
-              && updated.getEntityReference().getType().equals(Entity.CLASSIFICATION)) {
-            searchRepository.handleClassificationUpdate((Classification) updated);
-          }
-        }
-        for (FieldChange fieldChange : updated.getChangeDescription().getFieldsDeleted()) {
-          if (fieldChange.getName().equalsIgnoreCase(FIELD_OWNER)) {
-            searchRepository.handleOwnerUpdates(original, updated, DELETE);
-          }
-          if (fieldChange.getName().equalsIgnoreCase(FIELD_DOMAIN)) {
-            searchRepository.handleDomainUpdates(original, updated, DELETE);
-          }
-        }
-      }
+      searchRepository.updateEntity(updated);
     }
   }
 
@@ -912,14 +876,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (supportsSearch) {
       if (changeType.equals(RestUtil.ENTITY_SOFT_DELETED)) {
         searchRepository.softDeleteOrRestoreEntity(entity, true);
-        if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
-          searchRepository.handleSoftDeletedAndRestoredEntity(entity, true);
-        }
       } else {
-        searchRepository.deleteEntity(entity, "", "", "");
-        if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
-          searchRepository.handleEntityDeleted(entity);
-        }
+        searchRepository.deleteEntity(entity);
       }
     }
   }
@@ -927,9 +885,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void restoreFromSearch(T entity) {
     if (supportsSearch) {
       searchRepository.softDeleteOrRestoreEntity(entity, false);
-      if (ENTITY_TO_CHILDREN_MAPPING.get(entity.getEntityReference().getType()) != null) {
-        searchRepository.handleSoftDeletedAndRestoredEntity(entity, false);
-      }
     }
   }
 
@@ -952,7 +907,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       cleanup(updated);
       changeType = RestUtil.ENTITY_DELETED;
     }
-    if (supportsSearch) {}
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
     return new DeleteResponse<>(updated, changeType);
   }
@@ -1012,7 +966,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Delete all the tag labels
     daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
 
-    // when the glossary and tag is deleted .. delete its usage
+    // when the glossary and tag is deleted, delete its usage
     daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -2433,7 +2387,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
     @Override
-    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) throws IOException {
+    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
@@ -2443,7 +2397,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
     @Override
-    public EntityInterface load(@NotNull Pair<String, UUID> idPair) throws IOException {
+    public EntityInterface load(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);

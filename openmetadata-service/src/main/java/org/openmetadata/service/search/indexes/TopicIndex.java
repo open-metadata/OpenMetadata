@@ -28,7 +28,7 @@ import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
-public class TopicIndex implements ElasticSearchIndex {
+public class TopicIndex implements SearchIndex {
   final List<String> excludeTopicFields = List.of("sampleData", "changeDescription", "messageSchema");
   final Topic topic;
 

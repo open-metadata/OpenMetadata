@@ -13,20 +13,20 @@
 
 import { Col, Row, Tabs, TabsProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { SummaryPanel } from 'components/DataQuality/SummaryPannel/SummaryPanel.component';
-import { TestCases } from 'components/DataQuality/TestCases/TestCases.component';
-import { TestSuites } from 'components/DataQuality/TestSuites/TestSuites.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import { INITIAL_TEST_SUMMARY } from 'constants/TestSuite.constant';
-import { TestSummary } from 'generated/tests/testCase';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getTestCaseExecutionSummary } from 'rest/testAPI';
-import { getDataQualityPagePath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { SummaryPanel } from '../../components/DataQuality/SummaryPannel/SummaryPanel.component';
+import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
+import { TestSuites } from '../../components/DataQuality/TestSuites/TestSuites.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
+import { TestSummary } from '../../generated/tests/testCase';
+import { getTestCaseExecutionSummary } from '../../rest/testAPI';
+import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
 const DataQualityPage = () => {

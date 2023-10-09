@@ -32,9 +32,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.type.EntityHistory;
@@ -50,7 +50,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
@@ -76,7 +75,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
 
       // Create an On Demand DAO
       CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
-      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), dao);
+      searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
       AppScheduler.initialize(dao, searchRepository);
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
@@ -234,7 +233,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "App",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class))),
         @ApiResponse(
             responseCode = "404",
             description = "App for instance {id} and version {version} is " + "not found")
@@ -307,7 +306,7 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
         @ApiResponse(
             responseCode = "200",
             description = "The updated Application Objective ",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Application.class)))
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = App.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
@@ -372,7 +371,9 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
             .withScheduleType(create.getScheduleType())
             .withRuntime(create.getRuntime())
             .withAppConfiguration(create.getAppConfiguration())
-            .withPermission(create.getPermission());
+            .withPermission(create.getPermission())
+            .withAppLogoUrl(create.getAppLogoUrl())
+            .withFeatures(create.getFeatures());
 
     // Validate App
     validateApplication(app);

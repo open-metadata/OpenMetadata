@@ -7,13 +7,12 @@ import org.openmetadata.service.util.EntityUtil;
 
 public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDefinition> {
 
-  public AppMarketPlaceRepository(CollectionDAO dao) {
+  public AppMarketPlaceRepository() {
     super(
         AppMarketPlaceResource.COLLECTION_PATH,
         Entity.APP_MARKET_PLACE_DEF,
         AppMarketPlaceDefinition.class,
-        dao.applicationMarketPlaceDAO(),
-        dao,
+        Entity.getCollectionDAO().applicationMarketPlaceDAO(),
         "",
         "");
     supportsSearch = false;

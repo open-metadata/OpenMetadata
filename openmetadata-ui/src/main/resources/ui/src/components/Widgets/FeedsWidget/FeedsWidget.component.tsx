@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 import { Button, Tabs, Typography } from 'antd';
-import AppState from 'AppState';
-import ActivityFeedListV1 from 'components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import FeedsFilterPopover from 'components/common/FeedsFilterPopover/FeedsFilterPopover.component';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import { mockFeedData } from 'constants/mockTourData.constants';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { FeedFilter } from 'enums/mydata.enum';
-import { ThreadTaskStatus, ThreadType } from 'generated/entity/feed/thread';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getFeedsWithFilter } from 'rest/feedsAPI';
-import { getCountBadge, getEntityDetailLink } from 'utils/CommonUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+import AppState from '../../../AppState';
+import ActivityFeedListV1 from '../../../components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
+import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { useTourProvider } from '../../../components/TourProvider/TourProvider';
+import { mockFeedData } from '../../../constants/mockTourData.constants';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { FeedFilter } from '../../../enums/mydata.enum';
+import {
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { getFeedsWithFilter } from '../../../rest/feedsAPI';
+import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
 
 const FeedsWidget = () => {

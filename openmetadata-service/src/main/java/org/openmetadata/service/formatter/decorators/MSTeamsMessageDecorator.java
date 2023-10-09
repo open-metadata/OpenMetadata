@@ -16,7 +16,6 @@ package org.openmetadata.service.formatter.decorators;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +62,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public TeamsMessage buildMessage(ChangeEvent event) throws IOException {
+  public TeamsMessage buildMessage(ChangeEvent event) {
     TeamsMessage teamsMessage = new TeamsMessage();
     teamsMessage.setSummary("Change Event From OMD");
     TeamsMessage.Section teamsSections = new TeamsMessage.Section();

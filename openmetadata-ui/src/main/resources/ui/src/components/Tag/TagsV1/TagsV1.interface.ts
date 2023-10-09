@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TAG_START_WITH } from 'constants/Tag.constants';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagLabel } from '../../../generated/type/tagLabel';
 
 export type TagsV1Props = {
@@ -19,4 +19,5 @@ export type TagsV1Props = {
   startWith: TAG_START_WITH;
   showOnlyName?: boolean;
   className?: string;
+  isVersionPage?: boolean;
 };

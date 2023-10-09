@@ -31,8 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -318,7 +318,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public PipelineServiceClientResponse runApplicationFlow(Application application) {
+  public PipelineServiceClientResponse runApplicationFlow(App application) {
     return sendPost(APP_TRIGGER, application);
   }
 

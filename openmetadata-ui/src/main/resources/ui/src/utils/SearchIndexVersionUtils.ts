@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-import { EntityField } from 'constants/Feeds.constants';
+import { cloneDeep, isEqual, uniqBy } from 'lodash';
+import { EntityField } from '../constants/Feeds.constants';
 import {
   ChangeDescription,
   SearchIndex,
-} from 'generated/entity/data/searchIndex';
-import { TagLabel } from 'generated/type/tagLabel';
-import { EntityDiffProps } from 'interface/EntityVersion.interface';
-import { cloneDeep, isEqual, uniqBy } from 'lodash';
-import { VersionData } from 'pages/EntityVersionPage/EntityVersionPage.component';
+} from '../generated/entity/data/searchIndex';
+import { TagLabel } from '../generated/type/tagLabel';
+import { EntityDiffProps } from '../interface/EntityVersion.interface';
+import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,

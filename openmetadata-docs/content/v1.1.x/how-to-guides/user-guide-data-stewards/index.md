@@ -5,9 +5,11 @@ slug: /how-to-guides/user-guide-for-data-stewards
 
 # User Guide for Data Stewards
 
-This user guide will provide more information on the basics of OpenMetadata, the details of the landing page and the widgets for Activity Feeds, Data Insights, Announcements, and more.
+This user guide will provide more information on the basics of OpenMetadata, the details of the landing page and the widgets for Activity Feeds, Data Insights, Announcements, and more. You’ll also get more information about the data assets, and the details associated with it, like tags, tasks, conversations, announcements, versions, and more.
 
-You’ll also get more information about the data assets, and the details associated with it, like announcements, etc.
+Get quick access to all the data in your organization and the activities around it.
+
+{% note noteType="Tip" %} **Tip:** Navigate to the My Data page from anywhere by clicking on OpenMetadata logo. {% /note %}
 
 {%inlineCalloutContainer%}
  {%inlineCallout

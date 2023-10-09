@@ -13,10 +13,10 @@
 
 import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
-import Loader from 'components/Loader/Loader';
-import { ThreadType } from 'generated/api/feed/createThread';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../../components/Loader/Loader';
+import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Thread } from '../../../generated/entity/feed/thread';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';

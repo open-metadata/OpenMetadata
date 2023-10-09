@@ -23,15 +23,15 @@ import {
   LinkMdNode,
   MdNode,
 } from '@toast-ui/editor';
-import { ReactComponent as CopyIcon } from 'assets/svg/icon-copy.svg';
-import {
-  markdownTextAndIdRegex,
-  MARKDOWN_MATCH_ID,
-} from 'constants/regex.constants';
 import { t } from 'i18next';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
-import { MarkdownToHTMLConverter } from 'utils/FeedUtils';
+import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
+import {
+  markdownTextAndIdRegex,
+  MARKDOWN_MATCH_ID,
+} from '../../../../constants/regex.constants';
+import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
 import {
   HTMLToken,
   OpenTagToken,

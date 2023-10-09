@@ -90,6 +90,8 @@ class TestEntityProducer(TestCase):
             "Database",
             "Chart",
             "MlModel",
+            "SearchIndex",
+            "StoredProcedure",
             "DatabaseSchema",
         ]
         self.assertGreater(len(data), 10)
@@ -146,7 +148,7 @@ class TestWebAnalyticProducer(TestCase):
         cls.producer = WebAnalyticsProducer(cls.metadata)
 
     @pytest.mark.order(10000)
-    def test_fetch_data(self):
+    def test_fetch_data_from_producer(self):
         """fetch data"""
         data = []
         for datum in self.producer.fetch_data():

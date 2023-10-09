@@ -34,8 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -235,7 +235,7 @@ public abstract class PipelineServiceClient {
    */
   public abstract PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow);
 
-  public abstract PipelineServiceClientResponse runApplicationFlow(Application application);
+  public abstract PipelineServiceClientResponse runApplicationFlow(App application);
 
   public abstract PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app);
 

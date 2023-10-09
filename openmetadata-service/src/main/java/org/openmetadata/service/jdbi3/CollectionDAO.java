@@ -64,8 +64,8 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.entity.app.Application;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -1531,22 +1531,22 @@ public interface CollectionDAO {
     }
   }
 
-  interface ApplicationDAO extends EntityDAO<Application> {
+  interface ApplicationDAO extends EntityDAO<App> {
     @Override
     default String getTableName() {
-      return "installed_application";
+      return "installed_apps";
     }
 
     @Override
-    default Class<Application> getEntityClass() {
-      return Application.class;
+    default Class<App> getEntityClass() {
+      return App.class;
     }
   }
 
   interface ApplicationMarketPlaceDAO extends EntityDAO<AppMarketPlaceDefinition> {
     @Override
     default String getTableName() {
-      return "app_marketplace";
+      return "apps_marketplace";
     }
 
     @Override
@@ -3335,10 +3335,8 @@ public interface CollectionDAO {
 
   interface AppExtensionTimeSeries {
 
-    @SqlQuery(
-        "SELECT status FROM apps_extension_time_series WHERE appId = :appId AND extension = :extension AND runType = :runType ORDER BY timestamp DESC LIMIT 1")
-    String getLatestExtension(
-        @Bind("appId") String appId, @Bind("extension") String extension, @Bind("runType") String runType);
+    @SqlQuery("SELECT json FROM apps_extension_time_series WHERE appId = :appId ORDER BY timestamp DESC LIMIT 1")
+    String getLatestAppRun(@Bind("appId") String appId);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -3366,10 +3364,12 @@ public interface CollectionDAO {
         @Bind("json") String json,
         @Bind("timestamp") Long timestamp);
 
+    @SqlQuery("SELECT count(*) FROM apps_extension_time_series where appId = :appId")
+    int listAppRunRecordCount(@Bind("appId") String appId);
+
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series WHERE appId = :appId and extension = :extension "
-            + "ORDER BY timestamp DESC")
-    List<String> getAppScheduleInfo(@Bind("appId") String appId, @Bind("extension") String extension);
+        "SELECT json FROM apps_extension_time_series where appId = :appId ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppRunRecord(@Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -3386,6 +3386,9 @@ public interface CollectionDAO {
             "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
         connectionType = POSTGRES)
     void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+
+    @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType")
+    void deletePreviousReportData(@BindFQN("reportDataType") String reportDataType);
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {

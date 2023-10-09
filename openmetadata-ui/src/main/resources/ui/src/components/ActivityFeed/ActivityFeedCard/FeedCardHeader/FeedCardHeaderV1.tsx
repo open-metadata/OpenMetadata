@@ -12,23 +12,26 @@
  */
 import { Tooltip } from 'antd';
 import classNames from 'classnames';
-import EntityPopOverCard from 'components/common/PopOverCard/EntityPopOverCard';
-import UserPopOverCard from 'components/common/PopOverCard/UserPopOverCard';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { getUserPath } from 'constants/constants';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { formatDateTime, getRelativeTime } from 'utils/date-time/DateTimeUtils';
+import EntityPopOverCard from '../../../../components/common/PopOverCard/EntityPopOverCard';
+import UserPopOverCard from '../../../../components/common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
+import { getUserPath } from '../../../../constants/constants';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   entityDisplayName,
   getEntityField,
   getEntityFieldDisplay,
   getEntityFQN,
   getEntityType,
-} from 'utils/FeedUtils';
-import { getEntityLink } from 'utils/TableUtils';
+} from '../../../../utils/FeedUtils';
+import { getEntityLink } from '../../../../utils/TableUtils';
 import './feed-card-header-v1.style.less';
 import FeedCardHeaderName from './FeedCardHeaderName';
 

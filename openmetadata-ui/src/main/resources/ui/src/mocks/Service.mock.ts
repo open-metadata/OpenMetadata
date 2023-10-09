@@ -19,7 +19,7 @@ import {
   LabelType,
   State,
   TagSource,
-} from 'generated/entity/services/databaseService';
+} from '../generated/entity/services/databaseService';
 
 export const MOCK_CHANGE_DESCRIPTION = {
   fieldsAdded: [

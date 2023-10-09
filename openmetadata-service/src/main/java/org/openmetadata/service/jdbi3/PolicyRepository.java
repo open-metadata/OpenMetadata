@@ -45,8 +45,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PolicyRepository extends EntityRepository<Policy> {
   public static final String ENABLED = "enabled";
 
-  public PolicyRepository(CollectionDAO dao) {
-    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, dao.policyDAO(), dao, "", "");
+  public PolicyRepository() {
+    super(PolicyResource.COLLECTION_PATH, POLICY, Policy.class, Entity.getCollectionDAO().policyDAO(), "", "");
   }
 
   @Override

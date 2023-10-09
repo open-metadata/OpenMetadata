@@ -31,21 +31,22 @@ jest.mock('react-router-dom', () => ({
     )),
 }));
 
-jest.mock('components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () =>
   jest.fn().mockReturnValue(<div data-testid="delete-modal">Delete Modal</div>)
 );
 
-jest.mock('components/common/next-previous/NextPrevious', () =>
+jest.mock('../../components/common/next-previous/NextPrevious', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="next-previous">Next Previous</div>)
 );
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
-jest.mock('components/Loader/Loader', () =>
+jest.mock('../../components/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -53,7 +54,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('rest/KpiAPI', () => ({
+jest.mock('../../rest/KpiAPI', () => ({
   getListKPIs: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: KPI_DATA })),

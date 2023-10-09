@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../components/PermissionProvider/PermissionProvider.interface';
 
 export interface DataProductsTabRef {
   refreshDataProducts: () => void;

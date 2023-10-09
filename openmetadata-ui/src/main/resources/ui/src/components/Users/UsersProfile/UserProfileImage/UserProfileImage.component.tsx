@@ -12,12 +12,12 @@
  */
 
 import { Image } from 'antd';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import React, { useEffect, useMemo, useState } from 'react';
+import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
-} from 'utils/ProfilerUtils';
+} from '../../../../utils/ProfilerUtils';
 import { UserProfileImageProps } from './UserProfileImage.interface';
 
 const UserProfileImage = ({ userData }: UserProfileImageProps) => {

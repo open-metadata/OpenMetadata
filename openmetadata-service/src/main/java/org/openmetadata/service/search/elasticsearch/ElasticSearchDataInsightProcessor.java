@@ -3,19 +3,19 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import es.org.elasticsearch.action.bulk.BulkRequest;
+import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.xcontent.XContentType;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.ProcessorException;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.indexes.ReportDataIndexes;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -64,8 +64,8 @@ public class ElasticSearchDataInsightProcessor implements Processor<BulkRequest,
   }
 
   private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
+    IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+    UpdateRequest updateRequest = new UpdateRequest(indexMapping.getIndexName(), reportData.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

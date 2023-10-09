@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import { Col, Row, Space, Tag, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as DataProductIcon } from 'assets/svg/ic-data-product.svg';
-import DataProductSelectForm from 'components/DataProductSelectForm/DataProductsSelectForm';
-import TagsV1 from 'components/Tag/TagsV1/TagsV1.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from 'constants/Tag.constants';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { EntityReference } from 'generated/entity/type';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fetchDataProductsElasticSearch } from 'rest/dataProductAPI';
-import { getEntityName } from 'utils/EntityUtils';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DataProductIcon } from '../../assets/svg/ic-data-product.svg';
+import DataProductSelectForm from '../../components/DataProductSelectForm/DataProductsSelectForm';
+import TagsV1 from '../../components/Tag/TagsV1/TagsV1.component';
+import { DE_ACTIVE_COLOR } from '../../constants/constants';
+import { TAG_CONSTANT, TAG_START_WITH } from '../../constants/Tag.constants';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../generated/entity/type';
+import { fetchDataProductsElasticSearch } from '../../rest/dataProductAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 
 interface DataProductsContainerProps {
   showHeader?: boolean;

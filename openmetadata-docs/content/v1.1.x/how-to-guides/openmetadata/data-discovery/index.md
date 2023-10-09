@@ -25,5 +25,26 @@ Watch the video on how easy it is to discovery your data in OpenMetadata.
   href="/how-to-guides/openmetadata/data-discovery/discover"%}
   Discover the right data assets quickly.
  {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Get a Quick Glance of the Data Assets"
+  icon="MdSearch"
+  href="/how-to-guides/openmetadata/data-discovery/preview"%}
+  Quick preview of the selected data asset.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Data Asset Details"
+  icon="MdSearch"
+  href="/how-to-guides/openmetadata/data-discovery/details"%}
+  Get a holistic view of the data assets.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Advanced Search"
+  icon="MdSearch"
+  href="/how-to-guides/openmetadata/data-discovery/advanced"%}
+  Add complex queries using advanced search.
+ {%/inlineCallout%}
 {%/inlineCalloutContainer%}
 

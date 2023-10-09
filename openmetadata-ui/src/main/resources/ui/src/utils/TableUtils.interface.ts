@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
-import { Column } from 'generated/entity/data/table';
-import { Field } from 'generated/entity/data/topic';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { Column } from '../generated/entity/data/table';
+import { Field } from '../generated/entity/data/topic';
 
 export type TableFieldsInfoCommonEntities = SearchIndexField | Column | Field;

@@ -52,6 +52,12 @@ def _(element, compiler, **kw):
     return f"avg(cast({proc} as decimal))"
 
 
+@compiles(avg, Dialects.Trino)
+def _(element, compiler, **kw):
+    proc = compiler.process(element.clauses, **kw)
+    return f"IF(is_nan(avg({proc})), NULL, avg({proc}))"
+
+
 class Mean(StaticMetric):
     """
     AVG Metric

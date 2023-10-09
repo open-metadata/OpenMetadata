@@ -12,8 +12,8 @@
  */
 
 import { TableProps } from 'antd';
-import { ThreadType } from 'generated/api/feed/createThread';
 import { HTMLAttributes, ReactNode } from 'react';
+import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Field, Topic } from '../../../generated/entity/data/topic';
 
 export type CellRendered<T, K extends keyof T> = (
