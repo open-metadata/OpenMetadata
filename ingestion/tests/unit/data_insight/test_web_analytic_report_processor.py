@@ -35,6 +35,8 @@ from metadata.generated.schema.analytics.webAnalyticEventType.pageViewEvent impo
     PageViewData,
 )
 
+from metadata.generated.schema.analytics.reportData import ReportDataType
+
 WEB_ANALYTIC_EVENTS = [
     WebAnalyticEventData(
         eventId=UUID("233e2076-086c-4e2e-b713-77e990c63c97"),
@@ -95,7 +97,7 @@ class WebAnalyticEntityViewReportDataProcessorTest(unittest.TestCase):
         """Check fecth owner returns the expected value"""
         web_analytic_entity_report_data = {}
         processor = DataProcessor.create(
-            "WebAnalyticEntityViewReportData", mocked_ometa
+            ReportDataType.webAnalyticEntityViewReportData.value, mocked_ometa
         )
         processor._pre_hook_fn()
         for event in WEB_ANALYTIC_EVENTS:
@@ -126,7 +128,7 @@ class WebAnalyticUserActivityReportDataProcessorTest(unittest.TestCase):
     def test_refine(self, mocked_ometa, mocked_user_details):
         """Check fecth owner returns the expected value"""
         processor = DataProcessor.create(
-            "WebAnalyticUserActivityReportData", mocked_ometa
+            ReportDataType.webAnalyticUserActivityReportData.value, mocked_ometa
         )
         processor._pre_hook_fn()
         for event in WEB_ANALYTIC_EVENTS:

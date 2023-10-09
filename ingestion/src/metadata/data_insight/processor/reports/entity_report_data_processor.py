@@ -68,7 +68,7 @@ T = TypeVar("T", *ENTITIES)  # type: ignore
 class EntityReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = ReportDataType.EntityReportData.value
+    _data_processor_type = ReportDataType.entityReportData.value
 
     def __init__(self, metadata: OpenMetadata):
         super().__init__(metadata)
@@ -156,7 +156,7 @@ class EntityReportDataProcessor(DataProcessor):
         for data in self._refined_data:
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.EntityReportData.value,
+                reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData.parse_obj(data),
             )  # type: ignore
 
