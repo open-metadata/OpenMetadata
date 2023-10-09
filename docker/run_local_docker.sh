@@ -56,10 +56,10 @@ docker compose -f docker/development/docker-compose.yml down
 if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
         echo "Maven Build - Skipping Tests and UI"
-        mvn -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
+        mvn -q -DskipTests -DonlyBackend clean package -pl !openmetadata-ui
     else
         echo "Maven Build - Skipping Tests"
-        mvn -DskipTests clean package
+        mvn -q -DskipTests clean package
     fi
 else
     echo "Skipping Maven Build"
