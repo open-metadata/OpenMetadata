@@ -62,8 +62,16 @@ class PIIProcessor(Processor):
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
-        self.ner_scanner = NERScanner()
+        self._ner_scanner = None
         self.confidence_threshold = self.source_config.confidence
+
+    @property
+    def ner_scanner(self) -> NERScanner:
+        """Load the NER Scanner only if called"""
+        if self._ner_scanner is None:
+            self._ner_scanner = NERScanner()
+
+        return self._ner_scanner
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
