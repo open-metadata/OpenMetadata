@@ -117,9 +117,7 @@ export const UserSelectableList = ({
       trigger="click"
       onOpenChange={setPopupVisible}
       {...popoverProps}>
-      {children ? (
-        children
-      ) : (
+      {children ?? (
         <Tooltip
           placement="topRight"
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>

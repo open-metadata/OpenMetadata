@@ -27,7 +27,7 @@ function AddWidgetModal({
   open,
   handleCloseAddWidgetModal,
   handleAddWidget,
-}: AddWidgetModalProps) {
+}: Readonly<AddWidgetModalProps>) {
   const { t } = useTranslation();
   const [widgetsList, setWidgetsList] = useState<Array<Document>>();
 

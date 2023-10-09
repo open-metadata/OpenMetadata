@@ -44,8 +44,8 @@ export const PersonaSelectableList = ({
       try {
         const filteredData = allPersona.filter(
           (persona) =>
-            persona.name?.includes(searchText) ||
             persona.displayName?.includes(searchText) ||
+            persona.name?.includes(searchText) ||
             persona.description?.includes(searchText)
         );
 
@@ -111,9 +111,7 @@ export const PersonaSelectableList = ({
       trigger="click"
       onOpenChange={setPopupVisible}
       {...popoverProps}>
-      {children ? (
-        children
-      ) : (
+      {children ?? (
         <Tooltip
           placement="topRight"
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
