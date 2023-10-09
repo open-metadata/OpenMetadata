@@ -44,6 +44,7 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   profiler: 'profiler',
   TestSuite: 'test-suite',
   usage: 'usage',
+  Application: 'application',
 };
 
 export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';

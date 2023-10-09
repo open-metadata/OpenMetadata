@@ -52,6 +52,7 @@ export enum EntityType {
   SAMPLE_DATA = 'sampleData',
   STORED_PROCEDURE = 'storedProcedure',
   SEARCH_INDEX = 'searchIndex',
+  APP_MARKET_PLACE_DEFINITION = 'appMarketPlaceDefinition',
 }
 
 export enum AssetsType {

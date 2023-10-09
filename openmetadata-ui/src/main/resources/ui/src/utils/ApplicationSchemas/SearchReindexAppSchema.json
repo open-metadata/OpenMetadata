@@ -1,0 +1,72 @@
+{
+    "$id": "SearchReindexAppSchema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Search ReIndex AppSchema",
+    "description": "This schema defines configuration for Search Reindexing Application.",
+    "definitions": {},
+    "properties": {
+        "batchSize": {
+            "title": "Batch Size",
+            "description": "BatchSize",
+            "default": "100",
+            "type": "string"
+        },
+        "entities": {
+            "title": "Entities",
+            "description": "List of entities that you need to reindex",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "table",
+                    "topic",
+                    "dashboard",
+                    "pipeline",
+                    "mlmodel",
+                    "user",
+                    "team",
+                    "glossaryTerm",
+                    "tag",
+                    "entityReportData",
+                    "webAnalyticEntityViewReportData",
+                    "webAnalyticUserActivityReportData",
+                    "container",
+                    "query"
+                ]
+            },
+            "default": [
+                "table",
+                "topic",
+                "dashboard",
+                "pipeline",
+                "mlmodel",
+                "user",
+                "team",
+                "glossaryTerm",
+                "tag",
+                "entityReportData",
+                "webAnalyticEntityViewReportData",
+                "webAnalyticUserActivityReportData",
+                "container",
+                "query"
+            ],
+            "uniqueItems": true
+        },
+        "recreateIndex": {
+            "title": "Recreate Indexes",
+            "type": "boolean",
+            "default": true
+        },
+        "searchIndexMappingLanguage": {
+            "description": "Recreate Indexes with updated Language",
+            "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+            "type": "string",
+            "enum": [
+                "EN",
+                "JP",
+                "ZH"
+            ],
+            "default": "EN"
+        }
+    }
+}

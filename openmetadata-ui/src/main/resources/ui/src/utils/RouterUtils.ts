@@ -170,6 +170,46 @@ export const getGlossaryPath = (fqn?: string) => {
   return path;
 };
 
+// export const getTeamsWithFqnPath = (fqn: string) => {
+//   let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+//   path = path
+//     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
+//     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
+//     .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+//   return path;
+// };
+
+export const getApplicationDetailsPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.WORKFLOW)
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.APPLICATIONS)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getMarketPlaceAppDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab
+    ? ROUTES.MARKETPLACE_APP_DETAILS_WITH_TAB
+    : ROUTES.MARKETPLACE_APP_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};
+
+export const getAppInstallPath = (fqn: string) => {
+  let path = ROUTES.MARKETPLACE_APP_INSTALL.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  return path;
+};
+
 export const getSettingPath = (
   category?: string,
   tab?: string,

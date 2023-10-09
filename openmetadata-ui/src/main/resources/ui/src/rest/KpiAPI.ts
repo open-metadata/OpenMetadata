@@ -16,16 +16,9 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { CreateKpiRequest } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
-import { Include } from '../generated/type/include';
-import APIClient from './index';
 
-export type ListParams = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
+import APIClient from './index';
+import { ListParams } from 'interface/API.interface';
 
 export type KpiResultParam = {
   startTs: number;

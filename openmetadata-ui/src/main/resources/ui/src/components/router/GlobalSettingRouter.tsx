@@ -80,6 +80,13 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
     () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
+
+const AppDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('components/Applications/AppDetails/AppDetails.component')
+  )
+);
+
 const RolesListPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
@@ -389,6 +396,17 @@ const GlobalSettingRouter = () => {
         component={ApplicationPageV1}
         hasPermission={false}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.WORKFLOW)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AppDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.WORKFLOW,
+          GlobalSettingOptions.APPLICATIONS,
+          true
+        )}
       />
     </Switch>
   );

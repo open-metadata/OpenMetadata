@@ -11,21 +11,40 @@
  *  limitations under the License.
  */
 import { PagingResponse } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
+import { AxiosResponse } from 'axios';
+import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
-import { ListStoredProcedureParams } from './storedProceduresAPI';
+import { getURLWithQueryFields } from '../utils/APIUtils';
+import { App } from '../generated/entity/applications/app';
+import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 
 const BASE_URL = '/apps';
 
-export const getApplicationList = async (
-  params?: ListStoredProcedureParams
+export const getApplicationList = async (params?: ListParams) => {
+  const response = await APIClient.get<PagingResponse<App[]>>(BASE_URL, {
+    params,
+  });
+
+  return response.data;
+};
+
+export const installApplication = (
+  appName: string,
+  data: CreateAppRequest
+): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/install/${appName}`, data);
+};
+
+export const getApplicationByName = async (
+  appName: string,
+  arrQueryFields: string | string[]
 ) => {
-  const response = await APIClient.get<PagingResponse<ServicePageData[]>>(
-    BASE_URL,
-    {
-      params,
-    }
+  const url = getURLWithQueryFields(
+    `${BASE_URL}/name/${appName}`,
+    arrQueryFields
   );
+
+  const response = await APIClient.get<App>(url);
 
   return response.data;
 };

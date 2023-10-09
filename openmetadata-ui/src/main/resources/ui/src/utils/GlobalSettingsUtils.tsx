@@ -199,7 +199,7 @@ export const getGlobalSettingsMenuWithPermission = (
 
     {
       category: i18next.t('label.workflow-plural'),
-      key: 'workflow',
+      key: 'workflows',
       items: [
         {
           label: i18next.t('label.application-plural'),
@@ -207,7 +207,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.APPLICATION,
             permissions
           ),
-          key: 'workflow.application',
+          key: 'workflows.application',
           icon: <TableIcon className="side-panel-icons" />,
         },
       ],

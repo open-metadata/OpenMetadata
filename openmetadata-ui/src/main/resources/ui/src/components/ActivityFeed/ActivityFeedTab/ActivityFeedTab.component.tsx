@@ -204,15 +204,16 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    const userFilter =
-      isUserEntity && currentUser?.isAdmin
+    const filter = isUserEntity
+      ? currentUser?.isAdmin
         ? FeedFilter.ALL
-        : FeedFilter.OWNER_OR_FOLLOWS;
+        : FeedFilter.OWNER_OR_FOLLOWS
+      : undefined;
 
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : userFilter,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isUserEntity, currentUser]);
 
