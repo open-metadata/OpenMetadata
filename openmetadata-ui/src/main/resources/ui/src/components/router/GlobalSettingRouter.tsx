@@ -152,8 +152,6 @@ const ApplicationPageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
 
-ApplicationPageV1;
-
 const GlobalSettingRouter = () => {
   const { permissions } = usePermissionProvider();
 

@@ -53,6 +53,7 @@ export enum EntityType {
   STORED_PROCEDURE = 'storedProcedure',
   SEARCH_INDEX = 'searchIndex',
   APP_MARKET_PLACE_DEFINITION = 'appMarketPlaceDefinition',
+  APPLICATION = 'app',
 }
 
 export enum AssetsType {

@@ -20,7 +20,7 @@ import './market-place-app-details.less';
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn, tab: activeTab } = useParams<{ fqn: string; tab: string }>();
+  const { fqn } = useParams<{ fqn: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
 
@@ -36,54 +36,9 @@ const MarketPlaceAppDetails = () => {
     }
   }, [fqn]);
 
-  // const handleTabChange = (activeKey: string) => {
-  //   if (activeKey !== activeTab) {
-  //     history.push(getMarketPlaceAppDetailsPath(fqn, activeKey));
-  //   }
-  // };
-
   const installApp = useCallback(() => {
     history.push(getAppInstallPath(fqn));
   }, [fqn]);
-
-  // const tabs = useMemo(() => {
-  //   return [
-  //     {
-  //       label: (
-  //         <TabsLabel
-  //           id={ApplicationTabs.DESCRIPTION}
-  //           name={t('label.description')}
-  //         />
-  //       ),
-  //       key: ApplicationTabs.DESCRIPTION,
-  //       children: (
-  //         <div className="p-md">
-  //           <RichTextEditorPreviewer markdown={appData?.description ?? ''} />
-  //         </div>
-  //       ),
-  //     },
-  //     {
-  //       label: (
-  //         <TabsLabel
-  //           id={ApplicationTabs.FEATURES}
-  //           name={t('label.feature-plural')}
-  //         />
-  //       ),
-  //       key: ApplicationTabs.FEATURES,
-  //       children: <span>FEATURES</span>,
-  //     },
-  //     {
-  //       label: (
-  //         <TabsLabel
-  //           id={ApplicationTabs.PERMISSIONS}
-  //           name={t('label.permission-plural')}
-  //         />
-  //       ),
-  //       key: ApplicationTabs.PERMISSIONS,
-  //       children: <span>PERMISSIONS</span>,
-  //     },
-  //   ];
-  // }, [activeTab, appData]);
 
   const onBrowseAppsClick = () => {
     history.push(ROUTES.MARKETPLACE);

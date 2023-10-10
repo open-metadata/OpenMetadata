@@ -3,11 +3,9 @@ import { t } from 'i18next';
 
 export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   {
-    name: t('label.configure-entity', {
-      entity: t('label.test-case-lowercase'),
-    }),
+    name: t('label.detail-plural'),
     step: 1,
   },
   { name: t('label.configure'), step: 2 },
-  { name: t('label.success'), step: 3 },
+  { name: t('label.schedule'), step: 3 },
 ];

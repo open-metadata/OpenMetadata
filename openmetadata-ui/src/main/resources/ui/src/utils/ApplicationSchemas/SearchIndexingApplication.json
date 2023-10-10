@@ -1,15 +1,14 @@
 {
     "$id": "SearchReindexAppSchema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Search ReIndex AppSchema",
+    "title": "Search Indexing Application",
     "description": "This schema defines configuration for Search Reindexing Application.",
-    "definitions": {},
     "properties": {
         "batchSize": {
             "title": "Batch Size",
-            "description": "BatchSize",
-            "default": "100",
-            "type": "string"
+            "description": "Maximum number of events entities in a batch (Default 1000).",
+            "type": "integer",
+            "default": 100
         },
         "entities": {
             "title": "Entities",
@@ -68,5 +67,6 @@
             ],
             "default": "EN"
         }
-    }
+    },
+    "additionalProperties": false
 }

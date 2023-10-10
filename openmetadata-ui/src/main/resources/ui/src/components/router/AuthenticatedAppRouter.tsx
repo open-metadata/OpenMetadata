@@ -435,12 +435,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
 
-      <AdminProtectedRoute
-        exact
-        component={MarketPlaceAppDetails}
-        path={ROUTES.MARKETPLACE_APP_DETAILS_WITH_TAB}
-      />
-
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <AdminProtectedRoute
         exact

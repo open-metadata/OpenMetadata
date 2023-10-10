@@ -54,7 +54,7 @@ const MarketPlacePage = () => {
     }
   }, []);
 
-  const handleBotPageChange = ({
+  const handleMarketPlacePageChange = ({
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
@@ -114,7 +114,7 @@ const MarketPlacePage = () => {
               currentPage={currentPage}
               pageSize={pageSize}
               paging={paging}
-              pagingHandler={handleBotPageChange}
+              pagingHandler={handleMarketPlacePageChange}
               onShowSizeChange={handlePageSizeChange}
             />
           )}

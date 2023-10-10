@@ -192,22 +192,12 @@ export const getApplicationDetailsPath = (fqn: string) => {
   return path;
 };
 
-export const getMarketPlaceAppDetailsPath = (fqn: string, tab?: string) => {
-  let path = tab
-    ? ROUTES.MARKETPLACE_APP_DETAILS_WITH_TAB
-    : ROUTES.MARKETPLACE_APP_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, fqn);
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
+export const getMarketPlaceAppDetailsPath = (fqn: string) => {
+  return ROUTES.MARKETPLACE_APP_DETAILS.replace(PLACEHOLDER_ROUTE_FQN, fqn);
 };
 
 export const getAppInstallPath = (fqn: string) => {
-  let path = ROUTES.MARKETPLACE_APP_INSTALL.replace(PLACEHOLDER_ROUTE_FQN, fqn);
-  return path;
+  return ROUTES.MARKETPLACE_APP_INSTALL.replace(PLACEHOLDER_ROUTE_FQN, fqn);
 };
 
 export const getSettingPath = (

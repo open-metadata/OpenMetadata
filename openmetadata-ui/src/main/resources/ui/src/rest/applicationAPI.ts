@@ -12,13 +12,18 @@
  */
 import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
-import { ListParams } from '../interface/API.interface';
-import APIClient from './index';
-import { getURLWithQueryFields } from '../utils/APIUtils';
 import { App } from '../generated/entity/applications/app';
+import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
+import { ListParams } from '../interface/API.interface';
+import { getURLWithQueryFields } from '../utils/APIUtils';
+import APIClient from './index';
 
 const BASE_URL = '/apps';
+
+type AppListParams = ListParams & {
+  offset?: number;
+};
 
 export const getApplicationList = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<App[]>>(BASE_URL, {
@@ -47,4 +52,24 @@ export const getApplicationByName = async (
   const response = await APIClient.get<App>(url);
 
   return response.data;
+};
+
+export const getApplicationRuns = async (
+  appName: string,
+  params?: AppListParams
+) => {
+  const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
+    `${BASE_URL}/name/${appName}/runs`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const unistallApp = (appName: string, hardDelete = false) => {
+  return APIClient.delete(`${BASE_URL}/name/${appName}`, {
+    params: { hardDelete },
+  });
 };
