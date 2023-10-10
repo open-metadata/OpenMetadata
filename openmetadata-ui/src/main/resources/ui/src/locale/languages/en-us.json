@@ -1129,6 +1129,7 @@
     "announcement-action-description": "Set up banners to inform your team of upcoming maintenance, updates & deletions.",
     "announcement-created-successfully": "Announcement created successfully!",
     "announcement-invalid-start-time": "Announcement start time must be earlier than the end time.",
+    "app-already-installed": "Application already installed",
     "are-you-sure": "Are you sure?",
     "are-you-sure-delete-entity": "Are you sure you want to delete the property {{entity}}",
     "are-you-sure-delete-property": "Are you sure you want to delete the property {{propertyName}}?",

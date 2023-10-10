@@ -46,6 +46,7 @@ import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/Mana
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
+import AppSchedule from '../AppSchedule/AppSchedule.component';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -133,17 +134,11 @@ const AppDetails = () => {
           <TabsLabel id={ApplicationTabs.SCHEDULE} name={t('label.schedule')} />
         ),
         key: ApplicationTabs.SCHEDULE,
-        children: <div className="p-md" />,
-      },
-      {
-        label: (
-          <TabsLabel
-            id={ApplicationTabs.PERMISSIONS}
-            name={t('label.permission-plural')}
-          />
+        children: (
+          <div className="p-y-md">
+            {appData && <AppSchedule appData={appData} />}
+          </div>
         ),
-        key: ApplicationTabs.PERMISSIONS,
-        children: <span>PERMISSIONS</span>,
       },
       {
         label: (

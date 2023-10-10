@@ -1,5 +1,5 @@
 import { LeftOutlined } from '@ant-design/icons';
-import { Avatar, Button, Col, Row, Typography } from 'antd';
+import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
 import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
 import { AxiosError } from 'axios';
@@ -16,6 +16,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './market-place-app-details.less';
+import { getApplicationByName } from '../../../rest/applicationAPI';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ const MarketPlaceAppDetails = () => {
   const { fqn } = useParams<{ fqn: string }>();
   const [isLoading, setIsLoading] = useState(true);
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
+  const [isInstalled, setIsInstalled] = useState(false);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -33,6 +35,15 @@ const MarketPlaceAppDetails = () => {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
+    }
+  }, [fqn]);
+
+  const fetchInstalledAppDetails = useCallback(async () => {
+    try {
+      await getApplicationByName(fqn, 'owner');
+      setIsInstalled(true);
+    } catch (error) {
+      setIsInstalled(false);
     }
   }, [fqn]);
 
@@ -65,9 +76,19 @@ const MarketPlaceAppDetails = () => {
             icon={<AppIcon color="#000" width={64} height={64} />}
           />
         </div>
-        <Button className="m-t-md" type="primary" block onClick={installApp}>
-          {t('label.install')}
-        </Button>
+        <Tooltip
+          placement="top"
+          title={isInstalled ? t('message.app-already-installed') : ''}
+          trigger="hover">
+          <Button
+            className="m-t-md"
+            disabled={isInstalled}
+            type="primary"
+            block
+            onClick={installApp}>
+            {t('label.install')}
+          </Button>
+        </Tooltip>
 
         <div className="m-t-md">
           <CheckMarkIcon className="v-middle m-r-xss" />
@@ -76,12 +97,7 @@ const MarketPlaceAppDetails = () => {
           </Typography.Text>
         </div>
 
-        {/* <Space className="p-t-lg" direction="vertical" size={8}>
-          <Typography.Text
-            className="right-panel-label"
-            data-testid="learn-more-and-support-heading-name">
-            {t('label.learn-more-and-support')}
-          </Typography.Text>
+        <Space className="p-t-lg" direction="vertical" size={8}>
           <Typography.Text>
             {appData?.supportEmail && (
               <Typography.Link href={appData?.supportEmail} target="_blank">
@@ -99,13 +115,14 @@ const MarketPlaceAppDetails = () => {
               </Typography.Link>
             )}
           </Typography.Text>
-        </Space> */}
+        </Space>
       </div>
     );
-  }, [appData]);
+  }, [appData, isInstalled]);
 
   useEffect(() => {
     fetchAppDetails();
+    fetchInstalledAppDetails();
   }, [fqn]);
 
   if (isLoading) {

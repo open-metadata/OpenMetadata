@@ -207,7 +207,7 @@ export const getGlobalSettingsMenuWithPermission = (
             ResourceEntity.APPLICATION,
             permissions
           ),
-          key: 'workflows.application',
+          key: 'workflows.apps',
           icon: <TableIcon className="side-panel-icons" />,
         },
       ],

@@ -29,6 +29,7 @@ import { getMarketPlaceAppDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import AppInstallVerifyCard from '../AppInstallVerifyCard/AppInstallVerifyCard.component';
+import { RJSFSchema } from '@rjsf/utils';
 
 const AppInstall = () => {
   const { t } = useTranslation();
@@ -38,7 +39,7 @@ const AppInstall = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
-  const [jsonSchema, setJsonSchema] = useState();
+  const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);

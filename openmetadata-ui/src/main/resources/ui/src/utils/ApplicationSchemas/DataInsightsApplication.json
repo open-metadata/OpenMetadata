@@ -10,7 +10,7 @@
             "default": true
         },
         "sendToTeams": {
-            "title": "Send To Admins",
+            "title": "Send To Teams",
             "type": "boolean",
             "default": true
         }

@@ -18,19 +18,36 @@
                 "type": "string",
                 "enum": [
                     "table",
-                    "topic",
                     "dashboard",
+                    "topic",
                     "pipeline",
-                    "mlmodel",
+                    "searchIndex",
                     "user",
                     "team",
                     "glossaryTerm",
+                    "mlmodel",
                     "tag",
+                    "classification",
+                    "query",
+                    "container",
+                    "database",
+                    "databaseSchema",
+                    "testCase",
+                    "testSuite",
+                    "chart",
+                    "dashboardDataModel",
+                    "databaseService",
+                    "messagingService",
+                    "dashboardService",
+                    "pipelineService",
+                    "mlmodelService",
+                    "searchService",
                     "entityReportData",
                     "webAnalyticEntityViewReportData",
                     "webAnalyticUserActivityReportData",
-                    "container",
-                    "query"
+                    "domain",
+                    "storedProcedure",
+                    "dataProduct"
                 ]
             },
             "default": [
@@ -58,6 +75,7 @@
         },
         "searchIndexMappingLanguage": {
             "description": "Recreate Indexes with updated Language",
+            "title": "Search Index Language",
             "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
             "type": "string",
             "enum": [
