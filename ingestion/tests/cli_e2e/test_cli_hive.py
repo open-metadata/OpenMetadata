@@ -153,7 +153,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 1
+        return 5
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
