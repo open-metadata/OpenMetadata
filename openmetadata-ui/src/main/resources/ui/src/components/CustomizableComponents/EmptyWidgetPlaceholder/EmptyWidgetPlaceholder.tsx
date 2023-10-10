@@ -27,7 +27,7 @@ function EmptyWidgetPlaceholder({
   widgetKey,
   handleOpenAddWidgetModal,
   handleRemoveWidget,
-}: EmptyWidgetPlaceholderProps) {
+}: Readonly<EmptyWidgetPlaceholderProps>) {
   const { t } = useTranslation();
 
   const handleCloseClick = useCallback(() => {

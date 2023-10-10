@@ -35,7 +35,7 @@ function FollowingWidget({
   followedDataCount,
   isLoadingOwnedData,
   handleRemoveWidget,
-}: FollowingWidgetProps) {
+}: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
 

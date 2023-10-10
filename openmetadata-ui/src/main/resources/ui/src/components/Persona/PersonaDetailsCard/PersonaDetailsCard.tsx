@@ -20,7 +20,6 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 
 interface PersonaDetailsCardProps {
   persona: Persona;
-  onEdit: (persona: Persona) => void;
 }
 
 export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {

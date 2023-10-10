@@ -30,7 +30,7 @@ function AnnouncementsWidget({
   announcements,
   isEditView,
   handleRemoveWidget,
-}: AnnouncementsWidgetProps) {
+}: Readonly<AnnouncementsWidgetProps>) {
   const { t } = useTranslation();
 
   const handleCloseClick = useCallback(() => {

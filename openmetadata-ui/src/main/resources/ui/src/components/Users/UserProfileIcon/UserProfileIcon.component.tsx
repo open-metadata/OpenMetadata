@@ -69,7 +69,7 @@ export const UserProfileIcon = () => {
   }, [profilePicture]);
 
   const { userName, defaultPersona, teams, roles } = useMemo(() => {
-    const userName = currentUser?.displayName || currentUser?.name || TERM_USER;
+    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
     const defaultPersona = currentUser?.personas?.find(
       (persona) => persona.id === currentUser.defaultPersona?.id
     );
@@ -215,7 +215,7 @@ export const UserProfileIcon = () => {
               alt="user"
               className="profile-image circle"
               referrerPolicy="no-referrer"
-              src={profilePicture || ''}
+              src={profilePicture ?? ''}
               width={36}
               onError={handleOnImageError}
             />

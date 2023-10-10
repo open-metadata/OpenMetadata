@@ -45,7 +45,7 @@ function CustomizeMyData({
   handleOpenAddWidgetModal,
   handleLayoutUpdate,
   handleLayoutChange,
-}: CustomizeMyDataProps) {
+}: Readonly<CustomizeMyDataProps>) {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();

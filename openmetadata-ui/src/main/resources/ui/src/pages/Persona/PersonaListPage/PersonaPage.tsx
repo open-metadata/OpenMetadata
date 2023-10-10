@@ -75,88 +75,6 @@ export const PersonaPage = () => {
     setAddEditPersona({} as Persona);
   };
 
-  //   const columns: ColumnsType<Persona> = useMemo(() => {
-  //     return [
-  //       {
-  //         title: t('label.persona'),
-  //         dataIndex: 'name',
-  //         key: 'name',
-  //         render: (name: string, record: Persona) => (
-  //           <Link
-  //             to={getSettingsPathWithFqn(
-  //               GlobalSettingsMenuCategory.MEMBERS,
-  //               GlobalSettingOptions.PERSONA,
-  //               record.fullyQualifiedName ?? ''
-  //             )}>
-  //             {name}
-  //           </Link>
-  //         ),
-  //       },
-  //       {
-  //         title: t('label.display-name'),
-  //         dataIndex: 'displayName',
-  //         key: 'displayName',
-  //       },
-  //       {
-  //         title: t('label.description'),
-  //         dataIndex: 'description',
-  //         key: 'description',
-  //         render: (description: string) => (
-  //           <RichTextEditorPreviewer
-  //             className="max-two-lines"
-  //             markdown={description}
-  //           />
-  //         ),
-  //       },
-  //       {
-  //         title: t('label.action-plural'),
-  //         dataIndex: 'actions',
-  //         key: 'actions',
-  //         width: 90,
-  //         render: (_, record) => (
-  //           <Space
-  //             align="center"
-  //             className="w-full justify-center action-icons"
-  //             size={8}>
-  //             <Tooltip
-  //               placement="left"
-  //               title={
-  //                 isAdminUser
-  //                   ? t('label.edit')
-  //                   : t('message.no-permission-for-action')
-  //               }>
-  //               <Button
-  //                 className="flex-center"
-  //                 data-testid={`edit-action-${getEntityName(record)}`}
-  //                 disabled={!isAdminUser}
-  //                 icon={<IconEdit width="16px" />}
-  //                 type="text"
-  //                 onClick={() => setAddEditPersona(record)}
-  //               />
-  //             </Tooltip>
-  //             <Tooltip placement="left" title={!isAdminUser && ADMIN_ONLY_ACTION}>
-  //               <Button
-  //                 disabled={!isAdminUser}
-  //                 icon={
-  //                   <IconDelete
-  //                     data-testid={`delete-user-btn-${getEntityName(record)}`}
-  //                     name={t('label.delete')}
-  //                     width="16px"
-  //                   />
-  //                 }
-  //                 size="small"
-  //                 type="text"
-  //                 onClick={() => {
-  //                   setPersonaDeleting(record);
-  //                 }}
-  //               />
-  //             </Tooltip>
-  //           </Space>
-  //         ),
-  //       },
-  //     ];
-  //   }, []);
-
   const errorPlaceHolder = useMemo(
     () => (
       <Col className="mt-24 text-center" span={24}>
@@ -178,10 +96,6 @@ export const PersonaPage = () => {
   const handlePersonaAddEditSave = () => {
     handlePersonalAddEditCancel();
     fetchPersonas();
-  };
-
-  const handlePersonaEdit = (editPersona: Persona) => {
-    setAddEditPersona(editPersona);
   };
 
   return (
@@ -216,26 +130,10 @@ export const PersonaPage = () => {
 
       {persona?.map((persona) => (
         <Col key={persona.id} span={8}>
-          <PersonaDetailsCard persona={persona} onEdit={handlePersonaEdit} />
+          <PersonaDetailsCard persona={persona} />
         </Col>
       ))}
 
-      {/* <Col span={24}>
-        <Table
-          bordered
-          className="user-list-table"
-          columns={columns}
-          data-testid="user-list-table"
-          dataSource={persona}
-          loading={isLoading}
-          locale={{
-            emptyText: errorPlaceHolder,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col> */}
       {showPagination(paging) && (
         <Col span={24}>
           <NextPrevious
