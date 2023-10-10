@@ -134,7 +134,7 @@ class DatalakeSampler(SamplerInterface):
         rows = []
         # Sample Data should not exceed sample limit
         for chunk in data_frame:
-            rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
+            rows.extend(self._fetch_rows_df(chunk[cols])[: self.sample_limit])
             if len(rows) >= self.sample_limit:
                 break
         return cols, rows
