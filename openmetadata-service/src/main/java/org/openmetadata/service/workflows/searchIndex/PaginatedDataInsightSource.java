@@ -90,8 +90,6 @@ public class PaginatedDataInsightSource implements Source<ResultList<ReportData>
   }
 
   public ResultList<ReportData> getReportDataPagination(String entityFQN, int limit, String after) {
-    //    // workaround. Should be fixed in https://github.com/open-metadata/OpenMetadata/issues/12298
-    //    String upperCaseFQN = StringUtils.capitalize(entityFQN);
     int reportDataCount = dao.reportDataTimeSeriesDao().listCount(entityFQN);
     List<CollectionDAO.ReportDataRow> reportDataList =
         dao.reportDataTimeSeriesDao()
