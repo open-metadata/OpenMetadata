@@ -74,7 +74,13 @@ const MyDataPageV1 = () => {
       : false;
   }, [storageData, loggedInUserName]);
 
-  const userPersona = useMemo(() => currentUser?.defaultPersona, [currentUser]);
+  const userPersona = useMemo(
+    () =>
+      currentUser?.personas?.find(
+        (persona) => currentUser?.defaultPersona?.id === persona.id
+      ),
+    [currentUser]
+  );
 
   const fetchDocument = async () => {
     try {

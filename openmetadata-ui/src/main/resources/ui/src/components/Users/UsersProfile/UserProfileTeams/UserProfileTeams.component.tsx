@@ -72,7 +72,7 @@ const UserProfileTeams = ({
 
           {!isTeamsEdit && isAdminUser && (
             <EditIcon
-              className="cursor-pointer"
+              className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
               data-testid="edit-teams"
               {...ICON_DIMENSION}
