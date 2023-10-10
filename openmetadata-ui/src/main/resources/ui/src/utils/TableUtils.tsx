@@ -12,6 +12,7 @@
  */
 
 import Icon, { FilterOutlined, SearchOutlined } from '@ant-design/icons';
+import { EntityTags } from 'Models';
 import { Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -26,7 +27,6 @@ import {
   uniqueId,
   upperCase,
 } from 'lodash';
-import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -53,27 +53,27 @@ import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { SourceType } from '../components/searched-data/SearchedData.interface';
+import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
+  PRIMERY_COLOR,
+  TEXT_BODY_COLOR,
   getContainerDetailPath,
   getDashboardDetailsPath,
+  getDataModelDetailsPath,
   getDatabaseDetailsPath,
   getDatabaseSchemaDetailsPath,
-  getDataModelDetailsPath,
   getEditWebhookPath,
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
-  getStoredProcedureDetailsPath,
+  getStoredProcedureDetailPath,
   getTableDetailsPath,
   getTableTabPath,
   getTagsDetailsPath,
   getTopicDetailsPath,
-  PRIMERY_COLOR,
-  TEXT_BODY_COLOR,
 } from '../constants/constants';
-import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -274,7 +274,7 @@ export const getEntityLink = (
 
     case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
-      return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
+      return getStoredProcedureDetailPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(

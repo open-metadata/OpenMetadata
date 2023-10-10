@@ -74,6 +74,8 @@ const UpdateDescription = () => {
 
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
+  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -120,7 +122,7 @@ const UpdateDescription = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || message,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -142,9 +144,7 @@ const UpdateDescription = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            entityType === EntityType.TABLE
-              ? entityFQN
-              : getDecodedFqn(entityFQN),
+            decodedEntityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )

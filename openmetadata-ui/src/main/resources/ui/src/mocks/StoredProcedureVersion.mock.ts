@@ -95,8 +95,7 @@ export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   slashedTableName: [],
-  storedProcedureFQN:
-    'sample_data.ecommerce_db.shopify.update_dim_address_table',
+
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

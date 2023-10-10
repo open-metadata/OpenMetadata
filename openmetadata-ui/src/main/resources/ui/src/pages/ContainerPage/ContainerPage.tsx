@@ -107,6 +107,11 @@ const ContainerPage = () => {
     ThreadType.Conversation
   );
 
+  const decodedContainerName = useMemo(
+    () => getDecodedFqn(containerName),
+    [containerName]
+  );
+
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
     try {
@@ -228,17 +233,13 @@ const ContainerPage = () => {
     [containerData]
   );
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.CONTAINER, containerName, setFeedCount);
-  };
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getContainerDetailPath(
-          getDecodedFqn(containerName),
-          tabValue
-        ),
+        pathname: getContainerDetailPath(decodedContainerName, tabValue),
       });
     }
   };
@@ -441,11 +442,10 @@ const ContainerPage = () => {
     }
   };
 
-  const versionHandler = () => {
+  const versionHandler = () =>
     history.push(
       getVersionPath(EntityType.CONTAINER, containerName, toString(version))
     );
-  };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
@@ -498,7 +498,7 @@ const ContainerPage = () => {
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
-                  entityFqn={containerName}
+                  entityFqn={decodedContainerName}
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
                   hasEditAccess={hasEditDescriptionPermission}
@@ -520,7 +520,7 @@ const ContainerPage = () => {
                 ) : (
                   <ContainerDataModel
                     dataModel={containerData?.dataModel}
-                    entityFqn={containerName}
+                    entityFqn={decodedContainerName}
                     hasDescriptionEditAccess={hasEditDescriptionPermission}
                     hasTagEditAccess={hasEditTagsPermission}
                     isReadOnly={Boolean(deleted)}
@@ -537,7 +537,7 @@ const ContainerPage = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={containerName}
+                  entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
                     hasEditDescriptionPermission && !containerData?.deleted
@@ -549,7 +549,7 @@ const ContainerPage = () => {
                 />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={containerName}
+                  entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
                     hasEditDescriptionPermission && !containerData?.deleted
@@ -602,7 +602,7 @@ const ContainerPage = () => {
         children: (
           <ActivityFeedTab
             entityType={EntityType.CONTAINER}
-            fqn={getDecodedFqn(containerName)}
+            fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
           />
@@ -642,6 +642,7 @@ const ContainerPage = () => {
       containerData,
       description,
       containerName,
+      decodedContainerName,
       entityName,
       hasEditDescriptionPermission,
       hasEditTagsPermission,

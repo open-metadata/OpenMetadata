@@ -38,6 +38,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
@@ -47,7 +48,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   owner,
   domain,
   tier,
-  searchIndexFQN,
   breadCrumbList,
   versionList,
   deleted = false,
@@ -60,6 +60,11 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
+  );
+
+  const encodedFQN = useMemo(
+    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+    [currentVersionData.fullyQualifiedName ?? '']
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -82,7 +87,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.SEARCH_INDEX,
-        searchIndexFQN,
+        encodedFQN,
         String(version),
         activeKey
       )
@@ -136,7 +141,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 <Col span={24}>
                   <VersionTable
                     columnName={getPartialNameFromTableFQN(
-                      searchIndexFQN,
+                      encodedFQN,
                       [FqnPart.SearchIndexField],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -153,7 +158,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={searchIndexFQN}
                     entityType={EntityType.SEARCH_INDEX}
                     key={tagType}
                     permission={false}
@@ -185,7 +189,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         ),
       },
     ],
-    [description, searchIndexFQN, fields, currentVersionData, entityPermissions]
+    [description, encodedFQN, fields, currentVersionData, entityPermissions]
   );
 
   return (

@@ -90,6 +90,11 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const { getEntityPermission } = usePermissionProvider();
 
+  const decodedMlModelFqn = useMemo(
+    () => getDecodedFqn(mlModelFqn),
+    [mlModelFqn]
+  );
+
   const fetchResourcePermission = useCallback(async () => {
     try {
       const entityPermission = await getEntityPermission(
@@ -130,18 +135,18 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail]);
 
   const fetchEntityFeedCount = () => {
-    getFeedCounts(EntityType.MLMODEL, mlModelFqn, setFeedCount);
+    getFeedCounts(EntityType.MLMODEL, decodedMlModelFqn, setFeedCount);
   };
 
   useEffect(() => {
     if (mlModelPermissions.ViewAll || mlModelPermissions.ViewBasic) {
       fetchEntityFeedCount();
     }
-  }, [mlModelPermissions, mlModelFqn]);
+  }, [mlModelPermissions, decodedMlModelFqn]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getMlModelDetailsPath(getDecodedFqn(mlModelFqn), activeKey));
+      history.push(getMlModelDetailsPath(decodedMlModelFqn, activeKey));
     }
   };
 
@@ -365,7 +370,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={mlModelDetail.description}
-                  entityFqn={mlModelFqn}
+                  entityFqn={decodedMlModelFqn}
                   entityName={mlModelDetail.name}
                   entityType={EntityType.MLMODEL}
                   hasEditAccess={
@@ -381,7 +386,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   onThreadLinkSelect={handleThreadLinkSelect}
                 />
                 <MlModelFeaturesList
-                  entityFqn={mlModelFqn}
+                  entityFqn={decodedMlModelFqn}
                   handleFeaturesUpdate={onFeaturesUpdate}
                   isDeleted={mlModelDetail.deleted}
                   mlFeatures={mlModelDetail.mlFeatures}
@@ -397,7 +402,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelFqn}
+                  entityFqn={decodedMlModelFqn}
                   entityType={EntityType.MLMODEL}
                   permission={
                     (mlModelPermissions.EditAll ||
@@ -412,7 +417,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={mlModelFqn}
+                  entityFqn={decodedMlModelFqn}
                   entityType={EntityType.MLMODEL}
                   permission={
                     (mlModelPermissions.EditAll ||

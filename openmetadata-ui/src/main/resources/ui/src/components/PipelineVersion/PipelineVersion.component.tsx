@@ -38,6 +38,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedPipelineTasks } from '../../utils/PipelineVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import { PipelineVersionProp } from './PipelineVersion.interface';
 
@@ -88,7 +89,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.PIPELINE,
-        currentVersionData.fullyQualifiedName ?? '',
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -211,7 +212,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.PIPELINE}
                     key={tagType}
                     permission={false}

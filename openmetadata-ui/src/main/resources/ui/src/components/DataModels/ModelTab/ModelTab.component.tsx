@@ -160,7 +160,6 @@ const ModelTab = ({
     [
       entityFqn,
       isReadOnly,
-
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,

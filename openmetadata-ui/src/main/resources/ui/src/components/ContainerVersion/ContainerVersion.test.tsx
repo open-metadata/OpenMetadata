@@ -134,7 +134,7 @@ describe('ContainerVersion tests', () => {
     });
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/container/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
+      '/container/s3_storage_sample.departments.finance.expenditures/versions/0.3/custom_properties'
     );
   });
 });

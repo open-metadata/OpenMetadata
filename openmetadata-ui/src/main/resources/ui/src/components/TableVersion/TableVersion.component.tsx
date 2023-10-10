@@ -43,6 +43,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { TableVersionProp } from './TableVersion.interface';
 
 const TableVersion: React.FC<TableVersionProp> = ({
@@ -53,7 +54,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
   domain,
   tier,
   slashedTableName,
-  datasetFQN,
   versionList,
   deleted = false,
   backHandler,
@@ -65,6 +65,11 @@ const TableVersion: React.FC<TableVersionProp> = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
+  );
+
+  const encodedFQN = useMemo(
+    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+    [currentVersionData.fullyQualifiedName]
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -89,7 +94,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TABLE,
-        datasetFQN,
+        encodedFQN,
         String(version),
         activeKey
       )
@@ -160,7 +165,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
                     addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     addedTableConstraintDiffs={addedTableConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
-                      datasetFQN,
+                      encodedFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -180,7 +185,6 @@ const TableVersion: React.FC<TableVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={datasetFQN}
                     entityType={EntityType.TABLE}
                     key={tagType}
                     permission={false}
@@ -214,7 +218,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     ],
     [
       description,
-      datasetFQN,
+      encodedFQN,
       columns,
       deletedColumnConstraintDiffs,
       deletedTableConstraintDiffs,

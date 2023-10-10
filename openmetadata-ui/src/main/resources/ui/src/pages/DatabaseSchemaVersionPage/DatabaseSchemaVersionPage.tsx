@@ -98,6 +98,11 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(databaseSchemaFQN),
+    [databaseSchemaFQN]
+  );
+
   const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
@@ -209,10 +214,10 @@ function DatabaseSchemaVersionPage() {
         );
       },
       backHandler: () => {
-        history.push(getDatabaseSchemaDetailsPath(databaseSchemaFQN));
+        history.push(getDatabaseSchemaDetailsPath(decodedEntityFQN));
       },
     }),
-    [databaseSchemaFQN, tab]
+    [databaseSchemaFQN, decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -254,7 +259,6 @@ function DatabaseSchemaVersionPage() {
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     displayType={DisplayType.READ_MORE}
-                    entityFqn={databaseSchemaFQN}
                     entityType={EntityType.DATABASE_SCHEMA}
                     key={tagType}
                     permission={false}
@@ -295,7 +299,6 @@ function DatabaseSchemaVersionPage() {
       tableData,
       isTableDataLoading,
       tablePaginationHandler,
-      databaseSchemaFQN,
       tags,
     ]
   );

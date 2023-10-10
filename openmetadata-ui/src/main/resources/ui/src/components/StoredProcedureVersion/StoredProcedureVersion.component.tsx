@@ -34,6 +34,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 const StoredProcedureVersion = ({
   version,
@@ -43,7 +44,6 @@ const StoredProcedureVersion = ({
   domain,
   tier,
   slashedTableName,
-  storedProcedureFQN,
   versionList,
   deleted = false,
   backHandler,
@@ -90,7 +90,7 @@ const StoredProcedureVersion = ({
     history.push(
       getVersionPathWithTab(
         EntityType.STORED_PROCEDURE,
-        storedProcedureFQN,
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -128,7 +128,6 @@ const StoredProcedureVersion = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={storedProcedureFQN}
                     entityType={EntityType.STORED_PROCEDURE}
                     key={tagType}
                     permission={false}
@@ -160,13 +159,7 @@ const StoredProcedureVersion = ({
         ),
       },
     ],
-    [
-      tags,
-      description,
-      storedProcedureFQN,
-      currentVersionData,
-      entityPermissions,
-    ]
+    [tags, description, currentVersionData, entityPermissions]
   );
 
   return (

@@ -61,6 +61,7 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
@@ -105,6 +106,11 @@ function DatabaseVersionPage() {
   const viewVersionPermission = useMemo(
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
+  );
+
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(databaseFQN),
+    [databaseFQN]
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -211,10 +217,10 @@ function DatabaseVersionPage() {
         );
       },
       backHandler: () => {
-        history.push(getDatabaseDetailsPath(databaseFQN));
+        history.push(getDatabaseDetailsPath(decodedEntityFQN));
       },
     }),
-    [databaseFQN, tab]
+    [databaseFQN, decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -266,7 +272,6 @@ function DatabaseVersionPage() {
                   <DescriptionV1
                     isVersionView
                     description={description}
-                    entityFqn={databaseFQN}
                     entityType={EntityType.DATABASE}
                   />
                 </Col>
@@ -281,7 +286,6 @@ function DatabaseVersionPage() {
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
                     displayType={DisplayType.READ_MORE}
-                    entityFqn={databaseFQN}
                     entityType={EntityType.DATABASE}
                     key={tagType}
                     permission={false}
@@ -315,7 +319,7 @@ function DatabaseVersionPage() {
         ),
       },
     ],
-    [tags, description, databaseFQN, databaseTable]
+    [tags, description, databaseTable]
   );
 
   const versionComponent = useMemo(() => {

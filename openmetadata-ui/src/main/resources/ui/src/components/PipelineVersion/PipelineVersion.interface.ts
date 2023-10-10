@@ -25,7 +25,6 @@ export interface PipelineVersionProp {
   domain: Pipeline['domain'];
   tier: TagLabel;
   slashedPipelineName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

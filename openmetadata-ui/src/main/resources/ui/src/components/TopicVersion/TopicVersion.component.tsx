@@ -35,7 +35,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { getEncodedFqn, stringToHTML } from '../../utils/StringsUtils';
 import { getUpdatedMessageSchema } from '../../utils/TopicVersionUtils';
 import { TopicVersionProp } from './TopicVersion.interface';
 
@@ -87,7 +87,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.TOPIC,
-        currentVersionData.fullyQualifiedName ?? '',
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -165,7 +165,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.TOPIC}
                     key={tagType}
                     permission={false}

@@ -1046,8 +1046,6 @@ export const getEntityFeedLink = (
   if (isUndefined(type) || isUndefined(fqn)) {
     return '';
   }
-  // url decode the fqn
-  fqn = decodeURIComponent(fqn);
 
   return `<#E${ENTITY_LINK_SEPARATOR}${type}${ENTITY_LINK_SEPARATOR}${fqn}${
     field ? `${ENTITY_LINK_SEPARATOR}${field}` : ''

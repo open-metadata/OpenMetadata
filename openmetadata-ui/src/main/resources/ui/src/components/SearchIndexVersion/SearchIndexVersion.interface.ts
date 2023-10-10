@@ -24,7 +24,6 @@ export interface SearchIndexVersionProps {
   domain: SearchIndex['domain'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];
-  searchIndexFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

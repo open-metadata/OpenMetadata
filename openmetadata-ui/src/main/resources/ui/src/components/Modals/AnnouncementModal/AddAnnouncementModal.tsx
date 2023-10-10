@@ -75,7 +75,7 @@ const AddAnnouncementModal: FC<Props> = ({
       const announcementData: CreateThread = {
         from: currentUser?.name as string,
         message: title,
-        about: getEntityFeedLink(entityType, encodeURIComponent(entityFQN)),
+        about: getEntityFeedLink(entityType, entityFQN),
         announcementDetails: {
           description,
           startTime: startTimeMs,
