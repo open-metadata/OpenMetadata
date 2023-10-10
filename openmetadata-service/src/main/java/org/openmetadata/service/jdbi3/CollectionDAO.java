@@ -3334,35 +3334,22 @@ public interface CollectionDAO {
   }
 
   interface AppExtensionTimeSeries {
-
-    @SqlQuery("SELECT json FROM apps_extension_time_series WHERE appId = :appId ORDER BY timestamp DESC LIMIT 1")
-    String getLatestAppRun(@Bind("appId") String appId);
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO apps_extension_time_series(json) " + "VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO apps_extension_time_series(json) " + "VALUES ((:json :: jsonb))",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
 
     @ConnectionAwareSqlUpdate(
-        value =
-            "INSERT INTO apps_extension_time_series(extension, jsonSchema, json) "
-                + "VALUES (:extension, :jsonSchema, :json)",
+        value = "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO apps_extension_time_series(extension, jsonSchema, json) "
-                + "VALUES (:extension, :jsonSchema, (:json :: jsonb))",
+            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and timestamp=:timestamp",
         connectionType = POSTGRES)
-    void insert(@Bind("extension") String extension, @Bind("jsonSchema") String jsonSchema, @Bind("json") String json);
-
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE apps_extension_time_series set json = :json where appId=:appId and extension=:extension and timestamp=:timestamp",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value =
-            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and extension=:extension and timestamp=:timestamp",
-        connectionType = POSTGRES)
-    void update(
-        @Bind("appId") String appId,
-        @Bind("extension") String extension,
-        @Bind("json") String json,
-        @Bind("timestamp") Long timestamp);
+    void update(@Bind("appId") String appId, @Bind("json") String json, @Bind("timestamp") Long timestamp);
 
     @SqlQuery("SELECT count(*) FROM apps_extension_time_series where appId = :appId")
     int listAppRunRecordCount(@Bind("appId") String appId);
@@ -3370,6 +3357,14 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT json FROM apps_extension_time_series where appId = :appId ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppRunRecord(@Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    default String getLatestAppRun(UUID appId) {
+      List<String> result = listAppRunRecord(appId.toString(), 1, 0);
+      if (result != null && !result.isEmpty()) {
+        return result.get(0);
+      }
+      throw new RuntimeException("No Available Application Run Records.");
+    }
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {

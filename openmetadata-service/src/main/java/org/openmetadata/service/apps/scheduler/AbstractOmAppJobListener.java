@@ -51,9 +51,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     dataMap.put(SCHEDULED_APP_RUN_EXTENSION, runRecord);
 
     // Run the Scheduled Run Record on the time series
-    collectionDAO
-        .appExtensionTimeSeriesDao()
-        .insert(SCHEDULED_APP_RUN_EXTENSION, SCHEDULED_APP_RUN_RECORD_SCHEMA, JsonUtils.pojoToJson(runRecord));
+    collectionDAO.appExtensionTimeSeriesDao().insert(JsonUtils.pojoToJson(runRecord));
 
     this.doJobToBeExecuted(jobExecutionContext);
   }
@@ -85,11 +83,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
 
     collectionDAO
         .appExtensionTimeSeriesDao()
-        .update(
-            runRecord.getAppId().toString(),
-            SCHEDULED_APP_RUN_EXTENSION,
-            JsonUtils.pojoToJson(runRecord),
-            runRecord.getTimestamp());
+        .update(runRecord.getAppId().toString(), JsonUtils.pojoToJson(runRecord), runRecord.getTimestamp());
 
     this.doJobWasExecuted(jobExecutionContext, jobException);
   }

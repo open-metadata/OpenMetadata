@@ -203,6 +203,11 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
+  public AppRunRecord getLatestAppRuns(UUID appId) {
+    String json = daoCollection.appExtensionTimeSeriesDao().getLatestAppRun(appId);
+    return JsonUtils.readValue(json, AppRunRecord.class);
+  }
+
   @Override
   public EntityUpdater getUpdater(App original, App updated, Operation operation) {
     return new AppRepository.AppUpdater(original, updated, operation);
