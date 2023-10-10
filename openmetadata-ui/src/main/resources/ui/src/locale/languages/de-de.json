@@ -278,6 +278,7 @@
     "dbt-source": "dbt-Quelle",
     "deactivated": "Deaktiviert",
     "december": "Dezember",
+    "default": "Default",
     "default-persona": "Default Persona",
     "delete": "Löschen",
     "delete-entity": "{{entity}} löschen",

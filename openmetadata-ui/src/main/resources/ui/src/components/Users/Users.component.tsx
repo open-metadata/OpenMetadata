@@ -62,6 +62,12 @@ const Users = ({
 
   const { t } = useTranslation();
 
+  const defaultPersona = useMemo(() => {
+    return userData.personas?.find(
+      (persona) => persona.id === userData.defaultPersona?.id
+    );
+  }, [userData]);
+
   const tabs = useMemo(() => {
     return USER_PROFILE_TABS.map((data) => ({
       label: <TabsLabel id={data.key} key={data.key} name={data.name} />,
@@ -275,18 +281,14 @@ const Users = ({
                       hasPermission
                       multiSelect={false}
                       personaList={userData.personas}
-                      selectedPersonas={
-                        userData.defaultPersona ? [userData.defaultPersona] : []
-                      }
+                      selectedPersonas={defaultPersona ? [defaultPersona] : []}
                       onUpdate={handleDefaultPersonaUpdate}
                     />
                   </Typography.Text>
                 }>
                 <Chip
                   showNoDataPlaceholder
-                  data={
-                    userData.defaultPersona ? [userData.defaultPersona] : []
-                  }
+                  data={defaultPersona ? [defaultPersona] : []}
                   icon={<PersonaIcon height={18} />}
                   noDataPlaceholder={NO_DATA_PLACEHOLDER}
                 />

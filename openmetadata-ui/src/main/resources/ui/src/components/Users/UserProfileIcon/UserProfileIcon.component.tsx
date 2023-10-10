@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Typography } from 'antd';
+import { Dropdown, Tag, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../assets/svg/DropDown.svg';
@@ -31,6 +37,46 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../common/avatar/Avatar';
+
+type ListMenuItemProps = {
+  listItems: EntityReference[];
+  labelRenderer: (item: EntityReference) => ReactNode;
+  readMoreLabelRenderer: (count: number) => ReactNode;
+  readMoreKey?: string;
+  sizeLimit?: number;
+};
+
+const renderLimitedListMenuItem = ({
+  listItems,
+  labelRenderer,
+  readMoreLabelRenderer,
+  sizeLimit = 2,
+  readMoreKey,
+}: ListMenuItemProps) => {
+  const remaningCount =
+    listItems.length ?? 0 > sizeLimit
+      ? (listItems.length ?? sizeLimit) - sizeLimit
+      : 0;
+
+  const items = listItems.slice(0, sizeLimit);
+
+  return isEmpty(items)
+    ? [{ label: NO_DATA_PLACEHOLDER, key: 'no-teams' }]
+    : [
+        ...(items?.map((item) => ({
+          label: labelRenderer(item),
+          key: item.id,
+        })) ?? []),
+        ...[
+          remaningCount > 0
+            ? {
+                label: readMoreLabelRenderer(remaningCount),
+                key: readMoreKey ?? 'more-item',
+              }
+            : null,
+        ],
+      ];
+};
 
 export const UserProfileIcon = () => {
   const { currentUser, onLogoutHandler, updateCurrentUser } = useAuthContext();
@@ -68,24 +114,29 @@ export const UserProfileIcon = () => {
     }
   }, [profilePicture]);
 
-  const { userName, defaultPersona, teams, roles } = useMemo(() => {
-    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
-    const defaultPersona = currentUser?.personas?.find(
-      (persona) => persona.id === currentUser.defaultPersona?.id
-    );
+  const { userName, defaultPersona, teams, roles, inheritedRoles, personas } =
+    useMemo(() => {
+      const userName =
+        currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
+      const defaultPersona = currentUser?.personas?.find(
+        (persona) => persona.id === currentUser.defaultPersona?.id
+      );
 
-    return {
-      userName,
-      defaultPersona,
-      roles: currentUser?.roles,
-      teams: currentUser?.teams,
-    };
-  }, [currentUser]);
+      return {
+        userName,
+        defaultPersona,
+        roles: currentUser?.roles,
+        teams: currentUser?.teams,
+        inheritedRoles: currentUser?.inheritedRoles,
+        personas: currentUser?.personas,
+      };
+    }, [currentUser]);
 
-  const noDataMenuItem = {
-    label: NO_DATA_PLACEHOLDER,
-    key: '',
-  };
+  const readMoreTag = (count: number) => (
+    <Tag>
+      {count} {t('label.more')}
+    </Tag>
+  );
 
   const items: ItemType[] = useMemo(
     () => [
@@ -111,12 +162,12 @@ export const UserProfileIcon = () => {
       {
         key: 'roles',
         icon: '',
-        children: isEmpty(roles)
-          ? [{ ...noDataMenuItem, key: 'no-roles' }]
-          : roles?.map((role) => ({
-              label: getEntityName(role),
-              key: role.id,
-            })),
+        children: renderLimitedListMenuItem({
+          listItems: roles ?? [],
+          labelRenderer: getEntityName,
+          readMoreLabelRenderer: readMoreTag,
+          readMoreKey: 'more-roles',
+        }),
         label: (
           <span className="text-grey-muted">{i18n.t('label.role-plural')}</span>
         ),
@@ -128,10 +179,12 @@ export const UserProfileIcon = () => {
       {
         key: 'inheritedRoles',
         icon: '',
-        children: currentUser?.inheritedRoles?.map((role) => ({
-          label: getEntityName(role),
-          key: role.id,
-        })) ?? [{ ...noDataMenuItem, key: 'no-inherited-roles' }],
+        children: renderLimitedListMenuItem({
+          listItems: inheritedRoles ?? [],
+          labelRenderer: getEntityName,
+          readMoreLabelRenderer: readMoreTag,
+          readMoreKey: 'more-inherited-roles',
+        }),
         label: (
           <span className="text-grey-muted">
             {i18n.t('label.inherited-role-plural')}
@@ -145,12 +198,22 @@ export const UserProfileIcon = () => {
       {
         key: 'personas',
         icon: '',
-        children: currentUser?.personas?.map((persona) => ({
-          label: getEntityName(persona),
-          key: persona.id,
-          onClick: () => handleDefaultPersonaChange(persona),
-          icon: defaultPersona?.id === persona.id && <CheckOutlined />,
-        })) ?? [{ ...noDataMenuItem, key: 'no-persona' }],
+        children: renderLimitedListMenuItem({
+          listItems: personas ?? [],
+          readMoreKey: 'more-persona',
+          labelRenderer: (item: EntityReference) => (
+            <span onClick={() => handleDefaultPersonaChange(item)}>
+              {getEntityName(item)}{' '}
+              {defaultPersona?.id === item.id && (
+                <CheckOutlined
+                  className="m-l-xs"
+                  style={{ color: '#4CAF50' }}
+                />
+              )}
+            </span>
+          ),
+          readMoreLabelRenderer: readMoreTag,
+        }),
         label: (
           <span className="text-grey-muted">
             {i18n.t('label.persona-plural')}
@@ -164,19 +227,25 @@ export const UserProfileIcon = () => {
       {
         key: 'teams',
         icon: '',
-        children: isEmpty(teams)
-          ? [{ ...noDataMenuItem, key: 'no-teams' }]
-          : teams?.map((team) => ({
-              label: (
-                <Link
-                  className="ant-typography-ellipsis-custom text-sm m-b-0"
-                  component={Typography.Link}
-                  to={getTeamAndUserDetailsPath(team.name as string)}>
-                  {getEntityName(team)}
-                </Link>
-              ),
-              key: team.id,
-            })),
+        children: renderLimitedListMenuItem({
+          listItems: teams ?? [],
+          readMoreKey: 'more-teams',
+          labelRenderer: (item) => (
+            <Link
+              className="ant-typography-ellipsis-custom text-sm m-b-0"
+              component={Typography.Link}
+              to={getTeamAndUserDetailsPath(item.name as string)}>
+              {getEntityName(item)}
+            </Link>
+          ),
+          readMoreLabelRenderer: (count) => (
+            <Link
+              className="more-teams-pill"
+              to={getUserPath(currentUser?.name as string)}>
+              {count} {t('label.more')}
+            </Link>
+          ),
+        }),
         label: (
           <span className="text-grey-muted">{i18n.t('label.team-plural')}</span>
         ),
@@ -198,7 +267,7 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, defaultPersona, teams, roles]
+    [currentUser, userName, defaultPersona, teams, roles, personas]
   );
 
   return (
@@ -231,7 +300,7 @@ export const UserProfileIcon = () => {
               ellipsis={{ tooltip: true }}>
               {defaultPersona
                 ? getEntityName(defaultPersona)
-                : t('label.default-persona')}
+                : t('label.default')}
             </Typography.Text>
           </div>
         </div>

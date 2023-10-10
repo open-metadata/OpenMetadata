@@ -278,6 +278,7 @@
     "dbt-source": "dbt Source",
     "deactivated": "非アクティブ化",
     "december": "12月",
+    "default": "Default",
     "default-persona": "Default Persona",
     "delete": "削除",
     "delete-entity": "{{entity}}を削除",

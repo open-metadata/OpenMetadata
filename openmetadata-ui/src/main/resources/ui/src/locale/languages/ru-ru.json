@@ -278,6 +278,7 @@
     "dbt-source": "dbt Источник",
     "deactivated": "Отключено",
     "december": "Декабрь",
+    "default": "Default",
     "default-persona": "Default Persona",
     "delete": "Удалить",
     "delete-entity": "Удалить {{entity}}",
