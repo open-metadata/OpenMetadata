@@ -201,7 +201,6 @@ SET json = JSON_INSERT(
     '$.reportDataType',
     'entityReportData'),
     entityFQNHash = MD5('entityReportData')
-)
 WHERE JSON_EXTRACT(json, '$.reportDataType') = 'EntityReportData';
 
 -- update webAnalyticEntityViewReportData from pascale to camel case
@@ -211,7 +210,6 @@ SET json = JSON_INSERT(
     '$.reportDataType',
     'webAnalyticEntityViewReportData'),
     entityFQNHash = MD5('webAnalyticEntityViewReportData')
-)
 WHERE JSON_EXTRACT(json, '$.reportDataType') = 'WebAnalyticEntityViewReportData';
 
 -- update webAnalyticUserActivityReportData from pascale to camel case
@@ -221,5 +219,4 @@ SET json = JSON_INSERT(
     '$.reportDataType',
     'webAnalyticUserActivityReportData'),
     entityFQNHash = MD5('webAnalyticUserActivityReportData')
-)
 WHERE JSON_EXTRACT(json, '$.reportDataType') = 'WebAnalyticUserActivityReportData';
