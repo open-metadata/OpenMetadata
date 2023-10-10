@@ -17,9 +17,9 @@ import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.update.UpdateRequest;
-import org.opensearch.common.xcontent.XContentType;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
 public class OpenSearchEntitiesProcessor implements Processor<BulkRequest, ResultList<? extends EntityInterface>> {

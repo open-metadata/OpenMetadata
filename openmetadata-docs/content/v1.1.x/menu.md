@@ -603,26 +603,68 @@ site_menu:
     url: /how-to-guides/user-guide-for-data-stewards/basics-openmetadata
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Tabs
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tabs
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Description using Markdown
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/description
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Request for Description
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-description
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Assign or Change Data Ownership
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/data-ownership
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Follow a Data Asset
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/follow-data-asset
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Tags
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/tags
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Request for Tags
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/request-tags
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Add Glossary Terms
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/glossary
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create a Custom Property for a Data Asset
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/custom
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Overview of Announcements
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/announcements
   - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Create an Announcement
     url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/add-announcement
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / Data Asset Versioning
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/versions
+  - category: How to Guides / User Guide for Data Stewards / Overview of Data Assets / How to Delete a Data Asset
+    url: /how-to-guides/user-guide-for-data-stewards/overview-data-assets/delete
   - category: How to Guides / The Six Pillars of OpenMetadata
     url: /how-to-guides/openmetadata
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery
     url: /how-to-guides/openmetadata/data-discovery
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/openmetadata/data-discovery/discover
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / Get a Quick Glance of the Data Assets
+    url: /how-to-guides/openmetadata/data-discovery/preview
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / Detailed View of the Data Assets
+    url: /how-to-guides/openmetadata/data-discovery/details
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Discovery / Add Complex Queries using Advanced Search
+    url: /how-to-guides/openmetadata/data-discovery/advanced
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration
     url: /how-to-guides/openmetadata/data-collaboration
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / Understanding Activity Feeds
+    url: /how-to-guides/openmetadata/data-collaboration/activity-feeds
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / How to Request for Description
+    url: /how-to-guides/openmetadata/data-collaboration/request-description
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / How to Request for Tags
+    url: /how-to-guides/openmetadata/data-collaboration/request-tags
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / Overview of Announcements
+    url: /how-to-guides/openmetadata/data-collaboration/announcements
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Collaboration / How to Create an Announcement
+    url: /how-to-guides/openmetadata/data-collaboration/add-announcement
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Quality and Profiler
     url: /how-to-guides/openmetadata/data-quality-profiler
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage
     url: /how-to-guides/openmetadata/data-lineage
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Deploy a Lineage Workflow
+    url: /how-to-guides/openmetadata/data-lineage/workflow
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / Explore the Lineage View
+    url: /how-to-guides/openmetadata/data-lineage/explore
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How Column-Level Lineage Works
+    url: /how-to-guides/openmetadata/data-lineage/column
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Lineage / How to Manually Add or Edit Lineage
+    url: /how-to-guides/openmetadata/data-lineage/manual
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights
     url: /how-to-guides/openmetadata/data-insights
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance

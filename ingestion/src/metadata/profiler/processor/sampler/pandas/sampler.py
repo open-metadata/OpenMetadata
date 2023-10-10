@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+import json
 import math
 import random
 from typing import List, Optional, cast
@@ -25,8 +26,10 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     TableData,
 )
+from metadata.ingestion.source.database.datalake.columns import _get_root_col
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 
 
 class DatalakeSampler(SamplerInterface):
@@ -34,9 +37,6 @@ class DatalakeSampler(SamplerInterface):
     Generates a sample of the data to not
     run the query in the whole table.
     """
-
-    def _fetch_rows(self, data_frame):
-        return data_frame.dropna().values.tolist()
 
     def _partitioned_table(self):
         """Get partitioned table"""
@@ -156,9 +156,54 @@ class DatalakeSampler(SamplerInterface):
 
         return self._get_sampled_dataframe()
 
-    def fetch_sample_data(
-        self, columns: Optional[List[SQALikeColumn]] = None
-    ) -> TableData:
+    @staticmethod
+    def unflatten_dict(flat_dict):
+        unflattened_dict = {}
+        for key, value in flat_dict.items():
+            keys = key.split(".")
+            current_dict = unflattened_dict
+
+            for key in keys[:-1]:
+                current_dict = current_dict.setdefault(key, {})
+
+            current_dict[keys[-1]] = value
+
+        return unflattened_dict
+
+    def _fetch_rows_df(self, data_frame):
+        # pylint: disable=import-outside-toplevel
+        import numpy as np
+        import pandas as pd
+
+        complex_columns = list(
+            set(
+                _get_root_col(col)
+                for col in data_frame.columns
+                if COMPLEX_COLUMN_SEPARATOR in col
+            )
+        )
+        for complex_col in complex_columns or []:
+            for df_col in data_frame.columns:
+                if complex_col in df_col:
+                    complex_col_name = ".".join(
+                        df_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
+                    )
+                    if complex_col_name:
+                        data_frame.rename(
+                            columns={df_col: complex_col_name},
+                            inplace=True,
+                        )
+        return pd.json_normalize(
+            [
+                self.unflatten_dict(json.loads(row_values))
+                for row_values in data_frame.apply(
+                    lambda row: row.to_json(), axis=1
+                ).values
+            ],
+            max_level=0,
+        ).replace(np.nan, None)
+
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]] = None) -> TableData:
         """Fetch sample data from the table
 
         Returns:

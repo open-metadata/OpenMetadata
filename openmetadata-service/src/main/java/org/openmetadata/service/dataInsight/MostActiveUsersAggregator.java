@@ -1,6 +1,5 @@
 package org.openmetadata.service.dataInsight;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.MostActiveUsers;
@@ -13,7 +12,7 @@ public abstract class MostActiveUsersAggregator<A, B, M, S, X> implements DataIn
   }
 
   @Override
-  public List<Object> aggregate() throws ParseException {
+  public List<Object> aggregate() {
     M userNameBuckets = getUserNameBuckets(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B userNameBucket : getBuckets(userNameBuckets)) {

@@ -82,38 +82,52 @@ export const AssetsFilterOptions: Array<{
     value: SearchIndex.SEARCH_INDEX,
   },
   {
-    label: i18n.t('label.database-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.database'),
+    }),
     key: EntityType.DATABASE_SERVICE,
     value: SearchIndex.DATABASE_SERVICE,
   },
   {
-    label: i18n.t('label.messaging-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.messaging'),
+    }),
     key: EntityType.MESSAGING_SERVICE,
     value: SearchIndex.MESSAGING_SERVICE,
   },
   {
-    label: i18n.t('label.dashboard-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.dashboard'),
+    }),
     key: EntityType.DASHBOARD_SERVICE,
     value: SearchIndex.DASHBOARD_SERVICE,
   },
 
   {
-    label: i18n.t('label.pipeline-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.pipeline'),
+    }),
     key: EntityType.PIPELINE_SERVICE,
     value: SearchIndex.PIPELINE_SERVICE,
   },
   {
-    label: i18n.t('label.ml-model-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.ml-model'),
+    }),
     key: EntityType.MLMODEL_SERVICE,
     value: SearchIndex.ML_MODEL_SERVICE,
   },
   {
-    label: i18n.t('label.storage-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.storage'),
+    }),
     key: EntityType.STORAGE_SERVICE,
     value: SearchIndex.STORAGE_SERVICE,
   },
   {
-    label: i18n.t('label.search-index-service'),
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.search-index'),
+    }),
     key: EntityType.SEARCH_SERVICE,
     value: SearchIndex.SEARCH_SERVICE,
   },

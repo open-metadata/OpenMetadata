@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import java.util.List;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -117,8 +116,7 @@ public class EventResource {
               required = true,
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("timestamp")
-          long timestamp)
-      throws IOException {
+          long timestamp) {
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);

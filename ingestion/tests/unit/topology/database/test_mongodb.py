@@ -149,6 +149,7 @@ MOCK_CREATE_TABLE = CreateTableRequest(
                     name="line",
                     dataType=DataType.STRING,
                     dataTypeDisplay=DataType.STRING.value,
+                    displayName="line",
                 )
             ],
         ),

@@ -42,21 +42,28 @@ public class OpenMetadataConnectionBuilder {
   AuthProvider authProvider;
   String bot;
   Object securityConfig;
-  private final VerifySSL verifySSL;
-  private final String openMetadataURL;
-  private final String clusterName;
-  private final SecretsManagerProvider secretsManagerProvider;
-  private final SecretsManagerClientLoader secretsManagerLoader;
-  private final Object openMetadataSSLConfig;
+  private VerifySSL verifySSL;
+  private String openMetadataURL;
+  private String clusterName;
+  private SecretsManagerProvider secretsManagerProvider;
+  private SecretsManagerClientLoader secretsManagerLoader;
+  private Object openMetadataSSLConfig;
   BotRepository botRepository;
   UserRepository userRepository;
 
   public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    initializeBotUser(Entity.INGESTION_BOT_NAME);
+  }
+
+  public OpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig, String botName) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    initializeBotUser(botName);
+  }
+
+  private void initializeOpenMetadataConnectionBuilder(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
     botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    User botUser = retrieveBotUser();
-    securityConfig = extractSecurityConfig(botUser);
-    authProvider = extractAuthProvider(botUser);
 
     PipelineServiceClientConfiguration pipelineServiceClientConfiguration =
         openMetadataApplicationConfig.getPipelineServiceClientConfiguration();
@@ -82,6 +89,12 @@ public class OpenMetadataConnectionBuilder {
     clusterName = openMetadataApplicationConfig.getClusterName();
     secretsManagerLoader = pipelineServiceClientConfiguration.getSecretsManagerLoader();
     secretsManagerProvider = SecretsManagerFactory.getSecretsManager().getSecretsManagerProvider();
+  }
+
+  private void initializeBotUser(String botName) {
+    User botUser = retrieveBotUser(botName);
+    securityConfig = extractSecurityConfig(botUser);
+    authProvider = extractAuthProvider(botUser);
   }
 
   private AuthProvider extractAuthProvider(User botUser) {
@@ -132,8 +145,8 @@ public class OpenMetadataConnectionBuilder {
         .withSslConfig(openMetadataSSLConfig);
   }
 
-  private User retrieveBotUser() {
-    User botUser = retrieveIngestionBotUser(Entity.INGESTION_BOT_NAME);
+  private User retrieveBotUser(String botName) {
+    User botUser = retrieveIngestionBotUser(botName);
     if (botUser == null) {
       throw new IllegalArgumentException("Please, verify that the ingestion-bot is present.");
     }

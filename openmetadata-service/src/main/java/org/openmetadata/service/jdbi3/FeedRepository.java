@@ -713,7 +713,7 @@ public class FeedRepository {
     // Allow if user belongs to a team that has task assigned to it
     // Allow if user belongs to a team if owner of the resource against which task is created
     List<EntityReference> teams = user.getTeams();
-    List<String> teamNames = teams.stream().map(EntityReference::getName).collect(Collectors.toList());
+    List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
     if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
         || teamNames.contains(owner.getName())) {
       return;
