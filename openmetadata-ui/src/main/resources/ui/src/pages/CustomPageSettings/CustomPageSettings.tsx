@@ -19,10 +19,8 @@ import { useHistory } from 'react-router-dom';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import { AddEditCustomizePage } from '../../components/CustomizablePages/AddEditCustomizePages/AddEditCustomizePage.component';
 import PageHeader from '../../components/header/PageHeader.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -36,7 +34,6 @@ export const CustomPageSettings = () => {
   const { t } = useTranslation();
   const history = useHistory();
 
-  const [pageEditing, setPageEditing] = useState<Document>();
   const [isLoading, setIsLoading] = useState(true);
 
   const [personas, setPersonas] = useState<Persona[]>();
@@ -65,10 +62,6 @@ export const CustomPageSettings = () => {
   useEffect(() => {
     fetchPersonas();
   }, []);
-
-  const handleDocumentSave = () => {
-    setPageEditing(undefined);
-  };
 
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
@@ -128,13 +121,6 @@ export const CustomPageSettings = () => {
           paging={paging}
           pagingHandler={handlePersonaPageChange}
           onShowSizeChange={handlePageSizeChange}
-        />
-      )}
-      {pageEditing && (
-        <AddEditCustomizePage
-          page={pageEditing}
-          onCancel={() => setPageEditing(undefined)}
-          onSave={handleDocumentSave}
         />
       )}
     </Row>

@@ -29,6 +29,7 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
   NO_DATA_PLACEHOLDER,
+  TERM_ADMIN,
   TERM_USER,
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
@@ -125,7 +126,12 @@ export const UserProfileIcon = () => {
       return {
         userName,
         defaultPersona,
-        roles: currentUser?.roles,
+        roles: currentUser?.isAdmin
+          ? [
+              ...(currentUser?.roles ?? []),
+              { name: TERM_ADMIN, type: 'role' } as EntityReference,
+            ]
+          : currentUser?.roles,
         teams: currentUser?.teams,
         inheritedRoles: currentUser?.inheritedRoles,
         personas: currentUser?.personas,
@@ -136,6 +142,41 @@ export const UserProfileIcon = () => {
     <Tag>
       {count} {t('label.more')}
     </Tag>
+  );
+
+  const personaLabelRenderer = useCallback(
+    (item: EntityReference) => (
+      <span onClick={() => handleDefaultPersonaChange(item)}>
+        {getEntityName(item)}{' '}
+        {defaultPersona?.id === item.id && (
+          <CheckOutlined className="m-l-xs" style={{ color: '#4CAF50' }} />
+        )}
+      </span>
+    ),
+    [handleDefaultPersonaChange, defaultPersona]
+  );
+
+  const teamLabelRenderer = useCallback(
+    (item) => (
+      <Link
+        className="ant-typography-ellipsis-custom text-sm m-b-0"
+        component={Typography.Link}
+        to={getTeamAndUserDetailsPath(item.name as string)}>
+        {getEntityName(item)}
+      </Link>
+    ),
+    []
+  );
+
+  const readMoreTeamRenderer = useCallback(
+    (count) => (
+      <Link
+        className="more-teams-pill"
+        to={getUserPath(currentUser?.name as string)}>
+        {count} {t('label.more')}
+      </Link>
+    ),
+    [currentUser]
   );
 
   const items: ItemType[] = useMemo(
@@ -201,17 +242,7 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: personas ?? [],
           readMoreKey: 'more-persona',
-          labelRenderer: (item: EntityReference) => (
-            <span onClick={() => handleDefaultPersonaChange(item)}>
-              {getEntityName(item)}{' '}
-              {defaultPersona?.id === item.id && (
-                <CheckOutlined
-                  className="m-l-xs"
-                  style={{ color: '#4CAF50' }}
-                />
-              )}
-            </span>
-          ),
+          labelRenderer: personaLabelRenderer,
           readMoreLabelRenderer: readMoreTag,
         }),
         label: (
@@ -230,21 +261,8 @@ export const UserProfileIcon = () => {
         children: renderLimitedListMenuItem({
           listItems: teams ?? [],
           readMoreKey: 'more-teams',
-          labelRenderer: (item) => (
-            <Link
-              className="ant-typography-ellipsis-custom text-sm m-b-0"
-              component={Typography.Link}
-              to={getTeamAndUserDetailsPath(item.name as string)}>
-              {getEntityName(item)}
-            </Link>
-          ),
-          readMoreLabelRenderer: (count) => (
-            <Link
-              className="more-teams-pill"
-              to={getUserPath(currentUser?.name as string)}>
-              {count} {t('label.more')}
-            </Link>
-          ),
+          labelRenderer: teamLabelRenderer,
+          readMoreLabelRenderer: readMoreTeamRenderer,
         }),
         label: (
           <span className="text-grey-muted">{i18n.t('label.team-plural')}</span>
