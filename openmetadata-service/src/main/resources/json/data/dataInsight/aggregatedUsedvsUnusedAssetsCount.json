@@ -1,8 +1,8 @@
 {
   "name": "AggregatedUsedvsUnusedAssetsCount",
   "fullyQualifiedName": "AggregatedUsedvsUnusedAssetsCount",
-  "displayName": "Used vs Unused Assets Count",
-  "description": "Displays the count of used vs unused assets over time.",
+  "displayName": "Used vs Unused Assets Count Percentage",
+  "description": "Displays the count of used vs unused assets over time in percentage.",
   "dataIndexType": "aggregated_cost_analysis_report_data_index",
   "dimensions": [
     {"name": "timestamp","chartDataType":"INT"}

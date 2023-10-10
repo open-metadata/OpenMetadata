@@ -18,7 +18,7 @@ import traceback
 from enum import Enum
 from logging import Logger
 from pathlib import Path
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, List, Type, Union
 
 from pydantic import BaseModel
 from tabulate import tabulate
@@ -230,55 +230,6 @@ def print_status(workflow: "BaseWorkflow") -> None:
         )
 
 
-def print_test_suite_status(workflow) -> None:
-    """
-    Print the test suite workflow results
-    """
-    print_workflow_summary_legacy(
-        workflow, processor=True, processor_status=workflow.status
-    )
-
-    if workflow.result_status() == 1:
-        log_ansi_encoded_string(
-            color=ANSI.BRIGHT_RED, bold=True, message=WORKFLOW_FAILURE_MESSAGE
-        )
-    else:
-        log_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
-        )
-
-
-def print_data_insight_status(workflow) -> None:
-    """
-    Print the test suite workflow results
-    Args:
-        workflow (DataInsightWorkflow): workflow object
-    """
-    # TODO: fixme
-    print_workflow_summary_legacy(
-        workflow,
-        processor=True,
-        processor_status=workflow.source.get_status(),
-    )
-
-    if workflow.source.get_status().source_start_time:
-        log_ansi_encoded_string(
-            message=f"Workflow finished in time {pretty_print_time_duration(time.time()-workflow.source.get_status().source_start_time)} ",  # pylint: disable=line-too-long
-        )
-
-    if workflow.result_status() == 1:
-        log_ansi_encoded_string(message=WORKFLOW_FAILURE_MESSAGE)
-    elif workflow.source.get_status().warnings or (
-        hasattr(workflow, "sink") and workflow.sink.get_status().warnings
-    ):
-        log_ansi_encoded_string(message=WORKFLOW_WARNING_MESSAGE)
-    else:
-        log_ansi_encoded_string(message=WORKFLOW_SUCCESS_MESSAGE)
-        log_ansi_encoded_string(
-            color=ANSI.GREEN, bold=True, message=WORKFLOW_SUCCESS_MESSAGE
-        )
-
-
 def is_debug_enabled(workflow) -> bool:
     return (
         hasattr(workflow, "config")
@@ -355,118 +306,6 @@ def print_workflow_status_debug(workflow: "BaseWorkflow") -> None:
             bold=True, message=f"{get_generic_step_name(step)} Status:"
         )
         log_ansi_encoded_string(message=step.get_status().as_string())
-
-
-def get_source_status(workflow, source_status: Status) -> Optional[Status]:
-    if hasattr(workflow, "source"):
-        return source_status if source_status else workflow.source.get_status()
-    return source_status
-
-
-def get_processor_status(workflow, processor_status: Status) -> Optional[Status]:
-    if hasattr(workflow, "processor"):
-        return processor_status if processor_status else workflow.processor.get_status()
-    return processor_status
-
-
-def print_workflow_summary_legacy(
-    workflow,
-    source: bool = False,
-    stage: bool = False,
-    bulk_sink: bool = False,
-    processor: bool = False,
-    source_status: Status = None,
-    processor_status: Status = None,
-):
-    """
-    To be removed. All workflows should use the new `print_workflow_summary`
-    after making the transition to the BaseWorkflow steps with common Status.
-    """
-    source_status = get_source_status(workflow, source_status)
-    processor_status = get_processor_status(workflow, processor_status)
-    if is_debug_enabled(workflow):
-        print_workflow_status_debug_legacy(
-            workflow,
-            bulk_sink,
-            stage,
-            source_status,
-            processor_status,
-        )
-    summary = Summary()
-    failures = []
-    if source_status and source:
-        summary += get_summary(source_status)
-        failures.append(Failure(name="Source", failures=source_status.failures))
-    if hasattr(workflow, "stage") and stage:
-        summary += get_summary(workflow.stage.get_status())
-        failures.append(
-            Failure(name="Stage", failures=workflow.stage.get_status().failures)
-        )
-    if hasattr(workflow, "sink"):
-        summary += get_summary(workflow.sink.get_status())
-        failures.append(
-            Failure(name="Sink", failures=workflow.sink.get_status().failures)
-        )
-    if hasattr(workflow, "bulk_sink") and bulk_sink:
-        summary += get_summary(workflow.bulk_sink.get_status())
-        failures.append(
-            Failure(name="Bulk Sink", failures=workflow.bulk_sink.get_status().failures)
-        )
-    if processor_status and processor:
-        summary += get_summary(processor_status)
-        failures.append(Failure(name="Processor", failures=processor_status.failures))
-
-    print_failures_if_apply(failures)
-
-    log_ansi_encoded_string(bold=True, message="Workflow Summary:")
-    log_ansi_encoded_string(message=f"Total processed records: {summary.records}")
-    log_ansi_encoded_string(message=f"Total warnings: {summary.warnings}")
-    log_ansi_encoded_string(message=f"Total filtered: {summary.filtered}")
-    log_ansi_encoded_string(message=f"Total errors: {summary.errors}")
-
-    total_success = max(summary.records, 1)
-    log_ansi_encoded_string(
-        color=ANSI.BRIGHT_CYAN,
-        bold=True,
-        message=f"Success %: "
-        f"{round(total_success * 100 / (total_success + summary.errors), 2)}",
-    )
-
-
-def print_workflow_status_debug_legacy(
-    workflow,
-    bulk_sink: bool = False,
-    stage: bool = False,
-    source_status: Status = None,
-    processor_status: Status = None,
-) -> None:
-    """
-    Args:
-        workflow: the workflow status to be printed
-        bulk_sink: if bull_sink status must be printed
-        stage: if stage status must be printed
-        source_status: source status to be printed
-        processor_status: processor status to be printed
-
-    Returns:
-        Print Workflow status when the workflow logger level is DEBUG
-    """
-    log_ansi_encoded_string(bold=True, message="Statuses detailed info:")
-    if source_status:
-        log_ansi_encoded_string(bold=True, message="Source Status:")
-        log_ansi_encoded_string(message=source_status.as_string())
-    if hasattr(workflow, "stage") and stage:
-        log_ansi_encoded_string(bold=True, message="Stage Status:")
-        log_ansi_encoded_string(message=workflow.stage.get_status().as_string())
-    if hasattr(workflow, "sink"):
-        log_ansi_encoded_string(bold=True, message="Sink Status:")
-        log_ansi_encoded_string(message=workflow.sink.get_status().as_string())
-    if hasattr(workflow, "bulk_sink") and bulk_sink:
-        log_ansi_encoded_string(bold=True, message="Bulk Sink Status:")
-        log_ansi_encoded_string(message=workflow.bulk_sink.get_status().as_string())
-    if processor_status:
-        log_ansi_encoded_string(bold=True, message="Processor Status:")
-        log_ansi_encoded_string(message=processor_status.as_string())
 
 
 def get_summary(status: Status) -> Summary:
