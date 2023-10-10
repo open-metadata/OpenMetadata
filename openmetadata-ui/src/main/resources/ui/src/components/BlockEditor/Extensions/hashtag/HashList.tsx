@@ -130,7 +130,9 @@ export default forwardRef<
               <div className="w-5" style={{ marginTop: '6px' }}>
                 {getEntityIcon(item.type)}
               </div>
-              <Typography>{item.label}</Typography>
+              <Typography className="truncate w-max-200">
+                {item.label}
+              </Typography>
             </Space>
           </Space>
         );
