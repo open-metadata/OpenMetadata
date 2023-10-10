@@ -1499,7 +1499,8 @@
     "write-your-announcement-lowercase": "编写您的公告",
     "write-your-description": "编写您的描述",
     "write-your-text": "请编写您的{{text}}",
-    "you-can-also-set-up-the-metadata-ingestion": "您还可以设置元数据提取作业"
+    "you-can-also-set-up-the-metadata-ingestion": "您还可以设置元数据提取作业",
+    "are-you-sure-action-property": "Are you sure you want to {{action}} the property {{propertyName}}?"
   },
   "server": {
     "account-verify-success": "邮箱验证成功",

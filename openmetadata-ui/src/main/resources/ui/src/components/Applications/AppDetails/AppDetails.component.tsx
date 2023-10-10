@@ -41,6 +41,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
@@ -132,7 +133,7 @@ const AppDetails = () => {
           <TabsLabel id={ApplicationTabs.SCHEDULE} name={t('label.schedule')} />
         ),
         key: ApplicationTabs.SCHEDULE,
-        children: <div className="p-md"></div>,
+        children: <div className="p-md" />,
       },
       {
         label: (
@@ -174,11 +175,11 @@ const AppDetails = () => {
         <Row>
           <Col className="d-flex" flex="auto">
             <Button
-              size="small"
               className="p-0"
+              icon={<LeftOutlined />}
+              size="small"
               type="text"
-              onClick={onBrowseAppsClick}
-              icon={<LeftOutlined />}>
+              onClick={onBrowseAppsClick}>
               <Typography.Text className="font-medium">
                 {t('label.browse-app-plural')}
               </Typography.Text>
@@ -215,8 +216,8 @@ const AppDetails = () => {
             <Space className="app-details-header w-full m-t-md" size={24}>
               <Avatar
                 className="flex-center bg-white border"
+                icon={<AppIcon color="#000" height={64} width={64} />}
                 size={120}
-                icon={<AppIcon color="#000" width={64} height={64} />}
               />
 
               <div className="w-full">
@@ -267,8 +268,24 @@ const AppDetails = () => {
             />
           </Col>
         </Row>
+
+        <ConfirmationModal
+          bodyText={t('message.are-you-sure-action-property', {
+            action: isAppDisableAction
+              ? t('label.disable')
+              : t('label.uninstall'),
+            propertyName: getEntityName(appData),
+          })}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.ok')}
+          header={t('message.are-you-sure')}
+          visible={showDeleteModel}
+          onCancel={() => setShowDeleteModel(false)}
+          onConfirm={onConfirmAction}
+        />
       </PageLayoutV1>
     </>
   );
 };
+
 export default AppDetails;

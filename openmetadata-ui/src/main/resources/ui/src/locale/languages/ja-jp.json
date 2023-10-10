@@ -1499,7 +1499,8 @@
     "write-your-announcement-lowercase": "お知らせを書いてください",
     "write-your-description": "説明を書いてください",
     "write-your-text": "Write your {{text}}",
-    "you-can-also-set-up-the-metadata-ingestion": "メタデータの取り込みの設定もできます。"
+    "you-can-also-set-up-the-metadata-ingestion": "メタデータの取り込みの設定もできます。",
+    "are-you-sure-action-property": "Are you sure you want to {{action}} the property {{propertyName}}?"
   },
   "server": {
     "account-verify-success": "Email verified successfully",

@@ -1499,7 +1499,8 @@
     "write-your-announcement-lowercase": "escreva seu anúncio",
     "write-your-description": "Escreva sua descrição",
     "write-your-text": "Write your {{text}}",
-    "you-can-also-set-up-the-metadata-ingestion": "Você também pode configurar a ingestão de metadados."
+    "you-can-also-set-up-the-metadata-ingestion": "Você também pode configurar a ingestão de metadados.",
+    "are-you-sure-action-property": "Are you sure you want to {{action}} the property {{propertyName}}?"
   },
   "server": {
     "account-verify-success": "Email verified successfully",

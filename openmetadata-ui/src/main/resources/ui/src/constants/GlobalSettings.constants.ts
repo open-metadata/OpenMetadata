@@ -60,7 +60,7 @@ export enum GlobalSettingOptions {
   CUSTOM_LOGO = 'customLogo',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
-  APPLICATIONS = 'apps',
+  APPLICATIONS = 'application',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

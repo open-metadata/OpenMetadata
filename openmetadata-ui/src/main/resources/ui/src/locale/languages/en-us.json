@@ -1526,7 +1526,8 @@
     "write-your-text": "Write your {{text}}",
     "disable-app": "This will disable the {{app}} application.",
     "uninstall-app": "Uninstalling this {{app}} application will remove it from OpenMetaData",
-    "you-can-also-set-up-the-metadata-ingestion": "You can also set up the metadata ingestion."
+    "you-can-also-set-up-the-metadata-ingestion": "You can also set up the metadata ingestion.",
+    "are-you-sure-action-property": "Are you sure you want to {{action}} the property {{propertyName}}?"
   },
   "server": {
     "account-verify-success": "Email verified successfully",

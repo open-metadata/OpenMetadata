@@ -1494,7 +1494,8 @@
     "write-your-announcement-lowercase": "Schreiben Sie Ihre Ankündigung in Kleinbuchstaben",
     "write-your-description": "Schreiben Sie Ihre Beschreibung",
     "write-your-text": "Schreiben Sie Ihren {{text}}",
-    "you-can-also-set-up-the-metadata-ingestion": "Sie können auch die Metadateninhalation einrichten."
+    "you-can-also-set-up-the-metadata-ingestion": "Sie können auch die Metadateninhalation einrichten.",
+    "are-you-sure-action-property": "Are you sure you want to {{action}} the property {{propertyName}}?"
   },
   "server": {
     "account-verify-success": "E-Mail erfolgreich verifiziert",

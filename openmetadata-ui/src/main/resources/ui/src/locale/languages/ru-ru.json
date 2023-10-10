@@ -1499,7 +1499,8 @@
     "write-your-announcement-lowercase": "напишите свое объявление",
     "write-your-description": "Добавьте ваше описание",
     "write-your-text": "Напишите ваш {{text}}",
-    "you-can-also-set-up-the-metadata-ingestion": "Вы также можете настроить прием метаданных."
+    "you-can-also-set-up-the-metadata-ingestion": "Вы также можете настроить прием метаданных.",
+    "are-you-sure-action-property": "Are you sure you want to {{action}} the property {{propertyName}}?"
   },
   "server": {
     "account-verify-success": "Электронная почта успешно подтверждена",
