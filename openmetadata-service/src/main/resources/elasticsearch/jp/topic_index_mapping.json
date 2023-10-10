@@ -286,6 +286,9 @@
           }
         }
       },
+      "extension": {
+        "type": "object"
+      },
       "dataProducts": {
         "properties": {
           "id": {

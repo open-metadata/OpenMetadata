@@ -434,7 +434,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "sourceUrl": {
         "type": "keyword"

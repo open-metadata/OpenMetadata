@@ -346,6 +346,10 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+    }
+
     /* for performance reasons OpenSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
     however in most cases for search results an approximate value is good enough.

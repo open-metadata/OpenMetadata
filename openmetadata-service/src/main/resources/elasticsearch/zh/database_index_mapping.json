@@ -146,7 +146,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "owner": {
         "properties": {

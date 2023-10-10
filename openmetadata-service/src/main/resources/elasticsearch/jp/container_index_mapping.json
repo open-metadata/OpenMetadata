@@ -165,7 +165,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "dataModel": {
         "properties": {
