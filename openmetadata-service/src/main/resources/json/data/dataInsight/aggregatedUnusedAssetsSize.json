@@ -2,17 +2,21 @@
   "name": "AggregatedUnusedAssetsSize",
   "fullyQualifiedName": "AggregatedUnusedAssetsSize",
   "displayName": "Unused Assets Size",
-  "description": "Displays the total size of unused assets over time.",
+  "description": "Displays the total size of unused assets over time broken down by unused time period.",
   "dataIndexType": "aggregated_cost_analysis_report_data_index",
   "dimensions": [
     {"name": "timestamp","chartDataType":"INT"}
   ],
   "metrics": [
-    {"name": "threeDays", "displayName": "3 Days", "chartDataType": "FLOAT"},
-    {"name": "sevenDays", "displayName": "7 Days", "chartDataType": "FLOAT"},
-    {"name": "fourteenDays", "displayName": "14 Days", "chartDataType": "FLOAT"},
-    {"name": "thirtyDays", "displayName": "30 Days", "chartDataType": "FLOAT"},
-    {"name": "sixtyDays", "displayName": "60 Days", "chartDataType": "FLOAT"},
-    {"name": "totalAssetSize", "displayName": "Total Asset Size", "chartDataType": "FLOAT"}
+    {"name": "frequentlyUsedDataAssets.threeDays", "displayName": "Last 3 Days (Used)", "chartDataType": "FLOAT"},
+    {"name": "frequentlyUsedDataAssets.sevenDays", "displayName": "Last 7 Days (Used)", "chartDataType": "FLOAT"},
+    {"name": "frequentlyUsedDataAssets.fourteenDays", "displayName": "Last 14 Days (Used)", "chartDataType": "FLOAT"},
+    {"name": "frequentlyUsedDataAssets.thirtyDays", "displayName": "last 30 Days (Used)", "chartDataType": "FLOAT"},
+    {"name": "frequentlyUsedDataAssets.sixtyDays", "displayName": "Last 60 Days (Used)", "chartDataType": "FLOAT"},
+    {"name": "unusedDataAssets.threeDays", "displayName": "Last 3 Days (Unused)", "chartDataType": "FLOAT"},
+    {"name": "unusedDataAssets.sevenDays", "displayName": "Last 7 Days (Unused)", "chartDataType": "FLOAT"},
+    {"name": "unusedDataAssets.fourteenDays", "displayName": "Last 14 Days (Unused)", "chartDataType": "FLOAT"},
+    {"name": "unusedDataAssets.thirtyDays", "displayName": "last 30 Days (Unused)", "chartDataType": "FLOAT"},
+    {"name": "unusedDataAssets.sixtyDays", "displayName": "Last 60 Days (Unused)", "chartDataType": "FLOAT"}
   ]
 }
