@@ -1,6 +1,7 @@
 import {
   ClockCircleOutlined,
   LeftOutlined,
+  StopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import {
@@ -21,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import Loader from '../../../components/Loader/Loader';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
@@ -29,15 +31,16 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { App } from '../../../generated/entity/applications/app';
-import { getApplicationByName } from '../../../rest/applicationAPI';
+import {
+  getApplicationByName,
+  unistallApp,
+} from '../../../rest/applicationAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
@@ -51,6 +54,7 @@ const AppDetails = () => {
   const [appData, setAppData] = useState<App>();
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
+  const [isAppDisableAction, setIsAppDisableAction] = useState(false);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
@@ -73,22 +77,50 @@ const AppDetails = () => {
     );
   };
 
+  const onConfirmAction = useCallback(async () => {
+    try {
+      await unistallApp(appData?.fullyQualifiedName ?? '', !isAppDisableAction);
+      onBrowseAppsClick();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [isAppDisableAction]);
+
   const manageButtonContent: ItemType[] = [
     {
       label: (
         <ManageButtonItemLabel
-          description={t('message.uninstall-app', {
-            entityType: t('label.glossary-term'),
+          description={t('message.disable-app', {
+            app: getEntityName(appData),
           })}
-          icon={<SVGIcons alt="Delete" icon={Icons.DELETE} />}
-          id="delete-button"
-          name={t('label.uninstall')}
+          icon={<StopOutlined color={DE_ACTIVE_COLOR} width="18px" />}
+          id="disable-button"
+          name={t('label.disable')}
         />
       ),
-      key: 'delete-button',
+      key: 'disable-button',
       onClick: (e) => {
         e.domEvent.stopPropagation();
         setShowDeleteModel(true);
+        setIsAppDisableAction(true);
+      },
+    },
+    {
+      label: (
+        <ManageButtonItemLabel
+          description={t('message.uninstall-app', {
+            app: getEntityName(appData),
+          })}
+          icon={<DeleteIcon color={DE_ACTIVE_COLOR} width="18px" />}
+          id="uninstall-button"
+          name={t('label.uninstall')}
+        />
+      ),
+      key: 'uninstall-button',
+      onClick: (e) => {
+        e.domEvent.stopPropagation();
+        setShowDeleteModel(true);
+        setIsAppDisableAction(false);
       },
     },
   ];
@@ -236,17 +268,6 @@ const AppDetails = () => {
           </Col>
         </Row>
       </PageLayoutV1>
-      <DeleteWidgetModal
-        afterDeleteAction={onBrowseAppsClick}
-        allowSoftDelete={true}
-        entityId={appData?.id || ''}
-        entityName={appData?.name || ''}
-        entityType={EntityType.APPLICATION}
-        visible={showDeleteModel}
-        onCancel={() => {
-          setShowDeleteModel(false);
-        }}
-      />
     </>
   );
 };

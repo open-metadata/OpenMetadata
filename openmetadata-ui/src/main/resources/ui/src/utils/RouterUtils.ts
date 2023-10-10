@@ -170,17 +170,6 @@ export const getGlossaryPath = (fqn?: string) => {
   return path;
 };
 
-// export const getTeamsWithFqnPath = (fqn: string) => {
-//   let path = ROUTES.SETTINGS_WITH_TAB_FQN;
-
-//   path = path
-//     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
-//     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
-//     .replace(PLACEHOLDER_ROUTE_FQN, fqn);
-
-//   return path;
-// };
-
 export const getApplicationDetailsPath = (fqn: string) => {
   let path = ROUTES.SETTINGS_WITH_TAB_FQN;
 

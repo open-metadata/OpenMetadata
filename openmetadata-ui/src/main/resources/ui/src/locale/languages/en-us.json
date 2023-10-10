@@ -1524,7 +1524,8 @@
     "write-your-announcement-lowercase": "write your announcement",
     "write-your-description": "Write your description",
     "write-your-text": "Write your {{text}}",
-    "uninstall-app": "Uninstalling this application will its metadata from OpenMetaData",
+    "disable-app": "This will disable the {{app}} application.",
+    "uninstall-app": "Uninstalling this {{app}} application will remove it from OpenMetaData",
     "you-can-also-set-up-the-metadata-ingestion": "You can also set up the metadata ingestion."
   },
   "server": {

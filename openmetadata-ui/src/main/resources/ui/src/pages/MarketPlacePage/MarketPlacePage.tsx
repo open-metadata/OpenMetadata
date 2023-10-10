@@ -20,6 +20,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { getMarketPlaceAppDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './market-place.less';
+import { uniqueId } from 'lodash';
 
 const MarketPlacePage = () => {
   const { t } = useTranslation();
@@ -93,9 +94,9 @@ const MarketPlacePage = () => {
       <Row className="m-t-lg" justify="center">
         <Col span={20}>
           <div className="d-flex flex-wrap gap-3">
-            {applicationData?.map((item, index) => (
+            {applicationData?.map((item) => (
               <ApplicationCard
-                key={'AppMarketPlaceCard' + index}
+                key={uniqueId()}
                 logoSrc={''}
                 className="w-400"
                 title={getEntityName(item)}

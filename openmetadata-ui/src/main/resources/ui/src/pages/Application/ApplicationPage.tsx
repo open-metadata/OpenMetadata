@@ -30,6 +30,7 @@ import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { uniqueId } from 'lodash';
 
 const ApplicationPage = () => {
   const { t } = useTranslation();
@@ -111,9 +112,9 @@ const ApplicationPage = () => {
       <Row className="m-t-lg">
         <Col span={24}>
           <div className="d-flex flex-wrap gap-3">
-            {applicationData?.map((item, index) => (
+            {applicationData?.map((item) => (
               <ApplicationCard
-                key={'AppCard' + index}
+                key={uniqueId()}
                 logoSrc={''}
                 className="w-400"
                 title={getEntityName(item)}

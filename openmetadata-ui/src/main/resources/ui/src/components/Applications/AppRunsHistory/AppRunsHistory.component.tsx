@@ -98,19 +98,17 @@ const AppRunsHistory = () => {
         key: 'actions',
         render: () => {
           return (
-            <>
-              <Space align="start">
-                <Tooltip title={t('label.log-plural')}>
-                  <Button
-                    className="p-0"
-                    data-testid="logs"
-                    size="small"
-                    type="link">
-                    {t('label.log-plural')}
-                  </Button>
-                </Tooltip>
-              </Space>
-            </>
+            <Space align="start">
+              <Tooltip title={t('label.log-plural')}>
+                <Button
+                  className="p-0"
+                  data-testid="logs"
+                  size="small"
+                  type="link">
+                  {t('label.log-plural')}
+                </Button>
+              </Tooltip>
+            </Space>
           );
         },
       },
