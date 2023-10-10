@@ -1,0 +1,211 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/app.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "App",
+  "javaType": "org.openmetadata.schema.entity.app.App",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "description": "This schema defines the applications for Open-Metadata.",
+  "type": "object",
+  "definitions": {
+    "scheduleType": {
+      "javaType": "org.openmetadata.schema.entity.app.ScheduleType",
+      "description": "This schema defines the type of application.",
+      "type": "string",
+      "enum": [
+        "Live",
+        "Scheduled"
+      ],
+      "javaEnums": [
+        {
+          "name": "Live"
+        },
+        {
+          "name": "Scheduled"
+        }
+      ]
+    },
+    "scheduleTimeline": {
+      "type": "string",
+      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom"],
+      "default": "Weekly"
+    },
+    "appSchedule": {
+      "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
+      "description": "This schema defines the type of application.",
+      "properties": {
+        "scheduleType": {
+          "$ref": "#/definitions/scheduleTimeline"
+        },
+        "cronExpression": {
+          "description": "Cron Expression in case of Custom scheduled Trigger",
+          "type": "string"
+        }
+      },
+      "required": ["scheduleType"],
+      "additionalProperties": false
+    },
+    "appType": {
+      "javaType": "org.openmetadata.schema.entity.app.AppType",
+      "description": "This schema defines the type of application.",
+      "type": "string",
+      "enum": [
+        "internal",
+        "external"
+      ],
+      "javaEnums": [
+        {
+          "name": "Internal"
+        },
+        {
+          "name": "External"
+        }
+      ]
+    },
+    "permissions": {
+      "javaType": "org.openmetadata.schema.entity.app.NativeAppPermission",
+      "description": "This schema defines the Permission used by Native Application.",
+      "type": "string",
+      "enum": [
+        "All"
+      ],
+      "javaEnums": [
+        {
+          "name": "All"
+        }
+      ]
+    },
+    "executionContext": {
+      "description": "Execution Configuration.",
+      "oneOf": [
+        {
+          "$ref": "./liveExecutionContext.json"
+        },
+        {
+          "$ref": "./scheduledExecutionContext.json"
+        }
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this application.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the Application.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name for the application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Application.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "features": {
+      "description": "Features of the Application.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "owner": {
+      "description": "Owner of this workflow.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "provider" : {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "developer": {
+      "description": "Developer For the Application.",
+      "type": "string"
+    },
+    "developerUrl": {
+      "description": "Url for the developer",
+      "type": "string"
+    },
+    "privacyPolicyUrl": {
+      "description": "Privacy Policy for the developer",
+      "type": "string"
+    },
+    "supportEmail": {
+      "description": "Support Email for the application",
+      "type": "string"
+    },
+    "className": {
+      "description": "Full Qualified ClassName for the Schedule",
+      "type": "string"
+    },
+    "appType": {
+      "description": "This schema defines the type of application.",
+      "$ref": "#/definitions/appType"
+    },
+    "scheduleType": {
+      "description": "This schema defines the Schedule Type of Application.",
+      "$ref": "#/definitions/scheduleType"
+    },
+    "permission": {
+      "description": "Permission used by Native Applications.",
+      "$ref": "#/definitions/permissions"
+    },
+    "bot": {
+      "description": "Bot User Associated with this application.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "runtime": {
+      "description": "Execution Configuration.",
+      "$ref": "#/definitions/executionContext"
+    },
+    "appConfiguration": {
+      "description": "Application Configuration object."
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "appSchedule": {
+      "description": "In case the app supports scheduling, list of different app schedules",
+      "$ref": "#/definitions/appSchedule"
+    },
+    "openMetadataServerConnection": {
+      "$ref": "../services/connections/metadata/openMetadataConnection.json"
+    },
+    "appLogoUrl": {
+      "description": "Application Logo Url.",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id", "name", "appType", "className", "scheduleType", "permission", "runtime", "appSchedule"]
+}
