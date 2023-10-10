@@ -13,7 +13,7 @@
 
 from typing import Iterable
 
-from pyathena.sqlalchemy_athena import AthenaDialect
+from pyathena.sqlalchemy.base import AthenaDialect
 from sqlalchemy import types
 from sqlalchemy.engine import reflection
 
