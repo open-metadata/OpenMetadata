@@ -159,17 +159,12 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
                 for tb_name in self.source_config.tableFilterPattern.excludes
                 if self.source_config.tableFilterPattern.excludes
             ]
-            if (
-                self.source_config.tableFilterPattern.includes
-                and self.source_config.tableFilterPattern.excludes
-            ):
-                format_pattern = f"where {get_filter_pattern_query(tb_patterns_include, 'name')} or {get_filter_pattern_query(tb_patterns_exclude,'name', exclude=True)} "  # pylint: disable=line-too-long
-            else:
-                format_pattern = (
-                    f"where {get_filter_pattern_query(tb_patterns_include,'name')}"
-                    if self.source_config.tableFilterPattern.includes
-                    else f"and ({get_filter_pattern_query(tb_patterns_exclude, 'name',exclude=True)}"
-                )
+
+            format_pattern = (
+                f"where {get_filter_pattern_query(tb_patterns_include,'name')}"
+                if self.source_config.tableFilterPattern.includes
+                else f"and ({get_filter_pattern_query(tb_patterns_exclude, 'name',exclude=True)}"
+            )
         result = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_RELATION_INFO.format(format_pattern))
             if self.source_config.pushFilterDown
@@ -269,12 +264,7 @@ class RedshiftSource(StoredProcedureMixin, CommonDbSourceService):
                     for db_name in self.source_config.databaseFilterPattern.excludes
                     if self.source_config.databaseFilterPattern.excludes
                 ]
-                if (
-                    self.source_config.databaseFilterPattern.includes
-                    and self.source_config.databaseFilterPattern.excludes
-                ):
-                    format_pattern = f"where {get_filter_pattern_query(db_patterns_include,'datname')} or {get_filter_pattern_query(db_patterns_exclude,'datname', exclude=True)} "  # pylint: disable=line-too-long
-                else:
+                if self.source_config.databaseFilterPattern:
                     format_pattern = (
                         f"where {get_filter_pattern_query(db_patterns_include,'datname')}"
                         if self.source_config.databaseFilterPattern.includes

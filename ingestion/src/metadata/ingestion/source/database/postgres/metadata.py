@@ -139,23 +139,17 @@ class PostgresSource(CommonDbSourceService):
         Overwrite the inspector implementation to handle partitioned
         and foreign types
         """
-
-        tb_patterns_include = [
-            tb_name.replace("%", "%%")
-            for tb_name in self.source_config.tableFilterPattern.includes
-            if self.source_config.tableFilterPattern.includes
-        ]
-        tb_patterns_exclude = [
-            tb_name.replace("%", "%%")
-            for tb_name in self.source_config.tableFilterPattern.excludes
-            if self.source_config.tableFilterPattern.excludes
-        ]
-        if (
-            self.source_config.databaseFilterPattern.excludes
-            and self.source_config.databaseFilterPattern.includes
-        ):
-            format_pattern = f"AND (c.relname LIKE ANY (ARRAY{tb_patterns_include}) or c.relname NOT LIKE ANY (ARRAY{tb_patterns_exclude}))"  # pylint: disable=line-too-long
-        else:
+        if self.source_config.tableFilterPattern:
+            tb_patterns_include = [
+                tb_name.replace("%", "%%")
+                for tb_name in self.source_config.tableFilterPattern.includes
+                if self.source_config.tableFilterPattern.includes
+            ]
+            tb_patterns_exclude = [
+                tb_name.replace("%", "%%")
+                for tb_name in self.source_config.tableFilterPattern.excludes
+                if self.source_config.tableFilterPattern.excludes
+            ]
             format_pattern = (
                 f"AND c.relname LIKE ANY (ARRAY{tb_patterns_include})"
                 if self.source_config.databaseFilterPattern.includes
@@ -263,17 +257,12 @@ class PostgresSource(CommonDbSourceService):
                     for db_name in self.source_config.databaseFilterPattern.excludes
                     if self.source_config.databaseFilterPattern.excludes
                 ]
-                if (
-                    self.source_config.databaseFilterPattern.excludes
-                    and self.source_config.databaseFilterPattern.includes
-                ):
-                    format_pattern = f"WHERE datname LIKE ANY (ARRAY{db_patterns_include}) or datname NOT LIKE ANY (ARRAY{db_patterns_exclude})"  # pylint: disable=line-too-long
-                else:
-                    format_pattern = (
-                        f"WHERE datname LIKE ANY (ARRAY{db_patterns_include})"
-                        if self.source_config.databaseFilterPattern.includes
-                        else f"WHERE datname NOT LIKE ANY (ARRAY{db_patterns_exclude})"
-                    )
+
+                format_pattern = (
+                    f"WHERE datname LIKE ANY (ARRAY{db_patterns_include})"
+                    if self.source_config.databaseFilterPattern.includes
+                    else f"WHERE datname NOT LIKE ANY (ARRAY{db_patterns_exclude})"
+                )
 
             results = self.connection.execute(
                 POSTGRES_GET_DB_NAMES.format(format_pattern)

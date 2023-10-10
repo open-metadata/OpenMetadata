@@ -428,14 +428,12 @@ def get_schema_names(self, connection, **kw):
         for sc_name in kw["filter_exclude_schema_name"]
         if kw["filter_exclude_schema_name"]
     ]
-    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
-        format_pattern = f'and ({get_filter_pattern_query(sc_patterns_include,"nspname")} or {get_filter_pattern_query(sc_patterns_exclude, "snspname",exclude=True)})'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'and ({get_filter_pattern_query(sc_patterns_include,"nspname")})'
-            if kw["filter_include_schema_name"]
-            else f'and ( {get_filter_pattern_query(sc_patterns_exclude, "nspname",exclude=True)})'
-        )
+
+    format_pattern = (
+        f'and ({get_filter_pattern_query(sc_patterns_include,"nspname")})'
+        if kw["filter_include_schema_name"]
+        else f'and ( {get_filter_pattern_query(sc_patterns_exclude, "nspname",exclude=True)})'
+    )
     query = REDSHIFT_GET_SCHEMA_NAMES
     cursor = connection.execute(
         query.format(format_pattern)

@@ -299,17 +299,11 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
         if self.source_config.tableFilterPattern:
-            if (
-                self.source_config.tableFilterPattern.includes
-                and self.source_config.tableFilterPattern.excludes
-            ):
-                format_pattern = f"AND (table_name LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.includes)} OR table_name NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.excludes)})"  # pylint: disable=line-too-long
-            else:
-                format_pattern = (
-                    f"AND table_name LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.includes)}"  # pylint: disable=line-too-long
-                    if self.source_config.tableFilterPattern.includes
-                    else f"AND table_name NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.excludes)}"  # pylint: disable=line-too-long
-                )
+            format_pattern = (
+                f"AND table_name LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.includes)}"  # pylint: disable=line-too-long
+                if self.source_config.tableFilterPattern.includes
+                else f"AND table_name NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.tableFilterPattern.excludes)}"  # pylint: disable=line-too-long
+            )
 
         return [
             TableNameAndType(

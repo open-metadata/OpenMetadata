@@ -410,14 +410,12 @@ def get_schema_names(self, connection, **kw):
         for sc_name in kw["filter_exclude_schema_name"]
         if kw["filter_exclude_schema_name"]
     ]
-    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
-        format_pattern = f"and nspname LIKE ANY (ARRAY{sc_patterns_include}) or nspname NOT LIKE ANY (ARRAY{sc_patterns_exclude})"  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f"and nspname LIKE ANY (ARRAY{sc_patterns_include})"
-            if kw["filter_include_schema_name"]
-            else f"and nspname NOT LIKE ANY (ARRAY{sc_patterns_exclude})"
-        )
+
+    format_pattern = (
+        f"and nspname LIKE ANY (ARRAY{sc_patterns_include})"
+        if kw["filter_include_schema_name"]
+        else f"and nspname NOT LIKE ANY (ARRAY{sc_patterns_exclude})"
+    )
 
     query = POSTGRES_GET_SCHEMA_NAMES
     cursor = connection.execute(

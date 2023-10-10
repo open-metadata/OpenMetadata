@@ -244,17 +244,11 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             yield configured_db
         else:
             if self.source_config.databaseFilterPattern:
-                if (
-                    self.source_config.databaseFilterPattern.includes
-                    and self.source_config.databaseFilterPattern.excludes
-                ):
-                    format_pattern = f"WHERE DATABASE_NAME LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.includes)} OR DATABASE_NAME NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.excludes)}"  # pylint: disable=line-too-long
-                else:
-                    format_pattern = (
-                        f"WHERE DATABASE_NAME LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.includes)}"  # pylint: disable=line-too-long
-                        if self.source_config.databaseFilterPattern.includes
-                        else f"WHERE DATABASE_NAME NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.excludes)}"  # pylint: disable=line-too-long
-                    )
+                format_pattern = (
+                    f"WHERE DATABASE_NAME LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.includes)}"  # pylint: disable=line-too-long
+                    if self.source_config.databaseFilterPattern.includes
+                    else f"WHERE DATABASE_NAME NOT LIKE ANY {get_filter_pattern_tuple(self.source_config.databaseFilterPattern.excludes)}"  # pylint: disable=line-too-long
+                )
 
             filter_query = SNOWFLAKE_GET_FILTER_DATABASES.format(format_pattern)
             query = SNOWFLAKE_GET_FILTER_DATABASES.format("")

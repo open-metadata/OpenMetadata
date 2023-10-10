@@ -96,14 +96,12 @@ def get_filter_pattern_tuple(filter_pattern_name):
 def get_schema_names(self, connection, **kw):
 
     query = SNOWFLAKE_GET_FILTER_SCHEMA
-    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
-        format_pattern = f'WHERE SCHEMA_NAME LIKE ANY {get_filter_pattern_tuple(kw["filter_include_schema_name"])} OR SCHEMA_NAME NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_schema_name"])})'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'WHERE SCHEMA_NAME LIKE ANY {get_filter_pattern_tuple(kw["filter_include_schema_name"])}'
-            if kw["filter_include_schema_name"]
-            else f'WHERE SCHEMA_NAME NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_schema_name"])}'
-        )
+
+    format_pattern = (
+        f'WHERE SCHEMA_NAME LIKE ANY {get_filter_pattern_tuple(kw["filter_include_schema_name"])}'
+        if kw["filter_include_schema_name"]
+        else f'WHERE SCHEMA_NAME NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_schema_name"])}'
+    )
 
     cursor = connection.execute(
         query.format(format_pattern)
@@ -125,14 +123,11 @@ def get_table_names(self, connection, schema, **kw):
     if kw.get("external_tables"):
         query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
 
-    if kw["filter_include_table_name"] and kw["filter_exclude_table_name"]:
-        format_pattern = f'AND (TABLE_NAME LIKE ANY {get_filter_pattern_tuple(kw["filter_include_table_name"])} OR TABLE_NAME NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_table_name"])})'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'AND TABLE_NAME LIKE ANY {get_filter_pattern_tuple(kw["filter_include_table_name"])}'
-            if kw["filter_include_table_name"]
-            else f'AND TABLE_NAME NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_table_name"])}'
-        )
+    format_pattern = (
+        f'AND TABLE_NAME LIKE ANY {get_filter_pattern_tuple(kw["filter_include_table_name"])}'
+        if kw["filter_include_table_name"]
+        else f'AND TABLE_NAME NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_table_name"])}'
+    )
 
     cursor = connection.execute(
         query.format(fqn.unquote_name(schema), format_pattern)

@@ -72,14 +72,12 @@ def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
         for sc_name in kw["filter_exclude_schema_name"]
         if kw["filter_exclude_schema_name"]
     ]
-    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
-        format_pattern = f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")} or {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
-            if kw["filter_include_schema_name"]
-            else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
-        )
+
+    format_pattern = (
+        f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
+        if kw["filter_include_schema_name"]
+        else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
+    )
     cursor = connection.execute(
         MYSQL_GET_SCHEMA.format(format_pattern)
         if kw.get("pushFilterDown") is not None

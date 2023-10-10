@@ -26,6 +26,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -41,7 +42,6 @@ from metadata.ingestion.source.database.mysql.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 ischema_names.update(col_type_map)
 
@@ -132,17 +132,11 @@ class MysqlSource(CommonDbSourceService):
             if self.source_config.tableFilterPattern.excludes
         ]
         if self.source_config.tableFilterPattern:
-            if (
-                self.source_config.tableFilterPattern.includes
-                and self.source_config.tableFilterPattern.excludes
-            ):
-                format_pattern = f"and ({get_filter_pattern_query(tb_patterns_include, 'table_name')} or {get_filter_pattern_query(tb_patterns_exclude,'table_name', exclude=True)} )"  # pylint: disable=line-too-long
-            else:
-                format_pattern = (
-                    f"and ({get_filter_pattern_query(tb_patterns_include,'table_name')})"
-                    if self.source_config.tableFilterPattern.includes
-                    else f"and ({get_filter_pattern_query(tb_patterns_exclude, 'table_name',exclude=True)})"
-                )
+            format_pattern = (
+                f"and ({get_filter_pattern_query(tb_patterns_include,'table_name')})"
+                if self.source_config.tableFilterPattern.includes
+                else f"and ({get_filter_pattern_query(tb_patterns_exclude, 'table_name',exclude=True)})"
+            )
         query = MYSQL_GET_TABLE
         result = self.connection.execute(
             query.format(format_pattern)

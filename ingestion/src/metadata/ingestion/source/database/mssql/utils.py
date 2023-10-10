@@ -309,14 +309,12 @@ def get_schema_names_reflection(self, **kw):
 
 
 def get_schema_names(self, connection, **kw):
-    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
-        format_pattern = f'where {get_filter_pattern_query(kw["filter_include_schema_name"],"name")} or {get_filter_pattern_query(kw["filter_exclude_schema_name"], "name",exclude=True)}'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'where {get_filter_pattern_query(kw["filter_include_schema_name"],"name")}'
-            if kw["filter_include_schema_name"]
-            else f'where {get_filter_pattern_query(kw["filter_exclude_schema_name"], "name",exclude=True)}'
-        )
+
+    format_pattern = (
+        f'where {get_filter_pattern_query(kw["filter_include_schema_name"],"name")}'
+        if kw["filter_include_schema_name"]
+        else f'where {get_filter_pattern_query(kw["filter_exclude_schema_name"], "name",exclude=True)}'
+    )
 
     query = MSSQL_GET_SCHEMA_NAMES
     cursor = connection.execute(

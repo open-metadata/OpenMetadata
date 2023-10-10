@@ -280,14 +280,11 @@ def get_table_names(self, connection, schema, **kw):
         if kw["filter_exclude_table_name"]
     ]
 
-    if kw["filter_include_table_name"] and kw["filter_exclude_table_name"]:
-        format_pattern = f'and ({get_filter_pattern_query(tb_patterns_include,"name")} or {get_filter_pattern_query(tb_patterns_exclude, "name",exclude=True)})'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'and( {get_filter_pattern_query(tb_patterns_include,"name")})'
-            if kw["filter_include_table_name"]
-            else f'and({get_filter_pattern_query(tb_patterns_exclude, "name",exclude=True)})'
-        )
+    format_pattern = (
+        f'and( {get_filter_pattern_query(tb_patterns_include,"name")})'
+        if kw["filter_include_table_name"]
+        else f'and({get_filter_pattern_query(tb_patterns_exclude, "name",exclude=True)})'
+    )
 
     cursor = connection.execute(
         CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), format_pattern)
@@ -322,14 +319,12 @@ def get_schema_names(self, connection, **kw):
         for sc_name in kw["filter_exclude_schema_name"]
         if kw["filter_exclude_schema_name"]
     ]
-    if kw["filter_include_schema_name"] and kw["filter_exclude_schema_name"]:
-        format_pattern = f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")} or {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'  # pylint: disable=line-too-long
-    else:
-        format_pattern = (
-            f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
-            if kw["filter_include_schema_name"]
-            else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
-        )
+
+    format_pattern = (
+        f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
+        if kw["filter_include_schema_name"]
+        else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
+    )
     cursor = connection.execute(
         CLICKHOUSE_GET_SCHEMA.format(format_pattern)
         if kw.get("pushFilterDown") is not None
