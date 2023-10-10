@@ -23,7 +23,7 @@
     "@fontsource/poppins": "^5.0.0",
     "@fontsource/source-code-pro": "^5.0.0",
     "@github/g-emoji-element": "^1.1.5",
-    "@okta/okta-auth-js": "^6.9.0",
+    "@okta/okta-auth-js": "^6.4.0",
     "@okta/okta-react": "^6.4.3",
     "@rjsf/antd": "5.4.0",
     "@rjsf/core": "5.4.0",
