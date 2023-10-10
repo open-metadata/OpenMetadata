@@ -55,6 +55,7 @@
     "all-threads": "所有线程",
     "and-lowercase": "和",
     "announcement": "公告",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "{{entity}}公告",
     "announcement-plural": "公告",
     "announcement-title": "公告标题",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "周使用率",
     "whats-new": "最新消息",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "是",
     "yesterday": "昨天",
     "your-entity": "您的{{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "没有用户名为 <0>{{user}}</0>",
     "no-users": "没有用户{{text}}",
     "no-version-type-available": "无{{type}}版本可用",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "请输入每层节点的值",
     "nodes-per-layer-tooltip": "选择显示‘n’个节点每层，如果现有节点超过定义的节点数，则会显示分页",
     "not-followed-anything": "尚未关注任何内容",

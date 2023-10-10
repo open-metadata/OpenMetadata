@@ -55,6 +55,7 @@
     "all-threads": "全てのスレッド",
     "and-lowercase": "and",
     "announcement": "お知らせ",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "{{entity}}についてのお知らせ",
     "announcement-plural": "お知らせ",
     "announcement-title": "お知らせのタイトル",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "Weekly Usage",
     "whats-new": "最新情報",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "はい",
     "yesterday": "Yesterday",
     "your-entity": "あなたの{{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "No user available with name <0>{{user}}</0>",
     "no-users": "ユーザ{{text}}は存在しません",
     "no-version-type-available": "No {{type}} version available",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "Please enter a value for nodes per layer",
     "nodes-per-layer-tooltip": "Choose to display ‘n’ number of nodes per layer. If the existing nodes exceed the defined number of nodes, then pagination will be shown.",
     "not-followed-anything": "あなたはまだ何もフォローしていません。",

@@ -55,6 +55,7 @@
     "all-threads": "Todas as threads",
     "and-lowercase": "e",
     "announcement": "Anúncio",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "Anúncio sobre {{entity}}",
     "announcement-plural": "Anúncios",
     "announcement-title": "Título do anúncio",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "Uso semanal",
     "whats-new": "O que há de novo",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "Sim",
     "yesterday": "Yesterday",
     "your-entity": "Sua {{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "Nenhum usuário disponível com este nome <0>{{user}}</0>",
     "no-users": "Não há usuários {{text}}",
     "no-version-type-available": "Nenhuma versão de {{type}} disponível",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "Por favor, insira um valor para o número de nós por camada",
     "nodes-per-layer-tooltip": "Escolha exibir ‘n’ número de nós por camada. Se o número de nós existentes exceder o número definido de nós, então a paginação será exibida.",
     "not-followed-anything": "Você ainda não seguiu nada.",

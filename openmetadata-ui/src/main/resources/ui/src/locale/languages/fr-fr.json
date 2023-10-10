@@ -55,6 +55,7 @@
     "all-threads": "Tous les Threads",
     "and-lowercase": "et",
     "announcement": "Annonce",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "Annonces sur {{entity}}",
     "announcement-plural": "Annonces",
     "announcement-title": "Titre de l'Annonce",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "Utilisation Hebdomadaire",
     "whats-new": "Nouveautés",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "Oui",
     "yesterday": "Hier",
     "your-entity": "Votre {{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "Aucun utilisateur disponible avec le nom <0>{{user}}</0>",
     "no-users": "Il n'y a aucun utilisateur {{text}}",
     "no-version-type-available": "Aucun type de {{type}} version disponible",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "Veuillez entrer une valeur pour le nombre de nœuds par couche",
     "nodes-per-layer-tooltip": "Choisissez d'afficher 'n' nombre de nœuds par couche. Si les nœuds existants dépassent le nombre défini de nœuds, une pagination sera affichée.",
     "not-followed-anything": "Vous n'avez encore suivi rien.",

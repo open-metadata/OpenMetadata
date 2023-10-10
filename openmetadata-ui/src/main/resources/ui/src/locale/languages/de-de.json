@@ -55,6 +55,7 @@
     "all-threads": "Alle Threads",
     "and-lowercase": "und",
     "announcement": "Ankündigung",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "Ankündigungen für {{entity}}",
     "announcement-plural": "Ankündigungen",
     "announcement-title": "Ankündigungstitel",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "Wöchentliche Verwendung",
     "whats-new": "Neuigkeiten",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "Ja",
     "yesterday": "Gestern",
     "your-entity": "Ihre {{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "Kein Benutzer verfügbar mit dem Namen <0>{{user}}</0>",
     "no-users": "Es gibt keine Benutzer {{text}}",
     "no-version-type-available": "Keine {{type}}-Version verfügbar",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "Bitte geben Sie einen Wert für Knoten pro Ebene ein",
     "nodes-per-layer-tooltip": "Wählen Sie aus, wie viele Knoten pro Ebene angezeigt werden sollen. Wenn die vorhandenen Knoten die definierte Anzahl von Knoten überschreiten, wird eine Paginierung angezeigt.",
     "not-followed-anything": "Du hast noch nichts abonniert.",

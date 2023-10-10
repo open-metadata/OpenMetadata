@@ -55,6 +55,7 @@
     "all-threads": "Todos los hilos",
     "and-lowercase": "y",
     "announcement": "Anuncio",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "Anuncios sobre {{entity}}",
     "announcement-plural": "Anuncios",
     "announcement-title": "Título del anuncio",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "Uso semanal",
     "whats-new": "Novedades",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "Sí",
     "yesterday": "Yesterday",
     "your-entity": "Tu {{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "No hay usuarios disponibles con el nombre <0>{{user}}</0>",
     "no-users": "No hay usuarios {{text}}",
     "no-version-type-available": "No hay versiones de {{type}} disponible",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "Por favor, ingrese un valor para nodos por capa",
     "nodes-per-layer-tooltip": "Elija mostrar 'n' número de nodos por capa. Si los nodos existentes superan el número definido de nodos, se mostrará la paginación.",
     "not-followed-anything": "Todavía no ha seguido nada.",

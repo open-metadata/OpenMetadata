@@ -55,6 +55,7 @@
     "all-threads": "Все темы",
     "and-lowercase": "и",
     "announcement": "Объявление",
+    "announcement-lowercase": "announcement",
     "announcement-on-entity": "Объявление об объекте \"{{entity}}\"",
     "announcement-plural": "Объявления",
     "announcement-title": "Заголовок объявления",
@@ -1078,6 +1079,7 @@
     "weekly-usage": "Еженедельное использование",
     "whats-new": "Новости",
     "widget": "Widget",
+    "widget-lowercase": "widget",
     "yes": "Да",
     "yesterday": "Вчера",
     "your-entity": "Ваш {{entity}}"
@@ -1353,6 +1355,7 @@
     "no-username-available": "Нет доступных пользователей с именем",
     "no-users": "Нет пользователей {{text}}",
     "no-version-type-available": "Версия {{type}} недоступна",
+    "no-widgets-to-add": "No new widgets to add",
     "nodes-per-layer-message": "Пожалуйста, введите значение для узлов для слоев",
     "nodes-per-layer-tooltip": "Выберите для отображения «n» количество узлов на слой. Если существующие узлы превышают определенное количество узлов, будет отображаться разбиение на страницы.",
     "not-followed-anything": "Вы еще не подписаны ни на один объект.",
