@@ -325,7 +325,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(
-              description = "KPI version number in the form `major`.`minor`",
+              description = "App version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {

@@ -29,7 +29,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.workflow.data_quality import TestSuiteWorkflow
-from metadata.workflow.workflow_output_handler import print_test_suite_status
+from metadata.workflow.workflow_output_handler import print_status
 
 
 def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -49,7 +49,7 @@ def test_suite_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    print_test_suite_status(workflow)
+    print_status(workflow)
     workflow.stop()
 
 

@@ -18,6 +18,9 @@ from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -34,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+)
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
@@ -118,3 +124,6 @@ class OMetaEndpointTest(TestCase):
 
         entity = self.metadata.get_entity_from_create(CreateUserRequest)
         assert issubclass(entity, User)
+
+        entity = self.metadata.get_entity_from_create(CreateIngestionPipelineRequest)
+        assert issubclass(entity, IngestionPipeline)

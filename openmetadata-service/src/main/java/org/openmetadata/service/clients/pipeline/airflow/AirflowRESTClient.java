@@ -234,7 +234,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
       String statusEndPoint = "%s/%s/status?dag_id=%s&only_queued=true";
@@ -258,7 +258,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
    * Auth failed when accessing Airflow APIs 3. Different versions between server and client
    */
   @Override
-  public PipelineServiceClientResponse getServiceStatus() {
+  public PipelineServiceClientResponse getServiceStatusInternal() {
     HttpResponse<String> response;
     try {
       response = getRequestAuthenticatedForJsonContent("%s/%s/health-auth", serviceURL, API_ENDPOINT);
