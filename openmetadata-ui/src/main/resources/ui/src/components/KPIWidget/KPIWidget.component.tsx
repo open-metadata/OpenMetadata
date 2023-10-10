@@ -32,6 +32,7 @@ import {
 } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import {
@@ -184,7 +185,7 @@ const KPIWidget = ({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.KPI');
+      handleRemoveWidget(LandingPageWidgetKeys.KPI);
   }, []);
 
   useEffect(() => {

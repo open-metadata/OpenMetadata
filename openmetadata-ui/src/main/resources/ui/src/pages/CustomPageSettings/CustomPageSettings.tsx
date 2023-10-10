@@ -12,6 +12,7 @@
  */
 import { Button, Col, Row, Skeleton } from 'antd';
 import Card from 'antd/lib/card/Card';
+import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -55,7 +56,7 @@ export const CustomPageSettings = () => {
       setPersonas(data);
       handlePagingChange(paging);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }

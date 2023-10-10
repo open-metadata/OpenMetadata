@@ -27,6 +27,7 @@ function EmptyWidgetPlaceholder({
   widgetKey,
   handleOpenAddWidgetModal,
   handleRemoveWidget,
+  isEditable = true,
 }: Readonly<EmptyWidgetPlaceholderProps>) {
   const { t } = useTranslation();
 
@@ -35,47 +36,53 @@ function EmptyWidgetPlaceholder({
   }, []);
 
   return (
-    <Card className="empty-widget-placeholder">
-      <Row>
-        <Col span={24}>
-          <Row gutter={8} justify="end">
+    <Card bodyStyle={{ height: '100%' }} className="empty-widget-placeholder">
+      <Row className="h-full">
+        {isEditable && (
+          <Col span={24}>
+            <Row gutter={8} justify="end">
+              <Col>
+                <DragOutlined
+                  className="drag-widget-icon cursor-pointer"
+                  size={14}
+                />
+              </Col>
+              <Col>
+                <CloseOutlined size={14} onClick={handleCloseClick} />
+              </Col>
+            </Row>
+          </Col>
+        )}
+        <Col className="h-full" span={24}>
+          <Row align="middle" className="h-full" justify="center">
             <Col>
-              <DragOutlined
-                className="drag-widget-icon cursor-pointer"
-                size={14}
-              />
-            </Col>
-            <Col>
-              <CloseOutlined size={14} onClick={handleCloseClick} />
+              <Space
+                align="center"
+                className="w-full"
+                direction="vertical"
+                size={0}>
+                <AddPlaceHolderIcon
+                  data-testid="no-data-image"
+                  height={iconHeight}
+                  width={iconWidth}
+                />
+                <Typography.Text>
+                  {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                    entity: t('label.widget'),
+                  })}
+                </Typography.Text>
+                <Button
+                  ghost
+                  className="p-x-lg m-t-md"
+                  data-testid="add-widget-placeholder-button"
+                  icon={<PlusOutlined />}
+                  type="primary"
+                  onClick={handleOpenAddWidgetModal}>
+                  {t('label.add')}
+                </Button>
+              </Space>
             </Col>
           </Row>
-        </Col>
-        <Col className="h-full" span={24}>
-          <Space
-            align="center"
-            className="w-full"
-            direction="vertical"
-            size={0}>
-            <AddPlaceHolderIcon
-              data-testid="no-data-image"
-              height={iconHeight}
-              width={iconWidth}
-            />
-            <Typography.Text>
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: t('label.widget'),
-              })}
-            </Typography.Text>
-            <Button
-              ghost
-              className="p-x-lg m-t-md"
-              data-testid="add-widget-placeholder-button"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleOpenAddWidgetModal}>
-              {t('label.add')}
-            </Button>
-          </Space>
         </Col>
       </Row>
     </Card>

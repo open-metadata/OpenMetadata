@@ -11,22 +11,32 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty, isNil, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Responsive, WidthProvider } from 'react-grid-layout';
+import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
-import { LANDING_PAGE_LAYOUT } from '../../../constants/CustomisePage.constants';
+import {
+  LANDING_PAGE_LAYOUT,
+  LANDING_PAGE_OUTER_WIDGETS,
+  LANDING_PAGE_ROW_HEIGHT,
+  LANDING_PAGE_WIDGET_MARGIN,
+} from '../../../constants/CustomisePage.constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
+import { Document } from '../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
 import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import '../../../pages/MyDataPage/my-data.less';
 import { getUserById } from '../../../rest/userAPI';
+import {
+  getAddWidgetHandler,
+  getLayoutUpdateHandler,
+  getRemoveWidgetHandler,
+} from '../../../utils/CustomizableLandingPageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import KPIWidget from '../../KPIWidget/KPIWidget.component';
@@ -34,19 +44,29 @@ import { MyDataWidget } from '../../MyData/MyDataWidget/MyDataWidget.component';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
 import TotalDataAssetsWidget from '../../TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from '../../Widgets/FeedsWidget/FeedsWidget.component';
+import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 function CustomizeMyData({
-  layoutData,
-  handleRemoveWidget,
-  handleOpenAddWidgetModal,
-  handleLayoutUpdate,
-  handleLayoutChange,
+  initialPageData,
+  handlePageDataChange,
 }: Readonly<CustomizeMyDataProps>) {
   const location = useLocation();
+  const [layout, setLayout] = useState<Array<WidgetConfig>>([
+    ...(initialPageData.data?.page?.layout ?? LANDING_PAGE_LAYOUT),
+    {
+      h: 2,
+      i: 'ExtraWidget.EmptyWidgetPlaceholder',
+      w: 3,
+      x: 0,
+      y: 100,
+      isDraggable: false,
+    },
+  ]);
+  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
@@ -56,6 +76,39 @@ function CustomizeMyData({
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
+
+  const handleLayoutChange = useCallback((newLayout: Array<WidgetConfig>) => {
+    setLayout(newLayout);
+  }, []);
+
+  const handleRemoveWidget = useCallback((widgetKey: string) => {
+    setLayout(getRemoveWidgetHandler(widgetKey, 3, 3.5));
+  }, []);
+
+  const handleAddWidget = useCallback(
+    (newWidgetData: Document) => {
+      setLayout(getAddWidgetHandler(newWidgetData));
+      setIsWidgetModalOpen(false);
+    },
+    [layout]
+  );
+
+  const handleLayoutUpdate = useCallback(
+    (updatedLayout: Layout[]) => {
+      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
+        setLayout(getLayoutUpdateHandler(updatedLayout));
+      }
+    },
+    [layout]
+  );
+
+  const handleOpenAddWidgetModal = useCallback(() => {
+    setIsWidgetModalOpen(true);
+  }, []);
+
+  const handleCloseAddWidgetModal = useCallback(() => {
+    setIsWidgetModalOpen(false);
+  }, []);
 
   const fetchMyData = async () => {
     if (!currentUser?.id) {
@@ -89,28 +142,29 @@ function CustomizeMyData({
           <EmptyWidgetPlaceholder
             handleOpenAddWidgetModal={handleOpenAddWidgetModal}
             handleRemoveWidget={handleRemoveWidget}
+            isEditable={widgetConfig.isDraggable}
             widgetKey={widgetConfig.i}
           />
         );
       }
 
       switch (widgetConfig.i) {
-        case 'KnowledgePanel.ActivityFeed':
+        case LandingPageWidgetKeys.ACTIVITY_FEED:
           return (
             <FeedsWidget isEditView handleRemoveWidget={handleRemoveWidget} />
           );
 
-        case 'KnowledgePanel.MyData':
+        case LandingPageWidgetKeys.MY_DATA:
           return (
             <MyDataWidget isEditView handleRemoveWidget={handleRemoveWidget} />
           );
 
-        case 'KnowledgePanel.KPI':
+        case LandingPageWidgetKeys.KPI:
           return (
             <KPIWidget isEditView handleRemoveWidget={handleRemoveWidget} />
           );
 
-        case 'KnowledgePanel.TotalDataAssets':
+        case LandingPageWidgetKeys.TOTAL_DATA_ASSETS:
           return (
             <TotalDataAssetsWidget
               isEditView
@@ -118,7 +172,7 @@ function CustomizeMyData({
             />
           );
 
-        case 'Container.RightSidebar':
+        case LandingPageWidgetKeys.RIGHT_PANEL:
           return (
             <div className="h-full border-left">
               <RightSidebar
@@ -127,28 +181,10 @@ function CustomizeMyData({
                 followedDataCount={followedDataCount}
                 isLoadingOwnedData={isLoadingOwnedData}
                 layoutConfigData={widgetConfig.data}
-                parentLayoutData={layoutData}
+                parentLayoutData={layout}
                 updateParentLayout={handleLayoutChange}
               />
             </div>
-          );
-
-        case 'ExtraWidget.AddWidgetButton':
-          return (
-            <Row justify="end">
-              <Col>
-                <Button
-                  ghost
-                  className="shadow-none"
-                  data-testid="add-widget-placeholder-button"
-                  icon={<PlusOutlined />}
-                  size="small"
-                  type="primary"
-                  onClick={handleOpenAddWidgetModal}>
-                  {t('label.add')}
-                </Button>
-              </Col>
-            </Row>
           );
 
         default:
@@ -161,23 +197,50 @@ function CustomizeMyData({
       followedData,
       followedDataCount,
       isLoadingOwnedData,
+      layout,
+      handleLayoutChange,
     ]
+  );
+
+  const addedWidgetsList = useMemo(
+    () =>
+      LANDING_PAGE_OUTER_WIDGETS.filter((widget) =>
+        layout.some((item) => item.i === widget)
+      ),
+    [layout]
   );
 
   const widgets = useMemo(
     () =>
-      (isEmpty(layoutData) ? LANDING_PAGE_LAYOUT : layoutData).map((widget) => (
+      layout.map((widget) => (
         <div
           className={classNames({
-            'mt--0.625': widget.i === 'Container.RightSidebar',
+            'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
           })}
           data-grid={widget}
           key={widget.i}>
           {getWidgetFromKey(widget)}
         </div>
       )),
-    [layoutData, getWidgetFromKey]
+    [layout, getWidgetFromKey]
   );
+
+  useEffect(() => {
+    handlePageDataChange({
+      ...initialPageData,
+      data: {
+        page: {
+          ...initialPageData.data.page,
+          layout: uniqBy(
+            layout.filter(
+              (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+            ),
+            'i'
+          ),
+        },
+      },
+    });
+  }, [layout]);
 
   useEffect(() => {
     if (
@@ -198,10 +261,20 @@ function CustomizeMyData({
         cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
         draggableHandle=".drag-widget-icon"
         isResizable={false}
-        rowHeight={100}
+        margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
+        rowHeight={LANDING_PAGE_ROW_HEIGHT}
         onLayoutChange={handleLayoutUpdate}>
         {widgets}
       </ResponsiveGridLayout>
+      {isWidgetModalOpen && (
+        <AddWidgetModal
+          addedWidgetsList={addedWidgetsList}
+          handleAddWidget={handleAddWidget}
+          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          open={isWidgetModalOpen}
+          widgetsToShow={LANDING_PAGE_OUTER_WIDGETS}
+        />
+      )}
     </ActivityFeedProvider>
   );
 }

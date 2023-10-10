@@ -15,6 +15,7 @@ import { SIZE } from '../../../enums/common.enum';
 export interface EmptyWidgetPlaceholderProps {
   iconHeight?: SIZE;
   iconWidth?: SIZE;
+  isEditable?: boolean;
   widgetKey: string;
   handleOpenAddWidgetModal: () => void;
   handleRemoveWidget: (key: string) => void;

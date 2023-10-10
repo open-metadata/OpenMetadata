@@ -11,193 +11,118 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import AddWidgetModal from '../../components/CustomizableComponents/AddWidgetModal/AddWidgetModal';
+import { useHistory, useParams } from 'react-router-dom';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
 import { LANDING_PAGE_LAYOUT } from '../../constants/CustomisePage.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import { ClientErrors } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { PageType } from '../../generated/system/ui/page';
-import { getDocumentByFQN, updateDocument } from '../../rest/DocStoreAPI';
-import { WidgetConfig } from './CustomisablePage.interface';
+import {
+  createDocument,
+  getDocumentByFQN,
+  updateDocument,
+} from '../../rest/DocStoreAPI';
+import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 
 export const CustomisablePage = () => {
+  const { t } = useTranslation();
+  const history = useHistory();
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
   const [page, setPage] = useState<Document>({} as Document);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>([
-    {
-      h: 0.3,
-      i: 'ExtraWidget.AddWidgetButton',
-      w: 3,
-      x: 0,
-      y: 0,
-      static: true,
-    },
-    ...LANDING_PAGE_LAYOUT,
-  ]);
+  const [editedPage, setEditedPage] = useState<Document>({} as Document);
   const [isLoading, setIsLoading] = useState(true);
-  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
-  const { t } = useTranslation();
+
+  const handlePageDataChange = useCallback((newPageData: Document) => {
+    setEditedPage(newPageData);
+  }, []);
 
   const fetchDocument = async () => {
+    const pageFQN = `${EntityType.PERSONA}.${fqn}.${EntityType.PAGE}.${pageFqn}`;
     try {
       setIsLoading(true);
-      const pageData = await getDocumentByFQN(
-        `${EntityType.PERSONA}.${fqn}.${EntityType.PAGE}.${pageFqn}`
-      );
-      setPage(pageData);
-      setLayout([
-        {
-          h: 0.3,
-          i: 'ExtraWidget.AddWidgetButton',
-          w: 3,
-          x: 0,
-          y: 0,
-          static: true,
-        },
-        ...(pageData.data.page?.layout ?? []),
-      ]);
+      const pageData = await getDocumentByFQN(pageFQN);
+      const finalPageData = getFinalLandingPage(pageData, true);
+
+      setPage(finalPageData);
+      setEditedPage(finalPageData);
     } catch (error) {
-      // Error
+      if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
+        setPage(
+          getFinalLandingPage(
+            {
+              name: `${fqn}${pageFqn}`,
+              fullyQualifiedName: pageFQN,
+              entityType: EntityType.PAGE,
+              data: {
+                page: {
+                  layout: LANDING_PAGE_LAYOUT,
+                },
+              },
+            },
+            true
+          )
+        );
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLayoutChange = useCallback((newLayout: Array<WidgetConfig>) => {
-    setLayout(newLayout);
-  }, []);
-
-  const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout((currentLayout) => {
-      if (widgetKey.endsWith('.EmptyWidgetPlaceholder')) {
-        return currentLayout.filter(
-          (widget: WidgetConfig) => widget.i !== widgetKey
-        );
-      } else {
-        return currentLayout.map((widget: WidgetConfig) =>
-          widget.i === widgetKey
-            ? {
-                ...widget,
-                i: widgetKey + '.EmptyWidgetPlaceholder',
-                h: widget.h > 3 ? 3 : widget.h,
-              }
-            : widget
-        );
-      }
-    });
-  }, []);
-
-  const handleAddWidget = useCallback(
-    (newWidgetData: Document) => {
-      setLayout((currentLayout) => {
-        const isEmptyPlaceholderPresent = currentLayout.find(
-          (widget: WidgetConfig) =>
-            widget.i ===
-            `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
-        );
-
-        if (isEmptyPlaceholderPresent) {
-          return currentLayout.map((widget: WidgetConfig) =>
-            widget.i ===
-            `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
-              ? {
-                  ...widget,
-                  i: newWidgetData.fullyQualifiedName,
-                  h: newWidgetData.data.height,
-                }
-              : widget
-          );
-        } else {
-          return [
-            ...currentLayout,
-            {
-              w: newWidgetData.data.gridSizes[0],
-              h: newWidgetData.data.height,
-              x: 0,
-              y: 0,
-              i: newWidgetData.fullyQualifiedName,
-              static: false,
-            },
-          ];
-        }
-      });
-      setIsWidgetModalOpen(false);
-    },
-    [layout]
-  );
-
-  const handleLayoutUpdate = useCallback(
-    (updatedLayout: Layout[]) => {
-      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout((currentLayout) => {
-          return updatedLayout.map((widget) => {
-            const widgetData = currentLayout.find(
-              (a: WidgetConfig) => a.i === widget.i
-            );
-
-            return {
-              ...(!isEmpty(widgetData) ? widgetData : {}),
-              ...widget,
-            };
-          });
-        });
-      }
-    },
-    [layout]
-  );
-
-  const handleOpenAddWidgetModal = useCallback(() => {
-    setIsWidgetModalOpen(true);
-  }, []);
-
-  const handleCloseAddWidgetModal = useCallback(() => {
-    setIsWidgetModalOpen(false);
-  }, []);
-
   const pageRendered = useMemo(() => {
-    switch (pageFqn) {
-      case PageType.LandingPage:
-        return (
-          <CustomizeMyData
-            handleLayoutChange={handleLayoutChange}
-            handleLayoutUpdate={handleLayoutUpdate}
-            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-            handleRemoveWidget={handleRemoveWidget}
-            layoutData={layout}
-          />
-        );
+    if (pageFqn === PageType.LandingPage) {
+      return (
+        <CustomizeMyData
+          handlePageDataChange={handlePageDataChange}
+          initialPageData={page}
+        />
+      );
     }
 
     return null;
-  }, [pageFqn, layout, handleRemoveWidget, handleOpenAddWidgetModal]);
+  }, [page, pageFqn]);
+
+  const handleCancel = () => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingOptions.CUSTOM_PAGES
+      )
+    );
+  };
+
+  const handleSave = async () => {
+    try {
+      const finalPage = getFinalLandingPage(editedPage);
+
+      if (page.id) {
+        const jsonPatch = compare(page, finalPage);
+
+        await updateDocument(page?.id ?? '', jsonPatch);
+      } else {
+        await createDocument(finalPage);
+      }
+
+      handleCancel();
+    } catch {
+      // Error
+    }
+  };
 
   useEffect(() => {
     fetchDocument();
   }, [fqn, pageFqn]);
-
-  const handleSave = async () => {
-    const newPageInfo: Document = {
-      ...page,
-      data: {
-        page: {
-          ...page.data.page,
-          layout: layout.filter(
-            (widget) => widget.i !== 'ExtraWidget.AddWidgetButton'
-          ),
-        },
-      },
-    };
-    const jsonPatch = compare(page, newPageInfo);
-
-    await updateDocument(page?.id ?? '', jsonPatch);
-  };
 
   if (isLoading) {
     return <Loader />;
@@ -215,18 +140,15 @@ export const CustomisablePage = () => {
           <span className="text-body">({startCase(fqn)})</span>
         </div>
         <Space>
-          <Button size="small">{t('label.cancel')}</Button>
+          <Button size="small" onClick={handleCancel}>
+            {t('label.cancel')}
+          </Button>
           <Button size="small" type="primary" onClick={handleSave}>
             {t('label.save')}
           </Button>
         </Space>
       </Col>
       <Col span={24}>{pageRendered}</Col>
-      <AddWidgetModal
-        handleAddWidget={handleAddWidget}
-        handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-        open={isWidgetModalOpen}
-      />
     </Row>
   );
 };

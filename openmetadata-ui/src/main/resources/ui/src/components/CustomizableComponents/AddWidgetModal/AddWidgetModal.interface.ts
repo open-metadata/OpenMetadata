@@ -15,6 +15,8 @@ import { Document } from '../../../generated/entity/docStore/document';
 
 export interface AddWidgetModalProps {
   open: boolean;
+  addedWidgetsList: Array<string>;
+  widgetsToShow: Array<string>;
   handleCloseAddWidgetModal: () => void;
   handleAddWidget: (widget: Document) => void;
 }

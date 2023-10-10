@@ -22,6 +22,7 @@ import { useActivityFeedProvider } from '../../../components/ActivityFeed/Activi
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -133,7 +134,7 @@ const FeedsWidget = ({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.ActivityFeed');
+      handleRemoveWidget(LandingPageWidgetKeys.ACTIVITY_FEED);
   }, []);
 
   return (
@@ -152,7 +153,7 @@ const FeedsWidget = ({
                 <ActivityFeedListV1
                   emptyPlaceholderText={t('message.no-activity-feed')}
                   feedList={isTourOpen ? mockFeedData : threads}
-                  hidePopover={false}
+                  hidePopover={isEditView}
                   isLoading={loading && !isTourOpen}
                   showThread={false}
                   tab={ActivityFeedTabs.ALL}
@@ -169,7 +170,7 @@ const FeedsWidget = ({
                 <ActivityFeedListV1
                   emptyPlaceholderText={t('message.no-mentions')}
                   feedList={threads}
-                  hidePopover={false}
+                  hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
                   tab={ActivityFeedTabs.MENTIONS}
@@ -191,7 +192,7 @@ const FeedsWidget = ({
                 <ActivityFeedListV1
                   emptyPlaceholderText={t('message.no-tasks-assigned')}
                   feedList={threads}
-                  hidePopover={false}
+                  hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
                   tab={ActivityFeedTabs.TASKS}
@@ -202,7 +203,7 @@ const FeedsWidget = ({
           },
         ]}
         tabBarExtraContent={
-          <>
+          <Space>
             {activeTab === ActivityFeedTabs.ALL && (
               <FeedsFilterPopover
                 defaultFilter={
@@ -214,15 +215,15 @@ const FeedsWidget = ({
               />
             )}
             {isEditView && (
-              <Space>
+              <>
                 <DragOutlined
                   className="drag-widget-icon cursor-pointer"
                   size={14}
                 />
                 <CloseOutlined size={14} onClick={handleCloseClick} />
-              </Space>
+              </>
             )}
-          </>
+          </Space>
         }
         onChange={onTabChange}
       />

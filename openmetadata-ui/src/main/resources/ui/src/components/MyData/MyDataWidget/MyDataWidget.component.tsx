@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath, ROUTES } from '../../../constants/constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUserById } from '../../../rest/userAPI';
@@ -64,7 +65,7 @@ const MyDataWidgetInternal = ({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.MyData');
+      handleRemoveWidget(LandingPageWidgetKeys.MY_DATA);
   }, []);
 
   useEffect(() => {

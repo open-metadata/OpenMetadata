@@ -10,18 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Row } from 'antd';
-import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
 import RecentlyViewed from '../../../components/recently-viewed/RecentlyViewed';
+import {
+  LANDING_PAGE_RIGHT_PANEL_WIDGETS,
+  LANDING_PAGE_ROW_HEIGHT,
+  LANDING_PAGE_WIDGET_MARGIN,
+} from '../../../constants/CustomisePage.constants';
 import { SIZE } from '../../../enums/common.enum';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
+import {
+  getAddWidgetHandler,
+  getLayoutUpdateHandler,
+  getRemoveWidgetHandler,
+} from '../../../utils/CustomizableLandingPageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddWidgetModal from '../../CustomizableComponents/AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
@@ -41,17 +50,22 @@ const RightSidebar = ({
   layoutConfigData,
   updateParentLayout,
 }: RightSidebarProps) => {
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
-    {
-      h: 0.2,
-      i: 'ExtraWidget.AddWidgetButton',
-      w: 1,
-      x: 0,
-      y: 0,
-      static: true,
-    },
     ...(layoutConfigData?.page?.layout ?? []),
+    ...(isEditView
+      ? [
+          {
+            h: 2.3,
+            i: 'ExtraWidget.EmptyWidgetPlaceholder',
+            w: 1,
+            x: 0,
+            y: 100,
+            isDraggable: false,
+          },
+        ]
+      : []),
   ]);
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
 
@@ -64,59 +78,12 @@ const RightSidebar = ({
   }, []);
 
   const handleRemoveWidget = useCallback((widgetKey: string) => {
-    setLayout((currentLayout) => {
-      if (widgetKey.endsWith('.EmptyWidgetPlaceholder')) {
-        return currentLayout.filter(
-          (widget: WidgetConfig) => widget.i !== widgetKey
-        );
-      } else {
-        return currentLayout.map((widget: WidgetConfig) =>
-          widget.i === widgetKey
-            ? {
-                ...widget,
-                i: widgetKey + '.EmptyWidgetPlaceholder',
-                h: widget.h > 2.3 ? 2.3 : widget.h,
-              }
-            : widget
-        );
-      }
-    });
+    setLayout(getRemoveWidgetHandler(widgetKey, 2.3, 2.5));
   }, []);
 
   const handleAddWidget = useCallback(
     (newWidgetData: Document) => {
-      setLayout((currentLayout) => {
-        const isEmptyPlaceholderPresent = currentLayout.find(
-          (widget: WidgetConfig) =>
-            widget.i ===
-            `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
-        );
-
-        if (isEmptyPlaceholderPresent) {
-          return currentLayout.map((widget: WidgetConfig) =>
-            widget.i ===
-            `${newWidgetData.fullyQualifiedName}.EmptyWidgetPlaceholder`
-              ? {
-                  ...widget,
-                  i: newWidgetData.fullyQualifiedName,
-                  h: newWidgetData.data.height,
-                }
-              : widget
-          );
-        } else {
-          return [
-            ...currentLayout,
-            {
-              w: newWidgetData.data.gridSizes[0],
-              h: newWidgetData.data.height,
-              x: 0,
-              y: 0,
-              i: newWidgetData.fullyQualifiedName,
-              static: false,
-            },
-          ];
-        }
-      });
+      setLayout(getAddWidgetHandler(newWidgetData));
       setIsWidgetModalOpen(false);
     },
     [layout]
@@ -126,18 +93,21 @@ const RightSidebar = ({
     (widgetConfig: WidgetConfig) => {
       if (widgetConfig.i.endsWith('.EmptyWidgetPlaceholder')) {
         return (
-          <EmptyWidgetPlaceholder
-            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-            handleRemoveWidget={handleRemoveWidget}
-            iconHeight={SIZE.SMALL}
-            iconWidth={SIZE.SMALL}
-            widgetKey={widgetConfig.i}
-          />
+          <div className="p-l-sm h-full">
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handleRemoveWidget={handleRemoveWidget}
+              iconHeight={SIZE.SMALL}
+              iconWidth={SIZE.SMALL}
+              isEditable={widgetConfig.isDraggable}
+              widgetKey={widgetConfig.i}
+            />
+          </div>
         );
       }
 
       switch (widgetConfig.i) {
-        case 'KnowledgePanel.Announcements':
+        case LandingPageWidgetKeys.ANNOUNCEMENTS:
           return (
             <AnnouncementsWidget
               announcements={announcements}
@@ -146,7 +116,7 @@ const RightSidebar = ({
             />
           );
 
-        case 'KnowledgePanel.Following':
+        case LandingPageWidgetKeys.FOLLOWING:
           return (
             <FollowingWidget
               followedData={followedData}
@@ -157,30 +127,12 @@ const RightSidebar = ({
             />
           );
 
-        case 'KnowledgePanel.RecentlyVisited':
+        case LandingPageWidgetKeys.RECENTLY_VIEWED:
           return (
             <RecentlyViewed
               handleRemoveWidget={handleRemoveWidget}
               isEditView={isEditView}
             />
-          );
-
-        case 'ExtraWidget.AddWidgetButton':
-          return (
-            <Row justify="end">
-              <Col>
-                <Button
-                  ghost
-                  className="shadow-none"
-                  data-testid="add-widget-placeholder-button"
-                  icon={<PlusOutlined />}
-                  size="small"
-                  type="primary"
-                  onClick={handleOpenAddWidgetModal}>
-                  {t('label.add')}
-                </Button>
-              </Col>
-            </Row>
           );
 
         default:
@@ -202,7 +154,9 @@ const RightSidebar = ({
     () =>
       layout
         .filter((widget: WidgetConfig) =>
-          widget.i === 'KnowledgePanel.Announcements'
+          !isLoading &&
+          widget.i === LandingPageWidgetKeys.ANNOUNCEMENTS &&
+          !isEditView
             ? !isEmpty(announcements)
             : true
         )
@@ -211,50 +165,57 @@ const RightSidebar = ({
             {getWidgetFromKey(widget)}
           </div>
         )),
-    [layout, announcements, getWidgetFromKey]
+    [layout, announcements, getWidgetFromKey, isEditView, isLoading]
   );
 
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    getActiveAnnouncement()
-      .then((res) => {
-        setAnnouncements(res.data);
-      })
-      .catch((err) => {
-        showErrorToast(err);
-      });
+    fetchAnnouncements();
   }, []);
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
       if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
-        setLayout((currentLayout) => {
-          return updatedLayout.map((widget) => {
-            const widgetData = currentLayout.find(
-              (a: WidgetConfig) => a.i === widget.i
-            );
-
-            return {
-              ...(!isEmpty(widgetData) ? widgetData : {}),
-              ...widget,
-            };
-          });
-        });
+        setLayout(getLayoutUpdateHandler(updatedLayout));
       }
     },
     [layout]
   );
 
+  const addedWidgetsList = useMemo(
+    () =>
+      LANDING_PAGE_RIGHT_PANEL_WIDGETS.filter((widget) =>
+        layout.some((item) => item.i === widget)
+      ),
+    [layout]
+  );
+
   useEffect(() => {
-    !isUndefined(updateParentLayout) &&
+    if (isEditView && !isUndefined(updateParentLayout)) {
       updateParentLayout(
         (parentLayoutData ?? []).map((widget) => {
-          if (widget.i === 'Container.RightSidebar') {
+          if (widget.i === LandingPageWidgetKeys.RIGHT_PANEL) {
             return {
               ...widget,
               data: {
                 page: {
-                  layout: layout.filter(
-                    (widget) => widget.i !== 'ExtraWidget.AddWidgetButton'
+                  layout: uniqBy(
+                    layout.filter(
+                      (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+                    ),
+                    'i'
                   ),
                 },
               },
@@ -264,40 +225,31 @@ const RightSidebar = ({
           }
         })
       );
+    }
   }, [layout]);
-
-  if (isEditView) {
-    return (
-      <>
-        <ResponsiveGridLayout
-          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-          cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
-          draggableHandle=".drag-widget-icon"
-          isResizable={false}
-          rowHeight={100}
-          onLayoutChange={handleLayoutUpdate}>
-          {widgets}
-        </ResponsiveGridLayout>
-        <AddWidgetModal
-          handleAddWidget={handleAddWidget}
-          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          open={isWidgetModalOpen}
-        />
-      </>
-    );
-  }
 
   return (
     <>
-      {!isEmpty(announcements) && (
-        <AnnouncementsWidget announcements={announcements} />
+      <ResponsiveGridLayout
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+        cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
+        containerPadding={[0, LANDING_PAGE_WIDGET_MARGIN]}
+        draggableHandle=".drag-widget-icon"
+        isResizable={false}
+        margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
+        rowHeight={LANDING_PAGE_ROW_HEIGHT}
+        onLayoutChange={handleLayoutUpdate}>
+        {widgets}
+      </ResponsiveGridLayout>
+      {isWidgetModalOpen && (
+        <AddWidgetModal
+          addedWidgetsList={addedWidgetsList}
+          handleAddWidget={handleAddWidget}
+          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          open={isWidgetModalOpen}
+          widgetsToShow={LANDING_PAGE_RIGHT_PANEL_WIDGETS}
+        />
       )}
-      <FollowingWidget
-        followedData={followedData}
-        followedDataCount={followedDataCount}
-        isLoadingOwnedData={isLoadingOwnedData}
-      />
-      <RecentlyViewed />
     </>
   );
 };

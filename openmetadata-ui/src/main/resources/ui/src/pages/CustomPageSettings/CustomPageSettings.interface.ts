@@ -14,7 +14,7 @@ export enum CustomEntityType {
   KnowledgePanel = 'KnowledgePanel',
   MyData = 'MyData',
   Following = 'Following',
-  RecentlyVisited = 'RecentlyVisited',
+  RecentlyViewed = 'RecentlyViewed',
   ActivityFeed = 'ActivityFeed',
   KPI = 'KPI',
   TotalDataAssets = 'TotalDataAssets',

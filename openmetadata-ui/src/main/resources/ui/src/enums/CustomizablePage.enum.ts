@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
+export enum WidgetWidths {
+  large = 3,
+  medium = 2,
+  small = 1,
+}
 
-export interface WidgetConfig
-  extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
-  data?: {
-    page: {
-      layout: Array<WidgetConfig>;
-    };
-  };
+export enum LandingPageWidgetKeys {
+  ACTIVITY_FEED = 'KnowledgePanel.ActivityFeed',
+  RIGHT_PANEL = 'Container.RightSidebar',
+  ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
+  FOLLOWING = 'KnowledgePanel.Following',
+  RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
+  MY_DATA = 'KnowledgePanel.MyData',
+  KPI = 'KnowledgePanel.KPI',
+  TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
 }

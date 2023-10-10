@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -59,7 +60,7 @@ const RecentlyViewed = ({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.RecentlyVisited');
+      handleRemoveWidget(LandingPageWidgetKeys.RECENTLY_VIEWED);
   }, []);
 
   useEffect(() => {
@@ -67,7 +68,7 @@ const RecentlyViewed = ({
   }, []);
 
   return (
-    <div className="p-md" data-testid="recently-viewed-container">
+    <div className="p-l-md" data-testid="recently-viewed-container">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>

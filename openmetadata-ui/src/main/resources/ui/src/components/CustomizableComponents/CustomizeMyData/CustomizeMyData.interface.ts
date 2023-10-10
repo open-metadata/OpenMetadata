@@ -11,13 +11,9 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
-import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import { Document } from '../../../generated/entity/docStore/document';
 
 export interface CustomizeMyDataProps {
-  layoutData: Array<WidgetConfig>;
-  handleRemoveWidget: (widgetKey: string) => void;
-  handleOpenAddWidgetModal: () => void;
-  handleLayoutUpdate: (currentLayout: Layout[]) => void;
-  handleLayoutChange: (newLayout: Array<WidgetConfig>) => void;
+  initialPageData: Document;
+  handlePageDataChange: (newPageData: Document) => void;
 }

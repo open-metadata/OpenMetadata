@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath } from '../../../constants/constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 
@@ -41,11 +42,11 @@ function FollowingWidget({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.Following');
+      handleRemoveWidget(LandingPageWidgetKeys.FOLLOWING);
   }, []);
 
   return (
-    <div className="p-md" data-testid="following-data-container">
+    <div className="p-l-md" data-testid="following-data-container">
       <EntityListWithV1
         entityList={followedData}
         headerText={

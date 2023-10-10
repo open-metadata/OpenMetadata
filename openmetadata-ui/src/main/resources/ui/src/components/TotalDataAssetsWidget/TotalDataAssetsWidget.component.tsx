@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -93,7 +94,7 @@ const TotalDataAssetsWidget = ({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.TotalDataAssets');
+      handleRemoveWidget(LandingPageWidgetKeys.TOTAL_DATA_ASSETS);
   }, []);
 
   useEffect(() => {

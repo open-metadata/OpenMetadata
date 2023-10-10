@@ -12,10 +12,11 @@
  */
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Alert, Col, Row, Space, Typography } from 'antd';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
@@ -35,11 +36,11 @@ function AnnouncementsWidget({
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget('KnowledgePanel.Announcements');
+      handleRemoveWidget(LandingPageWidgetKeys.ANNOUNCEMENTS);
   }, []);
 
   return (
-    <div className="p-md p-b-xss">
+    <div className="p-l-md">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="right-panel-label m-b-sm">
@@ -59,6 +60,13 @@ function AnnouncementsWidget({
         )}
       </Row>
       <div className="announcement-container-list">
+        {isEmpty(announcements) && (
+          <Typography.Text className="text-xs">
+            {t('message.no-entity-data-available', {
+              entity: t('label.announcement-lowercase'),
+            })}
+          </Typography.Text>
+        )}
         {announcements.map((item) => {
           return (
             <Alert
