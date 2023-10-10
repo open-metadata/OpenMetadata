@@ -235,7 +235,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
-    "pymssql": {"pymssql==2.2.5"},
+    "pymssql": {"pymssql~=2.2.0"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
@@ -347,13 +347,7 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin
-                    not in {
-                        "airflow",
-                        "db2",
-                        "great-expectations",
-                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
-                    }
+                    if plugin not in {"airflow", "db2", "great-expectations"}
                 ]
             )
         ),
