@@ -13,7 +13,10 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
-import { CreateEventPublisherJob } from '../generated/api/createEventPublisherJob';
+import {
+  CreateEventPublisherJob,
+  PublisherType,
+} from '../generated/api/createEventPublisherJob';
 
 export const getStreamJobReIndexStatus = async () => {
   const res = await axiosClient.get<CreateEventPublisherJob>(
@@ -40,7 +43,7 @@ export const stopBatchJobReIndex = async (id: string) => {
 export const reIndexByPublisher = async (data: CreateEventPublisherJob) => {
   const payload = {
     ...data,
-    publisherType: 'elasticSearch',
+    publisherType: PublisherType.ElasticSearch,
   };
 
   const res = await axiosClient.post<
