@@ -79,7 +79,6 @@ const AppInstall = () => {
   const onSaveConfiguration = (data: IChangeEvent) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
     setAppConfiguration(updatedFormData);
-    console.log(updatedFormData);
     setActiveServiceStep(3);
   };
 
