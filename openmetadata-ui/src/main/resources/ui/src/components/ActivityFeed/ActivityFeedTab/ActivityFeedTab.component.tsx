@@ -29,8 +29,8 @@ import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { ICON_DIMENSION } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -45,7 +45,6 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
@@ -54,12 +53,12 @@ import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
   TaskFilter,
 } from './ActivityFeedTab.interface';
+import './activity-feed-tab.less';
 
 export const ActivityFeedTab = ({
   fqn,
@@ -117,12 +116,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(
-        entityType,
-        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      )
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
     );
     setActiveThread();
   };
@@ -141,7 +135,7 @@ export const ActivityFeedTab = ({
     if (!isUserEntity) {
       // To get conversation count
       getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
+        getEntityFeedLink(entityType, fqn),
         ThreadType.Conversation
       ).then((res) => {
         if (res) {
@@ -152,16 +146,15 @@ export const ActivityFeedTab = ({
       });
 
       // To get open tasks count
-      getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
-        ThreadType.Task
-      ).then((res) => {
-        if (res) {
-          setTasksCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
+      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+        (res) => {
+          if (res) {
+            setTasksCount(res.totalCount);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
         }
-      });
+      );
     } else {
       // count for task on userProfile page
       getAllFeeds(
@@ -204,15 +197,17 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    const userFilter =
-      isUserEntity && currentUser?.isAdmin
+    let filter;
+    if (!isUserEntity) {
+      filter = currentUser?.isAdmin
         ? FeedFilter.ALL
         : FeedFilter.OWNER_OR_FOLLOWS;
+    }
 
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : userFilter,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isUserEntity, currentUser]);
 

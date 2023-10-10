@@ -78,6 +78,7 @@ import Fqn from './Fqn';
 import { history } from './HistoryUtils';
 import { getSearchIndexTabPath } from './SearchIndexUtils';
 import { serviceTypeLogo } from './ServiceUtils';
+import { getEncodedFqn } from './StringsUtils';
 import { TASK_ENTITIES } from './TasksUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -101,9 +102,10 @@ export const arraySorterByKey = <T extends object>(
 export const getPartialNameFromFQN = (
   fqn: string,
   arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
-  joinSeperator = '/'
+  joinSeparator = '/'
 ): string => {
   const arrFqn = Fqn.split(fqn);
+
   const arrPartialName = [];
   for (const type of arrTypes) {
     if (type === 'service' && arrFqn.length > 0) {
@@ -117,7 +119,7 @@ export const getPartialNameFromFQN = (
     }
   }
 
-  return arrPartialName.join(joinSeperator);
+  return arrPartialName.join(joinSeparator);
 };
 
 /**
@@ -796,10 +798,11 @@ export const getEntityDetailLink = (
   subTab?: string
 ) => {
   let path = '';
+  const encodedFQN = getEncodedFqn(fqn);
   switch (entityType) {
     default:
     case EntityType.TABLE:
-      path = getTableTabPath(fqn, tab, subTab);
+      path = getTableTabPath(encodedFQN, tab, subTab);
 
       break;
 
@@ -828,7 +831,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.SEARCH_INDEX:
-      path = getSearchIndexTabPath(fqn, tab, subTab);
+      path = getSearchIndexTabPath(encodedFQN, tab, subTab);
 
       break;
 
@@ -848,7 +851,7 @@ export const getEntityDetailLink = (
       break;
 
     case EntityType.USER:
-      path = getUserPath(fqn, tab, subTab);
+      path = getUserPath(encodedFQN, tab, subTab);
 
       break;
 
