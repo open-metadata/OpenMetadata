@@ -36,7 +36,7 @@
         }
       ]
     },
-    "numberOfObjects": "2147483648",
+    "numberOfObjects": "1.7661858297E10",
     "size": "102400",
     "fileFormats": [
       "parquet"
