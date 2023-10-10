@@ -6,6 +6,11 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration",
   "properties": {
+    "enabled": {
+      "description": "Flags if the ingestion from the OpenMetadata UI is enabled. If ingesting externally, we can set this value to false to not check the Pipeline Service Client component health.",
+      "type": "boolean",
+      "default": true
+    },
     "className": {
       "description": "Class Name for the Pipeline Service Client.",
       "type": "string"

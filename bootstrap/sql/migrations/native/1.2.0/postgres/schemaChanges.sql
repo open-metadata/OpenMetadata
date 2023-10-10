@@ -234,3 +234,35 @@ SET json = jsonb_set(
 ),
 entityFQNHash = MD5('webAnalyticUserActivityReportData')
 WHERE json #>> '{reportDataType}' = 'WebAnalyticUserActivityReportData';
+
+CREATE TABLE IF NOT EXISTS installed_apps (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    nameHash VARCHAR(256) NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+
+CREATE TABLE IF NOT EXISTS apps_marketplace (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    nameHash VARCHAR(256) NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+   
+CREATE TABLE IF NOT EXISTS apps_extension_time_series (
+    appId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'appId') STORED NOT NULL,      
+    extension VARCHAR(256) NOT NULL,          
+    jsonSchema VARCHAR(256) NOT NULL, 
+    json JSONB NOT NULL,
+    timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
+);  

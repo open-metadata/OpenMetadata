@@ -3,7 +3,7 @@ package org.openmetadata.service.dataInsight;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import org.openmetadata.schema.analytics.DataAssetValues;
 import org.openmetadata.schema.dataInsight.type.AggregatedUnusedAssetsCount;
 
 public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S> implements DataInsightAggregatorInterface {
@@ -20,26 +20,34 @@ public abstract class AggregatedUnusedAssetsCountAggregator<A, H, B, S> implemen
     for (B bucket : getBuckets(histogramBucket)) {
       String dateTimeString = getKeyAsString(bucket);
       Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
-      S threeDays = getAggregations(bucket, "threeDays");
-      S sevenDays = getAggregations(bucket, "sevenDays");
-      S fourteenDays = getAggregations(bucket, "fourteenDays");
-      S thirtyDays = getAggregations(bucket, "thirtyDays");
-      S sixtyDays = getAggregations(bucket, "sixtyDays");
-      S totalUnused = getAggregations(bucket, "totalUnused");
-      S totalUsed = getAggregations(bucket, "totalUsed");
-      Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
-      Double unused = Objects.requireNonNullElse(getValue(totalUnused), 0.0);
-      Double total = used + unused;
+      S unusedThreeDays = getAggregations(bucket, "unusedDataAssetsThreeDays");
+      S unusedSevenDays = getAggregations(bucket, "unusedDataAssetsSevenDays");
+      S unusedFourteenDays = getAggregations(bucket, "unusedDataAssetsFourteenDays");
+      S unusedThirtyDays = getAggregations(bucket, "unusedDataAssetsThirtyDays");
+      S unusedSixtyDays = getAggregations(bucket, "unusedDataAssetsSixtyDays");
+      S frequentlyUsedThreeDays = getAggregations(bucket, "frequentlyUsedDataAssetsThreeDays");
+      S frequentlyUsedSevenDays = getAggregations(bucket, "frequentlyUsedDataAssetsSevenDays");
+      S frequentlyUsedFourteenDays = getAggregations(bucket, "frequentlyUsedDataAssetsFourteenDays");
+      S frequentlyUsedThirtyDays = getAggregations(bucket, "frequentlyUsedDataAssetsThirtyDays");
+      S frequentlyUsedSixtyDays = getAggregations(bucket, "frequentlyUsedDataAssetsSixtyDays");
 
       data.add(
           new AggregatedUnusedAssetsCount()
               .withTimestamp(timestamp)
-              .withThreeDays(getValue(threeDays))
-              .withSevenDays(getValue(sevenDays))
-              .withFourteenDays(getValue(fourteenDays))
-              .withThirtyDays(getValue(thirtyDays))
-              .withSixtyDays(getValue(sixtyDays))
-              .withTotal(total));
+              .withUnusedDataAssets(
+                  new DataAssetValues()
+                      .withThreeDays(getValue(unusedThreeDays))
+                      .withSevenDays(getValue(unusedSevenDays))
+                      .withFourteenDays(getValue(unusedFourteenDays))
+                      .withThirtyDays(getValue(unusedThirtyDays))
+                      .withSixtyDays(getValue(unusedSixtyDays)))
+              .withFrequentlyUsedDataAssets(
+                  new DataAssetValues()
+                      .withThreeDays(getValue(frequentlyUsedThreeDays))
+                      .withSevenDays(getValue(frequentlyUsedSevenDays))
+                      .withFourteenDays(getValue(frequentlyUsedFourteenDays))
+                      .withThirtyDays(getValue(frequentlyUsedThirtyDays))
+                      .withSixtyDays(getValue(frequentlyUsedSixtyDays))));
     }
     return data;
   }

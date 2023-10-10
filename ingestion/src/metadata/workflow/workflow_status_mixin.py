@@ -92,7 +92,7 @@ class WorkflowStatusMixin:
         """
 
         # if we don't have a related Ingestion Pipeline FQN, no status is set.
-        if self.config.ingestionPipelineFQN:
+        if self.config.ingestionPipelineFQN and self.ingestion_pipeline:
             if state in (PipelineState.queued, PipelineState.running):
                 pipeline_status = PipelineStatus(
                     runId=self.run_id,
