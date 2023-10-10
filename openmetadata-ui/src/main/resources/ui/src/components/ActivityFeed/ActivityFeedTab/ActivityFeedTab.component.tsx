@@ -29,8 +29,8 @@ import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { ICON_DIMENSION } from '../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -53,12 +53,12 @@ import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
   TaskFilter,
 } from './ActivityFeedTab.interface';
+import './activity-feed-tab.less';
 
 export const ActivityFeedTab = ({
   fqn,
@@ -197,11 +197,12 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    const filter = isUserEntity
-      ? currentUser?.isAdmin
+    let filter;
+    if (!isUserEntity) {
+      filter = currentUser?.isAdmin
         ? FeedFilter.ALL
-        : FeedFilter.OWNER_OR_FOLLOWS
-      : undefined;
+        : FeedFilter.OWNER_OR_FOLLOWS;
+    }
 
     return {
       threadType:

@@ -21,8 +21,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
 import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
 import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
@@ -38,13 +36,15 @@ import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexV
 import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/TableVersion/TableVersion.component';
 import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
 import {
   getContainerDetailPath,
   getDashboardDetailsPath,
   getDataModelDetailsPath,
   getMlModelDetailsPath,
   getPipelineDetailsPath,
-  getStoredProcedureDetailsPath,
+  getStoredProcedureDetailPath,
   getTableTabPath,
   getTopicDetailsPath,
   getVersionPath,
@@ -63,6 +63,11 @@ import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
+import {
+  getSearchIndexDetailsByFQN,
+  getSearchIndexVersion,
+  getSearchIndexVersions,
+} from '../../rest/SearchIndexAPI';
 import {
   getDashboardByFqn,
   getDashboardVersion,
@@ -83,11 +88,6 @@ import {
   getPipelineVersion,
   getPipelineVersions,
 } from '../../rest/pipelineAPI';
-import {
-  getSearchIndexDetailsByFQN,
-  getSearchIndexVersion,
-  getSearchIndexVersions,
-} from '../../rest/SearchIndexAPI';
 import {
   getContainerByName,
   getContainerVersion,
@@ -199,7 +199,7 @@ const EntityVersionPage: FunctionComponent = () => {
         break;
 
       case EntityType.STORED_PROCEDURE:
-        history.push(getStoredProcedureDetailsPath(decodedEntityFQN, tab));
+        history.push(getStoredProcedureDetailPath(decodedEntityFQN, tab));
 
         break;
 
