@@ -45,7 +45,7 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status: Pipeline Status data to add
         """
         resp = self.client.put(
-            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus",
+            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
             data=pipeline_status.json(),
         )
         logger.debug(
@@ -63,7 +63,7 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status_run_id: Pipeline Status run id
         """
         resp = self.client.get(
-            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus/{pipeline_status_run_id}"
+            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus/{pipeline_status_run_id}"
         )
         if resp:
             return PipelineStatus(**resp)
@@ -76,7 +76,7 @@ class OMetaIngestionPipelineMixin:
             ingestion_pipeline_id (str): ingestion pipeline uuid
         """
         resp = self.client.post(
-            f"/services/ingestionPipelines/trigger/{ingestion_pipeline_id}"
+            f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}"
         )
 
         return IngestionPipeline.parse_obj(resp)
@@ -98,7 +98,7 @@ class OMetaIngestionPipelineMixin:
         params = {"startTs": start_ts, "endTs": end_ts}
 
         resp = self.client.get(
-            f"/services/ingestionPipelines/{ingestion_pipeline_fqn}/pipelineStatus",
+            f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
             data=params,
         )
 
@@ -120,7 +120,7 @@ class OMetaIngestionPipelineMixin:
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
         resp = self.client.get(
-            f"/services/ingestionPipelines{fields_str}",
+            f"{self.get_suffix(IngestionPipeline)}{fields_str}",
             data=params,
         )
 

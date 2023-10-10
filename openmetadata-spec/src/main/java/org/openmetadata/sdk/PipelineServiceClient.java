@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,7 @@ import org.openmetadata.sdk.exception.PipelineServiceVersionException;
  */
 @Slf4j
 public abstract class PipelineServiceClient {
+  protected final boolean pipelineServiceClientEnabled;
   protected final String hostIp;
 
   protected final boolean ingestionIpInfoEnabled;
@@ -67,6 +69,7 @@ public abstract class PipelineServiceClient {
   protected static final String CONTENT_TYPE = "application/json";
   private static final Integer MAX_ATTEMPTS = 3;
   private static final Integer BACKOFF_TIME_SECONDS = 5;
+  private static final String DISABLED_STATUS = "disabled";
   public static final String HEALTHY_STATUS = "healthy";
   public static final String UNHEALTHY_STATUS = "unhealthy";
   public static final String STATUS_KEY = "status";
@@ -103,6 +106,7 @@ public abstract class PipelineServiceClient {
   }
 
   public PipelineServiceClient(PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
+    this.pipelineServiceClientEnabled = pipelineServiceClientConfiguration.getEnabled();
     this.hostIp = pipelineServiceClientConfiguration.getHostIp();
     this.ingestionIpInfoEnabled = pipelineServiceClientConfiguration.getIngestionIpInfoEnabled();
   }
@@ -223,7 +227,21 @@ public abstract class PipelineServiceClient {
   }
 
   /* Check the status of pipeline service to ensure it is healthy */
-  public abstract PipelineServiceClientResponse getServiceStatus();
+  public PipelineServiceClientResponse getServiceStatus() {
+    if (pipelineServiceClientEnabled) {
+      return getServiceStatusInternal();
+    }
+    return buildHealthyStatus(DISABLED_STATUS).withPlatform(DISABLED_STATUS);
+  }
+
+  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+    if (pipelineServiceClientEnabled) {
+      return getQueuedPipelineStatusInternal(ingestionPipeline);
+    }
+    return new ArrayList<>();
+  }
+
+  public abstract PipelineServiceClientResponse getServiceStatusInternal();
 
   /**
    * This workflow can be used to execute any necessary async automations from the pipeline service. This will be the
@@ -244,7 +262,7 @@ public abstract class PipelineServiceClient {
   public abstract PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
 
   /* Get the status of a deployed pipeline */
-  public abstract List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline);
+  public abstract List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline);
 
   /* Toggle the state of an Ingestion Pipeline as enabled/disabled */
   public abstract PipelineServiceClientResponse toggleIngestion(IngestionPipeline ingestionPipeline);
