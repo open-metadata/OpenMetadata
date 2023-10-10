@@ -17,10 +17,10 @@ import {
   findByText,
   render,
 } from '@testing-library/react';
-import { LeafNodes } from 'components/Entity/EntityLineage/EntityLineage.interface';
-import { EntityTabs } from 'enums/entity.enum';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { LeafNodes } from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { EntityTabs } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Paging } from '../../generated/type/paging';
 import MlModelDetailComponent from './MlModelDetail.component';
@@ -190,11 +190,11 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/FeedEditor/FeedEditor', () => {
+jest.mock('../../components/FeedEditor/FeedEditor', () => {
   return jest.fn().mockReturnValue(<p>ActivityFeedEditor</p>);
 });
 
-jest.mock('components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
@@ -206,9 +206,12 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('components/Entity/EntityLineage/EntityLineage.component', () => {
-  return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
-});
+jest.mock(
+  '../../components/Entity/EntityLineage/EntityLineage.component',
+  () => {
+    return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
+  }
+);
 
 jest.mock('./MlModelFeaturesList', () => {
   return jest.fn().mockReturnValue(<p>MlModelFeaturesList</p>);
@@ -218,7 +221,7 @@ jest.mock('../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => {
   return jest.fn().mockReturnValue(<p>ActivityThreadPanel</p>);
 });
 
-jest.mock('components/containers/PageLayoutV1', () => {
+jest.mock('../../components/containers/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 

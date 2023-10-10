@@ -10,7 +10,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class DashboardServiceIndex implements ElasticSearchIndex {
+public class DashboardServiceIndex implements SearchIndex {
 
   final DashboardService dashboardService;
 

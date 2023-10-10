@@ -10,7 +10,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 import org.openmetadata.service.util.JsonUtils;
 
-public class MlModelServiceIndex implements ElasticSearchIndex {
+public class MlModelServiceIndex implements SearchIndex {
 
   final MlModelService mlModelService;
 

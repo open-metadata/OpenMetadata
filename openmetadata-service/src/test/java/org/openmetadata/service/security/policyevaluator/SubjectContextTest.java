@@ -74,22 +74,22 @@ public class SubjectContextTest {
   @BeforeAll
   public static void setup() {
     UserRepository userRepository = mock(UserRepository.class);
-    Entity.registerEntity(User.class, Entity.USER, userRepository, null);
+    Entity.registerEntity(User.class, Entity.USER, userRepository);
     Mockito.when(userRepository.getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(i -> EntityRepository.CACHE_WITH_NAME.get(new ImmutablePair<>(Entity.USER, i.getArgument(1))));
 
     TeamRepository teamRepository = mock(TeamRepository.class);
-    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository, null);
+    Entity.registerEntity(Team.class, Entity.TEAM, teamRepository);
     Mockito.when(teamRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.TEAM, i.getArgument(1))));
 
     RoleRepository roleRepository = mock(RoleRepository.class);
-    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository, null);
+    Entity.registerEntity(Role.class, Entity.ROLE, roleRepository);
     Mockito.when(roleRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.ROLE, i.getArgument(1))));
 
     PolicyRepository policyRepository = mock(PolicyRepository.class);
-    Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository, null);
+    Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository);
     Mockito.when(policyRepository.get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean()))
         .thenAnswer(i -> EntityRepository.CACHE_WITH_ID.get(new ImmutablePair<>(Entity.POLICY, i.getArgument(1))));
 

@@ -21,19 +21,24 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import Loader from 'components/Loader/Loader';
 import { t } from 'i18next';
 import React, { useState } from 'react';
-import { getTags } from 'rest/tagAPI';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { Tag } from '../../../generated/entity/classification/tag';
+import { getTags } from '../../../rest/tagAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../Loader/Loader';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
 const { Panel } = Collapse;
 const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
-  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
+  const [tiers, setTiers] = useState<Array<Tag>>([]);
+  const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
+    []
+  );
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const getTierData = async () => {
@@ -47,7 +52,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
         const tierData: CardWithListItems[] =
           data.map((tier: { name: string; description: string }) => ({
             id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
-            title: tier.name,
+            title: getEntityName(tier),
             description: tier.description.substring(
               0,
               tier.description.indexOf('\n\n')
@@ -56,9 +61,10 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               tier.description.indexOf('\n\n') + 1
             ),
           })) ?? [];
-        setTierData(tierData);
+        setTierCardData(tierData);
+        setTiers(data);
       } else {
-        setTierData([]);
+        setTierCardData([]);
       }
     } catch (err) {
       showErrorToast(
@@ -73,7 +79,8 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
   };
 
   const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
-    updateTier?.(value as string);
+    const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
+    updateTier?.(tier);
   };
 
   const clearTierSelection = () => {
@@ -107,7 +114,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               collapsible="icon"
               defaultActiveKey={currentTier}
               expandIconPosition="end">
-              {tierData.map((card) => (
+              {tierCardData.map((card) => (
                 <Panel
                   data-testid="card-list"
                   header={
@@ -144,7 +151,9 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={(visible) => visible && !tierData.length && getTierData()}>
+      onOpenChange={(visible) =>
+        visible && !tierCardData.length && getTierData()
+      }>
       {children}
     </Popover>
   );

@@ -43,8 +43,8 @@ import org.openmetadata.schema.api.tests.CreateWebAnalyticEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.resources.Collection;
@@ -64,8 +64,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
   static final String FIELDS = "owner";
 
-  public WebAnalyticEventResource(CollectionDAO dao, Authorizer authorizer) {
-    super(WebAnalyticEvent.class, new WebAnalyticEventRepository(dao), authorizer);
+  public WebAnalyticEventResource(Authorizer authorizer) {
+    super(Entity.WEB_ANALYTIC_EVENT, authorizer);
   }
 
   public static class WebAnalyticEventList extends ResultList<WebAnalyticEvent> {

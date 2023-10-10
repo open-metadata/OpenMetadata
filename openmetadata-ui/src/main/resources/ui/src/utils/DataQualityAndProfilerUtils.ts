@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TableTestsType } from 'components/TableProfiler/TableProfiler.interface';
+import { TableTestsType } from '../components/TableProfiler/TableProfiler.interface';
 import { TestCaseStatus } from '../generated/tests/testCase';
 
 export const updateTestResults = (

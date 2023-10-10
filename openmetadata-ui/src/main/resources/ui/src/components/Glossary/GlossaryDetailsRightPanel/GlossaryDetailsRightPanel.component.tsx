@@ -11,37 +11,40 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from 'assets/svg/plus-primary.svg';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
-import { UserSelectableList } from 'components/common/UserSelectableList/UserSelectableList.component';
-import { UserTeamSelectableList } from 'components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TagButton from 'components/TagButton/TagButton.component';
-import TagsInput from 'components/TagsInput/TagsInput.component';
+import { t } from 'i18next';
+import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
+import React, { ReactNode, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
+import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
+import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
+import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import TagButton from '../../../components/TagButton/TagButton.component';
+import TagsInput from '../../../components/TagsInput/TagsInput.component';
 import {
   DE_ACTIVE_COLOR,
   getTeamAndUserDetailsPath,
   getUserPath,
   NO_DATA_PLACEHOLDER,
-} from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { Glossary } from 'generated/entity/data/glossary';
-import { GlossaryTerm, TagLabel } from 'generated/entity/data/glossaryTerm';
-import { ChangeDescription } from 'generated/entity/type';
-import { EntityReference } from 'generated/type/entityReference';
-import { t } from 'i18next';
-import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import React, { ReactNode, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
+} from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  GlossaryTerm,
+  TagLabel,
+} from '../../../generated/entity/data/glossaryTerm';
+import { ChangeDescription } from '../../../generated/entity/type';
+import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
   getDiffValue,
   getEntityVersionTags,
-} from 'utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtils';
 import GlossaryReviewers from './GlossaryReviewers';
 
 type Props = {

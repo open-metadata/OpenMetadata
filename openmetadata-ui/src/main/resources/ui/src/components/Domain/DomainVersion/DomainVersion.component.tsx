@@ -11,20 +11,23 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { Domain } from 'generated/entity/domains/domain';
-import { EntityHistory } from 'generated/type/entityHistory';
 import { noop, toString } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { EntityHistory } from '../../../generated/type/entityHistory';
 import {
   getDomainByName,
   getDomainVersionData,
   getDomainVersionsList,
-} from 'rest/domainAPI';
-import { getDomainPath, getDomainVersionsPath } from 'utils/RouterUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../rest/domainAPI';
+import {
+  getDomainPath,
+  getDomainVersionsPath,
+} from '../../../utils/RouterUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import PageLayoutV1 from '../../containers/PageLayoutV1';
+import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
 
 const DomainVersion = () => {

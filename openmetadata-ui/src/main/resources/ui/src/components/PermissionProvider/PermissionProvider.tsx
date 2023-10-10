@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Loader from 'components/Loader/Loader';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
@@ -25,14 +24,15 @@ import React, {
   useState,
 } from 'react';
 import { useHistory } from 'react-router-dom';
+import AppState from '../../AppState';
+import Loader from '../../components/Loader/Loader';
+import { REDIRECT_PATHNAME } from '../../constants/constants';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
   getLoggedInUserPermissions,
   getResourcePermission,
-} from 'rest/permissionAPI';
-import AppState from '../../AppState';
-import { REDIRECT_PATHNAME } from '../../constants/constants';
+} from '../../rest/permissionAPI';
 import {
   getUrlPathnameExpiryAfterRoute,
   isProtectedRoute,

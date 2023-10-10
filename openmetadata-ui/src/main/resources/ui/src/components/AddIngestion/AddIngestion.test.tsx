@@ -49,9 +49,14 @@ jest.mock('../IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
-jest.mock('components/IngestionWorkflowForm/IngestionWorkflowForm', () => {
-  return jest.fn().mockImplementation(() => <div>Ingestion workflow form</div>);
-});
+jest.mock(
+  '../../components/IngestionWorkflowForm/IngestionWorkflowForm',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>Ingestion workflow form</div>);
+  }
+);
 
 describe('Test AddIngestion component', () => {
   it('AddIngestion component should render', async () => {

@@ -13,20 +13,20 @@
 
 import { Button, Col, Form, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import { HTTP_STATUS_CODE } from 'constants/auth.constants';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getPolicyByName, patchPolicy } from 'rest/rolesAPIV1';
-import { getEntityName } from 'utils/EntityUtils';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import Loader from '../../../components/Loader/Loader';
+import { HTTP_STATUS_CODE } from '../../../constants/auth.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPath,
   getPolicyWithFqnPath,

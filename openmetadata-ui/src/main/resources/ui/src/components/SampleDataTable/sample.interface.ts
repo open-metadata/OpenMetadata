@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ColumnsType } from 'antd/lib/table';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 
 export type SampleDataType =
   | string

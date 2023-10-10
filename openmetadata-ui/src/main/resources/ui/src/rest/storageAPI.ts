@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { Operation } from 'fast-json-patch';
-import { Container } from 'generated/entity/data/container';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { EntityReference } from 'generated/type/entityReference';
-import { Include } from 'generated/type/include';
-import { Paging } from 'generated/type/paging';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { Container } from '../generated/entity/data/container';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { EntityReference } from '../generated/type/entityReference';
+import { Include } from '../generated/type/include';
+import { Paging } from '../generated/type/paging';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 const configOptionsForPatch = {

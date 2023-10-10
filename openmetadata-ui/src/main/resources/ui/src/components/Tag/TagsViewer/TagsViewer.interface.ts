@@ -17,7 +17,6 @@ export interface TagsViewerProps {
   tags: EntityTags[];
   sizeCap?: number;
   displayType?: DisplayType;
-  layoutType?: LayoutType;
   showNoDataPlaceholder?: boolean;
 }
 

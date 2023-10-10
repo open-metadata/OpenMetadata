@@ -25,7 +25,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
 import org.openmetadata.service.resources.Collection;
@@ -53,8 +52,8 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
     return storedProcedure;
   }
 
-  public StoredProcedureResource(CollectionDAO dao, Authorizer authorizer) {
-    super(StoredProcedure.class, new StoredProcedureRepository(dao), authorizer);
+  public StoredProcedureResource(Authorizer authorizer) {
+    super(Entity.STORED_PROCEDURE, authorizer);
   }
 
   public static class StoredProcedureList extends ResultList<StoredProcedure> {

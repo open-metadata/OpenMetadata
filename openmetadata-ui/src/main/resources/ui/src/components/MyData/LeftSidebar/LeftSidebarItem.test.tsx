@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { SETTING_ITEM } from 'constants/LeftSidebar.constants';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { SETTING_ITEM } from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 describe('LeftSidebar Items', () => {

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Domain } from 'generated/entity/domains/domain';
+import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface DomainDetailsPageProps {
   domain: Domain;

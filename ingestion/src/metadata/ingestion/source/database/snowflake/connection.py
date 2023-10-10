@@ -203,6 +203,8 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
             for database in databases:
                 engine_wrapper.database_name = database.name
                 break
+    else:
+        engine_wrapper.database_name = engine_wrapper.service_connection.database
 
 
 def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: str):

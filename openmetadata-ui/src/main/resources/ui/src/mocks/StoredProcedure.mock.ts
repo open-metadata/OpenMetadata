@@ -16,7 +16,7 @@ import {
   LabelType,
   State,
   TagSource,
-} from 'generated/entity/data/storedProcedure';
+} from '../generated/entity/data/storedProcedure';
 
 export const mockStoredProcedureData = [
   {

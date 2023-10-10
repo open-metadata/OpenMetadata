@@ -12,15 +12,14 @@
  */
 
 import { act, queryByAttribute, render, screen } from '@testing-library/react';
+import React from 'react';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import {
   DUMMY_GRAPH_DATA,
   DUMMY_GRAPH_DATA_WITH_MISSING_ENTITY,
-} from 'mocks/DataInsight.mock';
-import React from 'react';
-import { getGraphDataByEntityType } from 'utils/DataInsightUtils';
-
-import { DataInsightChartType } from 'generated/dataInsight/dataInsightChartResult';
-import { getAggregateChartData } from 'rest/DataInsightAPI';
+} from '../../mocks/DataInsight.mock';
+import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { getGraphDataByEntityType } from '../../utils/DataInsightUtils';
 import DescriptionInsight from './DescriptionInsight';
 
 const mockProps = {
@@ -30,7 +29,7 @@ const mockProps = {
   dataInsightChartName:
     DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
 };
-jest.mock('rest/DataInsightAPI', () => ({
+jest.mock('../../rest/DataInsightAPI', () => ({
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('../../utils/DataInsightUtils', () => ({

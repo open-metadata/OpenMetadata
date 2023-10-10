@@ -12,9 +12,7 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
-import { ReactComponent as KPIIcon } from 'assets/svg/ic-kpi.svg';
 import { AxiosError } from 'axios';
-import { DATA_INSIGHT_DOCS } from 'constants/docs.constants';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,17 +24,19 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getLatestKpiResult, getListKpiResult } from 'rest/KpiAPI';
-import { Transi18next } from 'utils/CommonUtils';
+import { ReactComponent as KPIIcon } from '../../assets/svg/ic-kpi.svg';
+import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
+import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
+import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
+import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
+import { UIKpiResult } from '../../interface/data-insight.interface';
+import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
+import { Transi18next } from '../../utils/CommonUtils';
+import { getKpiGraphData } from '../../utils/DataInsightUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
-} from 'utils/date-time/DateTimeUtils';
-import { GRAPH_BACKGROUND_COLOR } from '../../constants/constants';
-import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
-import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
-import { UIKpiResult } from '../../interface/data-insight.interface';
-import { getKpiGraphData } from '../../utils/DataInsightUtils';
+} from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 

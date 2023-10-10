@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProduct } from 'generated/entity/domains/dataProduct';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 
 export interface DataProductsDetailsPageProps {
   dataProduct: DataProduct;

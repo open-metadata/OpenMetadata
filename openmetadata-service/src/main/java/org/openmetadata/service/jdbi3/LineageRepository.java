@@ -32,11 +32,13 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
+@Repository
 public class LineageRepository {
   private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO dao) {
-    this.dao = dao;
+  public LineageRepository() {
+    this.dao = Entity.getCollectionDAO();
+    Entity.setLineageRepository(this);
   }
 
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) {

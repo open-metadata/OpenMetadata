@@ -226,7 +226,7 @@ import pathlib
 import yaml
 from datetime import timedelta
 from airflow import DAG
-from metadata.data_insight.api.workflow import DataInsightWorkflow
+from metadata.workflow.data_insight import DataInsightWorkflow
 
 try:
     from airflow.operators.python import PythonOperator

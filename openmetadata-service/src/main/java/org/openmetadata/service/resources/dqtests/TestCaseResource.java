@@ -43,7 +43,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.Collection;
@@ -84,8 +83,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(CollectionDAO dao, Authorizer authorizer) {
-    super(TestCase.class, new TestCaseRepository(dao), authorizer);
+  public TestCaseResource(Authorizer authorizer) {
+    super(Entity.TEST_CASE, authorizer);
   }
 
   @Override

@@ -12,16 +12,16 @@
  */
 import { Editor, Range } from '@tiptap/core';
 import HashtagImage from 'assets/img/ic-format-hashtag.png';
-import BulletListImage from 'assets/img/ic-slash-bullet-list.png';
-import DividerImage from 'assets/img/ic-slash-divider.png';
-import H1Image from 'assets/img/ic-slash-h1.png';
-import H2Image from 'assets/img/ic-slash-h2.png';
-import H3Image from 'assets/img/ic-slash-h3.png';
-import NumberedListImage from 'assets/img/ic-slash-numbered-list.png';
-import QuoteImage from 'assets/img/ic-slash-quote.png';
-import TextImage from 'assets/img/ic-slash-text.png';
-import CodeBlockImage from 'assets/svg/ic-format-code-block.svg';
 import MentionImage from 'assets/svg/ic-mentions.svg';
+import BulletListImage from '../../../../assets/img/ic-slash-bullet-list.png';
+import DividerImage from '../../../../assets/img/ic-slash-divider.png';
+import H1Image from '../../../../assets/img/ic-slash-h1.png';
+import H2Image from '../../../../assets/img/ic-slash-h2.png';
+import H3Image from '../../../../assets/img/ic-slash-h3.png';
+import NumberedListImage from '../../../../assets/img/ic-slash-numbered-list.png';
+import QuoteImage from '../../../../assets/img/ic-slash-quote.png';
+import TextImage from '../../../../assets/img/ic-slash-text.png';
+import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = 'Basic',

@@ -88,6 +88,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     return Response.status(status)
         .type(APPLICATION_JSON_TYPE)
         .entity(new ErrorMessage(status.getStatusCode(), message))
+        .header("WWW-Authenticate", "om-auth")
         .build();
   }
 

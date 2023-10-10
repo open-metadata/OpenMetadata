@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Date;
-import java.util.Objects;
 import java.util.UUID;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -41,7 +40,6 @@ import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.EntityUsage;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.UsageRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -59,10 +57,9 @@ public class UsageResource {
   private final UsageRepository dao;
   private final Authorizer authorizer;
 
-  public UsageResource(CollectionDAO dao, Authorizer authorizer) {
-    Objects.requireNonNull(dao, "UsageRepository must not be null");
+  public UsageResource(Authorizer authorizer) {
     this.authorizer = authorizer;
-    this.dao = new UsageRepository(dao);
+    this.dao = Entity.getUsageRepository();
   }
 
   @GET

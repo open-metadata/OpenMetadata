@@ -44,7 +44,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchServiceRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
@@ -73,8 +72,8 @@ public class SearchServiceResource
     return service;
   }
 
-  public SearchServiceResource(CollectionDAO dao, Authorizer authorizer) {
-    super(SearchService.class, new SearchServiceRepository(dao), authorizer, ServiceType.SEARCH);
+  public SearchServiceResource(Authorizer authorizer) {
+    super(Entity.SEARCH_SERVICE, authorizer, ServiceType.SEARCH);
   }
 
   @Override

@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { SelectOption } from 'components/AsyncSelectList/AsyncSelectList.interface';
-import { Paging } from 'generated/type/paging';
+import { DefaultOptionType } from 'antd/lib/select';
+import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
+import { Paging } from '../../../generated/type/paging';
 
 export type TagsSelectFormProps = {
   placeholder: string;
   defaultValue: string[];
   onChange?: (value: string[]) => void;
-  onSubmit: (tags: string[]) => Promise<void>;
+  onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;
   fetchApi: (
     search: string,

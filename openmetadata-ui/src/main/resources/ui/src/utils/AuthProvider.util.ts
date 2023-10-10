@@ -18,14 +18,14 @@ import {
   PopupRequest,
   PublicClientApplication,
 } from '@azure/msal-browser';
-import { UserProfile } from 'components/authentication/auth-provider/AuthProvider.interface';
-import { AuthProvider } from 'generated/settings/settings';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
+import { UserProfile } from '../components/authentication/auth-provider/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
+import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
 export let msalInstance: IPublicClientApplication;

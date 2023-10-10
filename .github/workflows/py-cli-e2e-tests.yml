@@ -32,11 +32,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up JDK 11
+    - name: Set up JDK 17
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
-        distribution: 'adopt'
+        java-version: '17'
+        distribution: 'temurin'
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
@@ -73,7 +73,7 @@ jobs:
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
       with:
-        timeout_minutes: 30
+        timeout_minutes: 60
         max_attempts: 2
         retry_on: error
         command: ./docker/run_local_docker.sh -m no-ui

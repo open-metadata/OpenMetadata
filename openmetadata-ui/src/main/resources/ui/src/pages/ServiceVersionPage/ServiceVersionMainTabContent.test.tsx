@@ -12,13 +12,16 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { EntityType } from 'enums/entity.enum';
-import { Database, DatabaseServiceType } from 'generated/entity/data/database';
+import React from 'react';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  Database,
+  DatabaseServiceType,
+} from '../../generated/entity/data/database';
 import {
   MOCK_CHANGE_DESCRIPTION,
   MOCK_DATABASE_SERVICE,
-} from 'mocks/Service.mock';
-import React from 'react';
+} from '../../mocks/Service.mock';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
@@ -33,36 +36,39 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('components/Tag/TagsContainerV2/TagsContainerV2', () =>
+jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('components/Tag/TagsViewer/TagsViewer', () =>
+jest.mock('../../components/Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
-jest.mock('components/common/ProfilePicture/ProfilePicture', () =>
+jest.mock('../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockImplementation(() => <div>ProfilePicture</div>)
 );
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('components/common/description/DescriptionV1', () =>
+jest.mock('../../components/common/description/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
-jest.mock('components/common/next-previous/NextPrevious', () =>
+jest.mock('../../components/common/next-previous/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div>NextPrevious</div>)
 );
 
-jest.mock('components/common/rich-text-editor/RichTextEditorPreviewer', () =>
-  jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
 const mockPagingHandler = jest.fn();

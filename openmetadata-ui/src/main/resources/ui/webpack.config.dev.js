@@ -19,7 +19,6 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const TsconfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'build');
 
@@ -170,7 +169,6 @@ module.exports = {
       fs: false,
       url: require.resolve('url/'),
     },
-    plugins: [new TsconfigPathsPlugin()],
   },
 
   plugins: [

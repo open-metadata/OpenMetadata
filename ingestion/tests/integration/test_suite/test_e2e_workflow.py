@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 import sqlalchemy as sqa
 from sqlalchemy.orm import Session, declarative_base
 
-from metadata.data_quality.api.workflow import TestSuiteWorkflow
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -46,11 +45,12 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.workflow.data_quality import TestSuiteWorkflow
 
 test_suite_config = {
     "source": {
         "type": "custom-database",
-        "serviceName": "MyRabdomWorkflow",
+        "serviceName": "test_suite_service_test",
         "sourceConfig": {
             "config": {
                 "type": "TestSuite",
@@ -146,7 +146,7 @@ class TestE2EWorkflow(unittest.TestCase):
             )
         )
 
-        table = cls.metadata.create_or_update(
+        cls.metadata.create_or_update(
             CreateTableRequest(
                 name="users",
                 columns=[
@@ -214,6 +214,7 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         workflow = TestSuiteWorkflow.create(test_suite_config)
         workflow.execute()
+        workflow.raise_from_status()
 
         test_case_1 = self.metadata.get_by_name(
             entity=TestCase,

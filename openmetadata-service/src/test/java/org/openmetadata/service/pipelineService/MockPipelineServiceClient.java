@@ -17,7 +17,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public PipelineServiceClientResponse getServiceStatus() {
+  public PipelineServiceClientResponse getServiceStatusInternal() {
     return null;
   }
 
@@ -44,7 +44,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
     return null;
   }
 

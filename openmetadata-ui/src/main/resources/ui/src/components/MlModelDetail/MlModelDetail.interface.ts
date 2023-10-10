@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { DataAssetWithDomains } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
 import { HTMLAttributes } from 'react';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 

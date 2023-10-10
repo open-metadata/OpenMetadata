@@ -61,7 +61,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
@@ -98,8 +97,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(CollectionDAO dao, Authorizer authorizer) {
-    super(Team.class, new TeamRepository(dao), authorizer);
+  public TeamResource(Authorizer authorizer) {
+    super(Entity.TEAM, authorizer);
   }
 
   @Override
@@ -296,7 +295,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   @GET
   @Path("/{id}/versions/{version}")
   @Operation(
-      operationId = "getSpecificRoleVersion",
+      operationId = "getSpecificTeamVersion",
       summary = "Get a version of the team",
       description = "Get a version of the team by given `id`",
       responses = {

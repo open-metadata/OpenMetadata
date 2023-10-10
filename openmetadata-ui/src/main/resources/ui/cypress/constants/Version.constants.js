@@ -1023,13 +1023,13 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.dashboards',
   },
-  //   Pipeline: {
-  //     serviceName: PIPELINE_SERVICE_NAME,
-  //     serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
-  //     entityCreationDetails: PIPELINE_SERVICE_DETAILS_FOR_VERSION_TEST,
-  //     entityPatchPayload: COMMON_PATCH_PAYLOAD,
-  //     settingsMenuId: 'services.pipelines',
-  //   },
+  Pipeline: {
+    serviceName: PIPELINE_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
+    entityCreationDetails: PIPELINE_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
+    settingsMenuId: 'services.pipelines',
+  },
   'ML Model': {
     serviceName: ML_MODEL_SERVICE_NAME,
     serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
@@ -1037,20 +1037,20 @@ export const SERVICE_DETAILS_FOR_VERSION_TEST = {
     entityPatchPayload: COMMON_PATCH_PAYLOAD,
     settingsMenuId: 'services.mlModels',
   },
-  //   Storage: {
-  //     serviceName: STORAGE_SERVICE_NAME,
-  //     serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
-  //     entityCreationDetails: STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST,
-  //     entityPatchPayload: COMMON_PATCH_PAYLOAD,
-  //     settingsMenuId: 'services.storages',
-  //   },
-  //   Search: {
-  //     serviceName: SEARCH_SERVICE_NAME,
-  //     serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
-  //     entityCreationDetails: SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST,
-  //     entityPatchPayload: COMMON_PATCH_PAYLOAD,
-  //     settingsMenuId: 'services.search',
-  //   },
+  Storage: {
+    serviceName: STORAGE_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
+    entityCreationDetails: STORAGE_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
+    settingsMenuId: 'services.storages',
+  },
+  Search: {
+    serviceName: SEARCH_SERVICE_NAME,
+    serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+    entityCreationDetails: SEARCH_SERVICE_DETAILS_FOR_VERSION_TEST,
+    entityPatchPayload: COMMON_PATCH_PAYLOAD,
+    settingsMenuId: 'services.search',
+  },
 };
 
 export const DATABASE_DETAILS_FOR_VERSION_TEST = {

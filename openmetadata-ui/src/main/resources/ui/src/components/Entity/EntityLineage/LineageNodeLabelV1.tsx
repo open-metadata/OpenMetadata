@@ -12,13 +12,13 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import { EntityLineageNodeType } from 'enums/entity.enum';
-import { EntityReference } from 'generated/entity/type';
 import { get } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { getBreadcrumbsFromFqn } from 'utils/EntityUtils';
-import { getEntityIcon } from 'utils/TableUtils';
+import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/entity/type';
+import { getBreadcrumbsFromFqn } from '../../../utils/EntityUtils';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import './lineage-node-label.less';
 
 interface LineageNodeLabelProps {

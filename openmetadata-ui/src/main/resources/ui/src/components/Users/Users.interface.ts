@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchedDataProps } from 'components/searched-data/SearchedData.interface';
+import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { User } from '../../generated/entity/teams/user';
 
 export interface Props {

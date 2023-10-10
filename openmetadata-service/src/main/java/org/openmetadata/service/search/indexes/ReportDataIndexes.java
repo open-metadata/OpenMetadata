@@ -4,7 +4,7 @@ import java.util.Map;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.service.util.JsonUtils;
 
-public class ReportDataIndexes implements ElasticSearchIndex {
+public class ReportDataIndexes implements SearchIndex {
 
   final ReportData reportData;
 

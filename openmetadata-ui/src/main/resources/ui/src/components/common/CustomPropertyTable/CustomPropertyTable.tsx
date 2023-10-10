@@ -14,29 +14,32 @@
 import { Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityType } from 'enums/entity.enum';
-import { ChangeDescription } from 'generated/tests/testCase';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { getTypeByFQN } from 'rest/metadataTypeAPI';
-import { getEntityExtentionDetailsFromEntityType } from 'utils/CustomProperties/CustomProperty.utils';
-import { getEntityName } from 'utils/EntityUtils';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import {
+  ChangeDescription,
+  CustomProperty,
+  Type,
+} from '../../../generated/entity/type';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
-} from 'utils/EntityVersionUtils';
-import { CustomProperty, Type } from '../../../generated/entity/type';
+} from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../PermissionProvider/PermissionProvider.interface';
 import ErrorPlaceHolder from '../error-with-placeholder/ErrorPlaceHolder';
 import Table from '../Table/Table';
 import {

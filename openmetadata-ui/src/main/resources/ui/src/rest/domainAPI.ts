@@ -13,12 +13,12 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { CreateDomain } from 'generated/api/domains/createDomain';
-import { Domain } from 'generated/entity/domains/domain';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
 import { PagingResponse } from 'Models';
-import { getURLWithQueryFields } from 'utils/APIUtils';
+import { CreateDomain } from '../generated/api/domains/createDomain';
+import { Domain } from '../generated/entity/domains/domain';
+import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
+import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
 type Params = {

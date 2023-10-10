@@ -11,24 +11,30 @@
  *  limitations under the License.
  */
 import { Button, Popover, Space, Tabs, Typography } from 'antd';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { WILD_CARD_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR, PAGE_SIZE_MEDIUM } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
-import { SearchIndex } from 'enums/search.enum';
-import { EntityReference } from 'generated/entity/data/table';
 import { isEmpty, noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { searchData } from 'rest/miscAPI';
-import { getUsers } from 'rest/userAPI';
-import { formatTeamsResponse, formatUsersResponse } from 'utils/APIUtils';
-import { getCountBadge } from 'utils/CommonUtils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
+import { EntityReference } from '../../../generated/entity/data/table';
+import { searchData } from '../../../rest/miscAPI';
+import { getUsers } from '../../../rest/userAPI';
+import {
+  formatTeamsResponse,
+  formatUsersResponse,
+} from '../../../utils/APIUtils';
+import { getCountBadge } from '../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
-} from 'utils/EntityUtils';
-import SVGIcons, { Icons } from 'utils/SvgUtils';
+} from '../../../utils/EntityUtils';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-team-selectable-list.less';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';

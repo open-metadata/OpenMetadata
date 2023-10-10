@@ -13,20 +13,20 @@
 
 import { Col, Row, Space, Table, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import { NO_DATA_PLACEHOLDER } from 'constants/constants';
-import { TABLE_SCROLL_VALUE } from 'constants/Table.constants';
-import { TableConstraint } from 'generated/api/data/createTable';
-import { SearchIndexField } from 'generated/entity/data/searchIndex';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getFilterTags } from 'utils/TableTags/TableTags.utils';
+import FilterTablePlaceHolder from '../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import { TableConstraint } from '../../generated/api/data/createTable';
+import { SearchIndexField } from '../../generated/entity/data/searchIndex';
 import { Column } from '../../generated/entity/data/table';
 import {
   getFrequentlyJoinedColumns,
   searchInColumns,
 } from '../../utils/EntityUtils';
+import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   makeData,

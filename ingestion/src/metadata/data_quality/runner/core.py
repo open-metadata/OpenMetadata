@@ -14,8 +14,8 @@ Main class to run data tests
 """
 
 
+from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.runner.models import TestCaseResultResponse
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils.logger import test_suite_logger
 
@@ -26,15 +26,15 @@ class DataTestsRunner:
     """class to execute the test validation"""
 
     def __init__(self, test_runner_interface: TestSuiteInterface):
-        self.test_runner_interace = test_runner_interface
+        self.test_runner_interface = test_runner_interface
 
     def run_and_handle(self, test_case: TestCase):
         """run and handle test case validation"""
         logger.info(
             f"Executing test case {test_case.name.__root__} "
-            f"for entity {self.test_runner_interace.table_entity.fullyQualifiedName.__root__}"
+            f"for entity {self.test_runner_interface.table_entity.fullyQualifiedName.__root__}"
         )
-        test_result = self.test_runner_interace.run_test_case(
+        test_result = self.test_runner_interface.run_test_case(
             test_case,
         )
 

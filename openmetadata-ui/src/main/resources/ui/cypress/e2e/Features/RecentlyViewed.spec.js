@@ -53,8 +53,7 @@ describe('Recently viwed data assets', () => {
     ).should('have.length', 0);
   });
 
-  // Todo: locally its working as expected but in cypress its not showing recently view table
-  it.skip(`recently view section should have at max list of 5 entity`, () => {
+  it(`recently view section should have at max list of 5 entity`, () => {
     RECENTLY_VIEW_ENTITIES.map((entity, index) => {
       visitEntityDetailsPage(entity.term, entity.serviceName, entity.entity);
 

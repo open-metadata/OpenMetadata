@@ -32,6 +32,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
@@ -43,7 +44,6 @@ import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.DatabaseServiceIndex;
 import org.openmetadata.service.search.indexes.DomainIndex;
-import org.openmetadata.service.search.indexes.ElasticSearchIndex;
 import org.openmetadata.service.search.indexes.EntityReportDataIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
@@ -53,7 +53,9 @@ import org.openmetadata.service.search.indexes.MlModelServiceIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
+import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
 import org.openmetadata.service.search.indexes.StorageServiceIndex;
 import org.openmetadata.service.search.indexes.StoredProcedureIndex;
@@ -71,7 +73,7 @@ import org.openmetadata.service.search.indexes.WebAnalyticUserActivityReportData
 public class SearchIndexFactory {
   private SearchIndexFactory() {}
 
-  public static ElasticSearchIndex buildIndex(String entityType, Object entity) {
+  public static SearchIndex buildIndex(String entityType, Object entity) {
     switch (entityType) {
       case Entity.TABLE:
         return new TableIndex((Table) entity);
@@ -139,6 +141,10 @@ public class SearchIndexFactory {
         return new WebAnalyticEntityViewReportDataIndex((ReportData) entity);
       case Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA:
         return new WebAnalyticUserActivityReportDataIndex((ReportData) entity);
+      case Entity.RAW_COST_ANALYSIS_REPORT_DATA:
+        return new RawCostAnalysisReportDataIndex((ReportData) entity);
+      case Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA:
+        return new AggregatedCostAnalysisReportDataIndex((ReportData) entity);
       default:
         LOG.warn("Ignoring Entity Type {}", entityType);
     }
