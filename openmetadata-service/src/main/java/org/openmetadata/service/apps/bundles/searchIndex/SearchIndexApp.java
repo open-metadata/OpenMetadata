@@ -1,20 +1,6 @@
-/*
- *  Copyright 2022 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
+package org.openmetadata.service.apps.bundles.searchIndex;
 
-package org.openmetadata.service.workflows.searchIndex;
-
-import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
-import static org.openmetadata.service.util.ReIndexingHandler.REINDEXING_JOB_EXTENSION;
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -34,12 +20,14 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Failure;
 import org.openmetadata.schema.system.FailureDetails;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.ProcessorException;
 import org.openmetadata.service.exception.SinkException;
 import org.openmetadata.service.exception.SourceException;
@@ -54,26 +42,34 @@ import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ReIndexingHandler;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
+import org.openmetadata.service.workflows.searchIndex.PaginatedDataInsightSource;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
+import org.quartz.JobExecutionContext;
 
 @Slf4j
-public class SearchIndexWorkflow implements Runnable {
+public class SearchIndexApp extends AbstractNativeApplication {
   private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
-  private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
-  private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
-  private final Processor entityProcessor;
-  private final Processor dataInsightProcessor;
-  private final Sink searchIndexSink;
-  private final SearchRepository searchRepository;
-  @Getter final EventPublisherJob jobData;
-  private final CollectionDAO dao;
+  private List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
+  private List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
+  private Processor entityProcessor;
+  private Processor dataInsightProcessor;
+  private Sink searchIndexSink;
+
+  @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
 
-  public SearchIndexWorkflow(SearchRepository client, EventPublisherJob request) {
-    this.dao = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+  @Override
+  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
+    super.init(app, dao, searchRepository);
+
+    // request for reindexing
+    EventPublisherJob request =
+        JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
+            .withStats(new Stats())
+            .withFailure(new Failure());
     this.jobData = request;
     request
         .getEntities()
@@ -92,7 +88,6 @@ public class SearchIndexWorkflow implements Runnable {
                     new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
               }
             });
-    this.searchRepository = client;
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor();
       this.dataInsightProcessor = new OpenSearchDataInsightProcessor();
@@ -104,8 +99,8 @@ public class SearchIndexWorkflow implements Runnable {
     }
   }
 
-  @SneakyThrows
-  public void run() {
+  @Override
+  public void startApp(JobExecutionContext jobExecutionContext) {
     try {
       LOG.info("Executing Reindexing Job with JobData : {}", jobData);
       // Update Job Status
@@ -115,7 +110,6 @@ public class SearchIndexWorkflow implements Runnable {
       dataInsightReindex();
       // Mark Job as Completed
       updateJobStatus();
-      jobData.setEndTime(System.currentTimeMillis());
     } catch (Exception ex) {
       String error =
           String.format(
@@ -126,11 +120,9 @@ public class SearchIndexWorkflow implements Runnable {
       handleJobError("Failure in Job: Check Stack", error, System.currentTimeMillis());
     } finally {
       // store job details in Database
-      updateRecordToDb();
+      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
       // Send update
       sendUpdates();
-      // Remove list from active jobs
-      ReIndexingHandler.getInstance().removeCompletedJob(jobData.getId());
     }
   }
 
@@ -286,8 +278,7 @@ public class SearchIndexWorkflow implements Runnable {
   private void sendUpdates() {
     try {
       WebSocketManager.getInstance()
-          .sendToOne(
-              jobData.getStartedBy(), WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+          .broadCastMessageToAll(WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
@@ -296,19 +287,19 @@ public class SearchIndexWorkflow implements Runnable {
   public void updateStats(
       int currentSuccess, int currentFailed, StepStats reader, StepStats processor, StepStats writer) {
     // Job Level Stats
-    Stats jobDataStats = jobData.getStats() != null ? jobData.getStats() : new Stats();
+    Stats jobDataStats = jobData.getStats();
 
     // Total Stats
     StepStats stats = jobData.getStats().getJobStats();
     if (stats == null) {
-      stats = new StepStats().withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), dao));
+      stats = new StepStats().withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO));
     }
     getUpdatedStats(stats, currentSuccess, currentFailed);
 
     // Update for the Job
     jobDataStats.setJobStats(stats);
-    // Reader Stats
-    jobDataStats.setSourceStats(reader);
+    // Source Stats
+    jobDataStats.setSourceStats(getTotalStatsTillCurrentRun(jobDataStats.getSourceStats(), reader));
     // Processor
     jobDataStats.setProcessorStats(processor);
     // Writer
@@ -317,24 +308,27 @@ public class SearchIndexWorkflow implements Runnable {
     jobData.setStats(jobDataStats);
   }
 
-  public void updateRecordToDb() {
-    String recordString =
-        dao.entityExtensionTimeSeriesDao().getExtension(jobData.getId().toString(), REINDEXING_JOB_EXTENSION);
-    EventPublisherJob lastRecord = JsonUtils.readValue(recordString, EventPublisherJob.class);
-    long originalLastUpdate = lastRecord.getTimestamp();
-    dao.entityExtensionTimeSeriesDao()
-        .update(
-            jobData.getId().toString(), REINDEXING_JOB_EXTENSION, JsonUtils.pojoToJson(jobData), originalLastUpdate);
+  private StepStats getTotalStatsTillCurrentRun(StepStats sourceStat, StepStats newInputStat) {
+    if (sourceStat == null) {
+      sourceStat = new StepStats();
+    }
+    sourceStat.setTotalRecords(sourceStat.getTotalRecords() + newInputStat.getTotalRecords());
+    sourceStat.setProcessedRecords(sourceStat.getProcessedRecords() + newInputStat.getProcessedRecords());
+    sourceStat.setSuccessRecords(sourceStat.getSuccessRecords() + newInputStat.getSuccessRecords());
+    sourceStat.setFailedRecords(sourceStat.getFailedRecords() + newInputStat.getFailedRecords());
+    return sourceStat;
   }
 
   private void reCreateIndexes(String entityType) {
-    if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-      IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
-      if (indexMapping != null) {
-        searchRepository.deleteIndex(indexMapping);
-        searchRepository.createIndex(indexMapping);
-      }
+    if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
+      return;
     }
+
+    IndexMapping indexType = searchRepository.getIndexMapping(entityType);
+    // Delete index
+    searchRepository.deleteIndex(indexType);
+    // Create index
+    searchRepository.createIndex(indexType);
   }
 
   private void handleErrorsOs(
