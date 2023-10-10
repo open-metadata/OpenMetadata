@@ -186,9 +186,39 @@ CREATE TABLE IF NOT EXISTS doc_store (
     INDEX doc_store_name_index(name)
 );
 
-
-
 -- Remove Mark All Deleted Field
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.sourceConfig.config.markAllDeletedTables')
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
+
+CREATE TABLE IF NOT EXISTS installed_apps (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+   
+CREATE TABLE IF NOT EXISTS apps_marketplace (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    PRIMARY KEY (id),
+    UNIQUE (nameHash)
+    );
+   
+CREATE TABLE IF NOT EXISTS apps_extension_time_series (
+    appId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.appId') STORED NOT NULL,      
+    extension VARCHAR(256) NOT NULL,          
+    jsonSchema VARCHAR(256) NOT NULL, 
+    json JSON NOT NULL,
+	timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL
+);  
