@@ -200,3 +200,37 @@ CREATE INDEX page_name_index ON doc_store USING btree (name);
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,markAllDeletedTables}'
 WHERE json #>> '{pipelineType}' = 'metadata';
+
+
+-- update entityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  'entityReportData',
+  true
+),
+entityFQNHash = MD5('entityReportData')
+WHERE json #>> '{reportDataType}' = 'EntityReportData';
+
+-- update webAnalyticEntityViewReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  'webAnalyticEntityViewReportData',
+  true
+),
+entityFQNHash = MD5('webAnalyticEntityViewReportData')
+WHERE json #>> '{reportDataType}' = 'WebAnalyticEntityViewReportData';
+
+-- update webAnalyticUserActivityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  'webAnalyticUserActivityReportData',
+  true
+),
+entityFQNHash = MD5('webAnalyticUserActivityReportData')
+WHERE json #>> '{reportDataType}' = 'WebAnalyticUserActivityReportData';
