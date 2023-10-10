@@ -105,13 +105,13 @@ jobs:
         if: ${{ github.event_name == 'pull_request_target' }}
         run: |
           git fetch --no-tags https://github.com/open-metadata/OpenMetadata.git +refs/heads/main:refs/remotes/origin/main
-          mvn -pl :openmetadata-service -Dprofile=postgres-tests clean test -am
+          mvn -pl :openmetadata-service -Dprofile=postgres-tests clean package -am
 
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ github.event_name == 'push' }}
-        run: mvn clean test
+        run: mvn clean package
 
       - name: Clean Up
         run: |

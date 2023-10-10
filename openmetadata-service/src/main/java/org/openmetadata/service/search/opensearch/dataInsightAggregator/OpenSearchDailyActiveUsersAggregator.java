@@ -1,8 +1,8 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.histogram.Histogram;
+import os.org.opensearch.search.aggregations.Aggregations;
+import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
 
 public class OpenSearchDailyActiveUsersAggregator
     extends org.openmetadata.service.dataInsight.DailyActiveUsersAggregator<Aggregations, Histogram, Histogram.Bucket> {

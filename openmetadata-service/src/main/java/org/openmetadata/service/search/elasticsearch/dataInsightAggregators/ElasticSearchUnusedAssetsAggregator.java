@@ -1,8 +1,8 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import org.apache.lucene.search.TotalHits;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
+import es.org.apache.lucene.search.TotalHits;
+import es.org.elasticsearch.search.SearchHit;
+import es.org.elasticsearch.search.SearchHits;
 import org.openmetadata.service.dataInsight.UnusedAssetsAggregator;
 
 public class ElasticSearchUnusedAssetsAggregator extends UnusedAssetsAggregator<SearchHits, SearchHit, TotalHits> {

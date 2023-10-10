@@ -19,6 +19,7 @@ from sqlalchemy import column, distinct, func
 
 from metadata.profiler.metrics.core import StaticMetric, _label
 from metadata.profiler.orm.functions.count import CountFn
+from metadata.profiler.orm.registry import is_quantifiable
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -50,17 +51,25 @@ class DistinctCount(StaticMetric):
         """
         Distinct Count metric for Datalake
         """
-        from collections import Counter  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from collections import Counter
+
+        import pandas as pd
 
         try:
             counter = Counter()
             for df in dfs:
-                df_col_value = df[self.col.name].dropna().to_list()
+                df_col = df[self.col.name].dropna()
+                df_col_value = (
+                    pd.to_numeric(df_col).to_list()
+                    if is_quantifiable(self.col.type)
+                    else df_col.to_list()
+                )
                 counter.update(df_col_value)
             return len(counter.keys())
         except Exception as err:
             logger.debug(
                 f"Don't know how to process type {self.col.type}"
-                f"when computing Distinct Count.\n Error: {err}"
+                f" when computing Distinct Count.\n Error: {err}"
             )
             return 0

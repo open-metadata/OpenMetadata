@@ -2,10 +2,10 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
 import org.openmetadata.service.dataInsight.MostActiveUsersAggregator;
-import org.opensearch.search.aggregations.Aggregations;
-import org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
-import org.opensearch.search.aggregations.metrics.Max;
-import org.opensearch.search.aggregations.metrics.Sum;
+import os.org.opensearch.search.aggregations.Aggregations;
+import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
+import os.org.opensearch.search.aggregations.metrics.Max;
+import os.org.opensearch.search.aggregations.metrics.Sum;
 
 public class OpenSearchMostActiveUsersAggregator
     extends MostActiveUsersAggregator<Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {

@@ -41,7 +41,6 @@ from metadata.generated.schema.entity.data import (
     topic,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import get_entity_tier_from_tags
@@ -370,5 +369,5 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         """Refine data"""
         self._refined_data = self.refine_user_event.send(entity)
 
-    def get_status(self) -> ProcessorStatus:
+    def get_status(self) -> Status:
         return self.processor_status
