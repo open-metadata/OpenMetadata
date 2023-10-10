@@ -108,15 +108,6 @@ const UserListPageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
 );
 
-const ElasticSearchIndexPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/ElasticSearchIndexPage/ElasticSearchReIndexPage.component'
-      )
-  )
-);
-
 const DataInsightsSettingsPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -266,17 +257,6 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={ElasticSearchIndexPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.SEARCH,
-          true
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={DataInsightsSettingsPage}
         hasPermission={false}
         path={getSettingPath(
@@ -387,6 +367,7 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
+
       <AdminProtectedRoute
         exact
         component={AlertDataInsightReportPage}
