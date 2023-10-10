@@ -16,3 +16,41 @@ Watch the video to learn more about proactively honing the data culture of your 
 Watch a demo of Data Insights in OpenMetadata
 
 {% youtube videoId="Epd9G6igLUM" start="0:00" end="21:58" /%}
+
+{%inlineCalloutContainer%}
+ {%inlineCallout
+  color="violet-70"
+  bold="What is Tiering"
+  icon="MdInsights"
+  href="/how-to-guides/openmetadata/data-insights/tiering"%}
+  Set business importance of data using Tiers.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Set Up Data Insights Ingestion"
+  icon="MdInsights"
+  href="/how-to-guides/openmetadata/data-insights/ingestion"%}
+  Set up the ingestion pipeline right from the UI.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Key Performance Indicators (KPI)"
+  icon="MdInsights"
+  href="/how-to-guides/openmetadata/data-insights/kpi"%}
+  Define the KPIs and set goals for documentation, and ownership.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Data Insights Report"
+  icon="MdInsights"
+  href="/how-to-guides/openmetadata/data-insights/report"%}
+  Get a quick glance of data asset description, ownership, and tiering coverage.
+ {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="How to Transform the Data Culture of Your Company"
+  icon="MdInsights"
+  href="/how-to-guides/openmetadata/data-insights/data-culture"%}
+  Improve your data culture for data-driven decision making.
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}
