@@ -207,7 +207,7 @@ UPDATE report_data_time_series
 SET json = jsonb_set(
   json::jsonb #- '{reportDataType}',
   '{reportDataType}',
-  'entityReportData',
+  '"entityReportData"',
   true
 ),
 entityFQNHash = MD5('entityReportData')
@@ -218,7 +218,7 @@ UPDATE report_data_time_series
 SET json = jsonb_set(
   json::jsonb #- '{reportDataType}',
   '{reportDataType}',
-  'webAnalyticEntityViewReportData',
+  '"webAnalyticEntityViewReportData"',
   true
 ),
 entityFQNHash = MD5('webAnalyticEntityViewReportData')
@@ -229,7 +229,7 @@ UPDATE report_data_time_series
 SET json = jsonb_set(
   json::jsonb #- '{reportDataType}',
   '{reportDataType}',
-  'webAnalyticUserActivityReportData',
+  '"webAnalyticUserActivityReportData"',
   true
 ),
 entityFQNHash = MD5('webAnalyticUserActivityReportData')
