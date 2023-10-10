@@ -131,6 +131,8 @@ public final class Entity {
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
   public static final String CHART = "chart";
+  public static final String APPLICATION = "app";
+  public static final String APP_MARKET_PLACE_DEF = "appMarketPlaceDefinition";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";

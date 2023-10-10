@@ -17,10 +17,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
-import java.time.Period;
-import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -50,7 +47,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.quartz.CronScheduleBuilder;
-import org.quartz.Trigger;
 
 @Slf4j
 public class SubscriptionUtil {
@@ -253,35 +249,6 @@ public class SubscriptionUtil {
         case CUSTOM:
           if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
             return CronScheduleBuilder.cronSchedule(trigger.getCronExpression());
-          } else {
-            throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
-          }
-      }
-    }
-    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
-  }
-
-  public static int getNumberOfDays(TriggerConfig trigger) {
-    if (trigger.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
-      TriggerConfig.ScheduleInfo scheduleInfo = trigger.getScheduleInfo();
-      switch (scheduleInfo) {
-        case DAILY:
-          return 1;
-        case WEEKLY:
-          return 7;
-        case MONTHLY:
-          return 30;
-        case CUSTOM:
-          if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
-            Trigger triggerQrz = CronScheduleBuilder.cronSchedule(trigger.getCronExpression()).build();
-            Date previousFire =
-                triggerQrz.getPreviousFireTime() == null ? triggerQrz.getStartTime() : triggerQrz.getPreviousFireTime();
-            Date nextFire = triggerQrz.getFireTimeAfter(previousFire);
-            Period period =
-                Period.between(
-                    previousFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
-                    nextFire.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
-            return period.getDays();
           } else {
             throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
           }

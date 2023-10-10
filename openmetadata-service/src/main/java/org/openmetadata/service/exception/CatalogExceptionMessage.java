@@ -69,6 +69,8 @@ public final class CatalogExceptionMessage {
       "Email Verification Token %s is expired. Please issue a new request for email verification.";
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
 
+  public static final String LIVE_APP_SCHEDULE_ERR = "Live Application cannot scheduled.";
+
   private CatalogExceptionMessage() {}
 
   public static String entityNotFound(String entityType, String id) {

@@ -88,31 +88,11 @@
     }
   },
   "properties": {
-    "id": {
-      "description": "Unique identifier of the Job.",
-      "$ref": "../type/basic.json#/definitions/uuid"
-    },
     "name": {
       "description": "Name of the result",
       "type": "string"
     },
-    "startedBy": {
-      "description": "Job started by",
-      "type": "string"
-    },
-    "publisherType": {
-      "$ref": "#/definitions/publisherType"
-    },
-    "runMode": {
-      "$ref": "#/definitions/runMode"
-    },
     "timestamp": {
-      "$ref": "../type/basic.json#/definitions/timestamp"
-    },
-    "startTime": {
-      "$ref": "../type/basic.json#/definitions/timestamp"
-    },
-    "endTime": {
       "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "status": {

@@ -1,0 +1,119 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/marketplace/appMarketPlaceDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppMarketPlaceDefinition",
+  "javaType": "org.openmetadata.schema.entity.app.AppMarketPlaceDefinition",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "description": "This schema defines the applications for Open-Metadata.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this application.",
+      "$ref": "../../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name for the application.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "features": {
+      "description": "Features of the Application.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "owner": {
+      "description": "Owner of this workflow.",
+      "$ref": "../../../type/entityReference.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "tags": {
+      "description": "Tags associated with the column.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "developer": {
+      "description": "Developer For the Application.",
+      "type": "string"
+    },
+    "developerUrl": {
+      "description": "Url for the developer",
+      "type": "string"
+    },
+    "privacyPolicyUrl": {
+      "description": "Privacy Policy for the developer",
+      "type": "string"
+    },
+    "supportEmail": {
+      "description": "Support Email for the application",
+      "type": "string"
+    },
+    "className": {
+      "description": "Full Qualified ClassName for the the application",
+      "type": "string"
+    },
+    "appType": {
+      "description": "This schema defines the type of application.",
+      "$ref": "../app.json#/definitions/appType"
+    },
+    "scheduleType": {
+      "description": "This schema defines the Schedule Type of Application.",
+      "$ref": "../app.json#/definitions/scheduleType"
+    },
+    "permission": {
+      "description": "Permission used by Native Applications.",
+      "$ref": "../app.json#/definitions/permissions"
+    },
+    "runtime": {
+      "description": "If app type is live, user can provide additional runtime context.",
+      "$ref": "../app.json#/definitions/executionContext"
+    },
+    "appConfiguration": {
+      "description": "Application Configuration object."
+    },
+    "appLogoUrl": {
+      "description": "Application Logo Url.",
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id", "name", "appType", "className", "scheduleType", "permission"]
+}
