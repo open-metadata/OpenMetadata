@@ -308,7 +308,7 @@ const GlobalSettingRouter = () => {
         component={CustomPageSettings}
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.CUSTOM_PAGES
+          GlobalSettingOptions.CUSTOM_DASHBOARDS
         )}
       />
 

@@ -161,7 +161,7 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-bots'),
   },
   CUSTOM_PAGE: {
-    header: i18n.t('label.custom-page'),
-    subHeader: i18n.t('message.page-sub-header-for-custom-page'),
+    header: i18n.t('label.custom-dashboard'),
+    subHeader: i18n.t('message.page-sub-header-for-custom-dashboard'),
   },
 };

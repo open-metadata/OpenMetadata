@@ -97,7 +97,7 @@ export const CustomisablePage = () => {
     history.push(
       getSettingPath(
         GlobalSettingsMenuCategory.OPEN_METADATA,
-        GlobalSettingOptions.CUSTOM_PAGES
+        GlobalSettingOptions.CUSTOM_DASHBOARDS
       )
     );
   };
