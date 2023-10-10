@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.search.SearchClient.CLASSIFICATION_DISABLE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
@@ -281,6 +282,9 @@ public class SearchRepository {
                   entityReference.getId().toString(),
                   field.getName()));
           fieldData = JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+        }
+        if (field.getName().equalsIgnoreCase("disabled")) {
+          scriptTxt.append(String.format(CLASSIFICATION_DISABLE_SCRIPT, field.getNewValue()));
         }
       }
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
