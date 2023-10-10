@@ -261,7 +261,7 @@
         "type": "text"
       },
       "numberOfObjects": {
-        "type": "integer"
+        "type": "double"
       },
       "size": {
         "type": "integer"
