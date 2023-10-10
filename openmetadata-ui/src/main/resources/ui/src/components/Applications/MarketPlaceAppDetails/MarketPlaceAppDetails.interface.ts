@@ -4,4 +4,5 @@ export enum ApplicationTabs {
   PERMISSIONS = 'permissions',
   SCHEDULE = 'schedule',
   HISTORY = 'history',
+  CONFIGURATION = 'configuration',
 }

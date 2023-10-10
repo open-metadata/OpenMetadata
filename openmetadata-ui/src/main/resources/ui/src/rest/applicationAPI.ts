@@ -18,6 +18,7 @@ import { CreateAppRequest } from '../generated/entity/applications/createAppRequ
 import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
+import { Operation } from 'fast-json-patch';
 
 const BASE_URL = '/apps';
 
@@ -72,4 +73,18 @@ export const unistallApp = (appName: string, hardDelete = false) => {
   return APIClient.delete(`${BASE_URL}/name/${appName}`, {
     params: { hardDelete },
   });
+};
+
+export const patchApplication = async (id: string, patch: Operation[]) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await APIClient.patch<Operation[], AxiosResponse<App>>(
+    `${BASE_URL}/${id}`,
+    patch,
+    configOptions
+  );
+
+  return response.data;
 };

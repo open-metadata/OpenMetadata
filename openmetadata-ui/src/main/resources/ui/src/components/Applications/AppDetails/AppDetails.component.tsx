@@ -4,6 +4,9 @@ import {
   StopOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { IChangeEvent } from '@rjsf/core';
+import { RJSFSchema } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
 import {
   Avatar,
   Button,
@@ -17,6 +20,8 @@ import {
 } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -32,21 +37,25 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { App } from '../../../generated/entity/applications/app';
 import {
   getApplicationByName,
+  patchApplication,
   unistallApp,
 } from '../../../rest/applicationAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
+import FormBuilder from '../../common/FormBuilder/FormBuilder';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
+import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
-import AppSchedule from '../AppSchedule/AppSchedule.component';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -57,12 +66,17 @@ const AppDetails = () => {
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
   const [isAppDisableAction, setIsAppDisableAction] = useState(false);
+  const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getApplicationByName(fqn, 'owner');
       setAppData(data);
+      const schema = await import(
+        `../../../utils/ApplicationSchemas/${fqn}.json`
+      );
+      setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -127,6 +141,27 @@ const AppDetails = () => {
     },
   ];
 
+  const onConfigSave = async (data: IChangeEvent) => {
+    if (appData) {
+      const updatedFormData = formatFormDataForSubmit(data.formData);
+      const updatedData = {
+        ...appData,
+        appConfiguration: updatedFormData,
+      };
+
+      const jsonPatch = compare(appData, updatedData);
+
+      console.log(appData);
+      console.log(updatedData);
+      try {
+        const response = await patchApplication(appData.id, jsonPatch);
+        setAppData(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
   const tabs = useMemo(() => {
     return [
       {
@@ -142,17 +177,46 @@ const AppDetails = () => {
       },
       {
         label: (
+          <TabsLabel
+            id={ApplicationTabs.CONFIGURATION}
+            name={t('label.configuration')}
+          />
+        ),
+        key: ApplicationTabs.CONFIGURATION,
+        children: (
+          <div>
+            {jsonSchema && appData && (
+              <FormBuilder
+                formData={appData.appConfiguration}
+                cancelText={t('label.back')}
+                okText={t('label.submit')}
+                disableTestConnection={true}
+                serviceType={''}
+                serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+                schema={jsonSchema}
+                useSelectWidget
+                validator={validator}
+                showTestConnection={false}
+                onCancel={noop}
+                onSubmit={onConfigSave}
+              />
+            )}
+          </div>
+        ),
+      },
+      {
+        label: (
           <TabsLabel id={ApplicationTabs.HISTORY} name={t('label.history')} />
         ),
         key: ApplicationTabs.HISTORY,
         children: (
-          <div className="p-md">
+          <div className="p-y-md">
             <AppRunsHistory />
           </div>
         ),
       },
     ];
-  }, [appData]);
+  }, [appData, jsonSchema]);
 
   useEffect(() => {
     fetchAppDetails();
@@ -163,123 +227,121 @@ const AppDetails = () => {
   }
 
   return (
-    <>
-      <PageLayoutV1
-        className="app-details-page-layout p-0"
-        pageTitle={t('label.application-plural')}>
-        <Row>
-          <Col className="d-flex" flex="auto">
-            <Button
-              className="p-0"
-              icon={<LeftOutlined />}
-              size="small"
-              type="text"
-              onClick={onBrowseAppsClick}>
-              <Typography.Text className="font-medium">
-                {t('label.browse-app-plural')}
-              </Typography.Text>
-            </Button>
-          </Col>
-          <Col flex="360px">
-            <div className="d-flex gap-2 justify-end">
-              <Dropdown
-                align={{ targetOffset: [-12, 0] }}
-                className="m-l-xs"
-                menu={{
-                  items: manageButtonContent,
-                }}
-                open={showActions}
-                overlayClassName="glossary-manage-dropdown-list-container"
-                overlayStyle={{ width: '350px' }}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setShowActions}>
-                <Tooltip placement="right">
-                  <Button
-                    className="glossary-manage-dropdown-button tw-px-1.5"
-                    data-testid="manage-button"
-                    onClick={() => setShowActions(true)}>
-                    <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                  </Button>
-                </Tooltip>
-              </Dropdown>
-            </div>
-          </Col>
-        </Row>
-        <Row>
-          <Col span={24}>
-            <Space className="app-details-header w-full m-t-md" size={24}>
-              <Avatar
-                className="flex-center bg-white border"
-                icon={<AppIcon color="#000" height={64} width={64} />}
-                size={120}
-              />
-
-              <div className="w-full">
-                <Typography.Title level={4}>
-                  {getEntityName(appData)}
-                </Typography.Title>
-
-                <div className="d-flex items-center flex-wrap gap-6">
-                  <Space size={8}>
-                    <ClockCircleOutlined />
-                    <Typography.Text className="text-xs text-grey-muted">
-                      {`${t('label.installed')} ${getRelativeTime(
-                        appData?.updatedAt
-                      )}`}
-                    </Typography.Text>
-                  </Space>
-
-                  <Space size={8}>
-                    <UserOutlined />
-                    <Typography.Text className="text-xs text-grey-muted">
-                      {t('label.developed-by-developer', {
-                        developer: appData?.developer,
-                      })}
-                    </Typography.Text>
-                  </Space>
-
-                  {appData?.developerUrl && (
-                    <div className="flex-center gap-2">
-                      <IconExternalLink width={12} />
-                      <Typography.Link
-                        className="text-xs"
-                        href={appData?.developerUrl}
-                        target="_blank">
-                        <Space>{t('label.visit-developer-website')}</Space>
-                      </Typography.Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Space>
-          </Col>
-          <Col span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              className="app-details-page-tabs"
-              data-testid="tabs"
-              items={tabs}
+    <PageLayoutV1
+      className="app-details-page-layout p-0"
+      pageTitle={t('label.application-plural')}>
+      <Row>
+        <Col className="d-flex" flex="auto">
+          <Button
+            className="p-0"
+            icon={<LeftOutlined />}
+            size="small"
+            type="text"
+            onClick={onBrowseAppsClick}>
+            <Typography.Text className="font-medium">
+              {t('label.browse-app-plural')}
+            </Typography.Text>
+          </Button>
+        </Col>
+        <Col flex="360px">
+          <div className="d-flex gap-2 justify-end">
+            <Dropdown
+              align={{ targetOffset: [-12, 0] }}
+              className="m-l-xs"
+              menu={{
+                items: manageButtonContent,
+              }}
+              open={showActions}
+              overlayClassName="glossary-manage-dropdown-list-container"
+              overlayStyle={{ width: '350px' }}
+              placement="bottomRight"
+              trigger={['click']}
+              onOpenChange={setShowActions}>
+              <Tooltip placement="right">
+                <Button
+                  className="glossary-manage-dropdown-button tw-px-1.5"
+                  data-testid="manage-button"
+                  onClick={() => setShowActions(true)}>
+                  <IconDropdown className="anticon self-center manage-dropdown-icon" />
+                </Button>
+              </Tooltip>
+            </Dropdown>
+          </div>
+        </Col>
+      </Row>
+      <Row>
+        <Col span={24}>
+          <Space className="app-details-header w-full m-t-md" size={24}>
+            <Avatar
+              className="flex-center bg-white border"
+              icon={<AppIcon color="#000" height={64} width={64} />}
+              size={120}
             />
-          </Col>
-        </Row>
 
-        <ConfirmationModal
-          bodyText={t('message.are-you-sure-action-property', {
-            action: isAppDisableAction
-              ? t('label.disable')
-              : t('label.uninstall'),
-            propertyName: getEntityName(appData),
-          })}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.ok')}
-          header={t('message.are-you-sure')}
-          visible={showDeleteModel}
-          onCancel={() => setShowDeleteModel(false)}
-          onConfirm={onConfirmAction}
-        />
-      </PageLayoutV1>
-    </>
+            <div className="w-full">
+              <Typography.Title level={4}>
+                {getEntityName(appData)}
+              </Typography.Title>
+
+              <div className="d-flex items-center flex-wrap gap-6">
+                <Space size={8}>
+                  <ClockCircleOutlined />
+                  <Typography.Text className="text-xs text-grey-muted">
+                    {`${t('label.installed')} ${getRelativeTime(
+                      appData?.updatedAt
+                    )}`}
+                  </Typography.Text>
+                </Space>
+
+                <Space size={8}>
+                  <UserOutlined />
+                  <Typography.Text className="text-xs text-grey-muted">
+                    {t('label.developed-by-developer', {
+                      developer: appData?.developer,
+                    })}
+                  </Typography.Text>
+                </Space>
+
+                {appData?.developerUrl && (
+                  <div className="flex-center gap-2">
+                    <IconExternalLink width={12} />
+                    <Typography.Link
+                      className="text-xs"
+                      href={appData?.developerUrl}
+                      target="_blank">
+                      <Space>{t('label.visit-developer-website')}</Space>
+                    </Typography.Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Space>
+        </Col>
+        <Col span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            className="app-details-page-tabs"
+            data-testid="tabs"
+            items={tabs}
+          />
+        </Col>
+      </Row>
+
+      <ConfirmationModal
+        bodyText={t('message.are-you-sure-action-property', {
+          action: isAppDisableAction
+            ? t('label.disable')
+            : t('label.uninstall'),
+          propertyName: getEntityName(appData),
+        })}
+        cancelText={t('label.cancel')}
+        confirmText={t('label.ok')}
+        header={t('message.are-you-sure')}
+        visible={showDeleteModel}
+        onCancel={() => setShowDeleteModel(false)}
+        onConfirm={onConfirmAction}
+      />
+    </PageLayoutV1>
   );
 };
 

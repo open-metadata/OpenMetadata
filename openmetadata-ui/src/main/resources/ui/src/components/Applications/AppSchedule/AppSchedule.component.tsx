@@ -1,23 +1,18 @@
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Divider, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { noop } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   App,
   AppScheduleClass,
 } from '../../../generated/entity/applications/app';
-import FormBuilder from '../../common/FormBuilder/FormBuilder';
-import { ServiceCategory } from '../../../enums/service.enum';
-import validator from '@rjsf/validator-ajv8';
-import { RJSFSchema } from '@rjsf/utils';
-import { noop } from 'lodash';
-import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
-import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getIngestionFrequency } from '../../../utils/CommonUtils';
+import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 
 const AppSchedule = ({ appData }: { appData: App }) => {
   const { t } = useTranslation();
-  const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
 
   const cronString = useMemo(() => {
     if (appData.appSchedule) {
@@ -29,17 +24,6 @@ const AppSchedule = ({ appData }: { appData: App }) => {
     }
     return '';
   }, [appData]);
-
-  const init = useCallback(async (fqn) => {
-    const schema = await import(
-      `../../../utils/ApplicationSchemas/${fqn}.json`
-    );
-    setJsonSchema(schema);
-  }, []);
-
-  useEffect(() => {
-    init(appData.fullyQualifiedName);
-  }, [appData.fullyQualifiedName]);
 
   return (
     <Row>
@@ -64,26 +48,12 @@ const AppSchedule = ({ appData }: { appData: App }) => {
         </Space>
       </Col>
 
-      <Col span={24}>
-        {jsonSchema && (
-          <FormBuilder
-            formData={appData.appConfiguration}
-            cancelText={t('label.back')}
-            okText={t('label.submit')}
-            disableTestConnection={true}
-            serviceType={''}
-            serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-            schema={jsonSchema}
-            useSelectWidget
-            validator={validator}
-            showTestConnection={false}
-            onCancel={noop}
-            onSubmit={noop}
-          />
-        )}
-      </Col>
+      <Divider />
 
       <Col span={24}>
+        <Typography.Title level={5}>
+          {t('label.update-entity', { entity: t('label.schedule') })}
+        </Typography.Title>
         <TestSuiteScheduler
           initialData={getIngestionFrequency(PipelineType.Application)}
           onSubmit={noop}
