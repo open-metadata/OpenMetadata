@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 
 /*
-Given a query - that should result a single column named `result` -
+Given a query - that should return a single column named `result` -
 compute the validation and store its value.
 */
 @Slf4j
