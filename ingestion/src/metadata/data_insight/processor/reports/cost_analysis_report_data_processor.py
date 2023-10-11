@@ -77,7 +77,7 @@ ASSET_METRIC_DICT = {
 class RawCostAnalysisReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = ReportDataType.RawCostAnalysisReportData.value
+    _data_processor_type = ReportDataType.rawCostAnalysisReportData.value
 
     def __init__(self, metadata: OpenMetadata):
         super().__init__(metadata)
@@ -87,14 +87,14 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
         """
         Method to delete the previous rows of the RawCostAnalysisReportData type report
         """
-        self.metadata.delete_report_data(ReportDataType.RawCostAnalysisReportData)
+        self.metadata.delete_report_data(ReportDataType.rawCostAnalysisReportData)
 
     def yield_refined_data(self) -> Iterable[ReportData]:
         """yield refined data"""
         for _, value in self._refined_data.items():
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.RawCostAnalysisReportData.value,
+                reportDataType=ReportDataType.rawCostAnalysisReportData.value,
                 data=value,
             )  # type: ignore
 
@@ -136,7 +136,7 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
 class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = ReportDataType.AggregatedCostAnalysisReportData.value
+    _data_processor_type = ReportDataType.aggregatedCostAnalysisReportData.value
 
     def __init__(self, metadata: OpenMetadata):
         super().__init__(metadata)
@@ -148,7 +148,7 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
         for data in self._refined_data:
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.AggregatedCostAnalysisReportData.value,
+                reportDataType=ReportDataType.aggregatedCostAnalysisReportData.value,
                 data=data,
             )  # type: ignore
 
