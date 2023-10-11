@@ -19,15 +19,13 @@ import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
+import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 
-interface FollowingWidgetProps {
-  isEditView?: boolean;
+export interface FollowingWidgetProps extends WidgetCommonProps {
   followedData: EntityReference[];
   followedDataCount: number;
   isLoadingOwnedData: boolean;
-  widgetKey: string;
-  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 function FollowingWidget({

@@ -21,3 +21,9 @@ export interface WidgetConfig
     };
   };
 }
+
+export interface WidgetCommonProps {
+  isEditView?: boolean;
+  widgetKey: string;
+  handleRemoveWidget?: (widgetKey: string) => void;
+}

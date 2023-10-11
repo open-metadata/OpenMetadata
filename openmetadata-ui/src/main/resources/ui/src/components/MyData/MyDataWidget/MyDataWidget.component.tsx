@@ -21,18 +21,18 @@ import AppState from '../../../AppState';
 import { getUserPath, ROUTES } from '../../../constants/constants';
 import { AssetsType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import { getUserById } from '../../../rest/userAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { MyDataWidgetProps } from './MyDataWidget.interface';
 
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
   widgetKey,
-}: MyDataWidgetProps) => {
+}: WidgetCommonProps) => {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
   const [isLoading, setIsLoading] = useState(true);

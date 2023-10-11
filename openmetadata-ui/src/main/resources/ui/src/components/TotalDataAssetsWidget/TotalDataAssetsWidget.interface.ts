@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-export interface TotalDataAssetsWidgetProps {
-  isEditView?: boolean;
+import { WidgetCommonProps } from '../../pages/CustomisablePages/CustomisablePage.interface';
+
+export interface TotalDataAssetsWidgetProps extends WidgetCommonProps {
   selectedDays?: number;
-  widgetKey: string;
-  handleRemoveWidget?: (widgetKey: string) => void;
 }

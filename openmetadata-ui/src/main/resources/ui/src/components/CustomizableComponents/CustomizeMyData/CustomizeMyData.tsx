@@ -39,16 +39,10 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
+import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import KPIWidget from '../../KPIWidget/KPIWidget.component';
-import { MyDataWidget } from '../../MyData/MyDataWidget/MyDataWidget.component';
-import AnnouncementsWidget from '../../MyData/RightSidebar/AnnouncementsWidget';
-import FollowingWidget from '../../MyData/RightSidebar/FollowingWidget';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
-import RecentlyViewed from '../../recently-viewed/RecentlyViewed';
-import TotalDataAssetsWidget from '../../TotalDataAssetsWidget/TotalDataAssetsWidget.component';
-import FeedsWidget from '../../Widgets/FeedsWidget/FeedsWidget.component';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
@@ -155,74 +149,6 @@ function CustomizeMyData({
           />
         );
       }
-
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
-        return (
-          <FeedsWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.MY_DATA)) {
-        return (
-          <MyDataWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.KPI)) {
-        return (
-          <KPIWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
-        return (
-          <TotalDataAssetsWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
-        return (
-          <AnnouncementsWidget
-            isEditView
-            announcements={announcements}
-            handleRemoveWidget={handleRemoveWidget}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
-        return (
-          <FollowingWidget
-            isEditView
-            followedData={followedData ?? []}
-            followedDataCount={followedDataCount}
-            handleRemoveWidget={handleRemoveWidget}
-            isLoadingOwnedData={isLoadingOwnedData}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
-        return (
-          <RecentlyViewed
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
       if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
         return (
           <div className="h-full border-left p-l-md">
@@ -241,7 +167,19 @@ function CustomizeMyData({
         );
       }
 
-      return null;
+      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+
+      return (
+        <Widget
+          isEditView
+          announcements={announcements}
+          followedData={followedData ?? []}
+          followedDataCount={followedDataCount}
+          handleRemoveWidget={handleRemoveWidget}
+          isLoadingOwnedData={isLoadingOwnedData}
+          widgetKey={widgetConfig.i}
+        />
+      );
     },
     [
       handleOpenAddWidgetModal,

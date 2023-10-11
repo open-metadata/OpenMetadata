@@ -28,18 +28,18 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
-import { FeedsWidgetProps } from './FeedsWidget.interface';
 
 const FeedsWidget = ({
   isEditView = false,
   handleRemoveWidget,
   widgetKey,
-}: FeedsWidgetProps) => {
+}: WidgetCommonProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();

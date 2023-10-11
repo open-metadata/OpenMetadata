@@ -13,7 +13,6 @@
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
-import RecentlyViewed from '../../../components/recently-viewed/RecentlyViewed';
 import {
   LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE,
   LANDING_PAGE_ROW_HEIGHT,
@@ -28,12 +27,9 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
+import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
 import AddWidgetModal from '../../CustomizableComponents/AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
-import KPIWidget from '../../KPIWidget/KPIWidget.component';
-import { MyDataWidget } from '../MyDataWidget/MyDataWidget.component';
-import AnnouncementsWidget from './AnnouncementsWidget';
-import FollowingWidget from './FollowingWidget';
 import './right-sidebar.less';
 import { RightSidebarProps } from './RightSidebar.interface';
 
@@ -104,61 +100,19 @@ const RightSidebar = ({
         );
       }
 
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.MY_DATA)) {
-        return (
-          <MyDataWidget
-            handleRemoveWidget={handleRemoveWidget}
-            isEditView={isEditView}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
+      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.KPI)) {
-        return (
-          <KPIWidget
-            handleRemoveWidget={handleRemoveWidget}
-            isEditView={isEditView}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
-        return (
-          <AnnouncementsWidget
-            announcements={announcements}
-            handleRemoveWidget={handleRemoveWidget}
-            isEditView={isEditView}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
-        return (
-          <FollowingWidget
-            followedData={followedData}
-            followedDataCount={followedDataCount}
-            handleRemoveWidget={handleRemoveWidget}
-            isEditView={isEditView}
-            isLoadingOwnedData={isLoadingOwnedData}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
-        return (
-          <RecentlyViewed
-            handleRemoveWidget={handleRemoveWidget}
-            isEditView={isEditView}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-
-      return null;
+      return (
+        <Widget
+          announcements={announcements}
+          followedData={followedData ?? []}
+          followedDataCount={followedDataCount}
+          handleRemoveWidget={handleRemoveWidget}
+          isEditView={isEditView}
+          isLoadingOwnedData={isLoadingOwnedData}
+          widgetKey={widgetConfig.i}
+        />
+      );
     },
     [
       announcements,
@@ -176,7 +130,7 @@ const RightSidebar = ({
       layout
         .filter((widget: WidgetConfig) =>
           !isAnnouncementLoading &&
-          widget.i === LandingPageWidgetKeys.ANNOUNCEMENTS &&
+          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS) &&
           !isEditView
             ? !isEmpty(announcements)
             : true

@@ -17,14 +17,12 @@ import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
 
-interface AnnouncementsWidgetProps {
+export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   announcements: Thread[];
-  isEditView?: boolean;
-  widgetKey: string;
-  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 function AnnouncementsWidget({

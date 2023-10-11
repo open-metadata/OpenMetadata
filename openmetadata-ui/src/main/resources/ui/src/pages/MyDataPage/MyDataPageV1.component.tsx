@@ -27,16 +27,9 @@ import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import KPIWidget from '../../components/KPIWidget/KPIWidget.component';
 import Loader from '../../components/Loader/Loader';
-import { MyDataWidget } from '../../components/MyData/MyDataWidget/MyDataWidget.component';
-import AnnouncementsWidget from '../../components/MyData/RightSidebar/AnnouncementsWidget';
-import FollowingWidget from '../../components/MyData/RightSidebar/FollowingWidget';
 import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
-import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
-import TotalDataAssetsWidget from '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
-import FeedsWidget from '../../components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import {
   LANDING_PAGE_LAYOUT,
@@ -51,6 +44,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
+import { CustomizePageClassBase } from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomisablePages/CustomisablePage.interface';
 import './my-data.less';
@@ -163,39 +157,6 @@ const MyDataPageV1 = () => {
 
   const getWidgetFromKey = useCallback(
     (widgetConfig: WidgetConfig) => {
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
-        return <FeedsWidget widgetKey={widgetConfig.i} />;
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.MY_DATA)) {
-        return <MyDataWidget widgetKey={widgetConfig.i} />;
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.KPI)) {
-        return <KPIWidget widgetKey={widgetConfig.i} />;
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
-        return <TotalDataAssetsWidget widgetKey={widgetConfig.i} />;
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
-        return (
-          <AnnouncementsWidget
-            announcements={announcements}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
-        return (
-          <FollowingWidget
-            followedData={followedData ?? []}
-            followedDataCount={followedDataCount}
-            isLoadingOwnedData={isLoadingOwnedData}
-            widgetKey={widgetConfig.i}
-          />
-        );
-      }
-      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
-        return <RecentlyViewed widgetKey={widgetConfig.i} />;
-      }
       if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
         return (
           <div className="h-full border-left p-l-md">
@@ -212,7 +173,17 @@ const MyDataPageV1 = () => {
         );
       }
 
-      return null;
+      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+
+      return (
+        <Widget
+          announcements={announcements}
+          followedData={followedData ?? []}
+          followedDataCount={followedDataCount}
+          isLoadingOwnedData={isLoadingOwnedData}
+          widgetKey={widgetConfig.i}
+        />
+      );
     },
     [
       followedData,
@@ -226,16 +197,23 @@ const MyDataPageV1 = () => {
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div
-          className={classNames({
-            'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
-          })}
-          data-grid={widget}
-          key={widget.i}>
-          {getWidgetFromKey(widget)}
-        </div>
-      )),
+      layout
+        .filter((widget: WidgetConfig) =>
+          !isAnnouncementLoading &&
+          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)
+            ? !isEmpty(announcements)
+            : true
+        )
+        .map((widget) => (
+          <div
+            className={classNames({
+              'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
+            })}
+            data-grid={widget}
+            key={widget.i}>
+            {getWidgetFromKey(widget)}
+          </div>
+        )),
     [layout, getWidgetFromKey]
   );
 
