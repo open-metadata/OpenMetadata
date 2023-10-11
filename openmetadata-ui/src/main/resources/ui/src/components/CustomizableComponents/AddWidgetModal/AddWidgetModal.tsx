@@ -85,7 +85,9 @@ function AddWidgetModal({
           label: (
             <Space>
               <span>{widget.name}</span>
-              {addedWidgetsList.includes(widget.fullyQualifiedName) && (
+              {addedWidgetsList.some((w) =>
+                w.startsWith(widget.fullyQualifiedName)
+              ) && (
                 <CheckOutlined
                   className="m-l-xs"
                   style={{ color: '#4CAF50' }}

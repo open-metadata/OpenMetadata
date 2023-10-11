@@ -156,78 +156,92 @@ function CustomizeMyData({
         );
       }
 
-      switch (widgetConfig.i) {
-        case LandingPageWidgetKeys.ACTIVITY_FEED:
-          return (
-            <FeedsWidget isEditView handleRemoveWidget={handleRemoveWidget} />
-          );
-
-        case LandingPageWidgetKeys.MY_DATA:
-          return (
-            <MyDataWidget isEditView handleRemoveWidget={handleRemoveWidget} />
-          );
-
-        case LandingPageWidgetKeys.KPI:
-          return (
-            <KPIWidget isEditView handleRemoveWidget={handleRemoveWidget} />
-          );
-
-        case LandingPageWidgetKeys.TOTAL_DATA_ASSETS:
-          return (
-            <TotalDataAssetsWidget
-              isEditView
-              handleRemoveWidget={handleRemoveWidget}
-            />
-          );
-
-        case LandingPageWidgetKeys.ANNOUNCEMENTS:
-          return (
-            <AnnouncementsWidget
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
+        return (
+          <FeedsWidget
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.MY_DATA)) {
+        return (
+          <MyDataWidget
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.KPI)) {
+        return (
+          <KPIWidget
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
+        return (
+          <TotalDataAssetsWidget
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
+        return (
+          <AnnouncementsWidget
+            isEditView
+            announcements={announcements}
+            handleRemoveWidget={handleRemoveWidget}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
+        return (
+          <FollowingWidget
+            isEditView
+            followedData={followedData ?? []}
+            followedDataCount={followedDataCount}
+            handleRemoveWidget={handleRemoveWidget}
+            isLoadingOwnedData={isLoadingOwnedData}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
+        return (
+          <RecentlyViewed
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
+        return (
+          <div className="h-full border-left p-l-md">
+            <RightSidebar
               isEditView
               announcements={announcements}
-              handleRemoveWidget={handleRemoveWidget}
-            />
-          );
-
-        case LandingPageWidgetKeys.FOLLOWING:
-          return (
-            <FollowingWidget
-              isEditView
               followedData={followedData ?? []}
               followedDataCount={followedDataCount}
-              handleRemoveWidget={handleRemoveWidget}
+              isAnnouncementLoading={isAnnouncementLoading}
               isLoadingOwnedData={isLoadingOwnedData}
+              layoutConfigData={widgetConfig.data}
+              parentLayoutData={layout}
+              updateParentLayout={handleLayoutChange}
             />
-          );
-
-        case LandingPageWidgetKeys.RECENTLY_VIEWED:
-          return (
-            <RecentlyViewed
-              isEditView
-              handleRemoveWidget={handleRemoveWidget}
-            />
-          );
-
-        case LandingPageWidgetKeys.RIGHT_PANEL:
-          return (
-            <div className="h-full border-left p-l-md">
-              <RightSidebar
-                isEditView
-                announcements={announcements}
-                followedData={followedData ?? []}
-                followedDataCount={followedDataCount}
-                isAnnouncementLoading={isAnnouncementLoading}
-                isLoadingOwnedData={isLoadingOwnedData}
-                layoutConfigData={widgetConfig.data}
-                parentLayoutData={layout}
-                updateParentLayout={handleLayoutChange}
-              />
-            </div>
-          );
-
-        default:
-          return;
+          </div>
+        );
       }
+
+      return null;
     },
     [
       handleOpenAddWidgetModal,

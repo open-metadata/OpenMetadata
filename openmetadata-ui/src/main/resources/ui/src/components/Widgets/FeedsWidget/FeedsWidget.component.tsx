@@ -22,7 +22,6 @@ import { useActivityFeedProvider } from '../../../components/ActivityFeed/Activi
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -39,6 +38,7 @@ import { FeedsWidgetProps } from './FeedsWidget.interface';
 const FeedsWidget = ({
   isEditView = false,
   handleRemoveWidget,
+  widgetKey,
 }: FeedsWidgetProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -133,9 +133,8 @@ const FeedsWidget = ({
   }, [activeTab, entityThread]);
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.ACTIVITY_FEED);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   return (
     <div

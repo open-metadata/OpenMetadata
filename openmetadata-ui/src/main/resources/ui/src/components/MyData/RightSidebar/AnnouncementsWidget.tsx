@@ -16,7 +16,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
@@ -24,6 +23,7 @@ import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader
 interface AnnouncementsWidgetProps {
   announcements: Thread[];
   isEditView?: boolean;
+  widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
 }
 
@@ -31,13 +31,13 @@ function AnnouncementsWidget({
   announcements,
   isEditView,
   handleRemoveWidget,
+  widgetKey,
 }: Readonly<AnnouncementsWidgetProps>) {
   const { t } = useTranslation();
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.ANNOUNCEMENTS);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   return (
     <>

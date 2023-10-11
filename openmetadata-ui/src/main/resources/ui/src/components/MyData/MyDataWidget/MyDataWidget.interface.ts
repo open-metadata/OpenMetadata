@@ -13,5 +13,6 @@
 
 export interface MyDataWidgetProps {
   isEditView?: boolean;
+  widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
 }

@@ -14,5 +14,6 @@
 export interface TotalDataAssetsWidgetProps {
   isEditView?: boolean;
   selectedDays?: number;
+  widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
 }

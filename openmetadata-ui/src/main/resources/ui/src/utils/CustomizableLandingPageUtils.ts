@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { floor, isEmpty, isUndefined, max, maxBy, round } from 'lodash';
+import {
+  floor,
+  isEmpty,
+  isUndefined,
+  max,
+  maxBy,
+  round,
+  uniqueId,
+} from 'lodash';
 import { Layout } from 'react-grid-layout';
 import {
   DEFAULT_WIDGET_HEIGHT,
@@ -29,7 +37,7 @@ import { WidgetConfig } from '../pages/CustomisablePages/CustomisablePage.interf
 
 export const getAddWidgetHandler =
   (newWidgetData: Document) => (currentLayout: Array<WidgetConfig>) => {
-    const widgetFQN = newWidgetData.fullyQualifiedName;
+    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
     const widgetWidth = getWidgetWidth(newWidgetData);
     const widgetHeight = getWidgetHeight(newWidgetData.name);
 

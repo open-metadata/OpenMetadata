@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath, ROUTES } from '../../../constants/constants';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUserById } from '../../../rest/userAPI';
@@ -32,6 +31,7 @@ import { MyDataWidgetProps } from './MyDataWidget.interface';
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
+  widgetKey,
 }: MyDataWidgetProps) => {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
@@ -64,9 +64,8 @@ const MyDataWidgetInternal = ({
   };
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.MY_DATA);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   useEffect(() => {
     fetchMyDataAssets();

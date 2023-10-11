@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -27,12 +26,14 @@ import './recently-viewed.less';
 
 interface RecentlyViewedProps {
   isEditView?: boolean;
+  widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 const RecentlyViewed = ({
   isEditView,
   handleRemoveWidget,
+  widgetKey,
 }: RecentlyViewedProps) => {
   const { t } = useTranslation();
 
@@ -59,9 +60,8 @@ const RecentlyViewed = ({
   };
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.RECENTLY_VIEWED);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   useEffect(() => {
     prepareData();

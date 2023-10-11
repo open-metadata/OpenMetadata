@@ -163,52 +163,56 @@ const MyDataPageV1 = () => {
 
   const getWidgetFromKey = useCallback(
     (widgetConfig: WidgetConfig) => {
-      switch (widgetConfig.i) {
-        case LandingPageWidgetKeys.ACTIVITY_FEED:
-          return <FeedsWidget />;
-
-        case LandingPageWidgetKeys.MY_DATA:
-          return <MyDataWidget />;
-
-        case LandingPageWidgetKeys.KPI:
-          return <KPIWidget />;
-
-        case LandingPageWidgetKeys.TOTAL_DATA_ASSETS:
-          return <TotalDataAssetsWidget />;
-
-        case LandingPageWidgetKeys.ANNOUNCEMENTS:
-          return <AnnouncementsWidget announcements={announcements} />;
-
-        case LandingPageWidgetKeys.FOLLOWING:
-          return (
-            <FollowingWidget
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
+        return <FeedsWidget widgetKey={widgetConfig.i} />;
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.MY_DATA)) {
+        return <MyDataWidget widgetKey={widgetConfig.i} />;
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.KPI)) {
+        return <KPIWidget widgetKey={widgetConfig.i} />;
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)) {
+        return <TotalDataAssetsWidget widgetKey={widgetConfig.i} />;
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
+        return (
+          <AnnouncementsWidget
+            announcements={announcements}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
+        return (
+          <FollowingWidget
+            followedData={followedData ?? []}
+            followedDataCount={followedDataCount}
+            isLoadingOwnedData={isLoadingOwnedData}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
+        return <RecentlyViewed widgetKey={widgetConfig.i} />;
+      }
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
+        return (
+          <div className="h-full border-left p-l-md">
+            <RightSidebar
+              announcements={announcements}
               followedData={followedData ?? []}
               followedDataCount={followedDataCount}
+              isAnnouncementLoading={isAnnouncementLoading}
               isLoadingOwnedData={isLoadingOwnedData}
+              layoutConfigData={widgetConfig.data}
+              parentLayoutData={layout}
             />
-          );
-
-        case LandingPageWidgetKeys.RECENTLY_VIEWED:
-          return <RecentlyViewed />;
-
-        case LandingPageWidgetKeys.RIGHT_PANEL:
-          return (
-            <div className="h-full border-left p-l-md">
-              <RightSidebar
-                announcements={announcements}
-                followedData={followedData ?? []}
-                followedDataCount={followedDataCount}
-                isAnnouncementLoading={isAnnouncementLoading}
-                isLoadingOwnedData={isLoadingOwnedData}
-                layoutConfigData={widgetConfig.data}
-                parentLayoutData={layout}
-              />
-            </div>
-          );
-
-        default:
-          return;
+          </div>
+        );
       }
+
+      return null;
     },
     [
       followedData,

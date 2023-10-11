@@ -13,5 +13,6 @@
 
 export interface FeedsWidgetProps {
   isEditView?: boolean;
+  widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
 }

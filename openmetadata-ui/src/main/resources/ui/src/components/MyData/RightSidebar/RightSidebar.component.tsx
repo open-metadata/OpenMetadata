@@ -104,54 +104,61 @@ const RightSidebar = ({
         );
       }
 
-      switch (widgetConfig.i) {
-        case LandingPageWidgetKeys.MY_DATA:
-          return (
-            <MyDataWidget
-              handleRemoveWidget={handleRemoveWidget}
-              isEditView={isEditView}
-            />
-          );
-
-        case LandingPageWidgetKeys.KPI:
-          return (
-            <KPIWidget
-              handleRemoveWidget={handleRemoveWidget}
-              isEditView={isEditView}
-            />
-          );
-
-        case LandingPageWidgetKeys.ANNOUNCEMENTS:
-          return (
-            <AnnouncementsWidget
-              announcements={announcements}
-              handleRemoveWidget={handleRemoveWidget}
-              isEditView={isEditView}
-            />
-          );
-
-        case LandingPageWidgetKeys.FOLLOWING:
-          return (
-            <FollowingWidget
-              followedData={followedData}
-              followedDataCount={followedDataCount}
-              handleRemoveWidget={handleRemoveWidget}
-              isEditView={isEditView}
-              isLoadingOwnedData={isLoadingOwnedData}
-            />
-          );
-
-        case LandingPageWidgetKeys.RECENTLY_VIEWED:
-          return (
-            <RecentlyViewed
-              handleRemoveWidget={handleRemoveWidget}
-              isEditView={isEditView}
-            />
-          );
-
-        default:
-          return;
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.MY_DATA)) {
+        return (
+          <MyDataWidget
+            handleRemoveWidget={handleRemoveWidget}
+            isEditView={isEditView}
+            widgetKey={widgetConfig.i}
+          />
+        );
       }
+
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.KPI)) {
+        return (
+          <KPIWidget
+            handleRemoveWidget={handleRemoveWidget}
+            isEditView={isEditView}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)) {
+        return (
+          <AnnouncementsWidget
+            announcements={announcements}
+            handleRemoveWidget={handleRemoveWidget}
+            isEditView={isEditView}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.FOLLOWING)) {
+        return (
+          <FollowingWidget
+            followedData={followedData}
+            followedDataCount={followedDataCount}
+            handleRemoveWidget={handleRemoveWidget}
+            isEditView={isEditView}
+            isLoadingOwnedData={isLoadingOwnedData}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RECENTLY_VIEWED)) {
+        return (
+          <RecentlyViewed
+            handleRemoveWidget={handleRemoveWidget}
+            isEditView={isEditView}
+            widgetKey={widgetConfig.i}
+          />
+        );
+      }
+
+      return null;
     },
     [
       announcements,
