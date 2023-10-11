@@ -56,7 +56,10 @@ const AppSchedule = ({ appData }: { appData: App }) => {
         </Typography.Title>
         <TestSuiteScheduler
           initialData={getIngestionFrequency(PipelineType.Application)}
-          onSubmit={noop}
+          isQuartzCron
+          onSubmit={(value: string) => {
+            console.log(value);
+          }}
           onCancel={noop}
         />
       </Col>

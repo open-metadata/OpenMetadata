@@ -1,8 +1,8 @@
-import { Avatar, Button, Card, Space, Typography } from 'antd';
-import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
+import { Button, Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import React from 'react';
+import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import AppLogo from '../AppLogo/AppLogo.component';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 
 const ApplicationCard = ({
@@ -11,6 +11,7 @@ const ApplicationCard = ({
   className,
   linkTitle,
   onClick,
+  appName,
 }: ApplicationCardProps) => {
   return (
     <Card
@@ -21,13 +22,9 @@ const ApplicationCard = ({
       bordered={false}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
-          <Avatar
-            className="flex-center bg-white border"
-            size={120}
-            icon={<AppIcon color="#000" width={64} height={64} />}
-          />
+          <AppLogo appName={appName} />
         </div>
-        <Space direction="vertical" size={6} className="application-info">
+        <Space direction="vertical" size={4} className="application-info">
           <Typography.Title className="m-0" level={5}>
             {title}
           </Typography.Title>

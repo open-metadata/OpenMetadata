@@ -97,8 +97,8 @@ const MarketPlacePage = () => {
             {applicationData?.map((item) => (
               <ApplicationCard
                 key={uniqueId()}
-                logoSrc={''}
                 className="w-400"
+                appName={item.fullyQualifiedName ?? ''}
                 title={getEntityName(item)}
                 description={item.description ?? ''}
                 linkTitle={t('label.read-type', {

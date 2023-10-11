@@ -8,7 +8,6 @@ import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import {
-  Avatar,
   Button,
   Col,
   Dropdown,
@@ -25,7 +24,6 @@ import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
@@ -52,6 +50,7 @@ import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import FormBuilder from '../../common/FormBuilder/FormBuilder';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
@@ -100,7 +99,7 @@ const AppDetails = () => {
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
-  }, [isAppDisableAction]);
+  }, [appData, isAppDisableAction]);
 
   const manageButtonContent: ItemType[] = [
     {
@@ -151,8 +150,6 @@ const AppDetails = () => {
 
       const jsonPatch = compare(appData, updatedData);
 
-      console.log(appData);
-      console.log(updatedData);
       try {
         const response = await patchApplication(appData.id, jsonPatch);
         setAppData(response);
@@ -272,11 +269,7 @@ const AppDetails = () => {
       <Row>
         <Col span={24}>
           <Space className="app-details-header w-full m-t-md" size={24}>
-            <Avatar
-              className="flex-center bg-white border"
-              icon={<AppIcon color="#000" height={64} width={64} />}
-              size={120}
-            />
+            <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
               <Typography.Title level={4}>

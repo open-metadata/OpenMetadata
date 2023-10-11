@@ -115,12 +115,12 @@ const ApplicationPage = () => {
             {applicationData?.map((item) => (
               <ApplicationCard
                 key={uniqueId()}
-                logoSrc={''}
                 className="w-400"
                 title={getEntityName(item)}
                 description={item.description ?? ''}
                 linkTitle={t('label.configure')}
                 onClick={() => viewAppDetails(item)}
+                appName={item.fullyQualifiedName ?? ''}
               />
             ))}
           </div>

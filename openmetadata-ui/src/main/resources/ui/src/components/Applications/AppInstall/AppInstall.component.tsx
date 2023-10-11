@@ -1,4 +1,5 @@
 import { IChangeEvent } from '@rjsf/core';
+import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -29,7 +30,6 @@ import { getMarketPlaceAppDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import AppInstallVerifyCard from '../AppInstallVerifyCard/AppInstallVerifyCard.component';
-import { RJSFSchema } from '@rjsf/utils';
 
 const AppInstall = () => {
   const { t } = useTranslation();
@@ -121,6 +121,7 @@ const AppInstall = () => {
           <div className="w-500">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
+              isQuartzCron
               initialData={getIngestionFrequency(PipelineType.Application)}
               onSubmit={onSubmit}
               onCancel={() => setActiveServiceStep(2)}

@@ -1,22 +1,22 @@
 import { LeftOutlined } from '@ant-design/icons';
-import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
-import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
 import Loader from '../../../components/Loader/Loader';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AppLogo from '../AppLogo/AppLogo.component';
 import './market-place-app-details.less';
-import { getApplicationByName } from '../../../rest/applicationAPI';
 
 const MarketPlaceAppDetails = () => {
   const { t } = useTranslation();
@@ -70,11 +70,7 @@ const MarketPlaceAppDetails = () => {
         </Button>
 
         <div className="flex-center m-t-md">
-          <Avatar
-            className="flex-center bg-white border"
-            size={120}
-            icon={<AppIcon color="#000" width={64} height={64} />}
-          />
+          <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
         <Tooltip
           placement="top"

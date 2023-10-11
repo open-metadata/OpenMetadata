@@ -15,13 +15,13 @@ import {
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
-import { ReactComponent as AppIcon } from '../../../assets/svg/application.svg';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import AppLogo from '../AppLogo/AppLogo.component';
 import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
 import './app-install-verify-card.less';
 
@@ -39,11 +39,7 @@ const AppInstallVerifyCard = ({
   return (
     <div className="flex-center flex-col">
       <Space className="p-t-lg">
-        <Avatar
-          className="flex-center bg-white border"
-          size={120}
-          icon={<AppIcon color="#000" width={64} height={64} />}
-        />
+        <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         <Divider dashed className="w-44 app-card-divider">
           <CheckCircleTwoTone twoToneColor="#4CAF50" />
         </Divider>
