@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import { TablePartition } from 'generated/entity/data/table';
 import { t } from 'i18next';
 import React from 'react';
+import { TablePartition } from '../../../generated/entity/data/table';
 
 interface PartitionedKeysProps {
   tablePartition: TablePartition;
