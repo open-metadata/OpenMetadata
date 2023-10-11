@@ -12,7 +12,12 @@
  */
 import { Editor, EditorContent, ReactRenderer, useEditor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
 import {
@@ -27,6 +32,9 @@ import ImageModal, { ImageData } from './ImageModal/ImageModal';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 
+export interface BlockEditorRef {
+  onFocus: () => void;
+}
 export interface BlockEditorProps {
   // should be markdown string
   content?: string;
@@ -35,202 +43,208 @@ export interface BlockEditorProps {
   onChange?: (content: string) => void;
 }
 
-const BlockEditor: FC<BlockEditorProps> = ({
-  content = '',
-  editable = true,
-  onChange,
-}) => {
-  const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
-  const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
+const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
+  ({ content = '', editable = true, onChange }, ref) => {
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
 
-  const editor = useEditor({
-    ...EDITOR_OPTIONS,
-    onUpdate({ editor }) {
-      const htmlContent = editor.getHTML();
+    const editor = useEditor({
+      ...EDITOR_OPTIONS,
+      onUpdate({ editor }) {
+        const htmlContent = editor.getHTML();
 
-      const markdown = HTMLToMarkdown.turndown(htmlContent);
+        const markdown = HTMLToMarkdown.turndown(htmlContent);
 
-      const backendFormat = getBackendFormat(markdown);
+        const backendFormat = getBackendFormat(markdown);
 
-      onChange?.(backendFormat);
-    },
-  });
-
-  const handleLinkToggle = () => {
-    setIsLinkModalOpen((prev) => !prev);
-  };
-  const handleImageToggle = () => {
-    setIsImageModalOpen((prev) => !prev);
-  };
-
-  const handleLinkCancel = () => {
-    handleLinkToggle();
-    if (!isNil(editor)) {
-      editor?.chain().blur().run();
-    }
-  };
-
-  const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
-    if (isNil(editor)) {
-      return;
-    }
-    // set the link
-    if (op === 'edit') {
-      editor
-        ?.chain()
-        .focus()
-        .extendMarkRange('link')
-        .updateAttributes('link', {
-          href: values.href,
-        })
-        .run();
-    }
-
-    if (op === 'add') {
-      editor?.chain().focus().setLink({ href: values.href }).run();
-    }
-
-    // move cursor at the end
-    editor?.chain().selectTextblockEnd().run();
-
-    // close the modal
-    handleLinkToggle();
-  };
-
-  const handleUnlink = () => {
-    if (isNil(editor)) {
-      return;
-    }
-
-    editor?.chain().focus().extendMarkRange('link').unsetLink().run();
-
-    // move cursor at the end
-    editor?.chain().selectTextblockEnd().run();
-  };
-
-  const handleLinkPopup = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    let popup: Instance<Props>[] = [];
-    let component: ReactRenderer;
-    const target = e.target as HTMLElement;
-    const dataType = target.getAttribute('data-type');
-
-    if (['mention', 'hashtag'].includes(dataType ?? '')) {
-      return;
-    }
-    if (target.nodeName === 'A') {
-      const href = target.getAttribute('href');
-
-      component = new ReactRenderer(LinkPopup, {
-        editor: editor as Editor,
-        props: {
-          href,
-          handleLinkToggle: () => {
-            handleLinkToggle();
-            if (!isEmpty(popup)) {
-              popup[0].hide();
-            }
-          },
-          handleUnlink: () => {
-            handleUnlink();
-            if (!isEmpty(popup)) {
-              popup[0].hide();
-            }
-          },
-        },
-      });
-
-      popup = tippy('body', {
-        getReferenceClientRect: () => target.getBoundingClientRect(),
-        appendTo: () => document.body,
-        content: component.element,
-        showOnCreate: true,
-        interactive: true,
-        trigger: 'manual',
-        placement: 'top',
-        hideOnClick: true,
-      });
-    } else {
-      if (!isEmpty(popup)) {
-        popup[0].hide();
-      }
-    }
-  };
-
-  const handleAddImage = (values: ImageData) => {
-    if (isNil(editor)) {
-      return;
-    }
-
-    editor.chain().focus().setImage({ src: values.src }).run();
-
-    handleImageToggle();
-  };
-
-  const handleFocus = () => {
-    if (!isNil(editor) && !editor.isFocused) {
-      editor.commands.focus('end');
-    }
-  };
-
-  const menus = !isNil(editor) && (
-    <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
-  );
-
-  useEffect(() => {
-    if (isNil(editor) || editor.isDestroyed || content === undefined) {
-      return;
-    }
-
-    // We use setTimeout to avoid any flushSync console errors as
-    // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-    setTimeout(() => {
-      if (content !== undefined) {
-        const htmlContent = MarkdownToHTMLConverter.makeHtml(
-          getFrontEndFormat(content)
-        );
-        editor.commands.setContent(htmlContent);
-      }
+        onChange?.(backendFormat);
+      },
     });
-  }, [content, editor]);
 
-  useEffect(() => {
-    if (isNil(editor) || editor.isDestroyed || editor.isEditable === editable) {
-      return;
-    }
+    const handleLinkToggle = () => {
+      setIsLinkModalOpen((prev) => !prev);
+    };
+    const handleImageToggle = () => {
+      setIsImageModalOpen((prev) => !prev);
+    };
 
-    // We use setTimeout to avoid any flushSync console errors as
-    // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
-    setTimeout(() => editor.setEditable(editable));
-  }, [editable, editor]);
+    const handleLinkCancel = () => {
+      handleLinkToggle();
+      if (!isNil(editor)) {
+        editor?.chain().blur().run();
+      }
+    };
 
-  return (
-    <>
-      {isLinkModalOpen && (
-        <LinkModal
-          data={{ href: editor?.getAttributes('link').href }}
-          isOpen={isLinkModalOpen}
-          onCancel={handleLinkCancel}
-          onSave={(values) =>
-            handleLinkSave(
-              values,
-              editor?.getAttributes('link').href ? 'edit' : 'add'
-            )
-          }
-        />
-      )}
-      {isImageModalOpen && (
-        <ImageModal
-          isOpen={isImageModalOpen}
-          onCancel={handleImageToggle}
-          onSave={handleAddImage}
-        />
-      )}
-      <div className="block-editor-wrapper" onMouseDown={handleFocus}>
-        <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
-        {menus}
-      </div>
-    </>
-  );
-};
+    const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
+      if (isNil(editor)) {
+        return;
+      }
+      // set the link
+      if (op === 'edit') {
+        editor
+          ?.chain()
+          .focus()
+          .extendMarkRange('link')
+          .updateAttributes('link', {
+            href: values.href,
+          })
+          .run();
+      }
+
+      if (op === 'add') {
+        editor?.chain().focus().setLink({ href: values.href }).run();
+      }
+
+      // move cursor at the end
+      editor?.chain().selectTextblockEnd().run();
+
+      // close the modal
+      handleLinkToggle();
+    };
+
+    const handleUnlink = () => {
+      if (isNil(editor)) {
+        return;
+      }
+
+      editor?.chain().focus().extendMarkRange('link').unsetLink().run();
+
+      // move cursor at the end
+      editor?.chain().selectTextblockEnd().run();
+    };
+
+    const handleLinkPopup = (
+      e: React.MouseEvent<HTMLDivElement, MouseEvent>
+    ) => {
+      let popup: Instance<Props>[] = [];
+      let component: ReactRenderer;
+      const target = e.target as HTMLElement;
+      const dataType = target.getAttribute('data-type');
+
+      if (['mention', 'hashtag'].includes(dataType ?? '')) {
+        return;
+      }
+      if (target.nodeName === 'A') {
+        const href = target.getAttribute('href');
+
+        component = new ReactRenderer(LinkPopup, {
+          editor: editor as Editor,
+          props: {
+            href,
+            handleLinkToggle: () => {
+              handleLinkToggle();
+              if (!isEmpty(popup)) {
+                popup[0].hide();
+              }
+            },
+            handleUnlink: () => {
+              handleUnlink();
+              if (!isEmpty(popup)) {
+                popup[0].hide();
+              }
+            },
+          },
+        });
+
+        popup = tippy('body', {
+          getReferenceClientRect: () => target.getBoundingClientRect(),
+          appendTo: () => document.body,
+          content: component.element,
+          showOnCreate: true,
+          interactive: true,
+          trigger: 'manual',
+          placement: 'top',
+          hideOnClick: true,
+        });
+      } else {
+        if (!isEmpty(popup)) {
+          popup[0].hide();
+        }
+      }
+    };
+
+    const handleAddImage = (values: ImageData) => {
+      if (isNil(editor)) {
+        return;
+      }
+
+      editor.chain().focus().setImage({ src: values.src }).run();
+
+      handleImageToggle();
+    };
+
+    useImperativeHandle(ref, () => ({
+      onFocus() {
+        if (!isNil(editor) && !editor.isFocused) {
+          editor.commands.focus('end');
+        }
+      },
+    }));
+
+    const menus = !isNil(editor) && (
+      <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
+    );
+
+    useEffect(() => {
+      if (isNil(editor) || editor.isDestroyed || content === undefined) {
+        return;
+      }
+
+      // We use setTimeout to avoid any flushSync console errors as
+      // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
+      setTimeout(() => {
+        if (content !== undefined) {
+          const htmlContent = MarkdownToHTMLConverter.makeHtml(
+            getFrontEndFormat(content)
+          );
+          editor.commands.setContent(htmlContent);
+        }
+      });
+    }, [content, editor]);
+
+    useEffect(() => {
+      if (
+        isNil(editor) ||
+        editor.isDestroyed ||
+        editor.isEditable === editable
+      ) {
+        return;
+      }
+
+      // We use setTimeout to avoid any flushSync console errors as
+      // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
+      setTimeout(() => editor.setEditable(editable));
+    }, [editable, editor]);
+
+    return (
+      <>
+        {isLinkModalOpen && (
+          <LinkModal
+            data={{ href: editor?.getAttributes('link').href }}
+            isOpen={isLinkModalOpen}
+            onCancel={handleLinkCancel}
+            onSave={(values) =>
+              handleLinkSave(
+                values,
+                editor?.getAttributes('link').href ? 'edit' : 'add'
+              )
+            }
+          />
+        )}
+        {isImageModalOpen && (
+          <ImageModal
+            isOpen={isImageModalOpen}
+            onCancel={handleImageToggle}
+            onSave={handleAddImage}
+          />
+        )}
+        <div className="block-editor-wrapper">
+          <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
+          {menus}
+        </div>
+      </>
+    );
+  }
+);
 
 export default BlockEditor;
