@@ -118,6 +118,11 @@ jobs:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d postgresql
         timeout-minutes: 60
+      
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
