@@ -35,14 +35,14 @@ import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
+  ENTITIES_SUMMARY_LIST,
+  WEB_SUMMARY_LIST,
+} from '../constants/DataInsight.constants';
+import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from '../constants/constants';
-import {
-  ENTITIES_SUMMARY_LIST,
-  WEB_SUMMARY_LIST,
-} from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   DataInsightChartResult,
@@ -141,7 +141,7 @@ export const getEntryFormattedValue = (
     } else if (isInteger(value)) {
       return `${value}${suffix}`;
     } else {
-      return `${value.toFixed(2)}${suffix}`;
+      return `${round(value, 2)}${suffix}`;
     }
   } else {
     return '';
