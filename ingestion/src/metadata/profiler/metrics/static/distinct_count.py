@@ -54,17 +54,10 @@ class DistinctCount(StaticMetric):
         # pylint: disable=import-outside-toplevel
         from collections import Counter
 
-        import pandas as pd
-
         try:
             counter = Counter()
             for df in dfs:
-                df_col = df[self.col.name].dropna()
-                df_col_value = (
-                    pd.to_numeric(df_col).to_list()
-                    if is_quantifiable(self.col.type)
-                    else df_col.to_list()
-                )
+                df_col_value = df[self.col.name].dropna().to_list()
                 counter.update(df_col_value)
             return len(counter.keys())
         except Exception as err:
