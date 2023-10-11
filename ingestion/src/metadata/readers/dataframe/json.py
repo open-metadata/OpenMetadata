@@ -56,7 +56,7 @@ class JSONDataFrameReader(DataFrameReader):
         correct column name to match with the metadata description.
         """
         # pylint: disable=import-outside-toplevel
-        from pandas import json_normalize
+        import pandas as pd
 
         json_text = _get_json_text(key=key, text=json_text, decode=decode)
         try:
@@ -65,7 +65,7 @@ class JSONDataFrameReader(DataFrameReader):
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
-        return dataframe_to_chunks(json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR))
+        return dataframe_to_chunks(pd.DataFrame.from_records(data))
 
     def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         text = self.reader.read(key, bucket_name=bucket_name)
