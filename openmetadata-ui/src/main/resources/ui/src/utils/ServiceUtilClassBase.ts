@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ServiceTypes } from 'Models';
+
+import { cloneDeep } from 'lodash';
+import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -19,51 +21,75 @@ import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
+import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 import { customServiceComparator } from './StringsUtils';
 
 class ServiceUtilClassBase {
-  private static unSupportedServices: string[] = [
+  unSupportedServices: string[] = [
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
   ];
 
-  static filterUnsupportedServiceType = (types: string[]) => {
-    return types.filter(
-      (type) => !ServiceUtilClassBase.unSupportedServices.includes(type)
-    );
-  };
+  protected updateUnsupportedServices(types: string[]) {
+    this.unSupportedServices = types;
+  }
 
-  static SupportedServiceTypes: Record<ServiceTypes, Array<string>> = {
-    databaseServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(DatabaseServiceType) as string[]
-    ).sort(customServiceComparator),
-    messagingServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(MessagingServiceType) as string[]
-    ).sort(customServiceComparator),
-    dashboardServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(DashboardServiceType) as string[]
-    ).sort(customServiceComparator),
-    pipelineServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(PipelineServiceType) as string[]
-    ).sort(customServiceComparator),
-    mlmodelServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(MlModelServiceType) as string[]
-    ).sort(customServiceComparator),
-    metadataServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(MetadataServiceType) as string[]
-    ).sort(customServiceComparator),
-    storageServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(StorageServiceType) as string[]
-    ).sort(customServiceComparator),
-    searchServices: ServiceUtilClassBase.filterUnsupportedServiceType(
-      Object.values(SearchServiceType) as string[]
-    ).sort(customServiceComparator),
-  };
+  filterUnsupportedServiceType(types: string[]) {
+    return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
 
-  public static getSupportedServiceFromList = () => {
-    return ServiceUtilClassBase.SupportedServiceTypes;
-  };
+  public getSupportedServiceFromList() {
+    return {
+      databaseServices: this.filterUnsupportedServiceType(
+        Object.values(DatabaseServiceType) as string[]
+      ).sort(customServiceComparator),
+      messagingServices: this.filterUnsupportedServiceType(
+        Object.values(MessagingServiceType) as string[]
+      ).sort(customServiceComparator),
+      dashboardServices: this.filterUnsupportedServiceType(
+        Object.values(DashboardServiceType) as string[]
+      ).sort(customServiceComparator),
+      pipelineServices: this.filterUnsupportedServiceType(
+        Object.values(PipelineServiceType) as string[]
+      ).sort(customServiceComparator),
+      mlmodelServices: this.filterUnsupportedServiceType(
+        Object.values(MlModelServiceType) as string[]
+      ).sort(customServiceComparator),
+      metadataServices: this.filterUnsupportedServiceType(
+        Object.values(MetadataServiceType) as string[]
+      ).sort(customServiceComparator),
+      storageServices: this.filterUnsupportedServiceType(
+        Object.values(StorageServiceType) as string[]
+      ).sort(customServiceComparator),
+      searchServices: this.filterUnsupportedServiceType(
+        Object.values(SearchServiceType) as string[]
+      ).sort(customServiceComparator),
+    };
+  }
+
+  protected getStorageServiceConfig(type: StorageServiceType) {
+    let schema = {};
+    const uiSchema = { ...COMMON_UI_SCHEMA };
+    switch (type) {
+      case StorageServiceType.S3: {
+        schema = s3Connection;
+
+        break;
+      }
+      case StorageServiceType.CustomStorage: {
+        schema = customConnection;
+
+        break;
+      }
+    }
+
+    return cloneDeep({ schema, uiSchema });
+  }
 }
 
-export default ServiceUtilClassBase;
+const serviceUtilClassBase = new ServiceUtilClassBase();
+
+export default serviceUtilClassBase;
+export { ServiceUtilClassBase };
