@@ -1155,6 +1155,7 @@
     "custom-logo-url-path-message": "URL-Pfad für das Anmeldeseitenlogo.",
     "custom-monogram-url-path-message": "URL-Pfad für das Navbar-Logo.",
     "custom-property-name-validation": "Der Name muss mit Kleinbuchstaben beginnen und darf keine Leerzeichen, Unterstriche oder Punkte enthalten.",
+    "customize-landing-page-header": "Customize Landing Page for Persona \"<0>{{persona}}</0>\"",
     "data-asset-has-been-action-type": "Der Datenvermögenswert wurde {{actionType}}",
     "data-insight-alert-destination-description": "Senden Sie E-Mail-Benachrichtigungen an Administratoren oder Teams.",
     "data-insight-alert-trigger-description": "Auslöser für Echtzeit oder planen Sie ihn für täglich, wöchentlich oder monatlich.",

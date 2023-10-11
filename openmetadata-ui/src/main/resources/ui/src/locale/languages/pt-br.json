@@ -1155,6 +1155,7 @@
     "custom-logo-url-path-message": "URL path for the login page logo.",
     "custom-monogram-url-path-message": "URL path for the navbar logo.",
     "custom-property-name-validation": "Name must start with lower case with no space, underscore, or dots.",
+    "customize-landing-page-header": "Customize Landing Page for Persona \"<0>{{persona}}</0>\"",
     "data-asset-has-been-action-type": "O ativo de dados foi {{actionType}}",
     "data-insight-alert-destination-description": "Send email notifications to admins or teams.",
     "data-insight-alert-trigger-description": "Trigger for real time or schedule it for daily, weekly or monthly.",

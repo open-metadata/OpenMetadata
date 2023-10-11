@@ -1155,6 +1155,7 @@
     "custom-logo-url-path-message": "Путь URL для логотипа страницы входа.",
     "custom-monogram-url-path-message": "Путь URL для логотипа панели навигации.",
     "custom-property-name-validation": "Имя должно начинаться со строчной буквы без пробелов, подчеркивания и точек.",
+    "customize-landing-page-header": "Customize Landing Page for Persona \"<0>{{persona}}</0>\"",
     "data-asset-has-been-action-type": "Объект данных был {{actionType}}",
     "data-insight-alert-destination-description": "Отправляйте уведомления по электронной почте администраторам или командам.",
     "data-insight-alert-trigger-description": "Запускайте в режиме реального времени или запланируйте его на день, неделю или месяц.",

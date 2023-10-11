@@ -1155,6 +1155,7 @@
     "custom-logo-url-path-message": "登录页 Logo 指向的 URL 地址",
     "custom-monogram-url-path-message": "导航栏 Logo 指向的 URL 地址",
     "custom-property-name-validation": "命名首字母必须是小写字母不能为空格、下划线或点号",
+    "customize-landing-page-header": "Customize Landing Page for Persona \"<0>{{persona}}</0>\"",
     "data-asset-has-been-action-type": "数据资产已{{actionType}}",
     "data-insight-alert-destination-description": "发送通知邮件给管理员或团队",
     "data-insight-alert-trigger-description": "可以选择实时触发也可以按照每天、每周、每月进行任务调度。",
