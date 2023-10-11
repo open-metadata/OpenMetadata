@@ -36,17 +36,17 @@ def get_schema_names_reflection(self, **kw):
 
 def get_schema_names(self, connection, **kw):
     """Return all schema names."""
-
-    format_pattern = (
-        f'WHERE schema_name LIKE ANY {get_filter_pattern_tuple(kw["filter_include_schema_name"])}'
-        if kw["filter_include_schema_name"]
-        else f'WHERE schema_name NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_exclude_schema_name"])}'
-    )
+    if kw["filter_pattern"]:
+        format_pattern = (
+            f'WHERE schema_name LIKE ANY {get_filter_pattern_tuple(kw["filter_pattern"].includes)}'
+            if kw["filter_pattern"].includes
+            else f'WHERE schema_name NOT LIKE ANY {get_filter_pattern_tuple(kw["filter_pattern"].excludes)}'
+        )
     query = BIGQUERY_GET_SCHEMA_NAME
     cursor = connection.execute(
         query.format(project_id=kw["project_id"], schema_filter=format_pattern)
         if kw.get("pushFilterDown") is not None
-        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
+        and kw["filter_pattern"]
         else query.format(project_id=kw["project_id"], schema_filter="")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

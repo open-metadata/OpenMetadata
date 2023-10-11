@@ -400,28 +400,28 @@ def get_schema_names_reflection(self, **kw):
 
 def get_schema_names(self, connection, **kw):
     """Return all schema names."""
-    sc_patterns_include = [
-        sc_name.replace("%", "%%")
-        for sc_name in kw["filter_include_schema_name"]
-        if kw["filter_include_schema_name"]
-    ]
-    sc_patterns_exclude = [
-        sc_name.replace("%", "%%")
-        for sc_name in kw["filter_exclude_schema_name"]
-        if kw["filter_exclude_schema_name"]
-    ]
+    if kw["filter_pattern"]:
+        sc_patterns_include = [
+            sc_name.replace("%", "%%")
+            for sc_name in kw["filter_pattern"].includes
+            if kw["filter_pattern"].includes
+        ]
+        sc_patterns_exclude = [
+            sc_name.replace("%", "%%")
+            for sc_name in kw["filter_pattern"].excludes
+            if kw["filter_pattern"].excludes
+        ]
 
-    format_pattern = (
-        f"and nspname LIKE ANY (ARRAY{sc_patterns_include})"
-        if kw["filter_include_schema_name"]
-        else f"and nspname NOT LIKE ANY (ARRAY{sc_patterns_exclude})"
-    )
+        format_pattern = (
+            f"and nspname LIKE ANY (ARRAY{sc_patterns_include})"
+            if kw["filter_pattern"].includes
+            else f"and nspname NOT LIKE ANY (ARRAY{sc_patterns_exclude})"
+        )
 
     query = POSTGRES_GET_SCHEMA_NAMES
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushFilterDown") is not None
-        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
+        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

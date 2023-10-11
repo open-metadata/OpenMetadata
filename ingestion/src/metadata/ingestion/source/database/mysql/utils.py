@@ -61,27 +61,26 @@ def get_schema_names_reflection(self, **kw):
 
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     """Return all schema names."""
+    if kw["filter_pattern"]:
+        sc_patterns_include = [
+            sc_name.replace("%", "%%")
+            for sc_name in kw["filter_pattern"].includes
+            if kw["filter_pattern"].includes
+        ]
+        sc_patterns_exclude = [
+            sc_name.replace("%", "%%")
+            for sc_name in kw["filter_pattern"].excludes
+            if kw["filter_pattern"].excludes
+        ]
 
-    sc_patterns_include = [
-        sc_name.replace("%", "%%")
-        for sc_name in kw["filter_include_schema_name"]
-        if kw["filter_include_schema_name"]
-    ]
-    sc_patterns_exclude = [
-        sc_name.replace("%", "%%")
-        for sc_name in kw["filter_exclude_schema_name"]
-        if kw["filter_exclude_schema_name"]
-    ]
-
-    format_pattern = (
-        f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
-        if kw["filter_include_schema_name"]
-        else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
-    )
+        format_pattern = (
+            f'where {get_filter_pattern_query(sc_patterns_include,"schema_name")}'
+            if kw["filter_pattern"].includes
+            else f'where {get_filter_pattern_query(sc_patterns_exclude, "schema_name",exclude=True)}'
+        )
     cursor = connection.execute(
         MYSQL_GET_SCHEMA.format(format_pattern)
-        if kw.get("pushFilterDown") is not None
-        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
+        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
         else MYSQL_GET_SCHEMA.format("")
     )
     result = [row[0] for row in cursor]

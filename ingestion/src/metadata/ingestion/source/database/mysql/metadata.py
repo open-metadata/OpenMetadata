@@ -80,14 +80,7 @@ class MysqlSource(CommonDbSourceService):
         else:
             for schema_name in self.inspector.get_schema_names(
                 pushFilterDown=self.source_config.pushFilterDown,
-                filter_include_schema_name=self.source_config.schemaFilterPattern.includes
-                if self.source_config.schemaFilterPattern
-                and self.source_config.schemaFilterPattern.includes
-                else [],
-                filter_exclude_schema_name=self.source_config.schemaFilterPattern.excludes
-                if self.source_config.schemaFilterPattern
-                and self.source_config.schemaFilterPattern.excludes
-                else [],
+                filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name
 
@@ -121,17 +114,18 @@ class MysqlSource(CommonDbSourceService):
         Overwrite the inspector implementation to handle partitioned
         and foreign types
         """
-        tb_patterns_include = [
-            tb_name.replace("%", "%%")
-            for tb_name in self.source_config.tableFilterPattern.includes
-            if self.source_config.tableFilterPattern.includes
-        ]
-        tb_patterns_exclude = [
-            tb_name.replace("%", "%%")
-            for tb_name in self.source_config.tableFilterPattern.excludes
-            if self.source_config.tableFilterPattern.excludes
-        ]
         if self.source_config.tableFilterPattern:
+            tb_patterns_include = [
+                tb_name.replace("%", "%%")
+                for tb_name in self.source_config.tableFilterPattern.includes
+                if self.source_config.tableFilterPattern.includes
+            ]
+            tb_patterns_exclude = [
+                tb_name.replace("%", "%%")
+                for tb_name in self.source_config.tableFilterPattern.excludes
+                if self.source_config.tableFilterPattern.excludes
+            ]
+
             format_pattern = (
                 f"and ({get_filter_pattern_query(tb_patterns_include,'table_name')})"
                 if self.source_config.tableFilterPattern.includes

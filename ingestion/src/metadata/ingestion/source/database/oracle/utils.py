@@ -261,30 +261,30 @@ def get_table_names(self, connection, schema=None, **kw):
             "nvl(tablespace_name, 'no tablespace') "
             f"NOT IN ({exclude_tablespace}) AND "
         )
-    tb_patterns_include = [
-        tb_name.replace("%", "%%")
-        for tb_name in kw["filter_include_table_name"]
-        if kw["filter_include_table_name"]
-    ]
-    tb_patterns_exclude = [
-        tb_name.replace("%", "%%")
-        for tb_name in kw["filter_exclude_table_name"]
-        if kw["filter_exclude_table_name"]
-    ]
+    if kw["filter_pattern"]:    
+        tb_patterns_include = [
+            tb_name.replace("%", "%%")
+            for tb_name in kw["filter_pattern"].includes
+            if kw["filter_pattern"].includes
+        ]
+        tb_patterns_exclude = [
+            tb_name.replace("%", "%%")
+            for tb_name in kw["filter_pattern"].excludes
+            if kw["filter_pattern"].excludes
+        ]
 
-    format_pattern = (
-        f'and( {get_filter_pattern_query(tb_patterns_include,"table_name")})'
-        if kw["filter_include_table_name"]
-        else f'and({get_filter_pattern_query(tb_patterns_exclude, "table_name",exclude=True)})'
-    )
+        format_pattern = (
+            f'and( {get_filter_pattern_query(tb_patterns_include,"table_name")})'
+            if kw["filter_pattern"].includes
+            else f'and({get_filter_pattern_query(tb_patterns_exclude, "table_name",exclude=True)})'
+        )
     cursor = connection.execute(
         sql.text(
             ORACLE_GET_TABLE_NAMES.format(
                 tablespace=tablespace, table_filter=format_pattern
             )
         )
-        if kw.get("pushFilterDown") is not None
-        and (kw["filter_include_table_name"] or kw["filter_exclude_table_name"])
+        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
         else sql.text(
             ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, table_filter="")
         ),
@@ -340,27 +340,27 @@ def get_schema_names(self, connection, **kw):
     """Return all schema names."""
 
     query = ORACLE_GET_SCHEMA_NAME
-    sc_patterns_include = [
-        sc_name.replace("%", "%%")
-        for sc_name in kw["filter_include_schema_name"]
-        if kw["filter_include_schema_name"]
-    ]
-    sc_patterns_exclude = [
-        sc_name.replace("%", "%%")
-        for sc_name in kw["filter_exclude_schema_name"]
-        if kw["filter_exclude_schema_name"]
-    ]
+    if kw["filter_pattern"]:
+        sc_patterns_include = [
+            sc_name.replace("%", "%%")
+            for sc_name in kw["filter_pattern"].includes
+            if kw["filter_pattern"].includes
+        ]
+        sc_patterns_exclude = [
+            sc_name.replace("%", "%%")
+            for sc_name in kw["filter_pattern"].excludes
+            if kw["filter_pattern"].excludes
+        ]
 
-    format_pattern = (
-        f'where {get_filter_pattern_query(sc_patterns_include,"username")}'
-        if kw["filter_include_schema_name"]
-        else f'where {get_filter_pattern_query(sc_patterns_exclude, "username",exclude=True)}'
-    )
+        format_pattern = (
+            f'where {get_filter_pattern_query(sc_patterns_include,"username")}'
+            if kw["filter_pattern"].includes
+            else f'where {get_filter_pattern_query(sc_patterns_exclude, "username",exclude=True)}'
+        )
 
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushFilterDown") is not None
-        and (kw["filter_include_schema_name"] or kw["filter_exclude_schema_name"])
+        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]
