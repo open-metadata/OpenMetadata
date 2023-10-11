@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/loadGlossary.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "loadGlossary",
+  "description": "Load a glossary",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.LoadGlossary",
+  "properties": {
+    "createGlossary": {
+      "$ref": "createGlossary.json"
+    },
+    "createTerms": {
+      "type": "array",
+      "items": {
+        "$ref": "createGlossaryTerm.json"
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["createGlossary"],
+  "additionalProperties": false
+}

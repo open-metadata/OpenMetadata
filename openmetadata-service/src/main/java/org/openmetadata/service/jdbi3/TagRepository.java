@@ -78,7 +78,8 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
-      tag.setFullyQualifiedName(FullyQualifiedName.build(tag.getClassification().getName(), tag.getName()));
+      tag.setFullyQualifiedName(
+          FullyQualifiedName.build(tag.getClassification().getFullyQualifiedName(), tag.getName()));
     } else {
       tag.setFullyQualifiedName(FullyQualifiedName.add(tag.getParent().getFullyQualifiedName(), tag.getName()));
     }
