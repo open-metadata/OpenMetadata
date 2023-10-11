@@ -54,6 +54,10 @@ export enum EntityType {
   SEARCH_INDEX = 'searchIndex',
   APP_MARKET_PLACE_DEFINITION = 'appMarketPlaceDefinition',
   APPLICATION = 'app',
+  PERSONA = 'persona',
+  DOC_STORE = 'docStore',
+  PAGE = 'Page',
+  knowledgePanels = 'KnowLedgePanels',
 }
 
 export enum AssetsType {

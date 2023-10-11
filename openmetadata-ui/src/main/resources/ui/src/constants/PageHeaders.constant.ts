@@ -38,6 +38,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.user-plural'),
     subHeader: i18n.t('message.page-sub-header-for-users'),
   },
+  PERSONAS: {
+    header: i18n.t('label.persona-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-persona'),
+  },
   TEAMS: {
     header: i18n.t('label.team-plural'),
     subHeader: i18n.t('message.page-sub-header-for-teams'),
@@ -159,5 +163,8 @@ export const PAGE_HEADERS = {
   APPLICATION: {
     header: i18n.t('label.extend-open-meta-data'),
     subHeader: i18n.t('message.tools-to-improve-workflow'),
+  CUSTOM_PAGE: {
+    header: i18n.t('label.custom-dashboard'),
+    subHeader: i18n.t('message.page-sub-header-for-custom-dashboard'),
   },
 };

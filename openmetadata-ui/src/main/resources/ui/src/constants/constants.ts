@@ -18,14 +18,14 @@ import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData'
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
-import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
+import i18n from '../utils/i18next/LocalUtil';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
+import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
@@ -334,6 +334,8 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+
+  CUSTOMISE_PAGE: `/customise-page/:fqn/:pageFqn`,
 };
 
 export const SOCKET_EVENTS = {
@@ -350,16 +352,6 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tableFQN));
-
-  return `${path}${columnName ? `.${columnName}` : ''}`;
-};
-
-export const getStoredProcedureDetailsPath = (
-  storedProcedureFQN: string,
-  columnName?: string
-) => {
-  let path = ROUTES.STORED_PROCEDURE_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(storedProcedureFQN));
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };

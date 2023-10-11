@@ -262,7 +262,7 @@ const ManageButton: FC<Props> = ({
           onCancel={() => setIsDelete(false)}
         />
       )}
-      {onEditDisplayName && (
+      {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
           entity={{

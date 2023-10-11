@@ -29,6 +29,7 @@ import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
@@ -45,6 +46,7 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../components/PermissionProvider/PermissionProvider.interface';
+import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
@@ -97,6 +99,16 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'members.admins',
           icon: <AdminIcon className="side-panel-icons" />,
+        },
+
+        {
+          label: i18next.t('label.persona-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.USER,
+            permissions
+          ),
+          key: 'members.persona',
+          icon: <PersonasIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -332,6 +344,12 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
+          label: i18next.t('label.custom-dashboard'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customDashboards',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
           label: i18next.t('label.custom-logo'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customLogo',
@@ -437,4 +455,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
     default:
       return GlobalSettingOptions.TABLES;
   }
+};
+
+export const getCustomisePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMISE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, personaFqn)
+    .replace(':pageFqn', pageFqn);
 };

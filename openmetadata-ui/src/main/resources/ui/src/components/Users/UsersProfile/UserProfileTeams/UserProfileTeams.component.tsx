@@ -49,7 +49,7 @@ const UserProfileTeams = ({
     () => (
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
-        icon={<IconTeamsGrey height={20} width={20} />}
+        icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
@@ -72,7 +72,7 @@ const UserProfileTeams = ({
 
           {!isTeamsEdit && isAdminUser && (
             <EditIcon
-              className="cursor-pointer"
+              className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
               data-testid="edit-teams"
               {...ICON_DIMENSION}

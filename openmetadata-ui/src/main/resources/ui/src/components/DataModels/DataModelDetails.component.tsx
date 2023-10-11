@@ -76,6 +76,11 @@ const DataModelDetails = ({
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
 
+  const decodedDataModelFQN = useMemo(
+    () => getDecodedFqn(dashboardDataModelFQN),
+    [dashboardDataModelFQN]
+  );
+
   const {
     hasEditDescriptionPermission,
     hasEditTagsPermission,
@@ -106,7 +111,7 @@ const DataModelDetails = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
-      dashboardDataModelFQN,
+      decodedDataModelFQN,
       setFeedCount
     );
   };
@@ -195,7 +200,7 @@ const DataModelDetails = ({
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={description}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditAccess={hasEditDescriptionPermission}
@@ -209,7 +214,7 @@ const DataModelDetails = ({
             />
             <ModelTab
               data={dataModelData?.columns || []}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               hasEditDescriptionPermission={hasEditDescriptionPermission}
               hasEditTagsPermission={hasEditTagsPermission}
               isReadOnly={Boolean(deleted)}
@@ -225,7 +230,7 @@ const DataModelDetails = ({
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
@@ -235,7 +240,7 @@ const DataModelDetails = ({
             />
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
@@ -248,6 +253,7 @@ const DataModelDetails = ({
       </Row>
     );
   }, [
+    decodedDataModelFQN,
     dataModelData,
     description,
     dashboardDataModelFQN,
