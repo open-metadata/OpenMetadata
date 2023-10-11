@@ -1,5 +1,20 @@
 package org.openmetadata.service.search.indexes;
 
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.models.FlattenColumn;
+import org.openmetadata.service.search.models.SearchSuggest;
+import org.openmetadata.service.util.JsonUtils;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
@@ -9,20 +24,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLA
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIFIED_NAME_PARTS;
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.models.FlattenColumn;
-import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TableIndex implements ColumnIndex {
   private static final List<String> excludeFields =
@@ -54,6 +55,7 @@ public class TableIndex implements ColumnIndex {
       for (FlattenColumn col : cols) {
         columnSuggest.add(SearchSuggest.builder().input(col.getName()).weight(5).build());
       }
+      doc.put("columns_arr",cols);
     }
     parseTableSuggest(suggest);
     serviceSuggest.add(SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
