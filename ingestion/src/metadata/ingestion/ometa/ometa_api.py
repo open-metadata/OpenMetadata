@@ -20,6 +20,9 @@ from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 from requests.utils import quote
 
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -185,6 +188,8 @@ class OpenMetadata(
         Based on the entity, return the module path
         it is found inside generated
         """
+        if issubclass(entity, CreateIngestionPipelineRequest):
+            return "services.ingestionPipelines"
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
@@ -233,6 +238,7 @@ class OpenMetadata(
             .replace("testcase", "testCase")
             .replace("searchindex", "searchIndex")
             .replace("storedprocedure", "storedProcedure")
+            .replace("ingestionpipeline", "ingestionPipeline")
         )
         class_path = ".".join(
             filter(

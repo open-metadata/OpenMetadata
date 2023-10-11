@@ -10,29 +10,13 @@
       "description": "timestamp",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "threeDays": {
-      "description": "Size of unused assets in the last 3 days",
-      "type": "number"
+    "frequentlyUsedDataAssets": {
+      "description": "Frequently used Data Assets",
+      "$ref": "../../analytics/reportDataType/aggregatedCostAnalysisReportData.json#/definitions/dataAssetValues"
     },
-    "sevenDays": {
-      "description": "Size of unused assets in the last 7 days",
-      "type": "number"
-    },
-    "fourteenDays": {
-      "description": "Size of unused assets in the last 14 days",
-      "type": "number"
-    },
-    "thirtyDays": {
-      "description": "Size of unused assets in the last 30 days",
-      "type": "number"
-    },
-    "sixtyDays": {
-      "description": "Size of unused assets in the last 60 days",
-      "type": "number"
-    },
-    "total": {
-      "description": "Total size of unused assets",
-      "type": "number"
+    "unusedDataAssets": {
+      "description": "Unused Data Assets",
+      "$ref": "../../analytics/reportDataType/aggregatedCostAnalysisReportData.json#/definitions/dataAssetValues"
     }
   },
   "additionalProperties": false

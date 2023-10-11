@@ -72,6 +72,9 @@ from metadata.generated.schema.api.services.createSearchService import (
 from metadata.generated.schema.api.services.createStorageService import (
     CreateStorageServiceRequest,
 )
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -198,6 +201,7 @@ ROUTES = {
     SearchService.__name__: "/services/searchServices",
     CreateSearchServiceRequest.__name__: "/services/searchServices",
     IngestionPipeline.__name__: "/services/ingestionPipelines",
+    CreateIngestionPipelineRequest.__name__: "/services/ingestionPipelines",
     TestConnectionDefinition.__name__: "/services/testConnectionDefinitions",
     # Data Quality
     TestDefinition.__name__: "/dataQuality/testDefinitions",

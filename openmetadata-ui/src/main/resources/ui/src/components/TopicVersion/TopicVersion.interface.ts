@@ -25,7 +25,6 @@ export interface TopicVersionProp {
   domain: Topic['domain'];
   tier: TagLabel;
   slashedTopicName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

@@ -354,6 +354,10 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+    }
+
     /* for performance reasons ElasticSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
     however in most cases for search results an approximate value is good enough.
@@ -1308,32 +1312,35 @@ public class ElasticSearchClient implements SearchClient {
       case AGGREGATED_UNUSED_ASSETS_COUNT:
         boolean isSize =
             dataInsightChartName.equals(DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
+        String[] types = new String[] {"frequentlyUsedDataAssets", "unusedDataAssets"};
         String fieldType = isSize ? "size" : "count";
-        String totalField = isSize ? "totalSize" : "totalCount";
-        SumAggregationBuilder threeDaysAgg =
-            AggregationBuilders.sum("threeDays").field(String.format("data.unusedDataAssets.%s.threeDays", fieldType));
-        SumAggregationBuilder sevenDaysAgg =
-            AggregationBuilders.sum("sevenDays").field(String.format("data.unusedDataAssets.%s.sevenDays", fieldType));
-        SumAggregationBuilder fourteenDaysAgg =
-            AggregationBuilders.sum("fourteenDays")
-                .field(String.format("data.unusedDataAssets.%s.fourteenDays", fieldType));
-        SumAggregationBuilder thirtyDaysAgg =
-            AggregationBuilders.sum("thirtyDays")
-                .field(String.format("data.unusedDataAssets.%s.thirtyDays", fieldType));
-        SumAggregationBuilder sixtyDaysAgg =
-            AggregationBuilders.sum("sixtyDays").field(String.format("data.unusedDataAssets.%s.sixtyDays", fieldType));
-        SumAggregationBuilder totalUnused =
-            AggregationBuilders.sum("totalUnused").field(String.format("data.unusedDataAssets.%s", totalField));
-        SumAggregationBuilder totalUsed =
-            AggregationBuilders.sum("totalUsed").field(String.format("data.frequentlyUsedDataAssets.%s", totalField));
-        return dateHistogramAggregationBuilder
-            .subAggregation(threeDaysAgg)
-            .subAggregation(sevenDaysAgg)
-            .subAggregation(fourteenDaysAgg)
-            .subAggregation(thirtyDaysAgg)
-            .subAggregation(sixtyDaysAgg)
-            .subAggregation(totalUnused)
-            .subAggregation(totalUsed);
+
+        for (String type : types) {
+          SumAggregationBuilder threeDaysAgg =
+              AggregationBuilders.sum(String.format("%sThreeDays", type))
+                  .field(String.format("data.%s.%s.threeDays", type, fieldType));
+          SumAggregationBuilder sevenDaysAgg =
+              AggregationBuilders.sum(String.format("%sSevenDays", type))
+                  .field(String.format("data.%s.%s.sevenDays", type, fieldType));
+          SumAggregationBuilder fourteenDaysAgg =
+              AggregationBuilders.sum(String.format("%sFourteenDays", type))
+                  .field(String.format("data.%s.%s.fourteenDays", type, fieldType));
+          SumAggregationBuilder thirtyDaysAgg =
+              AggregationBuilders.sum(String.format("%sThirtyDays", type))
+                  .field(String.format("data.%s.%s.thirtyDays", type, fieldType));
+          SumAggregationBuilder sixtyDaysAgg =
+              AggregationBuilders.sum(String.format("%sSixtyDays", type))
+                  .field(String.format("data.%s.%s.sixtyDays", type, fieldType));
+
+          dateHistogramAggregationBuilder
+              .subAggregation(threeDaysAgg)
+              .subAggregation(sevenDaysAgg)
+              .subAggregation(fourteenDaysAgg)
+              .subAggregation(thirtyDaysAgg)
+              .subAggregation(sixtyDaysAgg);
+        }
+
+        return dateHistogramAggregationBuilder;
       case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE:
       case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
         boolean isSizeReport =
@@ -1495,7 +1502,6 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        //        return new RestHighLevelClient(restClientBuilder);
         return new RestHighLevelClientBuilder(restClient).setApiCompatibilityMode(true).build();
       } catch (Exception e) {
         LOG.error("Failed to create elastic search client ", e);

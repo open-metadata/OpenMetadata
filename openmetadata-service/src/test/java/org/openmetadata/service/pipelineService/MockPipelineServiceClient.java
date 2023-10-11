@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -17,12 +19,22 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public PipelineServiceClientResponse getServiceStatus() {
+  public PipelineServiceClientResponse getServiceStatusInternal() {
     return null;
   }
 
   @Override
   public PipelineServiceClientResponse runAutomationsWorkflow(Workflow workflow) {
+    return null;
+  }
+
+  @Override
+  public PipelineServiceClientResponse runApplicationFlow(App application) {
+    return null;
+  }
+
+  @Override
+  public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition app) {
     return null;
   }
 
@@ -44,7 +56,7 @@ public class MockPipelineServiceClient extends PipelineServiceClient {
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
     return null;
   }
 
