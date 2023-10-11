@@ -1,15 +1,11 @@
-import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  AppRunRecord,
-  AppScheduleClass,
-  Status,
-} from '../../../generated/entity/applications/appRunRecord';
+import { Status } from '../../../generated/entity/applications/appRunRecord';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getApplicationRuns } from '../../../rest/applicationAPI';
@@ -22,14 +18,17 @@ import Table from '../../common/Table/Table';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
+import { AppRunRecordWithId } from './AppRunsHistory.interface';
 
 const AppRunsHistory = () => {
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: string }>();
   const [isLoading, setIsLoading] = useState(true);
-  const [appRunsHistoryData, setAppRunsHistoryData] = useState<AppRunRecord[]>(
-    []
-  );
+  const [appRunsHistoryData, setAppRunsHistoryData] = useState<
+    AppRunRecordWithId[]
+  >([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
   const {
     currentPage,
@@ -40,34 +39,26 @@ const AppRunsHistory = () => {
     handlePageSizeChange,
   } = usePaging();
 
-  const tableColumn: ColumnsType<AppRunRecord> = useMemo(
+  const handleRowExpandable = useCallback(
+    (key?: string) => {
+      if (key) {
+        if (expandedRowKeys.includes(key)) {
+          setExpandedRowKeys((prev) => prev.filter((item) => item !== key));
+        } else {
+          setExpandedRowKeys((prev) => [...prev, key]);
+        }
+      }
+    },
+    [expandedRowKeys]
+  );
+
+  const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
     () => [
       {
-        title: t('label.scheduled-at'),
+        title: t('label.run-at'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        render: (_, record) => {
-          const date = formatDateTime(record.timestamp);
-          return date;
-        },
-      },
-      {
-        title: t('label.schedule-type'),
-        dataIndex: 'scheduleType',
-        key: 'scheduleType',
-        render: (_, record) => {
-          return (record?.scheduleInfo as AppScheduleClass)?.scheduleType ?? '';
-        },
-      },
-      {
-        title: t('label.schedule-interval'),
-        dataIndex: 'cronExpression',
-        key: 'cronExpression',
-        render: (_, record) => {
-          return (
-            (record?.scheduleInfo as AppScheduleClass)?.cronExpression ?? ''
-          );
-        },
+        render: (_, record) => formatDateTime(record.timestamp),
       },
       {
         title: t('label.run-type'),
@@ -78,7 +69,7 @@ const AppRunsHistory = () => {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        render: (_, record: AppRunRecord) => {
+        render: (_, record: AppRunRecordWithId) => {
           const status: StatusType = getStatusTypeForApplication(
             record.status ?? Status.Failed
           );
@@ -96,24 +87,19 @@ const AppRunsHistory = () => {
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
-        render: () => {
-          return (
-            <Space align="start">
-              <Tooltip title={t('label.log-plural')}>
-                <Button
-                  className="p-0"
-                  data-testid="logs"
-                  size="small"
-                  type="link">
-                  {t('label.log-plural')}
-                </Button>
-              </Tooltip>
-            </Space>
-          );
-        },
+        render: (_, record) => (
+          <Button
+            className="p-0"
+            data-testid="logs"
+            size="small"
+            type="link"
+            onClick={() => handleRowExpandable(record.id)}>
+            {t('label.log-plural')}
+          </Button>
+        ),
       },
     ],
-    []
+    [formatDateTime, handleRowExpandable, getStatusTypeForApplication]
   );
 
   const fetchAppHistory = useCallback(
@@ -125,7 +111,12 @@ const AppRunsHistory = () => {
           limit: pageSize,
         });
 
-        setAppRunsHistoryData(data);
+        setAppRunsHistoryData(
+          data.map((item) => ({
+            ...item,
+            id: `${item.appId}-${item.runType}-${item.timestamp}`,
+          }))
+        );
         handlePagingChange(paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -155,12 +146,17 @@ const AppRunsHistory = () => {
           columns={tableColumn}
           data-testid="app-run-history-table"
           dataSource={appRunsHistoryData}
+          expandable={{
+            expandedRowRender: (record) => <AppLogsViewer data={record} />,
+            showExpandColumn: false,
+            expandedRowKeys,
+          }}
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
           }}
           pagination={false}
-          rowKey="name"
+          rowKey="id"
           size="small"
         />
       </Col>

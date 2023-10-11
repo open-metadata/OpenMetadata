@@ -1086,7 +1086,8 @@
     "widget-lowercase": "widget",
     "yes": "はい",
     "yesterday": "Yesterday",
-    "your-entity": "あなたの{{entity}}"
+    "your-entity": "あなたの{{entity}}",
+    "run-at": "Run at"
   },
   "message": {
     "access-to-collaborate": "Allow open access for anyone to join the team, view data, and collaborate.",

@@ -845,7 +845,7 @@
     "schedule-type": "Schedule Type",
     "schedule-interval": "Schedule Interval",
     "schedule-to-run-every": "Scheduled to run every",
-    "scheduled-at": "Scheduled at",
+    "run-at": "Run at",
     "schema": "Schema",
     "schema-field": "Schema Field",
     "schema-field-plural": "Schema Fields",

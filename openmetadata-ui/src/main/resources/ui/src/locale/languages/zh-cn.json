@@ -1086,7 +1086,8 @@
     "widget-lowercase": "widget",
     "yes": "是",
     "yesterday": "昨天",
-    "your-entity": "您的{{entity}}"
+    "your-entity": "您的{{entity}}",
+    "run-at": "Run at"
   },
   "message": {
     "access-to-collaborate": "允许任何人加入团队，查看数据并协作",
