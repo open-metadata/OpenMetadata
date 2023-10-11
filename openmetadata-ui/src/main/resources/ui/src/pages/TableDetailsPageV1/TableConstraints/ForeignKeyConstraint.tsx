@@ -12,10 +12,10 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Tooltip } from 'antd';
-import { ReactComponent as IconForeignKey } from 'assets/svg/foreign-key.svg';
-import SectionLine from 'assets/svg/section-line-medium.svg';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconForeignKey } from '../../../assets/svg/foreign-key.svg';
+import SectionLine from '../../../assets/svg/section-line-medium.svg';
 
 const ForeignKeyConstraint = () => {
   const { t } = useTranslation();

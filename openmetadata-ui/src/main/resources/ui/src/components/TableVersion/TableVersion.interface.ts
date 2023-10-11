@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { Table } from '../../generated/entity/data/table';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -25,7 +25,6 @@ export interface TableVersionProp {
   domain: Table['domain'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  datasetFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

@@ -24,6 +24,9 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, TypeVar, cast
 
+from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
+    CreateIngestionPipelineRequest,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -31,19 +34,26 @@ from metadata.generated.schema.entity.services.connections.serviceConnection imp
     ServiceConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    AirflowConfig,
+    IngestionPipeline,
     PipelineState,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testSuite import ServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.ingestion.ometa.client_utils import create_ometa_client
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.utils import fqn
 from metadata.utils.class_helper import (
+    get_pipeline_type_from_source_config,
+    get_reference_type_from_service_type,
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
@@ -86,6 +96,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         self.config = config
         self._timer: Optional[RepeatedTimer] = None
+        self._ingestion_pipeline: Optional[IngestionPipeline] = None
 
         set_loggers_level(config.workflowConfig.loggerLevel.value)
 
@@ -96,7 +107,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.metadata_config: OpenMetadataConnection = (
             self.config.workflowConfig.openMetadataServerConfig
         )
-        self.metadata = OpenMetadata(config=self.metadata_config)
+
+        # We create the ometa client at the workflow level and pass it to the steps
+        self.metadata = create_ometa_client(self.metadata_config)
 
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
@@ -105,6 +118,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Informs the `source` and the rest of `steps` to execute
         self.set_steps()
+
+    @property
+    def ingestion_pipeline(self):
+        """Get or create the Ingestion Pipeline from the configuration"""
+        if not self._ingestion_pipeline:
+            self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
+
+        return self._ingestion_pipeline
 
     @abstractmethod
     def set_steps(self):
@@ -165,11 +186,16 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         Main stopping logic
         """
-        for step in self.steps:
-            step.close()
-
-        self.metadata.close()
+        # Stop the timer first. This runs in a separate thread and if not properly closed
+        # it can hung the workflow
         self.timer.stop()
+        self.metadata.close()
+
+        for step in self.steps:
+            try:
+                step.close()
+            except Exception as exc:
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
 
     @property
     def timer(self) -> RepeatedTimer:
@@ -243,3 +269,48 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
+
+    def get_or_create_ingestion_pipeline(self) -> Optional[IngestionPipeline]:
+        """
+        If we get the `ingestionPipelineFqn` from the `workflowConfig`, it means we want to
+        keep track of the status.
+        - During the UI deployment, the IngestionPipeline is already created from the UI.
+        - From external deployments, we might need to create the Ingestion Pipeline the first time
+          the YAML is executed.
+        If the Ingestion Pipeline is not created, create it now to update the status.
+
+        Note that during the very first run, the service might not even be created yet. In that case,
+        we won't be able to flag the RUNNING status. We'll wait until the metadata ingestion
+        workflow has prepared the necessary components, and we will update the SUCCESS/FAILED
+        status at the end of the flow.
+        """
+        maybe_pipeline: Optional[IngestionPipeline] = self.metadata.get_by_name(
+            entity=IngestionPipeline, fqn=self.config.ingestionPipelineFQN
+        )
+
+        _, pipeline_name = fqn.split(
+            self.config.ingestionPipelineFQN
+        )  # Get the name from <service>.<name>
+        service = self.metadata.get_by_name(
+            entity=get_service_class_from_service_type(self.service_type),
+            fqn=self.config.source.serviceName,
+        )
+
+        if maybe_pipeline is None and service is not None:
+
+            return self.metadata.create_or_update(
+                CreateIngestionPipelineRequest(
+                    name=pipeline_name,
+                    service=EntityReference(
+                        id=service.id,
+                        type=get_reference_type_from_service_type(self.service_type),
+                    ),
+                    pipelineType=get_pipeline_type_from_source_config(
+                        self.config.source.sourceConfig.config
+                    ),
+                    sourceConfig=self.config.source.sourceConfig,
+                    airflowConfig=AirflowConfig(),
+                )
+            )
+
+        return maybe_pipeline

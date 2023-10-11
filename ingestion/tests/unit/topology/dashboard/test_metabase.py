@@ -224,7 +224,7 @@ class MetabaseUnitTest(TestCase):
         self.config = OpenMetadataWorkflowConfig.parse_obj(mock_tableau_config)
         self.metabase = MetabaseSource.create(
             mock_tableau_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metabase.client = SimpleNamespace()
         self.metabase.context.__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE

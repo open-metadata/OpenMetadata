@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
+import { isEmpty } from 'lodash';
+import React, { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import {
   getTeamAndUserDetailsPath,
   getUserPath,
   NO_DATA_PLACEHOLDER,
-} from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { SearchIndex } from 'enums/search.enum';
-import { DataProduct } from 'generated/entity/domains/dataProduct';
-import { Domain } from 'generated/entity/domains/domain';
-import { ChangeDescription, EntityReference } from 'generated/entity/type';
-import { isEmpty } from 'lodash';
-import React, { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+} from '../constants/constants';
+import { EntityField } from '../constants/Feeds.constants';
+import { DataProduct } from '../generated/entity/domains/dataProduct';
+import { Domain } from '../generated/entity/domains/domain';
+import { ChangeDescription, EntityReference } from '../generated/entity/type';
 import { getEntityName } from './EntityUtils';
 import {
   getChangedEntityNewValue,
@@ -110,6 +109,3 @@ export const getUserNames = (
 
   return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
 };
-
-export const DomainAssetsSearchIndex =
-  `${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC},${SearchIndex.PIPELINE},${SearchIndex.MLMODEL},${SearchIndex.GLOSSARY},${SearchIndex.CONTAINER}` as SearchIndex;

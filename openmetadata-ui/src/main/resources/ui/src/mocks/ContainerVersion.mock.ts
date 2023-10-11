@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import { ContainerVersionProp } from '../components/ContainerVersion/ContainerVersion.interface';
 import {
   Constraint,
   DataType,
   FileFormat,
   StorageServiceType,
-} from 'generated/entity/data/container';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
+} from '../generated/entity/data/container';
+import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
   mockDomain,
@@ -25,8 +26,7 @@ import {
   mockTier,
   mockVersionHandler,
   mockVersionList,
-} from 'mocks/VersionCommon.mock';
-import { ContainerVersionProp } from '../components/ContainerVersion/ContainerVersion.interface';
+} from '../mocks/VersionCommon.mock';
 
 export const mockContainerData = {
   id: 'fa390cbe-63a3-4ebb-976b-4cc9cbe5a234',
@@ -89,7 +89,6 @@ export const containerVersionMockProps: ContainerVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   breadCrumbList: [],
-  containerFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

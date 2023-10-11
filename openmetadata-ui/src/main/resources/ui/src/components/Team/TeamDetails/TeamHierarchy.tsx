@@ -15,29 +15,26 @@ import { Modal, Skeleton, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import FilterTablePlaceHolder from 'components/common/error-with-placeholder/FilterTablePlaceHolder';
-import Table from 'components/common/Table/Table';
-import { TeamType } from 'generated/api/teams/createTeam';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTeamByName, updateTeam } from 'rest/teamsAPI';
-import { Transi18next } from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { getTeamsWithFqnPath } from 'utils/RouterUtils';
-import { getTableExpandableConfig } from 'utils/TableUtils';
-import { getMovedTeamData } from 'utils/TeamUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import FilterTablePlaceHolder from '../../../components/common/error-with-placeholder/FilterTablePlaceHolder';
+import Table from '../../../components/common/Table/Table';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
+import { TeamType } from '../../../generated/api/teams/createTeam';
 import { Team } from '../../../generated/entity/teams/team';
-import {
-  DraggableBodyRowProps,
-  MovedTeamProps,
-  TeamHierarchyProps,
-} from './team.interface';
+import { getTeamByName, updateTeam } from '../../../rest/teamsAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { getMovedTeamData } from '../../../utils/TeamUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { DraggableBodyRowProps } from '../../Draggable/DraggableBodyRowProps.interface';
+import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
 
 const TeamHierarchy: FC<TeamHierarchyProps> = ({
@@ -138,7 +135,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         ),
       },
     ];
-  }, [data, onTeamExpand]);
+  }, [data, isFetchingAllTeamAdvancedDetails, onTeamExpand]);
 
   const handleMoveRow = useCallback(
     async (dragRecord: Team, dropRecord: Team) => {
@@ -181,6 +178,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     }
   };
 
+  const onTableRow = (record: Team, index?: number) =>
+    ({ index, handleMoveRow, record } as DraggableBodyRowProps<Team>);
+
   const expandableConfig: ExpandableConfig<Team> = useMemo(
     () => ({
       ...getTableExpandableConfig<Team>(true),
@@ -211,15 +211,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           pagination={false}
           rowKey="name"
           size="small"
-          onRow={(record, index) => {
-            const attr = {
-              index,
-              handleMoveRow,
-              record,
-            };
-
-            return attr as DraggableBodyRowProps;
-          }}
+          onRow={onTableRow}
         />
       </DndProvider>
 

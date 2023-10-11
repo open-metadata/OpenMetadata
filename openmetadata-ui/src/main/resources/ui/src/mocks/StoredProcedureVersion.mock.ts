@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { StoredProcedureVersionProp } from 'components/StoredProcedureVersion/StoredProcedureVersion.interface';
-import { DatabaseServiceType, TableType } from 'generated/entity/data/table';
-import { ENTITY_PERMISSIONS } from 'mocks/Permissions.mock';
+import { StoredProcedureVersionProp } from '../components/StoredProcedureVersion/StoredProcedureVersion.interface';
+import { DatabaseServiceType, TableType } from '../generated/entity/data/table';
+import { ENTITY_PERMISSIONS } from '../mocks/Permissions.mock';
 import {
   mockBackHandler,
   mockDomain,
@@ -21,7 +21,7 @@ import {
   mockTier,
   mockVersionHandler,
   mockVersionList,
-} from 'mocks/VersionCommon.mock';
+} from '../mocks/VersionCommon.mock';
 
 const mockData = {
   id: 'ab4f893b-c303-43d9-9375-3e620a670b02',
@@ -95,8 +95,7 @@ export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   slashedTableName: [],
-  storedProcedureFQN:
-    'sample_data.ecommerce_db.shopify.update_dim_address_table',
+
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

@@ -23,50 +23,53 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
-import AppState from 'AppState';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import ActivityFeedCardV1 from 'components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
-import ActivityFeedEditor from 'components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import { useActivityFeedProvider } from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AssigneeList from 'components/common/AssigneeList/AssigneeList';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import InlineEdit from 'components/InlineEdit/InlineEdit.component';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { TaskOperation } from 'constants/Feeds.constants';
 import { compare } from 'fast-json-patch';
-import { TaskType } from 'generated/api/feed/createThread';
-import { TaskDetails, ThreadTaskStatus } from 'generated/entity/feed/thread';
-import { TagLabel } from 'generated/type/tagLabel';
-import { useAuth } from 'hooks/authHooks';
 import { isEmpty, isEqual, isUndefined, noop } from 'lodash';
-import Assignees from 'pages/TasksPage/shared/Assignees';
-import DescriptionTask from 'pages/TasksPage/shared/DescriptionTask';
-import TagsTask from 'pages/TasksPage/shared/TagsTask';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import AppState from '../../../AppState';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import ActivityFeedCardV1 from '../../../components/ActivityFeed/ActivityFeedCard/ActivityFeedCardV1';
+import ActivityFeedEditor from '../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { TaskOperation } from '../../../constants/Feeds.constants';
+import { TaskType } from '../../../generated/api/feed/createThread';
+import {
+  TaskDetails,
+  ThreadTaskStatus,
+} from '../../../generated/entity/feed/thread';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { useAuth } from '../../../hooks/authHooks';
+import Assignees from '../../../pages/TasksPage/shared/Assignees';
+import DescriptionTask from '../../../pages/TasksPage/shared/DescriptionTask';
+import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import {
   Option,
   TaskAction,
   TaskActionMode,
-} from 'pages/TasksPage/TasksPage.interface';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { updateTask, updateThread } from 'rest/feedsAPI';
-import EntityLink from 'utils/EntityLink';
-import { getEntityName } from 'utils/EntityUtils';
-import { getEntityFQN } from 'utils/FeedUtils';
+} from '../../../pages/TasksPage/TasksPage.interface';
+import { updateTask, updateThread } from '../../../rest/feedsAPI';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
 import {
   fetchOptions,
   isDescriptionTask,
   isTagsTask,
   TASK_ACTION_LIST,
-} from 'utils/TasksUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../../utils/TasksUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
-import { ReactComponent as TaskCloseIcon } from '/assets/svg/ic-close-task.svg';
-import { ReactComponent as TaskOpenIcon } from '/assets/svg/ic-open-task.svg';
 
 export const TaskTab = ({
   taskThread,

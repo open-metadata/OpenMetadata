@@ -41,6 +41,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
@@ -66,7 +67,7 @@ class SplitTestCaseFqn(BaseModel):
     test_case: Optional[str]
 
 
-def split(s: str) -> List[str]:  # pylint: disable=invalid-name
+def split(s: str) -> List[str]:
     """
     Equivalent of Java's FullyQualifiedName#split
     """
@@ -81,12 +82,15 @@ def split(s: str) -> List[str]:  # pylint: disable=invalid-name
     return splitter.split()
 
 
-def _build(*args) -> str:
+def _build(*args, quote: bool = True) -> str:
     """
     Equivalent of Java's FullyQualifiedName#build
     """
-    quoted = [quote_name(name) for name in args]
-    return FQN_SEPARATOR.join(quoted)
+    if quote:
+        quoted = [quote_name(name) for name in args]
+        return FQN_SEPARATOR.join(quoted)
+
+    return FQN_SEPARATOR.join(args)
 
 
 def unquote_name(name: str) -> str:
@@ -253,6 +257,16 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, mlmodel=`{mlmodel_name}``"
         )
     return _build(service_name, mlmodel_name)
+
+
+@fqn_build_registry.add(TestSuite)
+def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:
+    """
+    We don't need to quote since this comes from a table FQN.
+    We're replicating the backend logic of the FQN generation in the TestSuiteRepository
+    for executable test suites.
+    """
+    return _build(table_fqn, "testSuite", quote=False)
 
 
 @fqn_build_registry.add(Topic)

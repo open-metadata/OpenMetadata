@@ -13,61 +13,70 @@
 
 import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from 'components/common/description/DescriptionV1';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import QueryViewer from 'components/common/QueryViewer/QueryViewer.component';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from 'components/Entity/EntityLineage/EntityLineage.component';
-import Loader from 'components/Loader/Loader';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import SampleDataWithMessages from 'components/SampleDataWithMessages/SampleDataWithMessages';
-import { SourceType } from 'components/searched-data/SearchedData.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { getVersionPath } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
 import { compare } from 'fast-json-patch';
-import { CreateThread, ThreadType } from 'generated/api/feed/createThread';
-import { SearchIndex, TagLabel } from 'generated/entity/data/searchIndex';
-import { LabelType, State, TagSource } from 'generated/type/tagLabel';
 import { isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { postThread } from 'rest/feedsAPI';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/description/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import Loader from '../../components/Loader/Loader';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
+import { SourceType } from '../../components/searched-data/SearchedData.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  CreateThread,
+  ThreadType,
+} from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
+import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import { TagSource } from '../../generated/type/tagLabel';
+import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getSearchIndexDetailsByFQN,
   patchSearchIndexDetails,
   removeFollower,
   restoreSearchIndex,
-} from 'rest/SearchIndexAPI';
+} from '../../rest/SearchIndexAPI';
 import {
   addToRecentViewed,
   getCurrentUserId,
   getFeedCounts,
   sortTagsCaseInsensitive,
-} from 'utils/CommonUtils';
-import { getEntityName } from 'utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { defaultFields, getSearchIndexTabPath } from 'utils/SearchIndexUtils';
-import { getTagsWithoutTier, getTierTags } from 'utils/TableUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../utils/CommonUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  defaultFields,
+  getSearchIndexTabPath,
+} from '../../utils/SearchIndexUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
 function SearchIndexDetailsPage() {
@@ -94,8 +103,8 @@ function SearchIndexDetailsPage() {
     [searchIndexPermissions]
   );
 
-  const entityFQN = useMemo(
-    () => encodeURIComponent(decodeURIComponent(searchIndexFQN)),
+  const decodedSearchIndexFQN = useMemo(
+    () => getDecodedFqn(searchIndexFQN),
     [searchIndexFQN]
   );
 
@@ -103,7 +112,7 @@ function SearchIndexDetailsPage() {
     setLoading(true);
     try {
       const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(entityFQN, fields);
+      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, fields);
 
       setSearchIndexDetails(details);
       addToRecentViewed({
@@ -172,13 +181,12 @@ function SearchIndexDetailsPage() {
     [getEntityPermissionByFqn]
   );
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.SEARCH_INDEX, entityFQN, setFeedCount);
-  };
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.SEARCH_INDEX, decodedSearchIndexFQN, setFeedCount);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getSearchIndexTabPath(entityFQN, activeKey));
+      history.push(getSearchIndexTabPath(searchIndexFQN, activeKey));
     }
   };
 
@@ -300,14 +308,7 @@ function SearchIndexDetailsPage() {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 
@@ -329,7 +330,7 @@ function SearchIndexDetailsPage() {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={searchIndexDetails?.description}
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               entityName={entityName}
               entityType={EntityType.SEARCH_INDEX}
               hasEditAccess={
@@ -345,7 +346,7 @@ function SearchIndexDetailsPage() {
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <SearchIndexFieldsTab
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               fields={searchIndexDetails?.fields ?? []}
               hasDescriptionEditAccess={
                 searchIndexPermissions.EditAll ||
@@ -368,7 +369,7 @@ function SearchIndexDetailsPage() {
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               entityType={EntityType.SEARCH_INDEX}
               permission={
                 (searchIndexPermissions.EditAll ||
@@ -383,7 +384,7 @@ function SearchIndexDetailsPage() {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               entityType={EntityType.SEARCH_INDEX}
               permission={
                 (searchIndexPermissions.EditAll ||
@@ -526,18 +527,12 @@ function SearchIndexDetailsPage() {
   ]);
 
   const onTierUpdate = useCallback(
-    async (newTier?: string) => {
+    async (newTier?: Tag) => {
       if (searchIndexDetails) {
-        const tierTag: SearchIndex['tags'] = newTier
-          ? [
-              ...getTagsWithoutTier(searchIndexTags ?? []),
-              {
-                tagFQN: newTier,
-                labelType: LabelType.Manual,
-                state: State.Confirmed,
-              },
-            ]
-          : getTagsWithoutTier(searchIndexTags ?? []);
+        const tierTag: SearchIndex['tags'] = updateTierTag(
+          searchIndexTags,
+          newTier
+        );
         const updatedSearchIndexDetails = {
           ...searchIndexDetails,
           tags: tierTag,
@@ -662,10 +657,10 @@ function SearchIndexDetailsPage() {
   }, []);
 
   useEffect(() => {
-    if (entityFQN) {
-      fetchResourcePermission(entityFQN);
+    if (searchIndexFQN) {
+      fetchResourcePermission(searchIndexFQN);
     }
-  }, [entityFQN]);
+  }, [searchIndexFQN]);
 
   useEffect(() => {
     if (viewPermission) {

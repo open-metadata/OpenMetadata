@@ -36,3 +36,6 @@ src/generated/antlr/
 
 # connection schemas
 src/jsons/connectionSchemas/
+
+# generated type
+src/generated

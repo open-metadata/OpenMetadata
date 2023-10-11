@@ -54,9 +54,14 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
-  public SearchIndexRepository(CollectionDAO dao) {
+  public SearchIndexRepository() {
     super(
-        SearchIndexResource.COLLECTION_PATH, Entity.SEARCH_INDEX, SearchIndex.class, dao.searchIndexDAO(), dao, "", "");
+        SearchIndexResource.COLLECTION_PATH,
+        Entity.SEARCH_INDEX,
+        SearchIndex.class,
+        Entity.getCollectionDAO().searchIndexDAO(),
+        "",
+        "");
     supportsSearch = true;
   }
 

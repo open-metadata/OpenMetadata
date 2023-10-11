@@ -18,6 +18,9 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
+import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
+import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
+import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -30,86 +33,86 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const AddAlertPage = withSuspenseFallback(
-  React.lazy(() => import('pages/AddAlertPage/AddAlertPage'))
+  React.lazy(() => import('../../pages/AddAlertPage/AddAlertPage'))
 );
 
 const ImportTeamsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/teams/ImportTeamsPage/ImportTeamsPage'))
+  React.lazy(() => import('../../pages/teams/ImportTeamsPage/ImportTeamsPage'))
 );
 const AddDataInsightReportAlert = withSuspenseFallback(
   React.lazy(
-    () => import('pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
+    () =>
+      import('../../pages/AddDataInsightReportAlert/AddDataInsightReportAlert')
   )
 );
 
 const AlertDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/AlertDetailsPage/AlertDetailsPage'))
+  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
 );
 
 const AlertsActivityFeedPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
+    () => import('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage')
   )
 );
 const AlertDataInsightReportPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/AlertDataInsightReportPage/AlertDataInsightReportPage')
+    () =>
+      import(
+        '../../pages/AlertDataInsightReportPage/AlertDataInsightReportPage'
+      )
   )
 );
 
 const AlertsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/AlertsPage/AlertsPage'))
+  React.lazy(() => import('../../pages/AlertsPage/AlertsPage'))
 );
 
 const TeamsPage = withSuspenseFallback(
-  React.lazy(() => import('pages/teams/TeamsPage'))
+  React.lazy(() => import('../../pages/teams/TeamsPage'))
 );
 
 const ServicesPage = withSuspenseFallback(
-  React.lazy(() => import('pages/services/ServicesPage'))
+  React.lazy(() => import('../../pages/services/ServicesPage'))
 );
 const BotsPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/BotsPageV1/BotsPageV1.component'))
+  React.lazy(() => import('../../pages/BotsPageV1/BotsPageV1.component'))
 );
 const CustomPropertiesPageV1 = withSuspenseFallback(
   React.lazy(
-    () => import('pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
+    () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
 const RolesListPage = withSuspenseFallback(
-  React.lazy(() => import('pages/RolesPage/RolesListPage/RolesListPage'))
+  React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
 const RolesDetailPage = withSuspenseFallback(
-  React.lazy(() => import('pages/RolesPage/RolesDetailPage/RolesDetailPage'))
+  React.lazy(
+    () => import('../../pages/RolesPage/RolesDetailPage/RolesDetailPage')
+  )
 );
 
 const PoliciesDetailPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
+    () =>
+      import('../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage')
   )
 );
 const PoliciesListPage = withSuspenseFallback(
   React.lazy(
-    () => import('pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
+    () => import('../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage')
   )
 );
 
 const UserListPageV1 = withSuspenseFallback(
-  React.lazy(() => import('pages/UserListPage/UserListPageV1'))
-);
-
-const ElasticSearchIndexPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('pages/ElasticSearchIndexPage/ElasticSearchReIndexPage.component')
-  )
+  React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
 );
 
 const DataInsightsSettingsPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        'pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
+        '../../pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
       )
   )
 );
@@ -117,13 +120,17 @@ const DataInsightsSettingsPage = withSuspenseFallback(
 const EmailConfigSettingsPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component')
+      import(
+        '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component'
+      )
   )
 );
 const CustomLogoConfigSettingsPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import('pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage')
+      import(
+        '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage'
+      )
   )
 );
 
@@ -169,6 +176,23 @@ const GlobalSettingRouter = () => {
         )}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={PersonaDetailsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA,
+          true
+        )}
+      />
       {/* Roles route start
        * Do not change the order of these route
        */}
@@ -233,17 +257,6 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={ElasticSearchIndexPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.SEARCH,
-          true
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={DataInsightsSettingsPage}
         hasPermission={false}
         path={getSettingPath(
@@ -268,6 +281,14 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPageSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_DASHBOARDS
         )}
       />
 
@@ -346,6 +367,7 @@ const GlobalSettingRouter = () => {
           true
         )}
       />
+
       <AdminProtectedRoute
         exact
         component={AlertDataInsightReportPage}

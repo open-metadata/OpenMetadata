@@ -12,17 +12,16 @@
  */
 
 import { render } from '@testing-library/react';
-import { AuthContext } from 'components/authentication/auth-provider/AuthProvider';
 import React from 'react';
 import App from './App';
+import { AuthContext } from './components/authentication/auth-provider/AuthProvider';
+import { IAuthContext } from './components/authentication/auth-provider/AuthProvider.interface';
 
-const authContext = jest.fn();
-
-jest.mock('components/router/AppRouter', () => {
+jest.mock('./components/router/AppRouter', () => {
   return jest.fn().mockReturnValue(<p>AppRouter</p>);
 });
 
-jest.mock('components/authentication/auth-provider/AuthProvider', () => {
+jest.mock('./components/authentication/auth-provider/AuthProvider', () => {
   return {
     AuthProvider: jest
       .fn()
@@ -35,7 +34,7 @@ jest.mock('components/authentication/auth-provider/AuthProvider', () => {
 
 it('renders learn react link', () => {
   const { getAllByTestId } = render(
-    <AuthContext.Provider value={{ authContext }}>
+    <AuthContext.Provider value={{} as IAuthContext}>
       <App />
     </AuthContext.Provider>
   );

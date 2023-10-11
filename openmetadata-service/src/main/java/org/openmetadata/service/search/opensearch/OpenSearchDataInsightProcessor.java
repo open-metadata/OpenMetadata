@@ -9,16 +9,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.ProcessorException;
-import org.openmetadata.service.search.IndexUtil;
-import org.openmetadata.service.search.SearchIndexDefinition;
 import org.openmetadata.service.search.indexes.ReportDataIndexes;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.update.UpdateRequest;
-import org.opensearch.common.xcontent.XContentType;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.common.xcontent.XContentType;
 
 @Slf4j
 public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, ResultList<ReportData>> {
@@ -64,8 +64,8 @@ public class OpenSearchDataInsightProcessor implements Processor<BulkRequest, Re
   }
 
   private UpdateRequest getUpdateRequest(String entityType, ReportData reportData) {
-    SearchIndexDefinition.ElasticSearchIndexType indexType = IndexUtil.getIndexMappingByEntityType(entityType);
-    UpdateRequest updateRequest = new UpdateRequest(indexType.indexName, reportData.getId().toString());
+    IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+    UpdateRequest updateRequest = new UpdateRequest(indexMapping.getIndexName(), reportData.getId().toString());
     updateRequest.doc(JsonUtils.pojoToJson(new ReportDataIndexes(reportData).buildESDoc()), XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

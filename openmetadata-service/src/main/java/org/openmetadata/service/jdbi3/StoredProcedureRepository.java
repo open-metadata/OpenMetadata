@@ -20,13 +20,12 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
-  public StoredProcedureRepository(CollectionDAO dao) {
+  public StoredProcedureRepository() {
     super(
         StoredProcedureResource.COLLECTION_PATH,
         STORED_PROCEDURE,
         StoredProcedure.class,
-        dao.storedProcedureDAO(),
-        dao,
+        Entity.getCollectionDAO().storedProcedureDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;

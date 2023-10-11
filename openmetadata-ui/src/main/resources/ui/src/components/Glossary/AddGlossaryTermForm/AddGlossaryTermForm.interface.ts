@@ -12,13 +12,13 @@
  */
 
 import { FormInstance } from 'antd';
-import { CreateGlossaryTerm } from 'generated/api/data/createGlossaryTerm';
+import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
   GlossaryTerm,
   TagLabel,
   TermReference,
-} from 'generated/entity/data/glossaryTerm';
-import { EntityReference } from 'generated/type/entityLineage';
+} from '../../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../../generated/type/entityLineage';
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;

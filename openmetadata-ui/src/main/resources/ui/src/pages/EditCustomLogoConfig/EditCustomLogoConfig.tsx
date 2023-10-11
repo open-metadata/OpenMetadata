@@ -12,32 +12,32 @@
  */
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import ResizablePanels from 'components/common/ResizablePanels/ResizablePanels';
-import ServiceDocPanel from 'components/common/ServiceDocPanel/ServiceDocPanel';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import Loader from 'components/Loader/Loader';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from 'constants/GlobalSettings.constants';
-import {
-  CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY,
-  OPEN_METADATA,
-} from 'constants/service-guide.constant';
-import { ServiceCategory } from 'enums/service.enum';
-import { LogoConfiguration } from 'generated/configuration/applicationConfiguration';
-import { Settings, SettingType } from 'generated/settings/settings';
-import { FieldProp, FieldTypes } from 'interface/FormUtils.interface';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
+import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
+import Loader from '../../components/Loader/Loader';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
+import {
+  CUSTOM_LOGO_CONFIG_SERVICE_CATEGORY,
+  OPEN_METADATA,
+} from '../../constants/service-guide.constant';
+import { ServiceCategory } from '../../enums/service.enum';
+import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { Settings, SettingType } from '../../generated/settings/settings';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
-} from 'rest/settingConfigAPI';
-import { generateFormFields } from 'utils/formUtils';
-import { getSettingPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+} from '../../rest/settingConfigAPI';
+import { generateFormFields } from '../../utils/formUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const EditCustomLogoConfig = () => {
   const { t } = useTranslation();

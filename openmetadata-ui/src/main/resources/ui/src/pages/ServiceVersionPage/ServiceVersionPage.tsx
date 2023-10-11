@@ -13,60 +13,60 @@
 
 import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import DataAssetsVersionHeader from 'components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import EntityVersionTimeLine from 'components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from 'components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
+import { isEmpty, toString } from 'lodash';
+import { PagingWithoutTotal, ServiceTypes } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
-} from 'constants/constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
-import { ServiceCategory } from 'enums/service.enum';
-import { ChangeDescription } from 'generated/entity/type';
-import { EntityHistory } from 'generated/type/entityHistory';
-import { Include } from 'generated/type/include';
-import { Paging } from 'generated/type/paging';
-import { ServicesType } from 'interface/service.interface';
-import { isEmpty, toString } from 'lodash';
-import { PagingWithoutTotal, ServiceTypes } from 'Models';
-import { ServicePageData } from 'pages/ServiceDetailsPage/ServiceDetailsPage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { getDashboards } from 'rest/dashboardAPI';
-import { getDatabases } from 'rest/databaseAPI';
-import { getMlModels } from 'rest/mlModelAPI';
-import { getPipelines } from 'rest/pipelineAPI';
-import { getSearchIndexes } from 'rest/SearchIndexAPI';
+} from '../../constants/constants';
+import { EntityField } from '../../constants/Feeds.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ServiceCategory } from '../../enums/service.enum';
+import { ChangeDescription } from '../../generated/entity/type';
+import { EntityHistory } from '../../generated/type/entityHistory';
+import { Include } from '../../generated/type/include';
+import { Paging } from '../../generated/type/paging';
+import { ServicesType } from '../../interface/service.interface';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getDashboards } from '../../rest/dashboardAPI';
+import { getDatabases } from '../../rest/databaseAPI';
+import { getMlModels } from '../../rest/mlModelAPI';
+import { getPipelines } from '../../rest/pipelineAPI';
+import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
   getServiceByFQN,
   getServiceVersionData,
   getServiceVersions,
-} from 'rest/serviceAPI';
-import { getContainers } from 'rest/storageAPI';
-import { getTopics } from 'rest/topicsAPI';
-import { getEntityName } from 'utils/EntityUtils';
+} from '../../rest/serviceAPI';
+import { getContainers } from '../../rest/storageAPI';
+import { getTopics } from '../../rest/topicsAPI';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
-} from 'utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from 'utils/PermissionsUtils';
-import { getServiceVersionPath } from 'utils/RouterUtils';
+} from '../../utils/EntityVersionUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getServiceVersionPath } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
-} from 'utils/ServiceUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
+} from '../../utils/ServiceUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
@@ -97,6 +97,11 @@ function ServiceVersionPage() {
   );
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
+  );
+
+  const decodedServiceFQN = useMemo(
+    () => getDecodedFqn(serviceFQN),
+    [serviceFQN]
   );
 
   const [entityType, resourceEntity] = useMemo(
@@ -167,7 +172,7 @@ function ServiceVersionPage() {
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,tags,usageSummary',
         paging
       );
@@ -175,65 +180,65 @@ function ServiceVersionPage() {
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchTopics = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
-        serviceFQN,
+        decodedServiceFQN,
         'owner,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,usageSummary,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchMlModal = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchContainers = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
-        service: getDecodedFqn(serviceFQN),
+        service: decodedServiceFQN,
         fields: 'owner,tags',
         paging,
         root: true,
@@ -243,13 +248,13 @@ function ServiceVersionPage() {
       setData(response.data);
       setPaging(response.paging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchSearchIndexes = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
-        service: getDecodedFqn(serviceFQN),
+        service: decodedServiceFQN,
         fields: 'owner,tags',
         paging,
         root: true,
@@ -259,7 +264,7 @@ function ServiceVersionPage() {
       setData(response.data);
       setPaging(response.paging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const getOtherDetails = useCallback(

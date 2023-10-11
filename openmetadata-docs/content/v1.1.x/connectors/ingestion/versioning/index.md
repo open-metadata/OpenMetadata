@@ -13,7 +13,7 @@ Changes in metadata result in version changes as follows:
 
 Metadata versioning helps **simplify debugging processes**. View the version history to see if a recent change led to a data issue. Data owners and admins can review changes and revert if necessary.
 
-Versioning also helps in **broader collaboration** among consumers and producers of data. Admins can provide access to more users in the organization to change certain fields. Crow sourcing makes metadata the collective responsibility of the entire organization.
+Versioning also helps in **broader collaboration** among consumers and producers of data. Admins can provide access to more users in the organization to change certain fields. Crowd sourcing makes metadata the collective responsibility of the entire organization.
 
 {% image
   src="/images/v1.1/features/ingestion/versioning/metadata-versioning.gif"

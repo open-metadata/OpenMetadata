@@ -9,12 +9,11 @@ import org.openmetadata.service.resources.services.database.DatabaseServiceResou
 public class MetadataServiceRepository extends ServiceEntityRepository<MetadataService, MetadataConnection> {
   private static final String UPDATE_FIELDS = "owner,tags,connection";
 
-  public MetadataServiceRepository(CollectionDAO dao) {
+  public MetadataServiceRepository() {
     super(
         DatabaseServiceResource.COLLECTION_PATH,
         Entity.METADATA_SERVICE,
-        dao,
-        dao.metadataServiceDAO(),
+        Entity.getCollectionDAO().metadataServiceDAO(),
         MetadataConnection.class,
         UPDATE_FIELDS,
         ServiceType.METADATA);

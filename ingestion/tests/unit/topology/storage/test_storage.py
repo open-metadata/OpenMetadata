@@ -65,7 +65,7 @@ MOCK_OBJECT_STORE_CONFIG = {
                 "storageMetadataConfigSource": {
                     "securityConfig": {"awsRegion": "us-east-1"},
                     "prefixConfig": {
-                        "bucketName": "test_bucket",
+                        "containerName": "test_bucket",
                         "objectPrefix": "manifest",
                     },
                 },
@@ -176,7 +176,7 @@ class StorageUnitTest(TestCase):
                     "storageMetadataConfigSource": {
                         "securityConfig": {"awsRegion": "us-east-1"},
                         "prefixConfig": {
-                            "bucketName": "test_bucket",
+                            "containerName": "test_bucket",
                             "objectPrefix": "manifest",
                         },
                     },

@@ -12,17 +12,17 @@
  */
 
 import { Col, Row } from 'antd';
-import PageHeader from 'components/header/PageHeader.component';
-import AddIngestionButton from 'components/Ingestion/AddIngestionButton.component';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import SettingsIngestion from 'components/SettingsIngestion/SettingsIngestion.component';
-import { OPEN_METADATA } from 'constants/Services.constant';
-import { ServiceCategory } from 'enums/service.enum';
-import { PipelineType } from 'generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from 'generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ServicesType } from 'interface/service.interface';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import PageHeader from '../../components/header/PageHeader.component';
+import AddIngestionButton from '../../components/Ingestion/AddIngestionButton.component';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import SettingsIngestion from '../../components/SettingsIngestion/SettingsIngestion.component';
+import { OPEN_METADATA } from '../../constants/Services.constant';
+import { ServiceCategory } from '../../enums/service.enum';
+import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ServicesType } from '../../interface/service.interface';
 
 function DataInsightsSettingsPage() {
   const { t } = useTranslation();

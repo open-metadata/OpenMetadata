@@ -16,15 +16,15 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import StarterKit from '@tiptap/starter-kit';
-import DiffView from 'components/BlockEditor/Extensions/diffView';
-import { Hashtag } from 'components/BlockEditor/Extensions/hashtag';
-import { hashtagSuggestion } from 'components/BlockEditor/Extensions/hashtag/hashtagSuggestion';
-import { Image } from 'components/BlockEditor/Extensions/image';
-import { Mention } from 'components/BlockEditor/Extensions/mention';
-import { mentionSuggestion } from 'components/BlockEditor/Extensions/mention/mentionSuggestions';
-import slashCommand from 'components/BlockEditor/Extensions/slashCommand';
-import { getSuggestionItems } from 'components/BlockEditor/Extensions/slashCommand/items';
-import renderItems from 'components/BlockEditor/Extensions/slashCommand/renderItems';
+import DiffView from '../components/BlockEditor/Extensions/diffView';
+import { Hashtag } from '../components/BlockEditor/Extensions/hashtag';
+import { hashtagSuggestion } from '../components/BlockEditor/Extensions/hashtag/hashtagSuggestion';
+import { Image } from '../components/BlockEditor/Extensions/image';
+import { Mention } from '../components/BlockEditor/Extensions/mention';
+import { mentionSuggestion } from '../components/BlockEditor/Extensions/mention/mentionSuggestions';
+import slashCommand from '../components/BlockEditor/Extensions/slashCommand';
+import { getSuggestionItems } from '../components/BlockEditor/Extensions/slashCommand/items';
+import renderItems from '../components/BlockEditor/Extensions/slashCommand/renderItems';
 
 export const EDITOR_OPTIONS: Partial<EditorOptions> = {
   extensions: [
@@ -39,33 +39,12 @@ export const EDITOR_OPTIONS: Partial<EditorOptions> = {
       showOnlyCurrent: false,
       emptyEditorClass: 'is-editor-empty',
       emptyNodeClass: 'is-node-empty',
-      placeholder: ({ node, editor: coreEditor }) => {
+      placeholder: ({ editor: coreEditor }) => {
         if (coreEditor.isDestroyed) {
           return '';
         }
 
-        const headingPlaceholders: {
-          [key: number]: string;
-        } = {
-          1: 'Heading 1',
-          2: 'Heading 2',
-          3: 'Heading 3',
-        };
-
-        if (node.type.name === 'heading') {
-          const level = node.attrs.level as number;
-
-          return headingPlaceholders[level];
-        }
-
-        if (
-          node.type.name === 'paragraph' &&
-          coreEditor.getJSON().content?.length === 1
-        ) {
-          return 'Type / to get started';
-        }
-
-        return 'Type / for commands';
+        return 'Type "/" for commands...';
       },
     }),
     LinkExtension.configure({

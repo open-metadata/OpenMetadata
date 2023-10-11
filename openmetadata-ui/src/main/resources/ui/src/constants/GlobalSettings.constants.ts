@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
 
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
@@ -28,6 +28,7 @@ export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
   TEAMS = 'teams',
+  PERSONA = 'persona',
   ROLES = 'roles',
   POLICIES = 'policies',
   DATABASES = 'databases',
@@ -57,6 +58,7 @@ export enum GlobalSettingOptions {
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
   CUSTOM_LOGO = 'customLogo',
+  CUSTOM_DASHBOARDS = 'customDashboards',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
 }

@@ -38,8 +38,8 @@ public class KpiRepository extends EntityRepository<Kpi> {
       "targetDefinition,dataInsightChart,description,startDate,endDate,metricType";
   public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
-  public KpiRepository(CollectionDAO dao) {
-    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, dao.kpiDAO(), dao, PATCH_FIELDS, UPDATE_FIELDS);
+  public KpiRepository() {
+    super(KpiResource.COLLECTION_PATH, KPI, Kpi.class, Entity.getCollectionDAO().kpiDAO(), PATCH_FIELDS, UPDATE_FIELDS);
   }
 
   @Override

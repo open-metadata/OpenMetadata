@@ -12,23 +12,27 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import { ROUTES } from 'constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare } from 'fast-json-patch';
-import { Domain } from 'generated/entity/domains/domain';
-import { Operation } from 'generated/entity/policies/policy';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { deleteDomain, getDomainByName, patchDomains } from 'rest/domainAPI';
-import { checkPermission } from 'utils/PermissionsUtils';
-import { getDomainPath } from 'utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from 'utils/ToastUtils';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import { ROUTES } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { Domain } from '../../generated/entity/domains/domain';
+import { Operation } from '../../generated/entity/policies/policy';
+import {
+  deleteDomain,
+  getDomainByName,
+  patchDomains,
+} from '../../rest/domainAPI';
+import { checkPermission } from '../../utils/PermissionsUtils';
+import { getDomainPath } from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -39,7 +43,8 @@ const DomainPage = () => {
   const { fqn } = useParams<{ fqn: string }>();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
-  const { domains, refreshDomains, updateDomains } = useDomainProvider();
+  const { domains, refreshDomains, updateDomains, domainLoading } =
+    useDomainProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [activeDomain, setActiveDomain] = useState<Domain>();
@@ -110,8 +115,8 @@ const DomainPage = () => {
             ? getDomainPath(updatedDomains[0].fullyQualifiedName)
             : getDomainPath();
 
-        history.push(domainPath);
         refreshDomains();
+        history.push(domainPath);
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -140,13 +145,13 @@ const DomainPage = () => {
   };
 
   useEffect(() => {
-    if (domainFqn) {
+    if (domainFqn && domains.length > 0) {
       fetchDomainByName(domainFqn);
     }
-  }, [domainFqn]);
+  }, [domainFqn, domains]);
 
   useEffect(() => {
-    if (domains.length > 0 && !domainFqn) {
+    if (domains.length > 0 && !domainFqn && !domainLoading) {
       history.push(getDomainPath(domains[0].fullyQualifiedName));
     }
   }, [domains, domainFqn]);

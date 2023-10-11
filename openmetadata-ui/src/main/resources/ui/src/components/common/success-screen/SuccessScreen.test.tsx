@@ -12,10 +12,10 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { PIPELINE_SERVICE_PLATFORM } from 'constants/Services.constant';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React from 'react';
+import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { FormSubmitType } from '../../../enums/form.enum';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import SuccessScreen, { SuccessScreenProps } from './SuccessScreen';
 
 jest.mock('../../../hooks/useAirflowStatus', () => ({

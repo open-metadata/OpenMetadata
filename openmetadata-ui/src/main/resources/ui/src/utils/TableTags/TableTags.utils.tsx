@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { TableTagsProps } from 'components/TableTags/TableTags.interface';
-import { TagLabel, TagSource } from 'generated/type/tagLabel';
 import { reduce } from 'lodash';
 import { TagFilterOptions, TagsData } from 'Models';
+import { TableTagsProps } from '../../components/TableTags/TableTags.interface';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 
 export const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
   reduce(

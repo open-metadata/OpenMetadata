@@ -42,7 +42,6 @@ import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -66,11 +65,10 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjects;
-import org.openmetadata.schema.api.configuration.extension.Extension;
-import org.openmetadata.schema.api.configuration.extension.ExtensionConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -81,7 +79,6 @@ import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
-import org.openmetadata.service.extension.OpenMetadataExtension;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -98,7 +95,7 @@ import org.openmetadata.service.monitoring.EventMonitorPublisher;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.SearchEventPublisher;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -122,7 +119,6 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
-import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -130,7 +126,6 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
-  private static CollectionDAO collectionDAO;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -145,12 +140,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-    collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
     JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
+    CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+    Entity.setCollectionDAO(collectionDAO);
     environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
+    // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
+    // repository
+    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
-    Entity.initializeRepositories(collectionDAO);
+    Entity.initializeRepositories(jdbi);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
@@ -200,10 +199,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // start event hub before registering publishers
     EventPubSub.start();
 
-    registerResources(catalogConfig, environment, jdbi, collectionDAO);
+    registerResources(catalogConfig, environment, jdbi);
 
     // Register Event Handler
-    registerEventFilter(catalogConfig, environment, jdbiUnitOfWorkProvider);
+    registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -213,10 +212,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // start authorizer after event publishers
     // authorizer creates admin/bot users, ES publisher should start before to index users created by authorizer
-    authorizer.init(catalogConfig, collectionDAO);
+    authorizer.init(catalogConfig);
 
     // authenticationHandler Handles auth related activities
-    authenticatorHandler.init(catalogConfig, collectionDAO);
+    authenticatorHandler.init(catalogConfig);
 
     webAnalyticEvents = MicrometerBundleSingleton.latencyTimer(catalogConfig.getEventMonitorConfiguration());
     FilterRegistration.Dynamic micrometerFilter =
@@ -232,32 +231,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     String pathPattern = "/" + '*';
     environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
 
-    registerExtensions(catalogConfig, environment, jdbi);
-
     // Handle Pipeline Service Client Status job
     PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
         PipelineServiceStatusJobHandler.create(
             catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
     pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
-  }
-
-  private void registerExtensions(OpenMetadataApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
-    ExtensionConfiguration extensionConfiguration = catalogConfig.getExtensionConfiguration();
-    if (extensionConfiguration != null) {
-      for (Extension extension : extensionConfiguration.getExtensions()) {
-        try {
-          OpenMetadataExtension omExtension =
-              Class.forName(extension.getClassName())
-                  .asSubclass(OpenMetadataExtension.class)
-                  .getConstructor()
-                  .newInstance();
-          omExtension.init(extension, catalogConfig, environment, jdbi);
-          LOG.info("[OmExtension] Registering Extension: {}", extension.getClassName());
-        } catch (Exception ex) {
-          LOG.error("[OmExtension] Failed in registering Extension {}", extension.getClassName());
-        }
-      }
-    }
   }
 
   private void registerSamlHandlers(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -365,7 +343,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Validating native migrations");
     ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
     MigrationWorkflow migrationWorkflow =
-        new MigrationWorkflow(jdbi, conf.getMigrationConfiguration().getNativePath(), connectionType, false);
+        new MigrationWorkflow(
+            jdbi,
+            conf.getMigrationConfiguration().getNativePath(),
+            connectionType,
+            conf.getMigrationConfiguration().getExtensionPath(),
+            false);
+    migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();
   }
 
@@ -424,23 +408,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerEventFilter(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment, JdbiUnitOfWorkProvider provider) {
+  private void registerEventFilter(OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
-      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, provider);
+      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
-      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
-      environment.jersey().register(reindexingJobs);
     }
   }
 
   private void registerEventPublisher(OpenMetadataApplicationConfig openMetadataApplicationConfig) {
-    // register ElasticSearch Event publisher
-    if (openMetadataApplicationConfig.getElasticSearchConfiguration() != null) {
-      SearchEventPublisher searchEventPublisher =
-          new SearchEventPublisher(openMetadataApplicationConfig.getElasticSearchConfiguration(), collectionDAO);
-      EventPubSub.addEventHandler(searchEventPublisher);
-    }
 
     if (openMetadataApplicationConfig.getEventMonitorConfiguration() != null) {
       final EventMonitor eventMonitor =
@@ -453,13 +428,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerResources(
-      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi, CollectionDAO daoObject) {
-    List<String> extensionResources =
-        config.getExtensionConfiguration() != null ? config.getExtensionConfiguration().getResourcePackage() : null;
-    CollectionRegistry.initialize(extensionResources);
-    CollectionRegistry.getInstance()
-        .registerResources(jdbi, environment, config, daoObject, authorizer, authenticatorHandler);
+  private void registerResources(OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+    CollectionRegistry.initialize();
+    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
@@ -518,6 +489,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       ReportsHandler.shutDown();
+      AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

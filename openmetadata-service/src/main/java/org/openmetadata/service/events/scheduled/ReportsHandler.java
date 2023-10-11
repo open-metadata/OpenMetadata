@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.TriggerConfig;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp;
 import org.openmetadata.service.exception.DataInsightJobException;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchRepository;
@@ -54,8 +55,8 @@ public class ReportsHandler {
   private final Scheduler reportScheduler = new StdSchedulerFactory().getScheduler();
   private static final ConcurrentHashMap<UUID, JobDetail> reportJobKeyMap = new ConcurrentHashMap<>();
 
-  private ReportsHandler(SearchRepository searchRepository) throws SchedulerException {
-    this.searchRepository = searchRepository;
+  private ReportsHandler() throws SchedulerException {
+    this.searchRepository = Entity.getSearchRepository();
     this.chartRepository = (DataInsightChartRepository) Entity.getEntityRepository(Entity.DATA_INSIGHT_CHART);
     this.reportScheduler.start();
   }
@@ -69,9 +70,9 @@ public class ReportsHandler {
     return reportJobKeyMap;
   }
 
-  public static void initialize(SearchRepository searchRepository) throws SchedulerException {
+  public static void initialize() throws SchedulerException {
     if (!initialized) {
-      instance = new ReportsHandler(searchRepository);
+      instance = new ReportsHandler();
       initialized = true;
     } else {
       LOG.info("Reindexing Handler is already initialized");
@@ -113,7 +114,7 @@ public class ReportsHandler {
       dataMap.put(SEARCH_CLIENT, searchRepository);
       dataMap.put(EVENT_SUBSCRIPTION, subscription);
       JobBuilder jobBuilder =
-          JobBuilder.newJob(DataInsightsReportJob.class)
+          JobBuilder.newJob(SearchIndexApp.class)
               .withIdentity(DATA_INSIGHT_EMAIL_JOB, EMAIL_REPORT)
               .usingJobData(dataMap);
       return jobBuilder.build();

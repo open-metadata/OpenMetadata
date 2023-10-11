@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TransportationStrategy } from 'generated/email/smtpSettings';
+import { TransportationStrategy } from '../generated/email/smtpSettings';
 
 export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
   TransportationStrategy

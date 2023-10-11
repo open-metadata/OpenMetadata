@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { MOCKED_GLOSSARY_TERMS, MOCK_PERMISSIONS } from 'mocks/Glossary.mock';
 import React from 'react';
+import {
+  MOCKED_GLOSSARY_TERMS,
+  MOCK_PERMISSIONS,
+} from '../../../../mocks/Glossary.mock';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 
 const onGlossaryTermUpdate = jest.fn();

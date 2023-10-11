@@ -13,7 +13,6 @@
 
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
-import DocumentTitle from 'components/DocumentTitle/DocumentTitle';
 import React, {
   CSSProperties,
   FC,
@@ -22,6 +21,7 @@ import React, {
   ReactNode,
   useMemo,
 } from 'react';
+import DocumentTitle from '../../components/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {

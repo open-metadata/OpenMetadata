@@ -17,8 +17,8 @@ import unittest
 import uuid
 from unittest.mock import MagicMock, patch
 
-from metadata.data_insight.processor.data_processor import DataProcessor
-from metadata.data_insight.processor.entity_report_data_processor import (
+from metadata.data_insight.processor.reports.data_processor import DataProcessor
+from metadata.data_insight.processor.reports.entity_report_data_processor import (
     EntityReportDataProcessor,
 )
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -62,7 +62,9 @@ class EntityReportProcessorTest(unittest.TestCase):
     def test_fetch_owner(self, mocked_ometa):
         """Check fecth owner returns the expected value"""
 
-        processor = DataProcessor.create("EntityReportData", mocked_ometa)
+        processor = DataProcessor.create(
+            ReportDataType.entityReportData.value, mocked_ometa
+        )
         mocked_ometa.get_by_name.return_value = USER
         owner = processor._get_team(self.chart.owner)
         assert owner == "marketing"
@@ -126,7 +128,7 @@ class EntityReportProcessorTest(unittest.TestCase):
         expected = [
             ReportData(
                 timestamp=1695324826495,
-                reportDataType=ReportDataType.EntityReportData.value,
+                reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
                     serviceName="DashboardService",
@@ -140,7 +142,7 @@ class EntityReportProcessorTest(unittest.TestCase):
             ),
             ReportData(
                 timestamp=1695324826495,
-                reportDataType=ReportDataType.EntityReportData.value,
+                reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
                     serviceName="DashboardService",
@@ -154,7 +156,7 @@ class EntityReportProcessorTest(unittest.TestCase):
             ),
             ReportData(
                 timestamp=1695324826495,
-                reportDataType=ReportDataType.EntityReportData.value,
+                reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
                     serviceName="DashboardService",
@@ -168,7 +170,7 @@ class EntityReportProcessorTest(unittest.TestCase):
             ),
             ReportData(
                 timestamp=1695324826495,
-                reportDataType=ReportDataType.EntityReportData.value,
+                reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Table",
                     serviceName="TableService",
@@ -183,8 +185,13 @@ class EntityReportProcessorTest(unittest.TestCase):
         ]
 
         processed = []
+        processor = EntityReportDataProcessor(mocked_om)
+        processor._refined_data = (
+            data  # we'll patch the refined data with the mock data
+        )
+        processor._post_hook_fn()  # we'll call the post hook function to flatten the data
 
-        for flat_result in EntityReportDataProcessor(mocked_om)._flatten_results(data):
+        for flat_result in processor.yield_refined_data():
             flat_result.timestamp = 1695324826495
             processed.append(flat_result)
             assert all(

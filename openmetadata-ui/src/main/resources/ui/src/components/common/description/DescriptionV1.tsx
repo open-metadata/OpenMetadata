@@ -13,22 +13,22 @@
 
 import Icon from '@ant-design/icons';
 import { Card, Space, Tooltip, Typography } from 'antd';
-import { ReactComponent as CommentIcon } from 'assets/svg/comment.svg';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as RequestIcon } from 'assets/svg/request-icon.svg';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { EntityType } from 'enums/entity.enum';
 import { t } from 'i18next';
 import React, { useMemo } from 'react';
 import { useHistory } from 'react-router';
+import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
   TASK_ENTITIES,
-} from 'utils/TasksUtils';
-import { EntityField } from '../../../constants/Feeds.constants';
-import { Table } from '../../../generated/entity/data/table';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+} from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
@@ -64,7 +64,6 @@ const DescriptionV1 = ({
   isReadOnly = false,
   removeBlur = false,
   entityName,
-
   onThreadLinkSelect,
   entityType,
   entityFqn,

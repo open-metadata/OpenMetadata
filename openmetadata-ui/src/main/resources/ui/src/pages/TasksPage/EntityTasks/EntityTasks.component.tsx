@@ -12,25 +12,25 @@
  */
 
 import { Space, Tooltip } from 'antd';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { ENTITY_TASKS_TOOLTIP } from 'constants/entity.constants';
-import { EntityField } from 'constants/Feeds.constants';
-import { TagSource } from 'generated/type/tagLabel';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { getFieldThreadElement } from 'utils/FeedElementUtils';
+import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
+import { getFieldThreadElement } from '../../../utils/FeedElementUtils';
 import {
   getEntityTaskDetails,
   getRequestDescriptionPath,
   getRequestTagsPath,
   getUpdateDescriptionPath,
   getUpdateTagsPath,
-} from 'utils/TasksUtils';
-import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
+} from '../../../utils/TasksUtils';
 import { EntityTasksProps } from './EntityTasks.interface';
 
 const EntityTasks = ({

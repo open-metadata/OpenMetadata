@@ -12,10 +12,10 @@
  */
 
 import { Card, Typography } from 'antd';
-import Chip from 'components/common/Chip/Chip.component';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as UserIcons } from '../../../../assets/svg/user.svg';
+import Chip from '../../../../components/common/Chip/Chip.component';
 import { UserProfileInheritedRolesProps } from './UserProfileInheritedRoles.interface';
 
 const UserProfileInheritedRoles = ({
@@ -37,7 +37,7 @@ const UserProfileInheritedRoles = ({
       }>
       <Chip
         data={inheritedRoles ?? []}
-        icon={<UserIcons className="cursor-pointer" height={20} width={20} />}
+        icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-inherited-roles-found')}
       />
     </Card>

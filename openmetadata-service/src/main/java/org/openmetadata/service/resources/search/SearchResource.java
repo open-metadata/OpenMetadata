@@ -14,10 +14,10 @@
 package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_ENTITY_FQN_STREAM;
-import static org.openmetadata.service.search.IndexUtil.ELASTIC_SEARCH_EXTENSION;
-import static org.openmetadata.service.search.SearchIndexDefinition.getIndexMappingSchema;
+import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
 
+import es.org.elasticsearch.action.search.SearchResponse;
+import es.org.elasticsearch.search.suggest.Suggest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,18 +25,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -45,19 +37,13 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.search.suggest.Suggest;
-import org.openmetadata.schema.api.CreateEventPublisherJob;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.search.IndexUtil;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.ReIndexingHandler;
 
 @Slf4j
 @Path("/v1/search")
@@ -66,17 +52,13 @@ import org.openmetadata.service.util.ReIndexingHandler;
 @Collection(name = "elasticsearch")
 public class SearchResource {
   private final Authorizer authorizer;
-  private SearchRepository searchRepository;
+  private final SearchRepository searchRepository;
+
+  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM = "eventPublisher:ElasticSearch:STREAM";
 
   public SearchResource(Authorizer authorizer) {
     this.authorizer = authorizer;
-  }
-
-  public void initialize(OpenMetadataApplicationConfig config) {
-    if (config.getElasticSearchConfiguration() != null) {
-      searchRepository = IndexUtil.getSearchClient(config.getElasticSearchConfiguration(), Entity.getCollectionDAO());
-      ReIndexingHandler.initialize(searchRepository);
-    }
+    this.searchRepository = Entity.getSearchRepository();
   }
 
   @GET
@@ -334,22 +316,6 @@ public class SearchResource {
   }
 
   @GET
-  @Path("/reindex/latest")
-  @Operation(
-      operationId = "getLatestReindexBatchJob",
-      summary = "Get Latest Reindexing Batch Job",
-      description = "Fetches the Latest Reindexing Job",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "No Job Found")
-      })
-  public Response reindexLatestJob(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
-    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getLatestJob()).build();
-  }
-
-  @GET
   @Path("/reindex/stream/status")
   @Operation(
       operationId = "getStreamJobStatus",
@@ -374,107 +340,5 @@ public class SearchResource {
           .build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
-  }
-
-  @GET
-  @Path("/reindex/{jobId}")
-  @Operation(
-      operationId = "getBatchReindexBatchJobWithId",
-      summary = "Get Batch Reindexing Job with Id",
-      description = "Get reindex job with Id",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Not found")
-      })
-  public Response reindexJobWithId(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
-    // Only admins or bot can issue a reindex request
-    authorizer.authorizeAdminOrBot(securityContext);
-    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getJob(id)).build();
-  }
-
-  @GET
-  @Path("/mappings")
-  @Operation(
-      operationId = "getSearchMappingSchema",
-      summary = "Get Search Mapping Schema",
-      description = "Get Search Mapping Schema",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Not found")
-      })
-  public Response getElasticSearchMappingSchema(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "List of Entities to get schema for") @QueryParam("entityType") String entityType) {
-    // Only admins or bot can issue a reindex request
-    authorizer.authorizeAdminOrBot(securityContext);
-    Set<String> entities;
-    if (entityType == null) {
-      entities = new HashSet<>();
-      entities.add("*");
-    } else {
-      entities = new HashSet<>(Arrays.asList(entityType.replace(" ", "").split(",")));
-    }
-    return Response.status(Response.Status.OK).entity(getIndexMappingSchema(entities)).build();
-  }
-
-  @GET
-  @Path("/reindex")
-  @Operation(
-      operationId = "getAllReindexBatchJobs",
-      summary = "Get all reindex batch jobs",
-      description = "Get all reindex batch jobs",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Not found")
-      })
-  public Response reindexAllJobs(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
-    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().getAllJobs()).build();
-  }
-
-  @POST
-  @Path("/reindex")
-  @Operation(
-      operationId = "runBatchReindexing",
-      summary = "Run Batch Reindexing",
-      description = "Reindex Elastic Search Reindexing Entities",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
-      })
-  public Response reindexEntities(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateEventPublisherJob createRequest) {
-    // Only admins or bot can issue a reindex request
-    authorizer.authorizeAdminOrBot(securityContext);
-    return Response.status(Response.Status.CREATED)
-        .entity(
-            ReIndexingHandler.getInstance()
-                .createReindexingJob(securityContext.getUserPrincipal().getName(), createRequest))
-        .build();
-  }
-
-  @PUT
-  @Path("/reindex/stop/{jobId}")
-  @Operation(
-      operationId = "stopAJobWithId",
-      summary = "Stop Reindex Job",
-      description = "Stop a Reindex Job",
-      responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
-      })
-  public Response stopReindexJob(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "jobId Id", schema = @Schema(type = "UUID")) @PathParam("jobId") UUID id) {
-    authorizer.authorizeAdmin(securityContext);
-    return Response.status(Response.Status.OK).entity(ReIndexingHandler.getInstance().stopRunningJob(id)).build();
   }
 }

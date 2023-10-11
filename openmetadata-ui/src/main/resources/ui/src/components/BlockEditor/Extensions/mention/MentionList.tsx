@@ -13,9 +13,9 @@
 import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import ProfilePicture from 'components/common/ProfilePicture/ProfilePicture';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
-import { isInViewport } from 'utils/BlockEditorUtils';
+import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
+import { isInViewport } from '../../../../utils/BlockEditorUtils';
 import { ExtensionRef, SuggestionItem } from '../BlockEditor.interface';
 
 export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
@@ -111,7 +111,7 @@ export default forwardRef<ExtensionRef, SuggestionProps<SuggestionItem>>(
             key={item.id}
             onClick={() => selectItem(index)}>
             <ProfilePicture id="" name={item.name} type="circle" width="20" />
-            <Typography>{item.label}</Typography>
+            <Typography className="truncate w-max-200">{item.label}</Typography>
           </Space>
         ))}
       </Space>

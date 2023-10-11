@@ -23,7 +23,6 @@
  *  limitations under the License.
  */
 
-import { SamlSSOClientConfig } from 'generated/configuration/authenticationConfiguration';
 import React, {
   forwardRef,
   Fragment,
@@ -31,6 +30,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { oidcTokenKey } from '../../../constants/constants';
+import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthContext } from '../auth-provider/AuthProvider';
@@ -44,7 +44,7 @@ interface Props {
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useAuthContext();
-    const config: SamlSSOClientConfig = authConfig.samlConfiguration;
+    const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
 
     const login = async () => {
       if (config.idp.authorityUrl) {

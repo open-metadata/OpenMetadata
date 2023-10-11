@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { useAirflowStatus } from 'hooks/useAirflowStatus';
 import React from 'react';
+import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from './AirflowMessageBanner';
 
-jest.mock('hooks/useAirflowStatus', () => ({
+jest.mock('../../../hooks/useAirflowStatus', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
     reason: 'reason message',
     isAirflowAvailable: false,

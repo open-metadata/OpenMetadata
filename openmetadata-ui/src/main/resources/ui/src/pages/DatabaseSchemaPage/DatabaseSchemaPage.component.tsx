@@ -13,37 +13,10 @@
 
 import { Col, Row, Skeleton, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
-import ActivityFeedProvider, {
-  useActivityFeedProvider,
-} from 'components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from 'components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { CustomPropertyTable } from 'components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import { PagingHandlerParams } from 'components/common/next-previous/NextPrevious.interface';
-import PageLayoutV1 from 'components/containers/PageLayoutV1';
-import { DataAssetsHeader } from 'components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import Loader from 'components/Loader/Loader';
-import { EntityName } from 'components/Modals/EntityNameModal/EntityNameModal.interface';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { withActivityFeed } from 'components/router/withActivityFeed';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import TabsLabel from 'components/TabsLabel/TabsLabel.component';
-import TagsContainerV2 from 'components/Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from 'components/Tag/TagsViewer/TagsViewer.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
-import { ThreadType } from 'generated/entity/feed/thread';
-import { Include } from 'generated/type/include';
-import { LabelType, State, TagLabel, TagSource } from 'generated/type/tagLabel';
 import { isEmpty, isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
 import { EntityTags, PagingResponse } from 'Models';
-import StoredProcedureTab from 'pages/StoredProcedure/StoredProcedureTab';
 import React, {
   FunctionComponent,
   useCallback,
@@ -54,34 +27,63 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getDatabaseSchemaDetailsByFQN,
-  patchDatabaseSchemaDetails,
-  restoreDatabaseSchema,
-  updateDatabaseSchemaVotes,
-} from 'rest/databaseAPI';
-import { getFeedCount, postThread } from 'rest/feedsAPI';
-import {
-  getStoredProceduresList,
-  ListStoredProcedureParams,
-} from 'rest/storedProceduresAPI';
-import { getTableList, TableListParams } from 'rest/tableAPI';
-import { getEntityMissingError } from 'utils/CommonUtils';
-import { getDecodedFqn } from 'utils/StringsUtils';
 import { default as appState } from '../../AppState';
+import ActivityFeedProvider, {
+  useActivityFeedProvider,
+} from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import Loader from '../../components/Loader/Loader';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../components/PermissionProvider/PermissionProvider.interface';
+import { withActivityFeed } from '../../components/router/withActivityFeed';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
+import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
   getDatabaseSchemaDetailsPath,
   getVersionPathWithTab,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
+import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { ThreadType } from '../../generated/entity/feed/thread';
+import { Include } from '../../generated/type/include';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
+import StoredProcedureTab from '../../pages/StoredProcedure/StoredProcedureTab';
+import {
+  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseSchemaDetails,
+  restoreDatabaseSchema,
+  updateDatabaseSchemaVotes,
+} from '../../rest/databaseAPI';
+import { getFeedCount, postThread } from '../../rest/feedsAPI';
+import {
+  getStoredProceduresList,
+  ListStoredProcedureParams,
+} from '../../rest/storedProceduresAPI';
+import { getTableList, TableListParams } from '../../rest/tableAPI';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { StoredProcedureData } from './DatabaseSchemaPage.interface';
 import SchemaTablesTab from './SchemaTablesTab';
@@ -127,6 +129,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     paging: pagingObject,
     currentPage: INITIAL_PAGING_VALUE,
   });
+
+  const decodedDatabaseSchemaFQN = useMemo(
+    () => getDecodedFqn(databaseSchemaFQN),
+    [databaseSchemaFQN]
+  );
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
@@ -196,13 +203,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const getEntityFeedCount = useCallback(async () => {
     try {
       const response = await getFeedCount(
-        getEntityFeedLink(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)
+        getEntityFeedLink(EntityType.DATABASE_SCHEMA, decodedDatabaseSchemaFQN)
       );
       setFeedCount(response.totalCount);
     } catch (err) {
       // Error
     }
-  }, [databaseSchemaFQN]);
+  }, [decodedDatabaseSchemaFQN]);
 
   const fetchDatabaseSchemaDetails = useCallback(async () => {
     try {
@@ -228,7 +235,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         setStoredProcedure((prev) => ({ ...prev, isLoading: true }));
         const { data, paging } = await getStoredProceduresList({
-          databaseSchema: getDecodedFqn(databaseSchemaFQN),
+          databaseSchema: decodedDatabaseSchemaFQN,
           fields: 'owner,tags,followers',
           include: storedProcedure.deleted
             ? Include.Deleted
@@ -242,7 +249,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setStoredProcedure((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [databaseSchemaFQN, storedProcedure.deleted]
+    [decodedDatabaseSchemaFQN, storedProcedure.deleted]
   );
 
   const getSchemaTables = useCallback(
@@ -251,7 +258,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       try {
         const res = await getTableList({
           ...params,
-          databaseSchema: getDecodedFqn(databaseSchemaFQN),
+          databaseSchema: decodedDatabaseSchemaFQN,
           include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res);
@@ -261,7 +268,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setTableDataLoading(false);
       }
     },
-    [databaseSchemaFQN, showDeletedTables]
+    [decodedDatabaseSchemaFQN, showDeletedTables]
   );
 
   const onDescriptionEdit = useCallback((): void => {
@@ -320,13 +327,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       if (activeKey !== activeTab) {
         history.push({
           pathname: getDatabaseSchemaDetailsPath(
-            getDecodedFqn(databaseSchemaFQN),
+            decodedDatabaseSchemaFQN,
             activeKey
           ),
         });
       }
     },
-    [activeTab, databaseSchemaFQN]
+    [activeTab, decodedDatabaseSchemaFQN]
   );
 
   const handleUpdateOwner = useCallback(
@@ -380,29 +387,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 
   const handleUpdateTier = useCallback(
-    async (newTier?: string) => {
-      const tierTag = newTier
-        ? [
-            ...getTagsWithoutTier(databaseSchema?.tags ?? []),
-            {
-              tagFQN: newTier,
-              labelType: LabelType.Manual,
-              state: State.Confirmed,
-            },
-          ]
-        : getTagsWithoutTier(databaseSchema?.tags ?? []);
+    async (newTier?: Tag) => {
+      const tierTag = updateTierTag(databaseSchema?.tags ?? [], newTier);
       const updatedSchemaDetails = {
         ...databaseSchema,
         tags: tierTag,
@@ -624,7 +615,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             <Space className="w-full" direction="vertical" size="large">
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
-                entityFqn={databaseSchemaFQN}
+                entityFqn={decodedDatabaseSchemaFQN}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -634,7 +625,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
               />
               <TagsContainerV2
                 displayType={DisplayType.READ_MORE}
-                entityFqn={databaseSchemaFQN}
+                entityFqn={decodedDatabaseSchemaFQN}
                 entityType={EntityType.DATABASE_SCHEMA}
                 permission={editTagsPermission}
                 selectedTags={tags}
@@ -741,7 +732,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       })}>
       {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(EntityType.DATABASE_SCHEMA, databaseSchemaFQN)}
+          {getEntityMissingError(
+            EntityType.DATABASE_SCHEMA,
+            decodedDatabaseSchemaFQN
+          )}
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>

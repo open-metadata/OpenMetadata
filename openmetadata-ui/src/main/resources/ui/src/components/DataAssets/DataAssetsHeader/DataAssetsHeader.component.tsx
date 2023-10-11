@@ -13,53 +13,55 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ReactComponent as EditIcon } from 'assets/svg/edit-new.svg';
-import { ReactComponent as IconExternalLink } from 'assets/svg/external-links.svg';
-import { ReactComponent as TaskOpenIcon } from 'assets/svg/ic-open-task.svg';
-import { ReactComponent as ShareIcon } from 'assets/svg/ic-share.svg';
-import { ReactComponent as StarFilledIcon } from 'assets/svg/ic-star-filled.svg';
-import { ReactComponent as StarIcon } from 'assets/svg/ic-star.svg';
-import { ReactComponent as VersionIcon } from 'assets/svg/ic-version.svg';
 import { AxiosError } from 'axios';
-import { ActivityFeedTabs } from 'components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { DomainLabel } from 'components/common/DomainLabel/DomainLabel.component';
-import AnnouncementCard from 'components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from 'components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
-import ManageButton from 'components/common/entityPageInfo/ManageButton/ManageButton';
-import { OwnerLabel } from 'components/common/OwnerLabel/OwnerLabel.component';
-import TierCard from 'components/common/TierCard/TierCard';
-import TitleBreadcrumb from 'components/common/title-breadcrumb/title-breadcrumb.component';
-import EntityHeaderTitle from 'components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { useTourProvider } from 'components/TourProvider/TourProvider';
-import Voting from 'components/Voting/Voting.component';
-import { VotingDataProps } from 'components/Voting/voting.interface';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { DE_ACTIVE_COLOR } from 'constants/constants';
-import { SERVICE_TYPES } from 'constants/Services.constant';
-import { EntityTabs, EntityType } from 'enums/entity.enum';
-import { Container } from 'generated/entity/data/container';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from 'generated/entity/feed/thread';
-import { useClipboard } from 'hooks/useClipBoard';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getActiveAnnouncement, getFeedCount } from 'rest/feedsAPI';
-import { getContainerByName } from 'rest/storageAPI';
-import { getCurrentUserId, getEntityDetailLink } from 'utils/CommonUtils';
-import { getDataAssetsHeaderInfo } from 'utils/DataAssetsHeader.utils';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as ShareIcon } from '../../../assets/svg/ic-share.svg';
+import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
+import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import AnnouncementCard from '../../../components/common/entityPageInfo/AnnouncementCard/AnnouncementCard';
+import AnnouncementDrawer from '../../../components/common/entityPageInfo/AnnouncementDrawer/AnnouncementDrawer';
+import ManageButton from '../../../components/common/entityPageInfo/ManageButton/ManageButton';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
+import TierCard from '../../../components/common/TierCard/TierCard';
+import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { useTourProvider } from '../../../components/TourProvider/TourProvider';
+import Voting from '../../../components/Voting/Voting.component';
+import { VotingDataProps } from '../../../components/Voting/voting.interface';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { SERVICE_TYPES } from '../../../constants/Services.constant';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { useClipboard } from '../../../hooks/useClipBoard';
+import { getActiveAnnouncement, getFeedCount } from '../../../rest/feedsAPI';
+import { getContainerByName } from '../../../rest/storageAPI';
+import {
+  getCurrentUserId,
+  getEntityDetailLink,
+} from '../../../utils/CommonUtils';
+import { getDataAssetsHeaderInfo } from '../../../utils/DataAssetsHeader.utils';
 import {
   getEntityFeedLink,
   getEntityName,
   getEntityVoteStatus,
-} from 'utils/EntityUtils';
-import { serviceTypeLogo } from 'utils/ServiceUtils';
-import { getTierTags } from 'utils/TableUtils';
-import { showErrorToast } from 'utils/ToastUtils';
+} from '../../../utils/EntityUtils';
+import { serviceTypeLogo } from '../../../utils/ServiceUtils';
+import { getTierTags } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -189,10 +191,7 @@ export const DataAssetsHeader = ({
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(
-          entityType,
-          encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-        )
+        getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
       if (!isEmpty(announcements.data)) {
@@ -206,10 +205,7 @@ export const DataAssetsHeader = ({
   const fetchTaskCount = () => {
     // To get open tasks count
     getFeedCount(
-      getEntityFeedLink(
-        entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-      ),
+      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? ''),
       ThreadType.Task,
       ThreadTaskStatus.Open
     )
@@ -252,9 +248,11 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage && !excludeEntityService) {
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
-      fetchTaskCount();
+      if (!excludeEntityService) {
+        fetchTaskCount();
+      }
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;
@@ -281,7 +279,7 @@ export const DataAssetsHeader = ({
     history.push(
       getEntityDetailLink(
         entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName),
+        dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
         ActivityFeedTabs.TASKS
       )
@@ -371,7 +369,7 @@ export const DataAssetsHeader = ({
                   <Space>
                     {tier ? (
                       <span className="font-medium text-xs" data-testid="Tier">
-                        {tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1]}
+                        {getEntityName(tier)}
                       </span>
                     ) : (
                       <span className="font-medium text-xs" data-testid="Tier">

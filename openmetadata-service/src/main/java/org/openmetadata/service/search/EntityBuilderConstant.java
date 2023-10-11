@@ -26,6 +26,8 @@ public class EntityBuilderConstant {
 
   public static final String FULLY_QUALIFIED_NAME_PARTS = "fqnParts.keyword";
 
+  public static final String FULLY_QUALIFIED_NAME = "fullyQualifiedName";
+
   private EntityBuilderConstant() {
     /* private constructor for utility class */
   }

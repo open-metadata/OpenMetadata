@@ -17,55 +17,68 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { MOCK_CURRENT_TEAM, MOCK_MARKETING_TEAM } from 'mocks/Teams.mock';
 import React from 'react';
-import { getTeamByName, importTeam, importUserInTeam } from 'rest/teamsAPI';
-import { getTeamsWithFqnPath } from 'utils/RouterUtils';
+import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import {
+  MOCK_CURRENT_TEAM,
+  MOCK_MARKETING_TEAM,
+} from '../../../mocks/Teams.mock';
+import {
+  getTeamByName,
+  importTeam,
+  importUserInTeam,
+} from '../../../rest/teamsAPI';
+import { getTeamsWithFqnPath } from '../../../utils/RouterUtils';
 import ImportTeamsPage from './ImportTeamsPage';
 
-jest.mock('components/common/EntityImport/EntityImport.component', () => ({
-  EntityImport: jest
-    .fn()
-    .mockImplementation(({ children, onImport, onCancel }) => {
+jest.mock(
+  '../../../components/common/EntityImport/EntityImport.component',
+  () => ({
+    EntityImport: jest
+      .fn()
+      .mockImplementation(({ children, onImport, onCancel }) => {
+        return (
+          <div data-testid="entity-import">
+            {children}{' '}
+            <button data-testid="import" onClick={onImport}>
+              import
+            </button>
+            <button data-testid="cancel" onClick={onCancel}>
+              cancel
+            </button>
+          </div>
+        );
+      }),
+  })
+);
+jest.mock(
+  '../../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockImplementation(({ children }) => {
       return (
-        <div data-testid="entity-import">
-          {children}{' '}
-          <button data-testid="import" onClick={onImport}>
-            import
-          </button>
-          <button data-testid="cancel" onClick={onCancel}>
-            cancel
-          </button>
+        <div>
+          ErrorPlaceHolder
+          <div>{children}</div>
         </div>
       );
-    }),
-}));
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(({ children }) => {
-    return (
-      <div>
-        ErrorPlaceHolder
-        <div>{children}</div>
-      </div>
-    );
-  });
-});
+    });
+  }
+);
 jest.mock(
-  'components/common/title-breadcrumb/title-breadcrumb.component',
+  '../../../components/common/title-breadcrumb/title-breadcrumb.component',
   () => {
     return jest.fn().mockImplementation(() => {
       return <div>TitleBreadcrumb</div>;
     });
   }
 );
-jest.mock('components/Loader/Loader', () => {
+jest.mock('../../../components/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => {
     return <div>Loader</div>;
   });
 });
 jest.mock(
-  'components/Team/TeamImportResult/TeamImportResult.component',
+  '../../../components/Team/TeamImportResult/TeamImportResult.component',
   () => ({
     TeamImportResult: jest.fn().mockImplementation(() => {
       return <div>TeamImportResult</div>;
@@ -73,7 +86,7 @@ jest.mock(
   })
 );
 jest.mock(
-  'components/Team/UserImportResult/UserImportResult.component',
+  '../../../components/Team/UserImportResult/UserImportResult.component',
   () => ({
     UserImportResult: jest.fn().mockImplementation(() => {
       return <div>UserImportResult</div>;
@@ -94,14 +107,14 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
   useLocation: jest.fn().mockImplementation(() => mockLocation),
 }));
-jest.mock('rest/teamsAPI', () => ({
+jest.mock('../../../rest/teamsAPI', () => ({
   getTeamByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
   importTeam: jest.fn(),
   importUserInTeam: jest.fn(),
 }));
-jest.mock('components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

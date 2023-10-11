@@ -38,9 +38,6 @@ from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.metadata.amundsenConnection import (
     AmundsenConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
@@ -111,13 +108,12 @@ class AmundsenSource(Source):
 
     dashboard_service: DashboardService
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
         self.database_schema_object = None
         self.database_object = None
-        self.metadata = OpenMetadata(self.metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.client = get_connection(self.service_connection)
         self.connection_obj = self.client
@@ -127,7 +123,7 @@ class AmundsenSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: AmundsenConnection = config.serviceConnection.__root__.config
@@ -135,7 +131,7 @@ class AmundsenSource(Source):
             raise InvalidSourceException(
                 f"Expected AmundsenConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def prepare(self):
         """Nothing to prepare"""

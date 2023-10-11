@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { DRAWER_NAVIGATION_OPTIONS } from 'utils/EntityUtils';
-import { BasicEntityOverviewInfo } from 'utils/EntityUtils.interface';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { BasicEntityOverviewInfo } from '../../../../utils/EntityUtils.interface';
 
 export interface CommonEntitySummaryInfoProps {
   entityInfo: Array<BasicEntityOverviewInfo>;

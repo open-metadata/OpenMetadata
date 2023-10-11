@@ -14,40 +14,42 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Badge } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { ReactComponent as AdminIcon } from 'assets/svg/admin.svg';
-import { ReactComponent as AllActivityIcon } from 'assets/svg/all-activity.svg';
-import { ReactComponent as BotIcon } from 'assets/svg/bot-profile.svg';
-import { ReactComponent as DashboardIcon } from 'assets/svg/dashboard-grey.svg';
-import { ReactComponent as DataInsightIcon } from 'assets/svg/data-insight.svg';
-import { ReactComponent as ElasticSearchIcon } from 'assets/svg/elasticsearch.svg';
-import { ReactComponent as EmailSettingsIcon } from 'assets/svg/email-settings.svg';
-import { ReactComponent as GlossaryIcon } from 'assets/svg/glossary.svg';
-import { ReactComponent as BellIcon } from 'assets/svg/ic-alert-bell.svg';
-import { ReactComponent as CustomLogoIcon } from 'assets/svg/ic-custom-logo.svg';
-import { ReactComponent as DataInsightReportIcon } from 'assets/svg/ic-data-insight-report.svg';
-import { ReactComponent as DatabaseIcon } from 'assets/svg/ic-database.svg';
-import { ReactComponent as SchemaIcon } from 'assets/svg/ic-schema.svg';
-import { ReactComponent as StorageIcon } from 'assets/svg/ic-storage.svg';
-import { ReactComponent as StoredProcedureIcon } from 'assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as RolesIcon } from 'assets/svg/icon-role-grey.svg';
-import { ReactComponent as OMLogo } from 'assets/svg/metadata.svg';
-import { ReactComponent as MlModelIcon } from 'assets/svg/mlmodal.svg';
-import { ReactComponent as PipelineIcon } from 'assets/svg/pipeline-grey.svg';
-import { ReactComponent as PoliciesIcon } from 'assets/svg/policies.svg';
-import { ReactComponent as TableIcon } from 'assets/svg/table-grey.svg';
-import { ReactComponent as TeamsIcon } from 'assets/svg/teams-grey.svg';
-import { ReactComponent as TopicIcon } from 'assets/svg/topic-grey.svg';
-import { ReactComponent as UsersIcon } from 'assets/svg/user.svg';
 import classNames from 'classnames';
+import i18next from 'i18next';
+import React, { ReactNode } from 'react';
+import { ReactComponent as AdminIcon } from '../assets/svg/admin.svg';
+import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
+import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as DataInsightIcon } from '../assets/svg/data-insight.svg';
+import { ReactComponent as ElasticSearchIcon } from '../assets/svg/elasticsearch.svg';
+import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
+import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
+import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
+import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
+import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as RolesIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as OMLogo } from '../assets/svg/metadata.svg';
+import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
+import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
+import { ReactComponent as PoliciesIcon } from '../assets/svg/policies.svg';
+import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
+import { ReactComponent as TeamsIcon } from '../assets/svg/teams-grey.svg';
+import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
+import { ReactComponent as UsersIcon } from '../assets/svg/user.svg';
 import {
   ResourceEntity,
   UIPermission,
-} from 'components/PermissionProvider/PermissionProvider.interface';
-import { GlobalSettingOptions } from 'constants/GlobalSettings.constants';
-import { EntityType } from 'enums/entity.enum';
-import i18next from 'i18next';
-import React, { ReactNode } from 'react';
-import { userPermissions } from 'utils/PermissionsUtils';
+} from '../components/PermissionProvider/PermissionProvider.interface';
+import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
+import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
+import { EntityType } from '../enums/entity.enum';
+import { userPermissions } from '../utils/PermissionsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -97,6 +99,16 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'members.admins',
           icon: <AdminIcon className="side-panel-icons" />,
+        },
+
+        {
+          label: i18next.t('label.persona-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.USER,
+            permissions
+          ),
+          key: 'members.persona',
+          icon: <PersonasIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -315,6 +327,12 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
+          label: i18next.t('label.custom-dashboard'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.customDashboards',
+          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
           label: i18next.t('label.custom-logo'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customLogo',
@@ -420,4 +438,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
     default:
       return GlobalSettingOptions.TABLES;
   }
+};
+
+export const getCustomisePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMISE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, personaFqn)
+    .replace(':pageFqn', pageFqn);
 };

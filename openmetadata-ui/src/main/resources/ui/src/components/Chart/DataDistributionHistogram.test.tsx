@@ -96,9 +96,12 @@ const COLUMN_PROFILER = {
   median: 7344.0,
 };
 
-jest.mock('components/common/error-with-placeholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-});
+jest.mock(
+  '../../components/common/error-with-placeholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
+  }
+);
 
 describe('DataDistributionHistogram component test', () => {
   it('Component should render', async () => {

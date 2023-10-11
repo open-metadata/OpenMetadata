@@ -13,22 +13,25 @@
 
 import { Col, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import NextPrevious from 'components/common/next-previous/NextPrevious';
-import { NextPreviousProps } from 'components/common/next-previous/NextPrevious.interface';
-import RichTextEditorPreviewer from 'components/common/rich-text-editor/RichTextEditorPreviewer';
-import Table from 'components/common/Table/Table';
-import { getDatabaseSchemaDetailsPath, PAGE_SIZE } from 'constants/constants';
-import { TabSpecificField } from 'enums/entity.enum';
-import { DatabaseSchema } from 'generated/entity/data/databaseSchema';
-import { EntityReference } from 'generated/entity/type';
-import { UsageDetails } from 'generated/type/entityUsage';
-import { Paging } from 'generated/type/paging';
 import { t } from 'i18next';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { getEntityName } from 'utils/EntityUtils';
-import { getUsagePercentile } from 'utils/TableUtils';
+import ErrorPlaceHolder from '../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NextPrevious from '../components/common/next-previous/NextPrevious';
+import { NextPreviousProps } from '../components/common/next-previous/NextPrevious.interface';
+import RichTextEditorPreviewer from '../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Table from '../components/common/Table/Table';
+import {
+  getDatabaseSchemaDetailsPath,
+  PAGE_SIZE,
+} from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { EntityReference } from '../generated/entity/type';
+import { UsageDetails } from '../generated/type/entityUsage';
+import { Paging } from '../generated/type/paging';
+import { getEntityName } from '../utils/EntityUtils';
+import { getUsagePercentile } from '../utils/TableUtils';
 
 export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN}`;
 

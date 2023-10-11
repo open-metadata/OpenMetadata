@@ -14,8 +14,8 @@ import { SuggestionProps } from '@tiptap/suggestion';
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
-import { isInViewport } from 'utils/BlockEditorUtils';
-import { getEntityIcon } from 'utils/TableUtils';
+import { isInViewport } from '../../../../utils/BlockEditorUtils';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import { ExtensionRef, SuggestionItem } from '../BlockEditor.interface';
 
 export default forwardRef<
@@ -130,7 +130,9 @@ export default forwardRef<
               <div className="w-5" style={{ marginTop: '6px' }}>
                 {getEntityIcon(item.type)}
               </div>
-              <Typography>{item.label}</Typography>
+              <Typography className="truncate w-max-200">
+                {item.label}
+              </Typography>
             </Space>
           </Space>
         );

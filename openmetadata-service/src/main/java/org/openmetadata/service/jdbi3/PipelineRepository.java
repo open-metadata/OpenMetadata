@@ -54,13 +54,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
-  public PipelineRepository(CollectionDAO dao) {
+  public PipelineRepository() {
     super(
         PipelineResource.COLLECTION_PATH,
         Entity.PIPELINE,
         Pipeline.class,
-        dao.pipelineDAO(),
-        dao,
+        Entity.getCollectionDAO().pipelineDAO(),
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
     supportsSearch = true;
@@ -155,13 +154,26 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       validateTask(pipeline, taskStatus.getName());
     }
 
-    storeTimeSeries(
-        pipeline.getFullyQualifiedName(),
-        PIPELINE_STATUS_EXTENSION,
-        "pipelineStatus",
-        JsonUtils.pojoToJson(pipelineStatus),
-        pipelineStatus.getTimestamp());
-
+    // Pipeline status is from the pipeline execution. There is no gurantee that it is unique as it is unrelated to
+    // workflow execution. We should bring back the old behavior for this one.
+    String storedPipelineStatus =
+        getExtensionAtTimestamp(fqn, PIPELINE_STATUS_EXTENSION, pipelineStatus.getTimestamp());
+    if (storedPipelineStatus != null) {
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .update(
+              pipeline.getFullyQualifiedName(),
+              PIPELINE_STATUS_EXTENSION,
+              JsonUtils.pojoToJson(pipelineStatus),
+              pipelineStatus.getTimestamp());
+    } else {
+      storeTimeSeries(
+          pipeline.getFullyQualifiedName(),
+          PIPELINE_STATUS_EXTENSION,
+          "pipelineStatus",
+          JsonUtils.pojoToJson(pipelineStatus),
+          pipelineStatus.getTimestamp());
+    }
     return pipeline.withPipelineStatus(pipelineStatus);
   }
 

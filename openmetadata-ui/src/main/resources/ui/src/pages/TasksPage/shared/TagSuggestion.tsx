@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import AsyncSelectList from 'components/AsyncSelectList/AsyncSelectList';
-import { TagSource } from 'generated/entity/data/container';
+import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
-import { fetchTagsElasticSearch } from 'utils/TagsUtils';
+import AsyncSelectList from '../../../components/AsyncSelectList/AsyncSelectList';
+import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { fetchTagsElasticSearch } from '../../../utils/TagsUtils';
 
 export interface TagSuggestionProps {
   onChange?: (newTags: TagLabel[]) => void;
@@ -26,15 +27,38 @@ export interface TagSuggestionProps {
 }
 
 const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
-  const handleTagSelection = (newValue: string[]) => {
-    let newTags: EntityTags = [];
-    if (!isEmpty(newValue)) {
-      newTags = newValue.map((t) => ({
-        tagFQN: t,
-        source: TagSource.Classification,
-      }));
+  const handleTagSelection = (
+    newValue: DefaultOptionType | DefaultOptionType[]
+  ) => {
+    if (isArray(newValue)) {
+      let newTags: EntityTags[] = [];
+      if (!isEmpty(newValue)) {
+        newTags = newValue.reduce((acc, tag) => {
+          const oldTag = value?.find((oldTag) => oldTag.tagFQN === tag.value);
+          if (oldTag) {
+            return [...acc, oldTag];
+          }
+          let tagData: EntityTags = {
+            tagFQN: tag.value,
+            source: TagSource.Classification,
+          };
+
+          if (tag.data) {
+            tagData = {
+              ...tagData,
+              name: tag.data?.name,
+              displayName: tag.data?.displayName,
+              description: tag.data?.description,
+              style: tag.data?.style,
+            };
+          }
+
+          return [...acc, tagData];
+        }, [] as EntityTags[]);
+      }
+
+      onChange?.(newTags);
     }
-    onChange && onChange(newTags);
   };
 
   return (
@@ -45,7 +69,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({ onChange, value }) => {
       placeholder={t('label.select-field', {
         field: t('label.tag-plural'),
       })}
-      onChange={(value) => handleTagSelection(value as string[])}
+      onChange={(value) => handleTagSelection(value)}
     />
   );
 };

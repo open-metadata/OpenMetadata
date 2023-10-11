@@ -12,30 +12,30 @@
  */
 
 import { AxiosError } from 'axios';
-import ErrorPlaceHolder from 'components/common/error-with-placeholder/ErrorPlaceHolder';
-import Loader from 'components/Loader/Loader';
-import { usePermissionProvider } from 'components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from 'components/PermissionProvider/PermissionProvider.interface';
-import PipelineDetails from 'components/PipelineDetails/PipelineDetails.component';
-import { QueryVote } from 'components/TableQueries/TableQueries.interface';
-import { ERROR_PLACEHOLDER_TYPE } from 'enums/common.enum';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import Loader from '../../components/Loader/Loader';
+import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
+import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
+import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
+import { getVersionPath } from '../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Paging } from '../../generated/type/paging';
 import {
   addFollower,
   getPipelineByFqn,
   patchPipelineDetails,
   removeFollower,
   updatePipelinesVotes,
-} from 'rest/pipelineAPI';
-import { getVersionPath } from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { Paging } from '../../generated/type/paging';
+} from '../../rest/pipelineAPI';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -47,6 +47,7 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
@@ -57,6 +58,11 @@ const PipelineDetailsPage = () => {
   const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
+  );
+
+  const decodedPipelineFQN = useMemo(
+    () => getDecodedFqn(pipelineFQN),
+    [pipelineFQN]
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
@@ -136,7 +142,7 @@ const PipelineDetailsPage = () => {
           error as AxiosError,
           t('server.entity-details-fetch-error', {
             entityType: t('label.pipeline'),
-            entityName: pipelineFQN,
+            entityName: decodedPipelineFQN,
           })
         );
       }
@@ -292,7 +298,7 @@ const PipelineDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('pipeline', pipelineFQN)}
+        {getEntityMissingError('pipeline', decodedPipelineFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -309,7 +315,7 @@ const PipelineDetailsPage = () => {
       handleToggleDelete={handleToggleDelete}
       paging={paging}
       pipelineDetails={pipelineDetails}
-      pipelineFQN={pipelineFQN}
+      pipelineFQN={decodedPipelineFQN}
       settingsUpdateHandler={settingsUpdateHandler}
       taskUpdateHandler={onTaskUpdate}
       unFollowPipelineHandler={unFollowPipeline}

@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import { Space, Tooltip, Typography } from 'antd';
-import { FQN_SEPARATOR_CHAR } from 'constants/char.constants';
-import { SUPPORTED_TABLE_CONSTRAINTS } from 'constants/Table.constants';
-import { EntityType, FqnPart } from 'enums/entity.enum';
-import { ConstraintType, Table } from 'generated/entity/data/table';
 import { isEmpty, map } from 'lodash';
 import React, { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getPartialNameFromTableFQN } from 'utils/CommonUtils';
-import { getEntityLink } from 'utils/TableUtils';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { SUPPORTED_TABLE_CONSTRAINTS } from '../../../constants/Table.constants';
+import { EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ConstraintType, Table } from '../../../generated/entity/data/table';
+import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
+import { getEntityLink } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import PrimaryKeyConstraint from './PrimaryKeyConstraint';
 import './table-constraints.less';
