@@ -21,11 +21,11 @@
         "description": "Type of data",
         "type": "string",
         "enum": [
-          "EntityReportData",
-          "WebAnalyticUserActivityReportData",
-          "WebAnalyticEntityViewReportData",
-          "RawCostAnalysisReportData",
-          "AggregatedCostAnalysisReportData"
+          "entityReportData",
+          "webAnalyticUserActivityReportData",
+          "webAnalyticEntityViewReportData",
+          "rawCostAnalysisReportData",
+          "aggregatedCostAnalysisReportData"
         ]
       },
       "data": {

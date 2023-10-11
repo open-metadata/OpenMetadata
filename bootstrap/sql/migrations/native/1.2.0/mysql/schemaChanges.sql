@@ -191,6 +191,34 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.sourceConfig.config.markAllDeletedTables')
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
 
+
+-- update entityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.reportDataType'),
+    '$.reportDataType',
+    'entityReportData'),
+    entityFQNHash = MD5('entityReportData')
+WHERE JSON_EXTRACT(json, '$.reportDataType') = 'EntityReportData';
+
+-- update webAnalyticEntityViewReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.reportDataType'),
+    '$.reportDataType',
+    'webAnalyticEntityViewReportData'),
+    entityFQNHash = MD5('webAnalyticEntityViewReportData')
+WHERE JSON_EXTRACT(json, '$.reportDataType') = 'WebAnalyticEntityViewReportData';
+
+-- update webAnalyticUserActivityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.reportDataType'),
+    '$.reportDataType',
+    'webAnalyticUserActivityReportData'),
+    entityFQNHash = MD5('webAnalyticUserActivityReportData')
+WHERE JSON_EXTRACT(json, '$.reportDataType') = 'WebAnalyticUserActivityReportData';
+
 CREATE TABLE IF NOT EXISTS installed_apps (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     nameHash VARCHAR(256)  NOT NULL COLLATE ascii_bin,

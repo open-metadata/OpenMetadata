@@ -40,16 +40,16 @@ class ProducerFactory:
 
 
 producer_factory = ProducerFactory()
-producer_factory.register(ReportDataType.EntityReportData.value, EntityProducer)
+producer_factory.register(ReportDataType.entityReportData.value, EntityProducer)
 producer_factory.register(
-    ReportDataType.RawCostAnalysisReportData.value, EntityProducerTable
+    ReportDataType.rawCostAnalysisReportData.value, EntityProducerTable
 )
 producer_factory.register(
-    ReportDataType.AggregatedCostAnalysisReportData.value, EntityProducerTable
+    ReportDataType.aggregatedCostAnalysisReportData.value, EntityProducerTable
 )
 producer_factory.register(
-    ReportDataType.WebAnalyticEntityViewReportData.value, WebAnalyticsProducer
+    ReportDataType.webAnalyticEntityViewReportData.value, WebAnalyticsProducer
 )
 producer_factory.register(
-    ReportDataType.WebAnalyticUserActivityReportData.value, WebAnalyticsProducer
+    ReportDataType.webAnalyticUserActivityReportData.value, WebAnalyticsProducer
 )
