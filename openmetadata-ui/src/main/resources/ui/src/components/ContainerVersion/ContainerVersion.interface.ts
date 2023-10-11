@@ -24,7 +24,6 @@ export interface ContainerVersionProp {
   domain: Container['domain'];
   tier: TagLabel;
   breadCrumbList: TitleBreadcrumbProps['titleLinks'];
-  containerFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

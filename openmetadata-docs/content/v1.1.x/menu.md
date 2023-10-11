@@ -667,6 +667,16 @@ site_menu:
     url: /how-to-guides/openmetadata/data-lineage/manual
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights
     url: /how-to-guides/openmetadata/data-insights
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / What is Tiering
+    url: /how-to-guides/openmetadata/data-insights/tiering
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / Set Up Data Insights Ingestion
+    url: /how-to-guides/openmetadata/data-insights/ingestion
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / Key Performance Indicators (KPI)
+    url: /how-to-guides/openmetadata/data-insights/kpi
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / Data Insights Report
+    url: /how-to-guides/openmetadata/data-insights/report
+  - category: How to Guides / The Six Pillars of OpenMetadata / Data Insights / How to Transform the Data Culture of Your Company
+    url: /how-to-guides/openmetadata/data-insights/data-culture
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance
     url: /how-to-guides/openmetadata/data-governance
   - category: How to Guides / The Six Pillars of OpenMetadata / Data Governance / Glossary and Classification

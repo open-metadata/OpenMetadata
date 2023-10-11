@@ -25,7 +25,6 @@ export interface StoredProcedureVersionProp {
   domain: StoredProcedure['domain'];
   tier: TagLabel;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
-  storedProcedureFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

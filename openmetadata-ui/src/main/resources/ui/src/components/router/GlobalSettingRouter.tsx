@@ -18,6 +18,9 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
+import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
+import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
+import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -173,6 +176,23 @@ const GlobalSettingRouter = () => {
         )}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={PersonaDetailsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA,
+          true
+        )}
+      />
       {/* Roles route start
        * Do not change the order of these route
        */}
@@ -261,6 +281,14 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPageSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOM_DASHBOARDS
         )}
       />
 

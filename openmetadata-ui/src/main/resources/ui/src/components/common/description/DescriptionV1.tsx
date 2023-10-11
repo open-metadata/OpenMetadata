@@ -64,7 +64,6 @@ const DescriptionV1 = ({
   isReadOnly = false,
   removeBlur = false,
   entityName,
-
   onThreadLinkSelect,
   entityType,
   entityFqn,

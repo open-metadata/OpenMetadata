@@ -47,6 +47,7 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getMlFeatureVersionData } from '../../utils/MlModelVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { getFilterTags } from '../../utils/TableTags/TableTags.utils';
 import Loader from '../Loader/Loader';
 import { MlModelVersionProp } from './MlModelVersion.interface';
@@ -95,7 +96,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       history.push(
         getVersionPathWithTab(
           EntityType.MLMODEL,
-          currentVersionData.fullyQualifiedName ?? '',
+          getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
           String(version),
           activeKey
         )
@@ -286,7 +287,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.MLMODEL}
                     key={tagType}
                     permission={false}

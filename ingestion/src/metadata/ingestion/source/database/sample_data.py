@@ -1385,7 +1385,7 @@ class SampleDataSource(
         for report_type, report_data in data.items():
             i = 0
             for report_datum in report_data:
-                if report_type == ReportDataType.RawCostAnalysisReportData.value:
+                if report_type == ReportDataType.rawCostAnalysisReportData.value:
                     start_ts = int(
                         (datetime.utcnow() - timedelta(days=60)).timestamp() * 1000
                     )

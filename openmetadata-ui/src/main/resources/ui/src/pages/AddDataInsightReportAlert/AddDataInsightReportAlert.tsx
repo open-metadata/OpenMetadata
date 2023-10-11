@@ -39,7 +39,11 @@ import {
   ScheduleInfo,
   TriggerType,
 } from '../../generated/events/eventSubscription';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../interface/FormUtils.interface';
 import {
   createAlert,
   getAlertsFromId,
@@ -138,7 +142,7 @@ const AddDataInsightReportAlert = () => {
     name: 'enabled',
     required: false,
     type: FieldTypes.SWITCH,
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     props: {
       'data-testid': 'enabled-switch',
     },
