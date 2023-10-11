@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
-import { Operation } from 'fast-json-patch';
 
 const BASE_URL = '/apps';
 
@@ -35,10 +35,9 @@ export const getApplicationList = async (params?: ListParams) => {
 };
 
 export const installApplication = (
-  appName: string,
   data: CreateAppRequest
 ): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/install/${appName}`, data);
+  return APIClient.post(`${BASE_URL}/install`, data);
 };
 
 export const getApplicationByName = async (

@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
@@ -7,11 +19,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import TestSuiteScheduler from '../../../components/AddDataQualityTest/components/TestSuiteScheduler';
-import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../../components/Loader/Loader';
 import FormBuilder from '../../../components/common/FormBuilder/FormBuilder';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
+import Loader from '../../../components/Loader/Loader';
 import { STEPS_FOR_APP_INSTALL } from '../../../constants/Applications.constant';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   CreateAppRequest,
@@ -26,8 +42,11 @@ import {
   getIngestionFrequency,
 } from '../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
-import { getMarketPlaceAppDetailsPath } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  getMarketPlaceAppDetailsPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import AppInstallVerifyCard from '../AppInstallVerifyCard/AppInstallVerifyCard.component';
 
@@ -62,6 +81,15 @@ const AppInstall = () => {
     history.push(getMarketPlaceAppDetailsPath(fqn));
   };
 
+  const goToAppPage = () => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.WORKFLOW,
+        GlobalSettingOptions.APPLICATIONS
+      )
+    );
+  };
+
   const onSubmit = async (repeatFrequency: string) => {
     try {
       const data: CreateAppRequest = {
@@ -70,8 +98,13 @@ const AppInstall = () => {
           scheduleType: ScheduleTimeline.Custom,
           cronExpression: repeatFrequency,
         },
+        name: fqn,
       };
-      await installApplication(fqn, data);
+      await installApplication(data);
+
+      showSuccessToast(t('message.app-installed-successfully'));
+
+      goToAppPage();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -101,16 +134,16 @@ const AppInstall = () => {
         return (
           <div className="w-500">
             <FormBuilder
-              cancelText={t('label.back')}
-              okText={t('label.submit')}
-              disableTestConnection={true}
-              serviceType={''}
-              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              schema={jsonSchema}
+              disableTestConnection
               showFormHeader
               useSelectWidget
-              validator={validator}
+              cancelText={t('label.back')}
+              okText={t('label.submit')}
+              schema={jsonSchema}
+              serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+              serviceType=""
               showTestConnection={false}
+              validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
             />
@@ -123,8 +156,8 @@ const AppInstall = () => {
             <TestSuiteScheduler
               isQuartzCron
               initialData={getIngestionFrequency(PipelineType.Application)}
-              onSubmit={onSubmit}
               onCancel={() => setActiveServiceStep(2)}
+              onSubmit={onSubmit}
             />
           </div>
         );
@@ -154,8 +187,8 @@ const AppInstall = () => {
       <Row>
         <Col span={24}>
           <IngestionStepper
-            steps={STEPS_FOR_APP_INSTALL}
             activeStep={activeServiceStep}
+            steps={STEPS_FOR_APP_INSTALL}
           />
         </Col>
         <Col span={24}>

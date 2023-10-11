@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import {
   ClockCircleOutlined,
   LeftOutlined,
@@ -27,29 +39,32 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
 import Loader from '../../../components/Loader/Loader';
 import TabsLabel from '../../../components/TabsLabel/TabsLabel.component';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { App } from '../../../generated/entity/applications/app';
+import {
+  App,
+  ScheduleTimeline,
+} from '../../../generated/entity/applications/app';
 import {
   getApplicationByName,
   patchApplication,
   unistallApp,
 } from '../../../rest/applicationAPI';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import FormBuilder from '../../common/FormBuilder/FormBuilder';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
@@ -95,6 +110,13 @@ const AppDetails = () => {
   const onConfirmAction = useCallback(async () => {
     try {
       await unistallApp(appData?.fullyQualifiedName ?? '', !isAppDisableAction);
+
+      showSuccessToast(
+        isAppDisableAction
+          ? t('message.app-disabled-successfully')
+          : t('message.app-uninstalled-successfully')
+      );
+
       onBrowseAppsClick();
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -108,7 +130,12 @@ const AppDetails = () => {
           description={t('message.disable-app', {
             app: getEntityName(appData),
           })}
-          icon={<StopOutlined color={DE_ACTIVE_COLOR} width="18px" />}
+          icon={
+            <StopOutlined
+              color={DE_ACTIVE_COLOR}
+              style={{ fontSize: '18px' }}
+            />
+          }
           id="disable-button"
           name={t('label.disable')}
         />
@@ -159,6 +186,27 @@ const AppDetails = () => {
     }
   };
 
+  const onAppScheduleSave = async (cron: string) => {
+    if (appData) {
+      const updatedData = {
+        ...appData,
+        appSchedule: {
+          scheduleType: ScheduleTimeline.Custom,
+          cronExpression: cron,
+        },
+      };
+
+      const jsonPatch = compare(appData, updatedData);
+
+      try {
+        const response = await patchApplication(appData.id, jsonPatch);
+        setAppData(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }
+  };
+
   const tabs = useMemo(() => {
     return [
       {
@@ -168,7 +216,13 @@ const AppDetails = () => {
         key: ApplicationTabs.SCHEDULE,
         children: (
           <div className="p-y-md">
-            {appData && <AppSchedule appData={appData} />}
+            {appData && (
+              <AppSchedule
+                appData={appData}
+                onCancel={onBrowseAppsClick}
+                onSave={onAppScheduleSave}
+              />
+            )}
           </div>
         ),
       },
@@ -184,16 +238,16 @@ const AppDetails = () => {
           <div>
             {jsonSchema && appData && (
               <FormBuilder
-                formData={appData.appConfiguration}
-                cancelText={t('label.back')}
-                okText={t('label.submit')}
-                disableTestConnection={true}
-                serviceType={''}
-                serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                schema={jsonSchema}
+                disableTestConnection
                 useSelectWidget
-                validator={validator}
+                cancelText={t('label.back')}
+                formData={appData.appConfiguration}
+                okText={t('label.submit')}
+                schema={jsonSchema}
+                serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+                serviceType=""
                 showTestConnection={false}
+                validator={validator}
                 onCancel={noop}
                 onSubmit={onConfigSave}
               />
