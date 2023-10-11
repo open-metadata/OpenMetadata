@@ -34,6 +34,6 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public List<MigrationOps> getMigrationOps() {
-    return List.of(new MigrationOps("queryCount", "SELECT COUNT(1) AS result FROM query_entity"));
+    return List.of(new MigrationOps("queryCount", "SELECT COUNT(*) FROM query_entity"));
   }
 }

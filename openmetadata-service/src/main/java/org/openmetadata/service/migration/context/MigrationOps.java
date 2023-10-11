@@ -7,13 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 
 /*
-Given a query - that should return a single column named `result` -
-compute the validation and store its value.
+Given a query - that should return a single column with a count, compute the validation and store its value.
 */
 @Slf4j
 public class MigrationOps {
-
-  private static final String RESULT_NAME = "result";
 
   @NotEmpty @Getter private final String name;
   @NotEmpty @Getter private final String query;
@@ -26,7 +23,7 @@ public class MigrationOps {
 
   public void compute(Handle handle) {
     try {
-      this.result = (Long) handle.createQuery(query).mapToMap().first().get(RESULT_NAME);
+      this.result = handle.createQuery(query).mapTo(Long.class).one();
     } catch (Exception ex) {
       LOG.warn(String.format("Migration Op [%s] failed due to [%s]", name, ex));
     }
