@@ -1126,6 +1126,7 @@
     "at-least-one-policy": "Ingresa al menos una política",
     "authProvider-is-not-basic": "el AuthProvider no es básico",
     "bot-email-confirmation": "{{email}} para el bot {{botName}}",
+    "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "¿Puedes agregar una descripción?",
     "checkout-service-connectors-doc": "Hay muchos conectores disponibles para ingestar datos de tus servicios. Por favor, revisa nuestros conectores.",
     "click-text-to-view-details": "Haz clic en <0>{{text}}</0> para ver detalles.",

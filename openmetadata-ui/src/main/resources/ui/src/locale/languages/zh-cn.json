@@ -1126,6 +1126,7 @@
     "at-least-one-policy": "至少一个策略",
     "authProvider-is-not-basic": "AuthProvider 不是 Basic 类型的",
     "bot-email-confirmation": "{{botName}}机器人的邮箱{{email}}",
+    "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "您能添加一些描述吗？",
     "checkout-service-connectors-doc": "我们已经预置了很多连接器，可用于索引您的各项服务数据",
     "click-text-to-view-details": "点击<0>{{text}}</0>查看详情",

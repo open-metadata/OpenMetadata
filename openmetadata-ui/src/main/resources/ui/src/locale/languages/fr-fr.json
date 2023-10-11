@@ -1126,6 +1126,7 @@
     "at-least-one-policy": "Au moins une stratégie",
     "authProvider-is-not-basic": "AuthProvider n'est pas Basic",
     "bot-email-confirmation": "{{email}} pour {{botName}} Agent Numérique",
+    "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "Pouvez-vous ajouter une description?",
     "checkout-service-connectors-doc": "Il y a de nombreux connecteurs disponibles ici pour indexer les données de vos services. Veuillez consulter nos connecteurs.",
     "click-text-to-view-details": "Cliquez sur <0>{{text}}</0> pour voir les détails.",

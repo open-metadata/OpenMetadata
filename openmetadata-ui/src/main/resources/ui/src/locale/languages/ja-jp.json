@@ -1126,6 +1126,7 @@
     "at-least-one-policy": "Enter at least one policy",
     "authProvider-is-not-basic": "AuthProvider is not Basic",
     "bot-email-confirmation": "{{email}} for {{botName}} bot",
+    "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "説明を追加できますか?",
     "checkout-service-connectors-doc": "There are a lot of connectors available here to index data from your services. Please checkout our connectors.",
     "click-text-to-view-details": "Click <0>{{text}}</0> to view details.",

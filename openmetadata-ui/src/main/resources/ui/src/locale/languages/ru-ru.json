@@ -1126,6 +1126,7 @@
     "at-least-one-policy": "Введите хотя бы одну политику",
     "authProvider-is-not-basic": "AuthProvider не является базовым",
     "bot-email-confirmation": "{{email}} для бота {{botName}}",
+    "can-not-add-widget": "Can not add the widget to this section due to size restrictions.",
     "can-you-add-a-description": "Можете добавить описание?",
     "checkout-service-connectors-doc": "Здесь доступно множество коннекторов для индексации данных из ваших сервисов. Пожалуйста, ознакомьтесь с нашими коннекторами.",
     "click-text-to-view-details": "Нажмите <0>{{text}}</0>, чтобы просмотреть подробности.",
