@@ -21,7 +21,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { CustomisablePage } from '../../pages/CustomisablePages/CustomisablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
-import { useApplicationConfigProvider } from '../ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -320,7 +320,7 @@ const PageNotFound = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const { routeElements } = useApplicationConfigProvider();
+  const { routeElements } = useApplicationConfigContext();
 
   const glossaryPermission = useMemo(
     () =>

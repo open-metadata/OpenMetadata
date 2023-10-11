@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -25,6 +25,7 @@ import { Responsive, WidthProvider } from 'react-grid-layout';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import KPIWidget from '../../components/KPIWidget/KPIWidget.component';
 import Loader from '../../components/Loader/Loader';
@@ -55,6 +56,7 @@ const MyDataPageV1 = () => {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
+  const { layoutPersona } = useApplicationConfigContext();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -74,19 +76,11 @@ const MyDataPageV1 = () => {
       : false;
   }, [storageData, loggedInUserName]);
 
-  const userPersona = useMemo(
-    () =>
-      currentUser?.personas?.find(
-        (persona) => currentUser?.defaultPersona?.id === persona.id
-      ),
-    [currentUser]
-  );
-
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isUndefined(userPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${userPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
+      if (!isEmpty(layoutPersona)) {
+        const pageFQN = `${EntityType.PERSONA}.${layoutPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
         const pageData = await getDocumentByFQN(pageFQN);
         setLayout(pageData.data.page.layout);
       } else {
@@ -111,9 +105,12 @@ const MyDataPageV1 = () => {
   };
 
   useEffect(() => {
+    fetchDocument();
+  }, [layoutPersona]);
+
+  useEffect(() => {
     isMounted.current = true;
     updateWelcomeScreen(!usernameExistsInCookie);
-    fetchDocument();
 
     return () => updateWelcomeScreen(false);
   }, []);

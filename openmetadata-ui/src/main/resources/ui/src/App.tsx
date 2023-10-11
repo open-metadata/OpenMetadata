@@ -44,10 +44,10 @@ const App: FC<AppProps> = ({ routeElements, sideBarElements }) => {
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <ApplicationConfigProvider
-                routeElements={routeElements}
-                sideBarElements={sideBarElements}>
-                <AuthProvider childComponentType={AppRouter}>
+              <AuthProvider childComponentType={AppRouter}>
+                <ApplicationConfigProvider
+                  routeElements={routeElements}
+                  sideBarElements={sideBarElements}>
                   <TourProvider>
                     <HelmetProvider>
                       <WebAnalyticsProvider>
@@ -65,8 +65,8 @@ const App: FC<AppProps> = ({ routeElements, sideBarElements }) => {
                       </WebAnalyticsProvider>
                     </HelmetProvider>
                   </TourProvider>
-                </AuthProvider>
-              </ApplicationConfigProvider>
+                </ApplicationConfigProvider>
+              </AuthProvider>
             </ErrorBoundary>
           </I18nextProvider>
         </Router>
