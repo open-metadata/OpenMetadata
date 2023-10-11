@@ -226,6 +226,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @GET
+  @Path("/name/{name}/runs/latest")
+  @Operation(
+      operationId = "latestAppRunRecord",
+      summary = "Get Latest App Run Record",
+      description = "Get a latest applications Run Record.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
+      })
+  public AppRunRecord listLatestAppRun(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
+    return repository.getLatestAppRuns(installation.getId());
+  }
+
+  @GET
   @Path("/{id}/versions")
   @Operation(
       operationId = "listAllInstalledApplications",

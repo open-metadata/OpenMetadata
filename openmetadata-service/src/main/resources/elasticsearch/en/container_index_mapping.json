@@ -220,7 +220,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "children": {
         "properties": {

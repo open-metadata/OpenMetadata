@@ -42,6 +42,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { ContainerVersionProp } from './ContainerVersion.interface';
 
 const ContainerVersion: React.FC<ContainerVersionProp> = ({
@@ -51,7 +52,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   owner,
   domain,
   tier,
-  containerFQN,
   breadCrumbList,
   versionList,
   deleted = false,
@@ -64,6 +64,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
+  );
+
+  const encodedFQN = useMemo(
+    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+    [currentVersionData.fullyQualifiedName ?? '']
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -92,7 +97,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.CONTAINER,
-        containerFQN,
+        encodedFQN,
         String(version),
         activeKey
       )
@@ -153,7 +158,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
                   <VersionTable
                     addedColumnConstraintDiffs={addedColumnConstraintDiffs}
                     columnName={getPartialNameFromTableFQN(
-                      containerFQN,
+                      encodedFQN,
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -171,7 +176,6 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={containerFQN}
                     entityType={EntityType.CONTAINER}
                     key={tagType}
                     permission={false}
@@ -205,7 +209,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     ],
     [
       description,
-      containerFQN,
+      encodedFQN,
       columns,
       currentVersionData,
       entityPermissions,

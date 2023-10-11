@@ -139,10 +139,7 @@ const AnnouncementDrawer: FC<Props> = ({
             key={uniqueId()}
             postFeedHandler={postFeedHandler}
             showHeader={false}
-            threadLink={getEntityFeedLink(
-              entityType,
-              encodeURIComponent(entityFQN)
-            )}
+            threadLink={getEntityFeedLink(entityType, entityFQN)}
             threadType={ThreadType.Announcement}
             updateThreadHandler={updateThreadHandler}
           />

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tabs, Typography } from 'antd';
+import { CloseOutlined, DragOutlined } from '@ant-design/icons';
+import { Button, Space, Tabs, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -20,6 +22,7 @@ import { useActivityFeedProvider } from '../../../components/ActivityFeed/Activi
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -31,8 +34,12 @@ import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
+import { FeedsWidgetProps } from './FeedsWidget.interface';
 
-const FeedsWidget = () => {
+const FeedsWidget = ({
+  isEditView = false,
+  handleRemoveWidget,
+}: FeedsWidgetProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
@@ -125,10 +132,18 @@ const FeedsWidget = () => {
     return entityThread;
   }, [activeTab, entityThread]);
 
+  const handleCloseClick = useCallback(() => {
+    !isUndefined(handleRemoveWidget) &&
+      handleRemoveWidget(LandingPageWidgetKeys.ACTIVITY_FEED);
+  }, []);
+
   return (
-    <div className="feeds-widget-container" data-testid="activity-feed-widget">
+    <div
+      className="feeds-widget-container h-full"
+      data-testid="activity-feed-widget">
       <Tabs
         destroyInactiveTabPane
+        className="h-full"
         items={[
           {
             label: t('label.all'),
@@ -138,7 +153,7 @@ const FeedsWidget = () => {
                 <ActivityFeedListV1
                   emptyPlaceholderText={t('message.no-activity-feed')}
                   feedList={isTourOpen ? mockFeedData : threads}
-                  hidePopover={false}
+                  hidePopover={isEditView}
                   isLoading={loading && !isTourOpen}
                   showThread={false}
                   tab={ActivityFeedTabs.ALL}
@@ -155,7 +170,7 @@ const FeedsWidget = () => {
                 <ActivityFeedListV1
                   emptyPlaceholderText={t('message.no-mentions')}
                   feedList={threads}
-                  hidePopover={false}
+                  hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
                   tab={ActivityFeedTabs.MENTIONS}
@@ -177,7 +192,7 @@ const FeedsWidget = () => {
                 <ActivityFeedListV1
                   emptyPlaceholderText={t('message.no-tasks-assigned')}
                   feedList={threads}
-                  hidePopover={false}
+                  hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
                   tab={ActivityFeedTabs.TASKS}
@@ -188,16 +203,27 @@ const FeedsWidget = () => {
           },
         ]}
         tabBarExtraContent={
-          activeTab === ActivityFeedTabs.ALL && (
-            <FeedsFilterPopover
-              defaultFilter={
-                currentUser?.isAdmin
-                  ? FeedFilter.ALL
-                  : FeedFilter.OWNER_OR_FOLLOWS
-              }
-              onUpdate={onFilterUpdate}
-            />
-          )
+          <Space>
+            {activeTab === ActivityFeedTabs.ALL && (
+              <FeedsFilterPopover
+                defaultFilter={
+                  currentUser?.isAdmin
+                    ? FeedFilter.ALL
+                    : FeedFilter.OWNER_OR_FOLLOWS
+                }
+                onUpdate={onFilterUpdate}
+              />
+            )}
+            {isEditView && (
+              <>
+                <DragOutlined
+                  className="drag-widget-icon cursor-pointer"
+                  size={14}
+                />
+                <CloseOutlined size={14} onClick={handleCloseClick} />
+              </>
+            )}
+          </Space>
         }
         onChange={onTabChange}
       />
