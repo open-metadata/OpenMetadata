@@ -37,7 +37,7 @@ const UserProfileInheritedRoles = ({
       }>
       <Chip
         data={inheritedRoles ?? []}
-        icon={<UserIcons className="cursor-pointer" height={20} width={20} />}
+        icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-inherited-roles-found')}
       />
     </Card>

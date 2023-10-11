@@ -117,7 +117,7 @@ const UserProfileRoles = ({
             : []),
           ...(userRoles ?? []),
         ]}
-        icon={<UserIcons className="cursor-pointer" height={20} width={20} />}
+        icon={<UserIcons height={20} />}
         noDataPlaceholder={t('message.no-roles-assigned')}
         showNoDataPlaceholder={!isUserAdmin}
       />
@@ -152,7 +152,7 @@ const UserProfileRoles = ({
           </Typography.Text>
           {!isRolesEdit && isAdminUser && (
             <EditIcon
-              className="cursor-pointer"
+              className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
               data-testid="edit-roles"
               {...ICON_DIMENSION}

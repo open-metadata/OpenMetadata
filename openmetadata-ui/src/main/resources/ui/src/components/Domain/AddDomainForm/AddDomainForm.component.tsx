@@ -30,7 +30,11 @@ import {
 } from '../../../generated/api/domains/createDomain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -161,7 +165,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -186,7 +190,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

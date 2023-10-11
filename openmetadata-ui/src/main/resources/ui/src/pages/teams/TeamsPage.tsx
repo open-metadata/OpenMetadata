@@ -18,6 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import Loader from '../../components/Loader/Loader';
@@ -79,6 +80,7 @@ const TeamsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<number>(0);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
+  const { updateCurrentUser } = useAuthContext();
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -421,6 +423,7 @@ const TeamsPage = () => {
     updateUserDetail(id, data)
       .then((res) => {
         if (res) {
+          updateCurrentUser(res);
           AppState.updateUserDetails(res);
           setSelectedTeam((prev) => ({ ...prev, ...res }));
           showSuccessToast(t('server.join-team-success'), 2000);
@@ -438,6 +441,7 @@ const TeamsPage = () => {
       updateUserDetail(id, data)
         .then((res) => {
           if (res) {
+            updateCurrentUser(res);
             AppState.updateUserDetails(res);
             setSelectedTeam((prev) => ({ ...prev, ...res }));
             showSuccessToast(t('server.leave-team-success'), 2000);

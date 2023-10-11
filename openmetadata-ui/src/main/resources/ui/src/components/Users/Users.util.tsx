@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover, Space, Tag } from 'antd';
+import { Popover, Skeleton, Space, Tag } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
@@ -26,7 +26,9 @@ import {
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
 
-export const commonUserDetailColumns = (): ColumnsType<User> => [
+export const commonUserDetailColumns = (
+  isLoading?: boolean
+): ColumnsType<User> => [
   {
     title: t('label.username'),
     dataIndex: 'username',
@@ -44,7 +46,11 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
     title: t('label.team-plural'),
     dataIndex: 'teams',
     key: 'teams',
+
     render: (_, record) => {
+      if (isLoading) {
+        return <Skeleton active paragraph={false} />;
+      }
       const listLength = record.teams?.length ?? 0;
       const hasMore = listLength > LIST_CAP;
 
@@ -95,6 +101,10 @@ export const commonUserDetailColumns = (): ColumnsType<User> => [
     render: (_, record) => {
       const listLength = record.roles?.length ?? 0;
       const hasMore = listLength > LIST_CAP;
+
+      if (isLoading) {
+        return <Skeleton active paragraph={false} />;
+      }
 
       if (isUndefined(record.roles) || isEmpty(record.roles)) {
         return <>{t('label.no-entity', { entity: t('label.role') })}</>;

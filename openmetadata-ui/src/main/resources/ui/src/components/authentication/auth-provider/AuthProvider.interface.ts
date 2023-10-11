@@ -12,7 +12,10 @@
  */
 
 import { Profile } from 'oidc-client';
-import { ComponentType, ReactNode } from 'react';
+import { ComponentType, FC, ReactNode } from 'react';
+import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
+import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
+import { User } from '../../../generated/entity/teams/user';
 
 export interface AuthProviderProps {
   childComponentType: ComponentType;
@@ -43,3 +46,30 @@ export enum JWT_PRINCIPAL_CLAIMS {
   PREFERRED_USERNAME = 'preferred_username',
   SUB = 'sub',
 }
+
+export interface IAuthContext {
+  isAuthenticated: boolean;
+  setIsAuthenticated: (authenticated: boolean) => void;
+  isAuthDisabled: boolean;
+  setIsAuthDisabled: (authenticated: boolean) => void;
+  authConfig?: AuthenticationConfiguration;
+  authorizerConfig?: AuthorizerConfiguration;
+  isSigningIn: boolean;
+  setIsSigningIn: (authenticated: boolean) => void;
+  onLoginHandler: () => void;
+  onLogoutHandler: () => void;
+  getCallBackComponent: () => FC | null;
+  loading: boolean;
+  currentUser?: User;
+  setLoadingIndicator: (authenticated: boolean) => void;
+  handleSuccessfulLogin: (user: OidcUser) => void;
+  updateAxiosInterceptors: () => void;
+  updateCurrentUser: (user: User) => void;
+  jwtPrincipalClaims: string[];
+}
+
+export type AuthenticationConfigurationWithScope =
+  AuthenticationConfiguration & {
+    responseType?: string;
+    scope: string;
+  };

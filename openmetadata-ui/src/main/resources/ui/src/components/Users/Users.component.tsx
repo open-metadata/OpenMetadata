@@ -12,11 +12,13 @@
  */
 
 import { Col, Row, Tabs, Typography } from 'antd';
+import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { ReactComponent as PersonaIcon } from '../../assets/svg/ic-personas.svg';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
@@ -24,11 +26,14 @@ import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/Enti
 import SearchedData from '../../components/searched-data/SearchedData';
 import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { getUserPath } from '../../constants/constants';
+import { getUserPath, NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { USER_PROFILE_TABS } from '../../constants/usersprofile.constants';
 import { EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/type';
+import Chip from '../common/Chip/Chip.component';
 import PageLayoutV1 from '../containers/PageLayoutV1';
 import Loader from '../Loader/Loader';
+import { PersonaSelectableList } from '../Persona/PersonaSelectableList/PersonaSelectableList.component';
 import { Props, UserPageTabs } from './Users.interface';
 import './Users.style.less';
 import UserProfileDetails from './UsersProfile/UserProfileDetails/UserProfileDetails.component';
@@ -56,6 +61,12 @@ const Users = ({
     useState<SearchedDataProps['data'][number]['_source']>();
 
   const { t } = useTranslation();
+
+  const defaultPersona = useMemo(() => {
+    return userData.personas?.find(
+      (persona) => persona.id === userData.defaultPersona?.id
+    );
+  }, [userData]);
 
   const tabs = useMemo(() => {
     return USER_PROFILE_TABS.map((data) => ({
@@ -112,6 +123,20 @@ const Users = ({
       </ActivityFeedProvider>
     ),
     [userData, username]
+  );
+
+  const handlePersonaUpdate = useCallback(
+    async (personas: EntityReference[]) => {
+      await updateUserDetails({ ...userData, personas });
+    },
+    [updateUserDetails, userData]
+  );
+
+  const handleDefaultPersonaUpdate = useCallback(
+    async (defaultPersona?: EntityReference) => {
+      await updateUserDetails({ ...userData, defaultPersona });
+    },
+    [updateUserDetails, userData]
   );
 
   const tabDetails = useMemo(() => {
@@ -210,16 +235,65 @@ const Users = ({
             />
           </Col>
           <Col className="p-x-sm border-right" span={5}>
-            <UserProfileRoles
-              isUserAdmin={userData.isAdmin}
-              updateUserDetails={updateUserDetails}
-              userRoles={userData.roles}
-            />
+            <div className="d-flex flex-col justify-between h-full">
+              <UserProfileRoles
+                isUserAdmin={userData.isAdmin}
+                updateUserDetails={updateUserDetails}
+                userRoles={userData.roles}
+              />
+              <UserProfileInheritedRoles
+                inheritedRoles={userData.inheritedRoles}
+              />
+            </div>
           </Col>
-          <Col className="p-x-sm" span={5}>
-            <UserProfileInheritedRoles
-              inheritedRoles={userData.inheritedRoles}
-            />
+          <Col className="p-x-sm border-right" span={5}>
+            <div className="d-flex flex-col justify-between h-full">
+              <Card
+                className="ant-card-feed relative card-body-border-none card-padding-y-0 m-b-md"
+                title={
+                  <Typography.Text
+                    className="right-panel-label items-center d-flex gap-2"
+                    data-testid="inherited-roles">
+                    {t('label.persona')}
+                    <PersonaSelectableList
+                      hasPermission
+                      multiSelect
+                      selectedPersonas={userData.personas ?? []}
+                      onUpdate={handlePersonaUpdate}
+                    />
+                  </Typography.Text>
+                }>
+                <Chip
+                  showNoDataPlaceholder
+                  data={userData.personas ?? []}
+                  icon={<PersonaIcon height={18} />}
+                  noDataPlaceholder={t('message.no-persona-assigned')}
+                />
+              </Card>
+              <Card
+                className="ant-card-feed relative card-body-border-none card-padding-y-0"
+                title={
+                  <Typography.Text
+                    className="right-panel-label m-b-0 d-flex gap-2"
+                    data-testid="inherited-roles">
+                    {t('label.default-persona')}
+                    <PersonaSelectableList
+                      hasPermission
+                      multiSelect={false}
+                      personaList={userData.personas}
+                      selectedPersonas={defaultPersona ? [defaultPersona] : []}
+                      onUpdate={handleDefaultPersonaUpdate}
+                    />
+                  </Typography.Text>
+                }>
+                <Chip
+                  showNoDataPlaceholder
+                  data={defaultPersona ? [defaultPersona] : []}
+                  icon={<PersonaIcon height={18} />}
+                  noDataPlaceholder={NO_DATA_PLACEHOLDER}
+                />
+              </Card>
+            </div>
           </Col>
         </Row>
         <Tabs

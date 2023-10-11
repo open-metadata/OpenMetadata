@@ -32,17 +32,15 @@ const Chip = ({
   );
 
   const getChipElement = (item: EntityReference) => (
-    <Space
-      align="center"
-      className="w-full m-b-xs"
+    <div
+      className="w-full d-flex items-center gap-2"
       data-testid={item.name}
-      key={item.name}
-      size={6}>
-      <div className="m-t-xss">{icon}</div>
+      key={item.name}>
+      {icon}
       <Typography.Text className="w-56 text-left" ellipsis={{ tooltip: true }}>
         {getEntityName(item)}
       </Typography.Text>
-    </Space>
+    </div>
   );
 
   useEffect(() => {

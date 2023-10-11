@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Row, Typography } from 'antd';
+import { CloseOutlined, DragOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath, ROUTES } from '../../../constants/constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUserById } from '../../../rest/userAPI';
@@ -24,8 +27,12 @@ import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
+import { MyDataWidgetProps } from './MyDataWidget.interface';
 
-const MyDataWidgetInternal = () => {
+const MyDataWidgetInternal = ({
+  isEditView = false,
+  handleRemoveWidget,
+}: MyDataWidgetProps) => {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
   const [isLoading, setIsLoading] = useState(true);
@@ -56,30 +63,46 @@ const MyDataWidgetInternal = () => {
     }
   };
 
+  const handleCloseClick = useCallback(() => {
+    !isUndefined(handleRemoveWidget) &&
+      handleRemoveWidget(LandingPageWidgetKeys.MY_DATA);
+  }, []);
+
   useEffect(() => {
     fetchMyDataAssets();
   }, [currentUserDetails]);
 
   return (
-    <Card className="card-widget" loading={isLoading}>
+    <Card className="card-widget h-full" loading={isLoading}>
       <Row>
         <Col span={24}>
           <div className="d-flex justify-between m-b-xs">
             <Typography.Text className="font-medium">
               {t('label.my-data')}
             </Typography.Text>
-            {data.length ? (
-              <Link
-                data-testid="view-all-link"
-                to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
-                <span className="text-grey-muted font-normal text-xs">
-                  {t('label.view-all')}{' '}
-                  <span data-testid="my-data-total-count">
-                    {`(${data.length})`}
+            <Space>
+              {data.length ? (
+                <Link
+                  data-testid="view-all-link"
+                  to={getUserPath(currentUserDetails?.name || '', 'mydata')}>
+                  <span className="text-grey-muted font-normal text-xs">
+                    {t('label.view-all')}{' '}
+                    <span data-testid="my-data-total-count">
+                      {`(${data.length})`}
+                    </span>
                   </span>
-                </span>
-              </Link>
-            ) : null}
+                </Link>
+              ) : null}
+              {isEditView && (
+                <>
+                  <DragOutlined
+                    className="drag-widget-icon cursor-pointer"
+                    size={14}
+                  />
+                  <CloseOutlined size={14} onClick={handleCloseClick} />
+                </>
+              )}
+            </Space>
           </div>
         </Col>
       </Row>
@@ -89,12 +112,12 @@ const MyDataWidgetInternal = () => {
         <>
           <div className="entity-list-body">
             {data.length ? (
-              data.map((item, index) => {
+              data.map((item) => {
                 return (
                   <div
                     className="right-panel-list-item flex items-center justify-between"
                     data-testid={`Recently Viewed-${getEntityName(item)}`}
-                    key={index}>
+                    key={item.id}>
                     <div className="d-flex items-center">
                       <Link
                         className=""

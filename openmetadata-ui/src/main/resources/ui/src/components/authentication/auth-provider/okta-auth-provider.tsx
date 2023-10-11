@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { OktaAuth } from '@okta/okta-auth-js';
+import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
 import React, { FunctionComponent, ReactNode } from 'react';
 import localState from '../../../utils/LocalStorageUtils';
@@ -28,7 +28,8 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   onLoginSuccess,
 }: Props) => {
   const { authConfig, setIsAuthenticated } = useAuthContext();
-  const { clientId, issuer, redirectUri, scopes, pkce } = authConfig;
+  const { clientId, issuer, redirectUri, scopes, pkce } =
+    authConfig as OktaAuthOptions;
   const oktaAuth = new OktaAuth({
     clientId,
     issuer,

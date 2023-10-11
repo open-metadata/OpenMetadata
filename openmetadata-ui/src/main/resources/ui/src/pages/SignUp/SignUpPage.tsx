@@ -41,6 +41,7 @@ const SignUp = () => {
     setIsSigningIn,
     jwtPrincipalClaims = [],
     authorizerConfig,
+    updateCurrentUser,
   } = useAuthContext();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -55,7 +56,7 @@ const SignUp = () => {
           images: getImages(appState.newUser.picture ?? ''),
         },
       });
-
+      updateCurrentUser(res);
       appState.updateUserDetails(res);
       cookieStorage.removeItem(REDIRECT_PATHNAME);
       setIsSigningIn(false);

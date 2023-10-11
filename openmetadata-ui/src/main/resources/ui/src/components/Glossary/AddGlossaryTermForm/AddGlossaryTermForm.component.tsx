@@ -24,7 +24,11 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getCurrentUserId } from '../../../utils/CommonUtils';
@@ -309,7 +313,7 @@ const AddGlossaryTermForm = ({
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: 'horizontal',
+      formItemLayout: FormItemLayout.HORIZONATAL,
     },
   ];
 
@@ -330,7 +334,7 @@ const AddGlossaryTermForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -355,7 +359,7 @@ const AddGlossaryTermForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

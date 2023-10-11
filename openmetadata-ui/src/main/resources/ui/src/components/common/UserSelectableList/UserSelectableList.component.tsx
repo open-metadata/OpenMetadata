@@ -111,15 +111,13 @@ export const UserSelectableList = ({
         />
       }
       open={popupVisible}
-      overlayClassName="user-select-popover card-shadow"
+      overlayClassName="user-select-popover p-0"
       placement="bottomRight"
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}
       {...popoverProps}>
-      {children ? (
-        children
-      ) : (
+      {children ?? (
         <Tooltip
           placement="topRight"
           title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>

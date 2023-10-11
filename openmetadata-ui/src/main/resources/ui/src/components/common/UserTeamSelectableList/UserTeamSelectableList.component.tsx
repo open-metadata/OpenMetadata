@@ -295,18 +295,17 @@ export const UserTeamSelectableList = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      {children
-        ? children
-        : hasPermission && (
-            <Button
-              className="flex-center p-0"
-              data-testid="edit-owner"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => setPopupVisible(true)}
-            />
-          )}
+      {children ??
+        (hasPermission && (
+          <Button
+            className="flex-center p-0"
+            data-testid="edit-owner"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            size="small"
+            type="text"
+            onClick={() => setPopupVisible(true)}
+          />
+        ))}
     </Popover>
   );
 };

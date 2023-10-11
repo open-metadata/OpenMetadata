@@ -21,7 +21,10 @@ import {
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
-import { UserProfile } from '../components/authentication/auth-provider/AuthProvider.interface';
+import {
+  AuthenticationConfigurationWithScope,
+  UserProfile,
+} from '../components/authentication/auth-provider/AuthProvider.interface';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
@@ -47,14 +50,14 @@ export const getSilentRedirectUri = () => {
 };
 
 export const getUserManagerConfig = (
-  authClient: Record<string, string> = {}
+  authClient: AuthenticationConfigurationWithScope
 ): Record<string, string | boolean | WebStorageStateStore> => {
   const { authority, clientId, callbackUrl, responseType, scope } = authClient;
 
   return {
     authority,
     client_id: clientId,
-    response_type: responseType,
+    response_type: responseType ?? '',
     redirect_uri: getRedirectUri(callbackUrl),
     silent_redirect_uri: getSilentRedirectUri(),
     scope,
@@ -64,7 +67,7 @@ export const getUserManagerConfig = (
 
 export const getAuthConfig = (
   authClient: AuthenticationConfiguration
-): Record<string, string | boolean> => {
+): AuthenticationConfigurationWithScope => {
   const {
     authority,
     clientId,
@@ -186,7 +189,7 @@ export const getAuthConfig = (
       break;
   }
 
-  return config;
+  return config as AuthenticationConfigurationWithScope;
 };
 
 export const setMsalInstance = (configs: Configuration) => {

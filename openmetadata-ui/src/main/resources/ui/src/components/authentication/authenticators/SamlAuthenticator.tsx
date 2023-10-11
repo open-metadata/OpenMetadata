@@ -44,7 +44,7 @@ interface Props {
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { setIsAuthenticated, authConfig } = useAuthContext();
-    const config: SamlSSOClientConfig = authConfig.samlConfiguration;
+    const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
 
     const login = async () => {
       if (config.idp.authorityUrl) {

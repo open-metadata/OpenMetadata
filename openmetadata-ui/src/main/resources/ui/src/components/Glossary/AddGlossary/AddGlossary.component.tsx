@@ -22,7 +22,11 @@ import {
   CreateGlossary,
   EntityReference,
 } from '../../../generated/api/data/createGlossary';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { getCurrentUserId } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
@@ -162,7 +166,7 @@ const AddGlossary = ({
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: 'horizontal',
+      formItemLayout: FormItemLayout.HORIZONATAL,
     },
   ];
 
@@ -183,7 +187,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -208,7 +212,7 @@ const AddGlossary = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

@@ -41,8 +41,8 @@ const BasicAuthenticator = forwardRef(
       const refreshToken = localState.getRefreshToken();
 
       if (
-        authConfig.provider !== AuthProvider.Basic &&
-        authConfig.provider !== AuthProvider.LDAP
+        authConfig?.provider !== AuthProvider.Basic &&
+        authConfig?.provider !== AuthProvider.LDAP
       ) {
         Promise.reject(t('message.authProvider-is-not-basic'));
       }
