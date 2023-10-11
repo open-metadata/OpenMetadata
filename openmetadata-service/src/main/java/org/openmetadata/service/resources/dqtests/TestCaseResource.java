@@ -648,7 +648,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   }
 
   private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {
-    return copy(new TestCase(), create, user)
+    return repository
+        .copy(new TestCase(), create, user)
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())

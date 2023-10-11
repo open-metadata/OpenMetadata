@@ -407,7 +407,8 @@ public class SearchServiceResource
   }
 
   private SearchService getService(CreateSearchService create, String user) {
-    return copy(new SearchService(), create, user)
+    return repository
+        .copy(new SearchService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }
