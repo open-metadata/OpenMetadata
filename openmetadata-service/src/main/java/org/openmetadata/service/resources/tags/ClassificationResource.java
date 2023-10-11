@@ -364,20 +364,16 @@ public class ClassificationResource extends EntityResource<Classification, Class
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  public static Classification getClassification(CreateClassification create, SecurityContext securityContext) {
-    return getClassification(create, securityContext.getUserPrincipal().getName());
+  private Classification getClassification(CreateClassification create, SecurityContext securityContext) {
+    return getClassification(repository, create, securityContext.getUserPrincipal().getName());
   }
 
-  public static Classification getClassification(CreateClassification create, String updatedBy) {
-    return new Classification()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
+  public static Classification getClassification(
+      ClassificationRepository repository, CreateClassification create, String updatedBy) {
+    return repository
+        .copy(new Classification(), create, updatedBy)
         .withFullyQualifiedName(create.getName())
         .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive())
-        .withDescription(create.getDescription())
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis());
+        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }

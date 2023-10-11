@@ -442,7 +442,8 @@ public class DataInsightChartResource extends EntityResource<DataInsightChart, D
   }
 
   private DataInsightChart getDataInsightChart(CreateDataInsightChart create, String user) {
-    return copy(new DataInsightChart(), create, user)
+    return repository
+        .copy(new DataInsightChart(), create, user)
         .withName(create.getName())
         .withDescription(create.getDescription())
         .withDataIndexType(create.getDataIndexType())

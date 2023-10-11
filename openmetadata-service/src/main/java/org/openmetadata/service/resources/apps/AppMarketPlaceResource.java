@@ -354,7 +354,8 @@ public class AppMarketPlaceResource extends EntityResource<AppMarketPlaceDefinit
   private AppMarketPlaceDefinition getApplicationDefinition(
       CreateAppMarketPlaceDefinitionReq create, String updatedBy) {
     AppMarketPlaceDefinition app =
-        copy(new AppMarketPlaceDefinition(), create, updatedBy)
+        repository
+            .copy(new AppMarketPlaceDefinition(), create, updatedBy)
             .withDeveloper(create.getDeveloper())
             .withDeveloperUrl(create.getDeveloperUrl())
             .withSupportEmail(create.getSupportEmail())

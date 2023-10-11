@@ -461,7 +461,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   }
 
   private Kpi getKpi(CreateKpiRequest create, String user) {
-    return copy(new Kpi(), create, user)
+    return repository
+        .copy(new Kpi(), create, user)
         .withStartDate(create.getStartDate())
         .withEndDate(create.getEndDate())
         .withTargetDefinition(create.getTargetDefinition())

@@ -326,6 +326,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   }
 
   private Persona getPersona(CreatePersona cp, String user) {
-    return copy(new Persona(), cp, user).withUsers(EntityUtil.toEntityReferences(cp.getUsers(), Entity.USER));
+    return repository
+        .copy(new Persona(), cp, user)
+        .withUsers(EntityUtil.toEntityReferences(cp.getUsers(), Entity.USER));
   }
 }

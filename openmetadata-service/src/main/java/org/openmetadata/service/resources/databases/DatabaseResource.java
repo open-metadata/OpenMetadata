@@ -402,7 +402,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   private Database getDatabase(CreateDatabase create, String user) {
-    return copy(new Database(), create, user)
+    return repository
+        .copy(new Database(), create, user)
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withSourceUrl(create.getSourceUrl())
         .withRetentionPeriod(create.getRetentionPeriod());

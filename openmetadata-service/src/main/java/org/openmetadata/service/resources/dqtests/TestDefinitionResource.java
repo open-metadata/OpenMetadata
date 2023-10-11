@@ -382,7 +382,8 @@ public class TestDefinitionResource extends EntityResource<TestDefinition, TestD
   }
 
   private TestDefinition getTestDefinition(CreateTestDefinition create, String user) {
-    return copy(new TestDefinition(), create, user)
+    return repository
+        .copy(new TestDefinition(), create, user)
         .withDescription(create.getDescription())
         .withEntityType(create.getEntityType())
         .withTestPlatforms(create.getTestPlatforms())

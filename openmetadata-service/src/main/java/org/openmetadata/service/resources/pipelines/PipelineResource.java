@@ -542,7 +542,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   private Pipeline getPipeline(CreatePipeline create, String user) {
-    return copy(new Pipeline(), create, user)
+    return repository
+        .copy(new Pipeline(), create, user)
         .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
         .withTasks(create.getTasks())
         .withSourceUrl(create.getSourceUrl())

@@ -311,7 +311,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
 
   private Domain getDomain(CreateDomain create, String user) {
     List<String> experts = create.getExperts();
-    return copy(new Domain(), create, user)
+    return repository
+        .copy(new Domain(), create, user)
         .withStyle(create.getStyle())
         .withDomainType(create.getDomainType())
         .withFullyQualifiedName(create.getName())

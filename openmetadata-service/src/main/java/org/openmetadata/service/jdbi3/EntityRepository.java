@@ -48,6 +48,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
+import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
@@ -81,16 +82,17 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.annotation.CheckForNull;
 import javax.json.JsonPatch;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -426,6 +428,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setId(UUID.randomUUID());
     create(null, entity);
     LOG.info("Created a new {} {}", entityType, entity.getFullyQualifiedName());
+  }
+
+  public final T copy(T entity, CreateEntity request, String updatedBy) {
+    EntityReference owner = validateOwner(request.getOwner());
+    EntityReference domain = validateDomain(request.getDomain());
+    entity.setId(UUID.randomUUID());
+    entity.setName(request.getName());
+    entity.setDisplayName(request.getDisplayName());
+    entity.setDescription(request.getDescription());
+    entity.setOwner(owner);
+    entity.setDomain(domain);
+    entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
+    entity.setLifeCycle(request.getLifeCycle());
+    entity.setExtension(request.getExtension());
+    entity.setUpdatedBy(updatedBy);
+    entity.setUpdatedAt(System.currentTimeMillis());
+    return entity;
   }
 
   public EntityUpdater getUpdater(T original, T updated, Operation operation) {
@@ -1370,7 +1389,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public List<EntityReference> findFrom(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
     List<EntityRelationshipRecord> records = findFromRecords(toId, toEntityType, relationship, fromEntityType);
-    return EntityUtil.getEntityReferences(records);
+    return getEntityReferences(records);
   }
 
   public List<EntityRelationshipRecord> findFromRecords(
@@ -1431,7 +1450,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID fromId, String fromEntityType, Relationship relationship, String toEntityType) {
     // When toEntityType is null, all the relationships to any entity is returned
     List<EntityRelationshipRecord> records = findToRecords(fromId, fromEntityType, relationship, toEntityType);
-    return EntityUtil.getEntityReferences(records);
+    return getEntityReferences(records);
   }
 
   public final List<EntityRelationshipRecord> findToRecords(
@@ -2387,7 +2406,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithName extends CacheLoader<Pair<String, String>, EntityInterface> {
     @Override
-    public EntityInterface load(@CheckForNull Pair<String, String> fqnPair) {
+    public @NonNull EntityInterface load(@NotNull Pair<String, String> fqnPair) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
@@ -2397,7 +2416,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, EntityInterface> {
     @Override
-    public EntityInterface load(@NotNull Pair<String, UUID> idPair) {
+    public @NonNull EntityInterface load(@NotNull Pair<String, UUID> idPair) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);

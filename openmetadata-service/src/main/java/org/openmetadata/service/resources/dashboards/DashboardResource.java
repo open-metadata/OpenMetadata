@@ -437,7 +437,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   }
 
   private Dashboard getDashboard(CreateDashboard create, String user) {
-    return copy(new Dashboard(), create, user)
+    return repository
+        .copy(new Dashboard(), create, user)
         .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
         .withDataModels(getEntityReferences(Entity.DASHBOARD_DATA_MODEL, create.getDataModels()))

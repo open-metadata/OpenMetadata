@@ -173,7 +173,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
       Classification classification =
-          ClassificationResource.getClassification(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+          ClassificationResource.getClassification(
+              classificationRepository, loadTags.getCreateClassification(), ADMIN_USER_NAME);
       classificationRepository.initializeEntity(classification);
 
       List<Tag> tagsToCreate = new ArrayList<>();
@@ -497,7 +498,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
     EntityReference classification = getEntityReference(CLASSIFICATION, create.getClassification());
     EntityReference parent = create.getParent() == null ? null : getEntityReference(TAG, create.getParent());
-    return copy(new Tag(), create, updateBy)
+    return repository
+        .copy(new Tag(), create, updateBy)
         .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
         .withStyle(create.getStyle())
         .withParent(parent)

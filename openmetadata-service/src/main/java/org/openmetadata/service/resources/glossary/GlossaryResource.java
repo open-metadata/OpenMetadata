@@ -449,7 +449,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) {
-    return copy(new Glossary(), create, user)
+    return repository
+        .copy(new Glossary(), create, user)
         .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withTags(create.getTags())
         .withProvider(create.getProvider())

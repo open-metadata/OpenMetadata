@@ -434,7 +434,8 @@ public class PipelineServiceResource
   }
 
   private PipelineService getService(CreatePipelineService create, String user) {
-    return copy(new PipelineService(), create, user)
+    return repository
+        .copy(new PipelineService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

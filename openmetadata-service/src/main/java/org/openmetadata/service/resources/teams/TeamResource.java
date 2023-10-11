@@ -502,7 +502,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
       throw new IllegalArgumentException(CREATE_GROUP);
     }
-    return copy(new Team(), ct, user)
+    return repository
+        .copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
         .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))

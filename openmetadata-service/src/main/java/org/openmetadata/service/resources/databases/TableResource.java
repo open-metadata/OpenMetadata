@@ -937,7 +937,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
   private Table getTable(CreateTable create, String user) {
     return validateNewTable(
-            copy(new Table(), create, user)
+            repository
+                .copy(new Table(), create, user)
                 .withColumns(create.getColumns())
                 .withSourceUrl(create.getSourceUrl())
                 .withTableConstraints(create.getTableConstraints())
