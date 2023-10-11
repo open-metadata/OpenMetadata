@@ -10,21 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DateRangeObject } from '../../../components/ProfilerDashboard/component/TestSummary';
-import { SearchDropdownProps } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import { DataInsightChartType } from '../../../generated/dataInsight/dataInsightChartResult';
-import { Kpi } from '../../../generated/dataInsight/kpi/kpi';
-import { ChartFilter } from '../../../interface/data-insight.interface';
 
 export interface DataInsightHeaderProps {
-  team: Omit<SearchDropdownProps, 'label' | 'searchKey'>;
-  tier: Omit<SearchDropdownProps, 'label' | 'searchKey'>;
-  chartFilter: ChartFilter;
-  onChartFilterChange: (value: DateRangeObject, days?: number) => void;
-
   onScrollToChart: (chartType: DataInsightChartType) => void;
-  kpi: {
-    isLoading: boolean;
-    data: Kpi[];
-  };
 }

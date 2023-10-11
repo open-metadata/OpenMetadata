@@ -14,33 +14,39 @@ import { Col, Row } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataInsightChartType } from '../../../generated/dataInsight/dataInsightChartResult';
+import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
+import Loader from '../../Loader/Loader';
 import DescriptionInsight from '../DescriptionInsight';
 import OwnerInsight from '../OwnerInsight';
 import TierInsight from '../TierInsight';
 import TotalEntityInsight from '../TotalEntityInsight';
-import { DataAssetsTabProps } from './DataAssetsTab.interface';
 
-const DataAssetsTab = ({
-  chartFilter,
-  selectedDaysFilter,
-  kpiList,
-  tier,
-}: DataAssetsTabProps) => {
+const DataAssetsTab = () => {
+  const {
+    chartFilter,
+    selectedDaysFilter,
+    kpi,
+    tierTag: tier,
+  } = useDataInsightProvider();
   const { t } = useTranslation();
   const { descriptionKpi, ownerKpi } = useMemo(() => {
     return {
-      descriptionKpi: kpiList.find(
-        (kpi) =>
-          kpi.dataInsightChart.name ===
+      descriptionKpi: kpi.data.find(
+        (value) =>
+          value.dataInsightChart.name ===
           DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
       ),
-      ownerKpi: kpiList.find(
-        (kpi) =>
-          kpi.dataInsightChart.name ===
+      ownerKpi: kpi.data.find(
+        (value) =>
+          value.dataInsightChart.name ===
           DataInsightChartType.PercentageOfEntitiesWithOwnerByType
       ),
     };
-  }, [kpiList]);
+  }, [kpi]);
+
+  if (kpi.isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Row gutter={[16, 16]}>

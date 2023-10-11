@@ -12,16 +12,15 @@
  */
 import { Col, Row } from 'antd';
 import React from 'react';
+import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import DailyActiveUsersChart from '../DailyActiveUsersChart';
 import PageViewsByEntitiesChart from '../PageViewsByEntitiesChart';
 import TopActiveUsers from '../TopActiveUsers';
 import TopViewEntities from '../TopViewEntities';
-import { AppAnalyticsTabProps } from './AppAnalyticsTab.interface';
 
-const AppAnalyticsTab = ({
-  chartFilter,
-  selectedDaysFilter,
-}: AppAnalyticsTabProps) => {
+const AppAnalyticsTab = () => {
+  const { chartFilter, selectedDaysFilter } = useDataInsightProvider();
+
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>

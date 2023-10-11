@@ -518,6 +518,7 @@
     "kpi-name": "KPI Name",
     "kpi-title": "Key Performance Indicators (KPI)",
     "kpi-uppercase": "KPI",
+    "kpi-uppercase-plural": "KPIs",
     "language": "Language",
     "last": "Last",
     "last-error": "Last error",

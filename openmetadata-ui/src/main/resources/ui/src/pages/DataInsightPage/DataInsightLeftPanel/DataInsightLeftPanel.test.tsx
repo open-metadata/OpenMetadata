@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import DataInsightLeftPanel from './DataInsightLeftPanel';
 
 const mockPush = jest.fn();
@@ -24,20 +25,31 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ tab: 'data-assets' }),
 }));
 
+jest.mock('../DataInsightClassBase', () => {
+  return jest.fn().mockImplementation(() => ({
+    getLeftSideBar: jest.fn().mockReturnValue([
+      {
+        key: DataInsightTabs.DATA_ASSETS,
+        label: 'Data Assets',
+        icon: <svg />,
+        iconProps: {
+          className: 'side-panel-icons',
+        },
+      },
+    ]),
+  }));
+});
+
 describe('Test Data insight left panel', () => {
   it('Should render the menu items', async () => {
     render(<DataInsightLeftPanel />);
 
     const menuContainer = await screen.findByTestId('data-insight-left-panel');
 
-    const dataAssets = await screen.findByText('label.data-asset-plural');
-    const appAnalytics = await screen.findByText('label.app-analytic-plural');
-    const kpi = await screen.findByText('label.kpi-uppercases');
+    const dataAssets = await screen.findByText('Data Assets');
 
     expect(menuContainer).toBeInTheDocument();
     expect(dataAssets).toBeInTheDocument();
-    expect(appAnalytics).toBeInTheDocument();
-    expect(kpi).toBeInTheDocument();
   });
 
   it('On clicking the menu item, route should change', async () => {

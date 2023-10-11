@@ -26,16 +26,18 @@ import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
 
-const DataInsightHeader = ({
-  team,
-  tier,
-  chartFilter,
-  onScrollToChart,
-  onChartFilterChange,
-  kpi,
-}: DataInsightHeaderProps) => {
+const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
+  const {
+    teamFilter: team,
+    tierFilter: tier,
+    chartFilter,
+    onChartFilterChange,
+    kpi,
+  } = useDataInsightProvider();
+
   const { tab } = useParams<{ tab: DataInsightTabs }>();
   const history = useHistory();
   const { t } = useTranslation();
