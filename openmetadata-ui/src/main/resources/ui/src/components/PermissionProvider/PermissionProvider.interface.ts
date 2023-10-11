@@ -77,6 +77,7 @@ export enum ResourceEntity {
   DOMAIN = 'domain',
   DATA_PRODUCT = 'dataProduct',
   STORED_PROCEDURE = 'storedProcedure',
+  PERSONA = 'persona',
 }
 
 export interface PermissionContextType {

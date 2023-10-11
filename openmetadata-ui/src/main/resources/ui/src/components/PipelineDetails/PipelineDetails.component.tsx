@@ -62,7 +62,6 @@ import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -161,9 +160,8 @@ const PipelineDetails = ({
     [pipelinePermissions]
   );
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = () =>
     getFeedCounts(EntityType.PIPELINE, pipelineFQN, setFeedCount);
-  };
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -469,7 +467,7 @@ const PipelineDetails = ({
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getPipelineDetailsPath(getDecodedFqn(pipelineFQN), tabValue),
+        pathname: getPipelineDetailsPath(pipelineFQN, tabValue),
       });
     }
   };

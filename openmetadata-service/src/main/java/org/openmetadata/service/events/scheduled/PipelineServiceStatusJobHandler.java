@@ -26,6 +26,7 @@ public class PipelineServiceStatusJobHandler {
   public static final String JOB_CONTEXT_METER_REGISTRY = "meterRegistry";
   public static final String JOB_CONTEXT_CLUSTER_NAME = "clusterName";
 
+  private final PipelineServiceClientConfiguration config;
   private final PipelineServiceClient pipelineServiceClient;
   private final PrometheusMeterRegistry meterRegistry;
   private final String clusterName;
@@ -36,6 +37,7 @@ public class PipelineServiceStatusJobHandler {
 
   private PipelineServiceStatusJobHandler(PipelineServiceClientConfiguration config, String clusterName)
       throws SchedulerException {
+    this.config = config;
     this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(config);
     this.meterRegistry = MicrometerBundleSingleton.prometheusMeterRegistry;
     this.clusterName = clusterName;
@@ -77,12 +79,15 @@ public class PipelineServiceStatusJobHandler {
   }
 
   public void addPipelineServiceStatusJob() {
-    try {
-      JobDetail jobDetail = jobBuilder();
-      Trigger trigger = getTrigger();
-      scheduler.scheduleJob(jobDetail, trigger);
-    } catch (Exception ex) {
-      LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
+    // Only register the job to listen to the status if the Pipeline Service Client is indeed enabled
+    if (config.getEnabled().equals(Boolean.TRUE)) {
+      try {
+        JobDetail jobDetail = jobBuilder();
+        Trigger trigger = getTrigger();
+        scheduler.scheduleJob(jobDetail, trigger);
+      } catch (Exception ex) {
+        LOG.error("Failed in setting up job Scheduler for Pipeline Service Status", ex);
+      }
     }
   }
 }
