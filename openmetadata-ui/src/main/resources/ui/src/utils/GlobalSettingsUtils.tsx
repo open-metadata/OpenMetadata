@@ -26,6 +26,7 @@ import { ReactComponent as ElasticSearchIcon } from '../assets/svg/elasticsearch
 import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -327,10 +328,10 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
-          label: i18next.t('label.custom-dashboard'),
+          label: i18next.t('label.customize-landing-page'),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customDashboards',
-          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+          key: 'openMetadata.customizeLandingPage',
+          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.custom-logo'),
