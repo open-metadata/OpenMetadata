@@ -166,6 +166,12 @@ const BlockEditor: FC<BlockEditorProps> = ({
     handleImageToggle();
   };
 
+  const handleFocus = () => {
+    if (!isNil(editor) && !editor.isFocused) {
+      editor.commands.focus('end');
+    }
+  };
+
   const menus = !isNil(editor) && (
     <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
   );
@@ -219,7 +225,7 @@ const BlockEditor: FC<BlockEditorProps> = ({
           onSave={handleAddImage}
         />
       )}
-      <div className="block-editor-wrapper">
+      <div className="block-editor-wrapper" onMouseDown={handleFocus}>
         <EditorContent editor={editor} onMouseDown={handleLinkPopup} />
         {menus}
       </div>
