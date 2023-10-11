@@ -78,6 +78,7 @@ jest.mock('../../components/DataInsightDetail/TotalEntityInsight', () =>
 );
 
 jest.mock('../../utils/DataInsightUtils', () => ({
+  ...jest.requireActual('../../utils/DataInsightUtils'),
   getTeamFilter: jest.fn().mockReturnValue([]),
 }));
 
@@ -103,7 +104,7 @@ jest.mock('./KPIList', () =>
   jest.fn().mockReturnValue(<div data-testid="kpi-list">KPI List</div>)
 );
 
-jest.mock('./DataInsightLeftPanel', () =>
+jest.mock('./DataInsightLeftPanel/DataInsightLeftPanel', () =>
   jest.fn().mockReturnValue(<div data-testid="left-panel">Left panel</div>)
 );
 

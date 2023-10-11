@@ -28,7 +28,7 @@ type LeftSideBarType = {
 };
 
 class DataInsightClassBase {
-  public static getLeftSideBar(): LeftSideBarType[] {
+  public getLeftSideBar(): LeftSideBarType[] {
     return [
       {
         key: DataInsightTabs.DATA_ASSETS,
@@ -57,7 +57,7 @@ class DataInsightClassBase {
     ];
   }
 
-  public static getDataInsightTab() {
+  public getDataInsightTab() {
     return [
       {
         key: DataInsightTabs.DATA_ASSETS,
@@ -78,4 +78,7 @@ class DataInsightClassBase {
   }
 }
 
-export default DataInsightClassBase;
+const dataInsightClassBase = new DataInsightClassBase();
+
+export default dataInsightClassBase;
+export { DataInsightClassBase };
