@@ -52,6 +52,10 @@ export enum EntityType {
   SAMPLE_DATA = 'sampleData',
   STORED_PROCEDURE = 'storedProcedure',
   SEARCH_INDEX = 'searchIndex',
+  PERSONA = 'persona',
+  DOC_STORE = 'docStore',
+  PAGE = 'Page',
+  knowledgePanels = 'KnowLedgePanels',
 }
 
 export enum AssetsType {
