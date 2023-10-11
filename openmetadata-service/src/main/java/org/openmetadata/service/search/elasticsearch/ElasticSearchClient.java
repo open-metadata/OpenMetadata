@@ -354,6 +354,10 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+    }
+
     /* for performance reasons ElasticSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
     however in most cases for search results an approximate value is good enough.
@@ -1498,7 +1502,6 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        //        return new RestHighLevelClient(restClientBuilder);
         return new RestHighLevelClientBuilder(restClient).setApiCompatibilityMode(true).build();
       } catch (Exception e) {
         LOG.error("Failed to create elastic search client ", e);

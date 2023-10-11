@@ -95,7 +95,6 @@ export const topicVersionMockProps: TopicVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   slashedTopicName: [],
-  topicFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

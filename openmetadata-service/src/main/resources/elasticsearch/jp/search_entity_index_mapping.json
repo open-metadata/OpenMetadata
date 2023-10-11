@@ -361,7 +361,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "lifeCycle": {
         "type": "object"

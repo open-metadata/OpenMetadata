@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { CloseOutlined, DragOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -41,6 +42,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 
 interface Props {
+  isEditView?: boolean;
   kpiList: Array<Kpi>;
   selectedDays: number;
   isKPIListLoading: boolean;
@@ -79,7 +81,12 @@ const EmptyPlaceholder = () => {
   );
 };
 
-const KPIChartV1: FC<Props> = ({ isKPIListLoading, kpiList, selectedDays }) => {
+const KPIChartV1: FC<Props> = ({
+  isKPIListLoading,
+  kpiList,
+  selectedDays,
+  isEditView = false,
+}) => {
   const { t } = useTranslation();
 
   const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
@@ -182,12 +189,21 @@ const KPIChartV1: FC<Props> = ({ isKPIListLoading, kpiList, selectedDays }) => {
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isKPIListLoading || isLoading}>
-      <Row>
-        <Col span={24}>
+      <Row align="middle" justify="space-between">
+        <Col>
           <Typography.Text className="font-medium">
             {t('label.kpi-title')}
           </Typography.Text>
         </Col>
+        {isEditView && (
+          <Space align="center">
+            <DragOutlined
+              className="drag-widget-icon cursor-pointer"
+              size={14}
+            />
+            <CloseOutlined size={14} />
+          </Space>
+        )}
       </Row>
       {kpiList.length > 0 ? (
         <Row>

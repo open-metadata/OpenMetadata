@@ -47,6 +47,7 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
@@ -57,6 +58,11 @@ const PipelineDetailsPage = () => {
   const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
+  );
+
+  const decodedPipelineFQN = useMemo(
+    () => getDecodedFqn(pipelineFQN),
+    [pipelineFQN]
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
@@ -136,7 +142,7 @@ const PipelineDetailsPage = () => {
           error as AxiosError,
           t('server.entity-details-fetch-error', {
             entityType: t('label.pipeline'),
-            entityName: pipelineFQN,
+            entityName: decodedPipelineFQN,
           })
         );
       }
@@ -292,7 +298,7 @@ const PipelineDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('pipeline', pipelineFQN)}
+        {getEntityMissingError('pipeline', decodedPipelineFQN)}
       </ErrorPlaceHolder>
     );
   }
@@ -309,7 +315,7 @@ const PipelineDetailsPage = () => {
       handleToggleDelete={handleToggleDelete}
       paging={paging}
       pipelineDetails={pipelineDetails}
-      pipelineFQN={pipelineFQN}
+      pipelineFQN={decodedPipelineFQN}
       settingsUpdateHandler={settingsUpdateHandler}
       taskUpdateHandler={onTaskUpdate}
       unFollowPipelineHandler={unFollowPipeline}

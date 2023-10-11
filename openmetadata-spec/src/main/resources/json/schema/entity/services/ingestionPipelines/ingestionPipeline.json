@@ -11,7 +11,7 @@
       "description": "Type of Pipeline - metadata, usage",
       "type": "string",
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType",
-      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight", "elasticSearchReindex", "dbt"]
+      "enum": ["metadata", "usage", "lineage", "profiler", "TestSuite", "dataInsight", "elasticSearchReindex", "dbt", "Application"]
     },
     "pipelineStatus": {
       "type": "object",
