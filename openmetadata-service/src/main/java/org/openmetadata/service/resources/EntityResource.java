@@ -322,7 +322,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return EntityUtil.getEntityReference(entityType, fqn);
   }
 
-  protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+  protected static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     if (nullOrEmpty(fqns)) {
       return null;
     }
