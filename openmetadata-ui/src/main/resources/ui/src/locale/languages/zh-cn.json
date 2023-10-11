@@ -518,6 +518,7 @@
     "kpi-name": "KPI 名称",
     "kpi-title": "关键绩效指标 (KPI)",
     "kpi-uppercase": "KPI",
+    "kpi-uppercase-plural": "KPIs",
     "language": "语言",
     "last": "最近",
     "last-error": "最近错误",

@@ -518,6 +518,7 @@
     "kpi-name": "Nombre del KPI",
     "kpi-title": "Indicadores clave de rendimiento (KPI)",
     "kpi-uppercase": "KPI",
+    "kpi-uppercase-plural": "KPIs",
     "language": "Idioma",
     "last": "Último",
     "last-error": "Último error",

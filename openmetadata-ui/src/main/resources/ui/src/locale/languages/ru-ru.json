@@ -518,6 +518,7 @@
     "kpi-name": "Наименование KPI",
     "kpi-title": "Ключевой показатель эффективности (KPI)",
     "kpi-uppercase": "KPI",
+    "kpi-uppercase-plural": "KPIs",
     "language": "Язык",
     "last": "Последний",
     "last-error": "Последняя ошибка",
