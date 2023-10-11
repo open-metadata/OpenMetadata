@@ -2,10 +2,12 @@ package org.openmetadata.service.migration.mysql.v120;
 
 import static org.openmetadata.service.migration.utils.v120.MigrationUtil.addQueryService;
 
+import java.util.List;
 import lombok.SneakyThrows;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
+import org.openmetadata.service.migration.context.MigrationOps;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 public class Migration extends MigrationProcessImpl {
@@ -28,5 +30,10 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     addQueryService(handle, collectionDAO);
+  }
+
+  @Override
+  public List<MigrationOps> getMigrationOps() {
+    return List.of(new MigrationOps("queryCount", "SELECT COUNT(1) AS result FROM query_entity"));
   }
 }

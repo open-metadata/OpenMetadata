@@ -14,6 +14,7 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.context.MigrationWorkflowContext;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
@@ -125,6 +126,8 @@ public class MigrationWorkflow {
   public void runMigrationWorkflows() {
     try (Handle transactionHandler = jdbi.open()) {
       LOG.info("[MigrationWorkflow] WorkFlow Started");
+      MigrationWorkflowContext context = new MigrationWorkflowContext(transactionHandler);
+      context.computeInitialContext();
       try {
         for (MigrationProcess process : migrations) {
           // Initialise Migration Steps
@@ -159,6 +162,8 @@ public class MigrationWorkflow {
               process.getDatabaseConnectionType(),
               process.getPostDDLScriptFilePath());
           process.runPostDDLScripts();
+
+          context.computeMigrationContext(process);
 
           // Handle Migration Closure
           LOG.info(
