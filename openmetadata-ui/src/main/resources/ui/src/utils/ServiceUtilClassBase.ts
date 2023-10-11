@@ -69,7 +69,7 @@ class ServiceUtilClassBase {
     };
   }
 
-  protected getStorageServiceConfig(type: StorageServiceType) {
+  public getStorageServiceConfig(type: StorageServiceType) {
     let schema = {};
     const uiSchema = { ...COMMON_UI_SCHEMA };
     switch (type) {
