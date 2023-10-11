@@ -21,8 +21,6 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin.svg';
 import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as DataInsightIcon } from '../assets/svg/data-insight.svg';
-import { ReactComponent as ElasticSearchIcon } from '../assets/svg/elasticsearch.svg';
 import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
@@ -208,6 +206,25 @@ export const getGlobalSettingsMenuWithPermission = (
         },
       ],
     },
+
+    {
+      category: i18next.t('label.integration-plural'),
+      key: 'integrations',
+      items: [
+        {
+          label: i18next.t('label.application-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'integrations.apps',
+          icon: <TableIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.bot-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'integrations.bots',
+          icon: <BotIcon className="w-4 side-panel-icons" />,
+        },
+      ],
+    },
     {
       category: i18next.t('label.notification-plural'),
       key: 'notifications',
@@ -309,18 +326,6 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.search'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.search',
-          icon: <ElasticSearchIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.data-insight'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.dataInsight',
-          icon: <DataInsightIcon className="w-4 side-panel-icons" />,
-        },
-        {
           label: i18next.t('label.email'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.email',
@@ -337,18 +342,6 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customLogo',
           icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
-        },
-      ],
-    },
-    {
-      category: i18next.t('label.integration-plural'),
-      key: 'integrations',
-      items: [
-        {
-          label: i18next.t('label.bot-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'integrations.bots',
-          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
