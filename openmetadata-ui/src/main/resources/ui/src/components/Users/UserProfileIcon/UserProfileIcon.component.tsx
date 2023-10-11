@@ -80,7 +80,8 @@ const renderLimitedListMenuItem = ({
 
 export const UserProfileIcon = () => {
   const { currentUser, onLogoutHandler } = useAuthContext();
-  const { layoutPersona, updateLayoutPersona } = useApplicationConfigContext();
+  const { selectedPersona, updateSelectedPersona } =
+    useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = useMemo(
@@ -92,11 +93,11 @@ export const UserProfileIcon = () => {
     setIsImgUrlValid(false);
   }, []);
 
-  const handleDefaultPersonaChange = async (persona: EntityReference) => {
+  const handleSelectedPersonaChange = async (persona: EntityReference) => {
     if (!currentUser) {
       return;
     }
-    updateLayoutPersona(persona);
+    updateSelectedPersona(persona);
   };
 
   useEffect(() => {
@@ -130,14 +131,14 @@ export const UserProfileIcon = () => {
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
-      <span onClick={() => handleDefaultPersonaChange(item)}>
+      <span onClick={() => handleSelectedPersonaChange(item)}>
         {getEntityName(item)}{' '}
-        {layoutPersona?.id === item.id && (
+        {selectedPersona?.id === item.id && (
           <CheckOutlined className="m-l-xs" style={{ color: '#4CAF50' }} />
         )}
       </span>
     ),
-    [handleDefaultPersonaChange, layoutPersona]
+    [handleSelectedPersonaChange, selectedPersona]
   );
 
   const teamLabelRenderer = useCallback(
@@ -269,8 +270,14 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, layoutPersona, teams, roles, personas]
+    [currentUser, userName, selectedPersona, teams, roles, personas]
   );
+
+  useEffect(() => {
+    updateSelectedPersona(
+      currentUser?.defaultPersona ?? ({} as EntityReference)
+    );
+  }, [currentUser?.defaultPersona]);
 
   return (
     <Dropdown
@@ -300,9 +307,9 @@ export const UserProfileIcon = () => {
             <Typography.Text
               className="text-grey-muted text-xs"
               ellipsis={{ tooltip: true }}>
-              {isEmpty(layoutPersona)
+              {isEmpty(selectedPersona)
                 ? t('label.default')
-                : getEntityName(layoutPersona)}
+                : getEntityName(selectedPersona)}
             </Typography.Text>
           </div>
         </div>

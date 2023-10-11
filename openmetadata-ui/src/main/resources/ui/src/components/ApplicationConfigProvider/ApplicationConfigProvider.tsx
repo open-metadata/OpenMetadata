@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isUndefined } from 'lodash';
 import React, {
   createContext,
   FC,
@@ -24,13 +23,12 @@ import React, {
 import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
 import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
-import { useAuthContext } from '../authentication/auth-provider/AuthProvider';
 
 interface ContextConfig extends LogoConfiguration {
   routeElements?: ReactNode;
   sideBarElements?: ReactNode;
-  layoutPersona: EntityReference;
-  updateLayoutPersona: (personaFqn: EntityReference) => void;
+  selectedPersona: EntityReference;
+  updateSelectedPersona: (personaFqn: EntityReference) => void;
 }
 
 export const ApplicationConfigContext = createContext<ContextConfig>(
@@ -54,9 +52,8 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
     {} as LogoConfiguration
   );
-  const { currentUser } = useAuthContext();
-  const [layoutPersona, setLayoutPersona] = useState<EntityReference>(
-    currentUser?.defaultPersona ?? ({} as EntityReference)
+  const [selectedPersona, setSelectedPersona] = useState<EntityReference>(
+    {} as EntityReference
   );
 
   const fetchApplicationConfig = async () => {
@@ -72,15 +69,9 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   };
 
-  const updateLayoutPersona = useCallback((persona: EntityReference) => {
-    setLayoutPersona(persona);
+  const updateSelectedPersona = useCallback((persona: EntityReference) => {
+    setSelectedPersona(persona);
   }, []);
-
-  useEffect(() => {
-    if (!isUndefined(currentUser) && currentUser.defaultPersona) {
-      setLayoutPersona(currentUser.defaultPersona);
-    }
-  }, [currentUser?.defaultPersona]);
 
   useEffect(() => {
     fetchApplicationConfig();
@@ -91,15 +82,15 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
       ...applicationConfig,
       routeElements,
       sideBarElements,
-      layoutPersona,
-      updateLayoutPersona,
+      selectedPersona,
+      updateSelectedPersona,
     }),
     [
       applicationConfig,
       routeElements,
       sideBarElements,
-      layoutPersona,
-      updateLayoutPersona,
+      selectedPersona,
+      updateSelectedPersona,
     ]
   );
 

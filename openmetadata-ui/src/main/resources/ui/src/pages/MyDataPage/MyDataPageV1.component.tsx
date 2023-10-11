@@ -55,7 +55,7 @@ const MyDataPageV1 = () => {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
-  const { layoutPersona } = useApplicationConfigContext();
+  const { selectedPersona } = useApplicationConfigContext();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -81,8 +81,8 @@ const MyDataPageV1 = () => {
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isEmpty(layoutPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${layoutPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
+      if (!isEmpty(selectedPersona)) {
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
         const pageData = await getDocumentByFQN(pageFQN);
         setLayout(pageData.data.page.layout);
       } else {
@@ -108,7 +108,7 @@ const MyDataPageV1 = () => {
 
   useEffect(() => {
     fetchDocument();
-  }, [layoutPersona]);
+  }, [selectedPersona]);
 
   useEffect(() => {
     isMounted.current = true;
