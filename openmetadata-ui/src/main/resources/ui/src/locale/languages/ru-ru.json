@@ -1086,7 +1086,8 @@
     "widget-lowercase": "widget",
     "yes": "Да",
     "yesterday": "Вчера",
-    "your-entity": "Ваш {{entity}}"
+    "your-entity": "Ваш {{entity}}",
+    "run-at": "Run at"
   },
   "message": {
     "access-to-collaborate": "Разрешить открытый доступ для всех, кто может присоединиться к команде, просматривать данные и сотрудничать.",

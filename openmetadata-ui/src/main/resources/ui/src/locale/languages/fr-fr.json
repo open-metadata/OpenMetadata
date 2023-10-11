@@ -1086,7 +1086,8 @@
     "widget-lowercase": "widget",
     "yes": "Oui",
     "yesterday": "Hier",
-    "your-entity": "Votre {{entity}}"
+    "your-entity": "Votre {{entity}}",
+    "run-at": "Run at"
   },
   "message": {
     "access-to-collaborate": "Permettre l'accès ouvert à l'équipe. Tout le monde pourra rejoindre l'équipe, voir les données, et collaborer",
