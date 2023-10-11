@@ -38,6 +38,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import Loader from '../Loader/Loader';
 import { DataModelVersionProp } from './DataModelVersion.interface';
 
@@ -53,7 +54,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
-  dataModelFQN,
 }: DataModelVersionProp) => {
   const { t } = useTranslation();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
@@ -125,7 +125,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 <Col span={24}>
                   <VersionTable
                     columnName={getPartialNameFromTableFQN(
-                      dataModelFQN,
+                      getEncodedFqn(
+                        currentVersionData.fullyQualifiedName ?? ''
+                      ),
                       [FqnPart.Column],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -142,7 +144,6 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     key={tagType}
                     permission={false}
@@ -156,7 +157,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         ),
       },
     ],
-    [description, dataModelFQN, columns]
+    [description, columns]
   );
 
   return (

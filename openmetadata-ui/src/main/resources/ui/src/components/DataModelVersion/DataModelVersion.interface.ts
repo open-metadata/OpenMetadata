@@ -18,7 +18,6 @@ import { VersionData } from '../../pages/EntityVersionPage/EntityVersionPage.com
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DataModelVersionProp {
-  dataModelFQN: string;
   version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;
@@ -26,7 +25,6 @@ export interface DataModelVersionProp {
   domain: DashboardDataModel['domain'];
   tier: TagLabel;
   slashedDataModelName: TitleBreadcrumbProps['titleLinks'];
-  topicFQN: string;
   versionList: EntityHistory;
   deleted?: boolean;
   backHandler: () => void;

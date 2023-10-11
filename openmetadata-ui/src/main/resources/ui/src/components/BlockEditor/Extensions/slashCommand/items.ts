@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Editor, Range } from '@tiptap/core';
+import HashtagImage from '../../../../assets/img/ic-format-hashtag.png';
 import BulletListImage from '../../../../assets/img/ic-slash-bullet-list.png';
 import DividerImage from '../../../../assets/img/ic-slash-divider.png';
 import H1Image from '../../../../assets/img/ic-slash-h1.png';
@@ -19,21 +20,20 @@ import H3Image from '../../../../assets/img/ic-slash-h3.png';
 import NumberedListImage from '../../../../assets/img/ic-slash-numbered-list.png';
 import QuoteImage from '../../../../assets/img/ic-slash-quote.png';
 import TextImage from '../../../../assets/img/ic-slash-text.png';
-import TaskListImage from '../../../../assets/img/ic-task-list.png';
 import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
+import MentionImage from '../../../../assets/svg/ic-mentions.svg';
 
 export enum SuggestionItemType {
-  BASIC_BLOCKS = 'Basic blocks',
+  BASIC_BLOCKS = 'Basic',
+  ADVANCED_BLOCKS = 'Advanced',
 }
 
 export interface SuggestionItem {
   title: string;
   description: string;
   type: SuggestionItemType;
-  shortcut: string | null;
   imgSrc: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  command: (props: { editor: Editor; range: Range; props: any }) => void;
+  command: (props: { editor: Editor; range: Range }) => void;
 }
 
 export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
@@ -41,8 +41,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
     [
       {
         title: 'Text',
-        description: 'Plain text',
-        shortcut: null,
+        description: 'Start writing with plain text',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).setNode('paragraph').run();
@@ -51,8 +50,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
       },
       {
         title: 'H1',
-        description: 'Heading 1',
-        shortcut: '#',
+        description: 'Big heading',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
           editor
@@ -66,8 +64,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
       },
       {
         title: 'H2',
-        description: 'Heading 2',
-        shortcut: '##',
+        description: 'Medium heading',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
           editor
@@ -81,8 +78,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
       },
       {
         title: 'H3',
-        description: 'Heading 3',
-        shortcut: '###',
+        description: 'Small heading',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
           editor
@@ -95,19 +91,8 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         imgSrc: H3Image,
       },
       {
-        title: 'Code Block',
-        description: 'Add a code block',
-        shortcut: '```',
-        type: SuggestionItemType.BASIC_BLOCKS,
-        command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
-        },
-        imgSrc: CodeBlockImage,
-      },
-      {
         title: 'Bullet List',
-        description: 'Create a simple bulleted list',
-        shortcut: null,
+        description: 'Create a simple bullet list',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleBulletList().run();
@@ -116,8 +101,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
       },
       {
         title: 'Numbered List',
-        description: 'Create a list with numbering',
-        shortcut: null,
+        description: 'Create a simple numbered list',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleOrderedList().run();
@@ -125,34 +109,57 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) =>
         imgSrc: NumberedListImage,
       },
       {
-        title: 'Task List',
-        description: 'Create a task list',
-        shortcut: null,
+        title: 'Divider',
+        description: 'Insert a dividing line',
         type: SuggestionItemType.BASIC_BLOCKS,
         command: ({ editor, range }) => {
-          editor.chain().focus().deleteRange(range).toggleTaskList().run();
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .setHardBreak()
+            .setHorizontalRule()
+            .run();
         },
-        imgSrc: TaskListImage,
+        imgSrc: DividerImage,
       },
+      // advanced blocks
+      {
+        title: 'Code Block',
+        description: 'Add a block of code',
+        type: SuggestionItemType.ADVANCED_BLOCKS,
+        command: ({ editor, range }) => {
+          editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+        },
+        imgSrc: CodeBlockImage,
+      },
+
       {
         title: 'Quote',
-        description: 'Capture a quote',
-        shortcut: null,
-        type: SuggestionItemType.BASIC_BLOCKS,
+        description: 'Add a quote',
+        type: SuggestionItemType.ADVANCED_BLOCKS,
         command: ({ editor, range }) => {
           editor.chain().focus().deleteRange(range).toggleBlockquote().run();
         },
         imgSrc: QuoteImage,
       },
       {
-        title: 'Divider',
-        description: 'Visually divide blocks',
-        shortcut: null,
-        type: SuggestionItemType.BASIC_BLOCKS,
-        command: ({ editor }) => {
-          editor.chain().focus().setHorizontalRule().run();
+        title: 'Mention',
+        description: 'Add a user or team',
+        type: SuggestionItemType.ADVANCED_BLOCKS,
+        command: ({ editor, range }) => {
+          editor.chain().focus().deleteRange(range).insertContent('@').run();
         },
-        imgSrc: DividerImage,
+        imgSrc: MentionImage,
+      },
+      {
+        title: 'Link data asset',
+        description: 'Add a data asset',
+        type: SuggestionItemType.ADVANCED_BLOCKS,
+        command: ({ editor, range }) => {
+          editor.chain().focus().deleteRange(range).insertContent('#').run();
+        },
+        imgSrc: HashtagImage,
       },
     ] as SuggestionItem[]
   ).filter((item) =>
