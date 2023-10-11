@@ -84,7 +84,7 @@ const AppInstall = () => {
   const goToAppPage = () => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.WORKFLOW,
+        GlobalSettingsMenuCategory.INTEGRATIONS,
         GlobalSettingOptions.APPLICATIONS
       )
     );

@@ -55,7 +55,8 @@ import {
 import {
   getApplicationByName,
   patchApplication,
-  unistallApp,
+  triggerOnDemandApp,
+  uninstallApp,
 } from '../../../rest/applicationAPI';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -101,7 +102,7 @@ const AppDetails = () => {
   const onBrowseAppsClick = () => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.WORKFLOW,
+        GlobalSettingsMenuCategory.INTEGRATIONS,
         GlobalSettingOptions.APPLICATIONS
       )
     );
@@ -109,7 +110,10 @@ const AppDetails = () => {
 
   const onConfirmAction = useCallback(async () => {
     try {
-      await unistallApp(appData?.fullyQualifiedName ?? '', !isAppDisableAction);
+      await uninstallApp(
+        appData?.fullyQualifiedName ?? '',
+        !isAppDisableAction
+      );
 
       showSuccessToast(
         isAppDisableAction
@@ -180,6 +184,11 @@ const AppDetails = () => {
       try {
         const response = await patchApplication(appData.id, jsonPatch);
         setAppData(response);
+        showSuccessToast(
+          t('message.entity-saved-successfully', {
+            entity: t('label.configuration'),
+          })
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -201,9 +210,23 @@ const AppDetails = () => {
       try {
         const response = await patchApplication(appData.id, jsonPatch);
         setAppData(response);
+        showSuccessToast(
+          t('message.entity-saved-successfully', {
+            entity: t('label.schedule'),
+          })
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
+    }
+  };
+
+  const onDemandTrigger = async () => {
+    try {
+      await triggerOnDemandApp(appData?.fullyQualifiedName ?? '');
+      showSuccessToast(t('message.application-trigger-successfully'));
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -220,6 +243,7 @@ const AppDetails = () => {
               <AppSchedule
                 appData={appData}
                 onCancel={onBrowseAppsClick}
+                onDemandTrigger={onDemandTrigger}
                 onSave={onAppScheduleSave}
               />
             )}
@@ -377,8 +401,8 @@ const AppDetails = () => {
       <ConfirmationModal
         bodyText={t('message.are-you-sure-action-property', {
           action: isAppDisableAction
-            ? t('label.disable')
-            : t('label.uninstall'),
+            ? t('label.disable-lowercase')
+            : t('label.uninstall-lowercase'),
           propertyName: getEntityName(appData),
         })}
         cancelText={t('label.cancel')}

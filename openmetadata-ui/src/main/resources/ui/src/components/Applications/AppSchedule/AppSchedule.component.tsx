@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Space, Typography } from 'antd';
+import { Button, Col, Divider, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,12 @@ import { getIngestionFrequency } from '../../../utils/CommonUtils';
 import TestSuiteScheduler from '../../AddDataQualityTest/components/TestSuiteScheduler';
 import { AppScheduleProps } from './AppScheduleProps.interface';
 
-const AppSchedule = ({ appData, onCancel, onSave }: AppScheduleProps) => {
+const AppSchedule = ({
+  appData,
+  onCancel,
+  onSave,
+  onDemandTrigger,
+}: AppScheduleProps) => {
   const { t } = useTranslation();
 
   const cronString = useMemo(() => {
@@ -38,25 +43,35 @@ const AppSchedule = ({ appData, onCancel, onSave }: AppScheduleProps) => {
 
   return (
     <Row>
-      <Col span={24}>
-        <Space size={8}>
-          <Typography.Text className="right-panel-label">
-            {t('label.schedule-type')}
-          </Typography.Text>
-          <Typography.Text className="font-medium">
-            {(appData.appSchedule as AppScheduleClass).scheduleType ?? ''}
-          </Typography.Text>
-        </Space>
+      <Col className="flex-col" flex="auto">
+        <div>
+          <Space size={8}>
+            <Typography.Text className="right-panel-label">
+              {t('label.schedule-type')}
+            </Typography.Text>
+            <Typography.Text className="font-medium">
+              {(appData.appSchedule as AppScheduleClass).scheduleType ?? ''}
+            </Typography.Text>
+          </Space>
+        </div>
+        <div>
+          <Space size={8}>
+            <Typography.Text className="right-panel-label">
+              {t('label.schedule-interval')}
+            </Typography.Text>
+            <Typography.Text className="font-medium">
+              {cronString}
+            </Typography.Text>
+          </Space>
+        </div>
       </Col>
-      <Col span={24}>
-        <Space size={8}>
-          <Typography.Text className="right-panel-label">
-            {t('label.schedule-interval')}
-          </Typography.Text>
-          <Typography.Text className="font-medium">
-            {cronString}
-          </Typography.Text>
-        </Space>
+      <Col className="d-flex items-center justify-end" flex="200px">
+        <Button
+          data-testid="deploy-button"
+          type="primary"
+          onClick={onDemandTrigger}>
+          {t('label.run-on-demand')}
+        </Button>
       </Col>
 
       <Divider />

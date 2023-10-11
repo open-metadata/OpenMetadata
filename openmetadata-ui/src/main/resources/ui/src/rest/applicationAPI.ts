@@ -68,7 +68,7 @@ export const getApplicationRuns = async (
   return response.data;
 };
 
-export const unistallApp = (appName: string, hardDelete = false) => {
+export const uninstallApp = (appName: string, hardDelete = false) => {
   return APIClient.delete(`${BASE_URL}/name/${appName}`, {
     params: { hardDelete },
   });
@@ -86,4 +86,8 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
   );
 
   return response.data;
+};
+
+export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/trigger/${appName}`, {});
 };

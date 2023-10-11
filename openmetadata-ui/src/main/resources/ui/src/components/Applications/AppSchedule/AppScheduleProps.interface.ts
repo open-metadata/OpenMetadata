@@ -16,4 +16,5 @@ export interface AppScheduleProps {
   appData: App;
   onCancel: () => void;
   onSave: (cron: string) => void;
+  onDemandTrigger: () => void;
 }
