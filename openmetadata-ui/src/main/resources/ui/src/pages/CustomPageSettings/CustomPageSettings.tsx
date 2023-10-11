@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
@@ -37,6 +38,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { getCustomisePagePath } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './CustomPageSettings.less';
 
 export const CustomPageSettings = () => {
   const { t } = useTranslation();
@@ -121,7 +123,7 @@ export const CustomPageSettings = () => {
 
   return (
     <Row
-      className="user-listing p-b-md"
+      className="customize-landing-page user-listing p-b-md"
       data-testid="user-list-v1-component"
       gutter={[16, 16]}>
       <Col span={18}>
@@ -150,11 +152,17 @@ export const CustomPageSettings = () => {
                 size="small"
                 type="text"
                 onClick={() => handleCustomisePersona(persona)}>
-                {t('label.customise')}
+                {t('label.customize-landing-page')}
               </Button>
             }
             title={getEntityName(persona)}>
-            <RichTextEditorPreviewer markdown={persona.description ?? ''} />
+            {persona.description ? (
+              <RichTextEditorPreviewer markdown={persona.description ?? ''} />
+            ) : (
+              <Typography.Text className="text-grey-muted">
+                {t('label.no-description')}
+              </Typography.Text>
+            )}
           </Card>
         </Col>
       ))}

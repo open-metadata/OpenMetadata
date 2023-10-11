@@ -13,10 +13,9 @@
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
 import { LANDING_PAGE_LAYOUT } from '../../constants/CustomisePage.constants';
@@ -33,8 +32,9 @@ import {
   getDocumentByFQN,
   updateDocument,
 } from '../../rest/DocStoreAPI';
+import { Transi18next } from '../../utils/CommonUtils';
 import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
+import { getPersonaDetailsPath, getSettingPath } from '../../utils/RouterUtils';
 
 export const CustomisablePage = () => {
   const { t } = useTranslation();
@@ -135,9 +135,19 @@ export const CustomisablePage = () => {
         span={24}>
         <div className="d-flex gap-2 items-center">
           <Typography.Title className="m-0" level={5}>
-            {t('label.customise') + ' ' + startCase(pageFqn) + ' '}
+            <Transi18next
+              i18nKey="message.customize-landing-page-header"
+              renderElement={
+                <Link
+                  style={{ color: '#1890ff', fontSize: '16px' }}
+                  to={getPersonaDetailsPath(fqn)}
+                />
+              }
+              values={{
+                persona: fqn,
+              }}
+            />
           </Typography.Title>
-          <span className="text-body">({startCase(fqn)})</span>
         </div>
         <Space>
           <Button size="small" onClick={handleCancel}>
