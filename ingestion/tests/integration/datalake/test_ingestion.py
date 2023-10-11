@@ -11,6 +11,7 @@
 
 """Datalake ingestion integration tests"""
 
+from copy import deepcopy
 import os
 from unittest import TestCase
 
@@ -22,7 +23,9 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 from moto import mock_s3
+import pytest
 
 BUCKET_NAME = "MyBucket"
 
@@ -114,6 +117,7 @@ class DatalakeTestE2E(TestCase):
             self.s3_keys.append(key)
             self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
 
+    @pytest.mark.order(10000)
     def test_ingestion(self):
         """test ingestion of datalake data"""
         # Ingest our S3 data
@@ -139,3 +143,47 @@ class DatalakeTestE2E(TestCase):
             for column in columns:
                 if column.dataType == DataType.JSON:
                     assert column.children
+
+    @pytest.mark.order(10001)
+    def test_profiler(self):
+        """Test profiler ingestion"""
+        workflow_config = deepcopy(INGESTION_CONFIG)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {},
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        csv_ = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."users.csv"',
+            fields=["tableProfilerConfig"],
+        )
+        parquet_ = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."new_users.parquet"',
+            fields=["tableProfilerConfig"],
+        )
+        json_ = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."names.json"',
+            fields=["tableProfilerConfig"],
+        )
+        csv_sample_data = self.metadata.get_sample_data(csv_)
+        parquet_sample_data = self.metadata.get_sample_data(parquet_)
+        json_sample_data = self.metadata.get_sample_data(json_)
+        
+        assert csv_sample_data.sampleData.rows
+        assert parquet_sample_data.sampleData.rows
+        assert json_sample_data.sampleData.rows
