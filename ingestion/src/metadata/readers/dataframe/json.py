@@ -65,6 +65,8 @@ class JSONDataFrameReader(DataFrameReader):
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
+        # if we get a scalar value (e.g. {"a":"b"}) then we need to specify the index
+        data = data if not isinstance(data,dict) else [data]
         return dataframe_to_chunks(pd.DataFrame.from_records(data))
 
     def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:

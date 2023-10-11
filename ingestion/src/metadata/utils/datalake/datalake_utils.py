@@ -186,7 +186,7 @@ def get_columns(data_frame: "DataFrame"):
                     parsed_string["arrayDataType"] = DataType.UNKNOWN
 
                 if data_type == DataType.JSON:
-                    parsed_string["children"] = get_children(data_frame[column][:100])
+                    parsed_string["children"] = get_children(data_frame[column].dropna()[:100])
 
                 cols.append(Column(**parsed_string))
             except Exception as exc:
