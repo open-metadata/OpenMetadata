@@ -53,6 +53,7 @@ interface Props {
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
   allowRename?: boolean;
+  prepareType?: boolean;
 }
 
 const ManageButton: FC<Props> = ({
@@ -75,6 +76,7 @@ const ManageButton: FC<Props> = ({
   editDisplayNamePermission,
   onEditDisplayName,
   allowRename,
+  prepareType = true,
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -257,6 +259,7 @@ const ManageButton: FC<Props> = ({
           entityType={entityType || ''}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
           isRecursiveDelete={isRecursiveDelete}
+          prepareType={prepareType}
           softDeleteMessagePostFix={softDeleteMessagePostFix}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
