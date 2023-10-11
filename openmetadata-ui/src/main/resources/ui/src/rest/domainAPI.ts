@@ -11,27 +11,19 @@
  *  limitations under the License.
  */
 
+import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityHistory } from '../generated/type/entityHistory';
-import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
-
 const BASE_URL = '/domains';
 
-export const getDomainList = async (params?: Params) => {
+export const getDomainList = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<Domain[]>>(BASE_URL, {
     params,
   });

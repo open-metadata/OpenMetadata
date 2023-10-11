@@ -412,7 +412,8 @@ public class StorageServiceResource
   }
 
   private StorageService getService(CreateStorageService create, String user) {
-    return copy(new StorageService(), create, user)
+    return repository
+        .copy(new StorageService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

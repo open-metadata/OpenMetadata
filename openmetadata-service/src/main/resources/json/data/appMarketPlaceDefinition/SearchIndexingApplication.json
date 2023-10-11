@@ -1,7 +1,7 @@
 {
   "name": "SearchIndexingApplication",
   "fullyQualifiedName": "SearchIndexingApplication",
-  "displayName": "Search Indexing Application",
+  "displayName": "Search Indexing",
   "description": "Open-metadata connects with Elastic/Open Search to provide search feature for Data Assets. This application provides additional features related to ES/OS.",
   "features": "Sync Open-metadata and Elastic Search and Recreate Indexes.",
   "appType": "internal",

@@ -408,7 +408,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
     if (nullOrEmpty(create.getPolicies())) {
       throw new IllegalArgumentException("At least one policy is required to create a role");
     }
-    return copy(new Role(), create, user).withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
+    return repository
+        .copy(new Role(), create, user)
+        .withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
   }
 
   public static EntityReference getRole(String roleName) {
