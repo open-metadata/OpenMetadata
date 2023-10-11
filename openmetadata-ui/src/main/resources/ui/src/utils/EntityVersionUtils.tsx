@@ -122,7 +122,7 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
     return (
       <span
         className={diffChangeText}
-        data-testid={`${diffChangeText}-${part.value}`}
+        data-testid={diffChangeText}
         key={part.value}>
         {part.value}
       </span>
@@ -135,7 +135,7 @@ export const getAddedDiffElement = (text: string) => {
     <Typography.Text
       underline
       className="diff-added"
-      data-testid={`diff-added-${text}`}
+      data-testid="diff-added"
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -147,7 +147,7 @@ export const getRemovedDiffElement = (text: string) => {
     <Typography.Text
       delete
       className="text-grey-muted"
-      data-testid={`diff-removed-${text}`}
+      data-testid="diff-removed"
       key={uniqueId()}>
       {text}
     </Typography.Text>
@@ -156,7 +156,7 @@ export const getRemovedDiffElement = (text: string) => {
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <Typography.Text data-testid={`diff-normal-${text}`} key={uniqueId()}>
+    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
       {text}
     </Typography.Text>
   );
