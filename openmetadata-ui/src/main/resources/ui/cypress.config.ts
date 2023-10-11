@@ -17,6 +17,7 @@ export default defineConfig({
   projectId: 'a9yxci',
   viewportWidth: 1240,
   viewportHeight: 660,
+  screenshotOnRunFailure: false,
   watchForFileChanges: false,
   defaultCommandTimeout: 5000,
   chromeWebSecurity: false,
