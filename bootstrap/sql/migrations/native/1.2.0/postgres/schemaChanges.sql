@@ -201,6 +201,40 @@ UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,markAllDeletedTables}'
 WHERE json #>> '{pipelineType}' = 'metadata';
 
+
+-- update entityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  '"entityReportData"',
+  true
+),
+entityFQNHash = MD5('entityReportData')
+WHERE json #>> '{reportDataType}' = 'EntityReportData';
+
+-- update webAnalyticEntityViewReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  '"webAnalyticEntityViewReportData"',
+  true
+),
+entityFQNHash = MD5('webAnalyticEntityViewReportData')
+WHERE json #>> '{reportDataType}' = 'WebAnalyticEntityViewReportData';
+
+-- update webAnalyticUserActivityReportData from pascale to camel case
+UPDATE report_data_time_series
+SET json = jsonb_set(
+  json::jsonb #- '{reportDataType}',
+  '{reportDataType}',
+  '"webAnalyticUserActivityReportData"',
+  true
+),
+entityFQNHash = MD5('webAnalyticUserActivityReportData')
+WHERE json #>> '{reportDataType}' = 'WebAnalyticUserActivityReportData';
+
 CREATE TABLE IF NOT EXISTS installed_apps (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
     nameHash VARCHAR(256) NOT NULL,
@@ -227,8 +261,6 @@ CREATE TABLE IF NOT EXISTS apps_marketplace (
    
 CREATE TABLE IF NOT EXISTS apps_extension_time_series (
     appId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'appId') STORED NOT NULL,      
-    extension VARCHAR(256) NOT NULL,          
-    jsonSchema VARCHAR(256) NOT NULL, 
     json JSONB NOT NULL,
     timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL
 );  

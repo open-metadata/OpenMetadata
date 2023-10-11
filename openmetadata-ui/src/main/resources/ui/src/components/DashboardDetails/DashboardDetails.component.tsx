@@ -115,6 +115,11 @@ const DashboardDetails = ({
     Array<ChartsPermissions>
   >([]);
 
+  const decodedDashboardFQN = useMemo(
+    () => getDecodedFqn(dashboardFQN),
+    [dashboardFQN]
+  );
+
   const {
     owner,
     description,
@@ -177,9 +182,8 @@ const DashboardDetails = ({
     }
   }, []);
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.DASHBOARD, dashboardFQN, setFeedCount);
-  };
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.DASHBOARD, decodedDashboardFQN, setFeedCount);
 
   useEffect(() => {
     getEntityFeedCount();
@@ -219,9 +223,7 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
-        getDashboardDetailsPath(getDecodedFqn(dashboardFQN), activeKey)
-      );
+      history.push(getDashboardDetailsPath(decodedDashboardFQN, activeKey));
     }
   };
 
@@ -478,7 +480,7 @@ const DashboardDetails = ({
                 fqn: record.fullyQualifiedName ?? '',
                 field: record.description,
               }}
-              entityFqn={dashboardFQN}
+              entityFqn={decodedDashboardFQN}
               entityType={EntityType.DASHBOARD}
               hasEditPermission={editDescriptionPermissions}
               index={index}
@@ -504,7 +506,7 @@ const DashboardDetails = ({
         render: (tags: TagLabel[], record: ChartType, index: number) => {
           return (
             <TableTags<ChartType>
-              entityFqn={dashboardFQN}
+              entityFqn={decodedDashboardFQN}
               entityType={EntityType.DASHBOARD}
               handleTagSelection={handleChartTagSelection}
               hasTagEditAccess={hasEditTagAccess(record)}
@@ -535,7 +537,7 @@ const DashboardDetails = ({
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (
           <TableTags<ChartType>
-            entityFqn={dashboardFQN}
+            entityFqn={decodedDashboardFQN}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
             hasTagEditAccess={hasEditTagAccess(record)}
@@ -576,7 +578,7 @@ const DashboardDetails = ({
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={dashboardDetails.description}
-                  entityFqn={dashboardFQN}
+                  entityFqn={decodedDashboardFQN}
                   entityName={entityName}
                   entityType={EntityType.DASHBOARD}
                   hasEditAccess={
@@ -624,7 +626,7 @@ const DashboardDetails = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={dashboardFQN}
+                  entityFqn={decodedDashboardFQN}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
@@ -639,7 +641,7 @@ const DashboardDetails = ({
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={dashboardFQN}
+                  entityFqn={decodedDashboardFQN}
                   entityType={EntityType.DASHBOARD}
                   permission={
                     (dashboardPermissions.EditAll ||
