@@ -21,7 +21,7 @@ from typing import List, Union
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, UTF_8
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -66,7 +66,7 @@ class JSONDataFrameReader(DataFrameReader):
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
         # if we get a scalar value (e.g. {"a":"b"}) then we need to specify the index
-        data = data if not isinstance(data,dict) else [data]
+        data = data if not isinstance(data, dict) else [data]
         return dataframe_to_chunks(pd.DataFrame.from_records(data))
 
     def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:

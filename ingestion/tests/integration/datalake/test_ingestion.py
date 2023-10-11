@@ -11,21 +11,26 @@
 
 """Datalake ingestion integration tests"""
 
-from copy import deepcopy
 import os
+from copy import deepcopy
 from unittest import TestCase
 
 import boto3
 import botocore
+import pytest
+from moto import mock_s3
+
 from metadata.generated.schema.entity.data.table import DataType, Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
+)
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from moto import mock_s3
-import pytest
 
 BUCKET_NAME = "MyBucket"
 
@@ -59,6 +64,7 @@ INGESTION_CONFIG = {
         }
     },
 }
+
 
 @mock_s3
 class DatalakeTestE2E(TestCase):
@@ -127,16 +133,15 @@ class DatalakeTestE2E(TestCase):
         ingestion_workflow.stop()
 
         resp: EntityList[Table] = self.metadata.list_entities(
-            entity=Table,
-            params={
-                "database": "datalake_for_integration_tests.default"
-            }
-        ) # type: ignore
+            entity=Table, params={"database": "datalake_for_integration_tests.default"}
+        )  # type: ignore
 
         entities = resp.entities
         self.assertEqual(len(entities), 3)
         names = [entity.name.__root__ for entity in entities]
-        self.assertListEqual(sorted(["names.json", "new_users.parquet", "users.csv"]), sorted(names))
+        self.assertListEqual(
+            sorted(["names.json", "new_users.parquet", "users.csv"]), sorted(names)
+        )
 
         for entity in entities:
             columns = entity.columns
@@ -183,7 +188,7 @@ class DatalakeTestE2E(TestCase):
         csv_sample_data = self.metadata.get_sample_data(csv_)
         parquet_sample_data = self.metadata.get_sample_data(parquet_)
         json_sample_data = self.metadata.get_sample_data(json_)
-        
+
         assert csv_sample_data.sampleData.rows
         assert parquet_sample_data.sampleData.rows
         assert json_sample_data.sampleData.rows

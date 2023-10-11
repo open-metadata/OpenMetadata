@@ -12,7 +12,6 @@
 Helper module to handle data sampling
 for the profiler
 """
-import json
 import math
 import random
 from typing import List, Optional, cast
@@ -26,10 +25,8 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     TableData,
 )
-from metadata.ingestion.source.database.datalake.columns import _get_root_col
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_like_column import SQALikeColumn
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 
 
 class DatalakeSampler(SamplerInterface):
@@ -157,9 +154,11 @@ class DatalakeSampler(SamplerInterface):
         return self._get_sampled_dataframe()
 
     def _fetch_rows(self, data_frame):
-         return data_frame.dropna().values.tolist()
+        return data_frame.dropna().values.tolist()
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]] = None) -> TableData:
+    def fetch_sample_data(
+        self, columns: Optional[List[SQALikeColumn]] = None
+    ) -> TableData:
         """Fetch sample data from the table
 
         Returns:

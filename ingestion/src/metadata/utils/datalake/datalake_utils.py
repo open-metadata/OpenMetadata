@@ -16,7 +16,6 @@ from different auths and different file systems.
 import ast
 import json
 import traceback
-from functools import reduce
 from typing import Dict, List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
@@ -26,7 +25,6 @@ from metadata.readers.dataframe.models import (
     DatalakeTableSchemaWrapper,
 )
 from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_reader
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -109,20 +107,23 @@ def unique_json_structure(dicts: List[Dict]) -> Dict:
         dicts: list of json objects
     """
     result = {}
-    for d in dicts:
-        for key, value in d.items():
+    for dict_ in dicts:
+        for key, value in dict_.items():
             if isinstance(value, dict):
                 nested_json = result.get(key, {})
                 # `isinstance(nested_json, dict)` if for a key we first see a non dict value
                 # but then see a dict value later, we will consider the key to be a dict.
-                result[key] = unique_json_structure([nested_json if isinstance(nested_json, dict) else {}, value])
+                result[key] = unique_json_structure(
+                    [nested_json if isinstance(nested_json, dict) else {}, value]
+                )
             else:
                 result[key] = value
     return result
 
+
 def construct_json_column_children(json_column: Dict) -> List[Dict]:
     """Construt a dict representation of a Column object
-    
+
     Args:
         json_column: unique json structure of a column
     """
@@ -130,7 +131,9 @@ def construct_json_column_children(json_column: Dict) -> List[Dict]:
     for key, value in json_column.items():
         column = {}
         type_ = type(value).__name__.lower()
-        column["dataTypeDisplay"] = DATALAKE_DATA_TYPES.get(type_, DataType.UNKNOWN).value
+        column["dataTypeDisplay"] = DATALAKE_DATA_TYPES.get(
+            type_, DataType.UNKNOWN
+        ).value
         column["dataType"] = DATALAKE_DATA_TYPES.get(type_, DataType.UNKNOWN).value
         column["name"] = truncate_column_name(key)
         column["displayName"] = key
@@ -141,15 +144,15 @@ def construct_json_column_children(json_column: Dict) -> List[Dict]:
     return children
 
 
-
 def get_children(json_column) -> List[Dict]:
     """Get children of json column.
-    
+
     Args:
         json_column (pandas.Series): column with 100 sample rows.
             Sample rows will be used to infer children.
     """
-    from pandas import Series
+    from pandas import Series  # pylint: disable=import-outside-toplevel
+
     json_column = cast(Series, json_column)
     try:
         json_column = json_column.apply(json.loads)
@@ -186,14 +189,14 @@ def get_columns(data_frame: "DataFrame"):
                     parsed_string["arrayDataType"] = DataType.UNKNOWN
 
                 if data_type == DataType.JSON:
-                    parsed_string["children"] = get_children(data_frame[column].dropna()[:100])
+                    parsed_string["children"] = get_children(
+                        data_frame[column].dropna()[:100]
+                    )
 
                 cols.append(Column(**parsed_string))
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected exception parsing column [{column}]: {exc}"
-                )
+                logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
     return cols
 
 

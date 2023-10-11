@@ -13,33 +13,36 @@ Test datalake utils
 """
 
 from unittest import TestCase
-from metadata.generated.schema.entity.data.table import Column
 
-from metadata.utils.datalake.datalake_utils import unique_json_structure, construct_json_column_children
+from metadata.generated.schema.entity.data.table import Column
+from metadata.utils.datalake.datalake_utils import (
+    construct_json_column_children,
+    unique_json_structure,
+)
 
 STRUCTURE = {
-            "a": "w",
-            "b": 4,
-            "c": {
-                "d": 2,
-                "e": 4,
-                "f": {
-                    "g": 9,
-                    "h": {
-                        "i": 6
-                    },
-                    "n": {
-                        "o": 10,
-                        "p": 11,
-                    },
-                },
-                "j": 7,
-                "k": 8,
-            }
-        }
+    "a": "w",
+    "b": 4,
+    "c": {
+        "d": 2,
+        "e": 4,
+        "f": {
+            "g": 9,
+            "h": {"i": 6},
+            "n": {
+                "o": 10,
+                "p": 11,
+            },
+        },
+        "j": 7,
+        "k": 8,
+    },
+}
+
 
 class TestDatalakeUtils(TestCase):
     """class for datalake utils test"""
+
     def test_unique_json_structure(self):
         """test unique json structure fn"""
         sample_data = [
@@ -57,32 +60,98 @@ class TestDatalakeUtils(TestCase):
     def test_construct_column(self):
         """test construct column fn"""
         expected = [
-            {'dataTypeDisplay': 'STRING', 'dataType': 'STRING', 'name': 'a', 'displayName': 'a'},
-            {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'b', 'displayName': 'b'},
-            {'dataTypeDisplay': 'JSON', 'dataType': 'JSON', 'name': 'c', 'displayName': 'c', 'children':
-                [
-                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'd', 'displayName': 'd'},
-                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'e', 'displayName': 'e'},
-                    {'dataTypeDisplay': 'JSON', 'dataType': 'JSON', 'name': 'f', 'displayName': 'f', 'children':
-                        [
-                            {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'g', 'displayName': 'g'},
-                            {'dataTypeDisplay': 'JSON', 'dataType': 'JSON', 'name': 'h', 'displayName': 'h', 'children':
-                                [
-                                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'i', 'displayName': 'i'}
-                                ]
-                            },
-                            {'dataTypeDisplay': 'JSON', 'dataType': 'JSON', 'name': 'n', 'displayName': 'n', 'children':
-                                [
-                                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'o', 'displayName': 'o'},
-                                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'p', 'displayName': 'p'}
-                                ]
-                            }
-                        ]
+            {
+                "dataTypeDisplay": "STRING",
+                "dataType": "STRING",
+                "name": "a",
+                "displayName": "a",
+            },
+            {
+                "dataTypeDisplay": "INT",
+                "dataType": "INT",
+                "name": "b",
+                "displayName": "b",
+            },
+            {
+                "dataTypeDisplay": "JSON",
+                "dataType": "JSON",
+                "name": "c",
+                "displayName": "c",
+                "children": [
+                    {
+                        "dataTypeDisplay": "INT",
+                        "dataType": "INT",
+                        "name": "d",
+                        "displayName": "d",
                     },
-                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'j', 'displayName': 'j'},
-                    {'dataTypeDisplay': 'INT', 'dataType': 'INT', 'name': 'k', 'displayName': 'k'}
-                ]
-            }
+                    {
+                        "dataTypeDisplay": "INT",
+                        "dataType": "INT",
+                        "name": "e",
+                        "displayName": "e",
+                    },
+                    {
+                        "dataTypeDisplay": "JSON",
+                        "dataType": "JSON",
+                        "name": "f",
+                        "displayName": "f",
+                        "children": [
+                            {
+                                "dataTypeDisplay": "INT",
+                                "dataType": "INT",
+                                "name": "g",
+                                "displayName": "g",
+                            },
+                            {
+                                "dataTypeDisplay": "JSON",
+                                "dataType": "JSON",
+                                "name": "h",
+                                "displayName": "h",
+                                "children": [
+                                    {
+                                        "dataTypeDisplay": "INT",
+                                        "dataType": "INT",
+                                        "name": "i",
+                                        "displayName": "i",
+                                    }
+                                ],
+                            },
+                            {
+                                "dataTypeDisplay": "JSON",
+                                "dataType": "JSON",
+                                "name": "n",
+                                "displayName": "n",
+                                "children": [
+                                    {
+                                        "dataTypeDisplay": "INT",
+                                        "dataType": "INT",
+                                        "name": "o",
+                                        "displayName": "o",
+                                    },
+                                    {
+                                        "dataTypeDisplay": "INT",
+                                        "dataType": "INT",
+                                        "name": "p",
+                                        "displayName": "p",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        "dataTypeDisplay": "INT",
+                        "dataType": "INT",
+                        "name": "j",
+                        "displayName": "j",
+                    },
+                    {
+                        "dataTypeDisplay": "INT",
+                        "dataType": "INT",
+                        "name": "k",
+                        "displayName": "k",
+                    },
+                ],
+            },
         ]
         actual = construct_json_column_children(STRUCTURE)
 
@@ -92,7 +161,12 @@ class TestDatalakeUtils(TestCase):
     def test_create_column_object(self):
         """test create column object fn"""
         formatted_column = construct_json_column_children(STRUCTURE)
-        column = {'dataTypeDisplay': 'STRING', 'dataType': 'STRING', 'name': 'a', 'displayName': 'a', "children": formatted_column}
+        column = {
+            "dataTypeDisplay": "STRING",
+            "dataType": "STRING",
+            "name": "a",
+            "displayName": "a",
+            "children": formatted_column,
+        }
         column_obj = Column(**column)
         assert len(column_obj.children) == 3
-        
