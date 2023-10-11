@@ -38,7 +38,7 @@ import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
-import { ServiceUtilClassBase } from '../../utils/ServiceUtilClassBase';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 
 type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
@@ -237,7 +237,7 @@ const ServiceConnectionDetails = ({
         break;
       case EntityType.STORAGE_SERVICE:
         setSchema(
-          ServiceUtilClassBase.getStorageServiceConfig(
+          serviceUtilClassBase.getStorageServiceConfig(
             serviceFQN as StorageServiceType
           ).schema
         );
