@@ -10,30 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
 import RecentlyViewed from '../../../components/recently-viewed/RecentlyViewed';
 import {
-  LANDING_PAGE_RIGHT_PANEL_WIDGETS,
+  LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE,
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_MARGIN,
 } from '../../../constants/CustomisePage.constants';
 import { SIZE } from '../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import AddWidgetModal from '../../CustomizableComponents/AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import KPIWidget from '../../KPIWidget/KPIWidget.component';
+import { MyDataWidget } from '../MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget from './AnnouncementsWidget';
 import FollowingWidget from './FollowingWidget';
 import './right-sidebar.less';
@@ -42,6 +40,8 @@ import { RightSidebarProps } from './RightSidebar.interface';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const RightSidebar = ({
+  announcements,
+  isAnnouncementLoading,
   parentLayoutData,
   isEditView = false,
   followedData,
@@ -50,8 +50,6 @@ const RightSidebar = ({
   layoutConfigData,
   updateParentLayout,
 }: RightSidebarProps) => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
     ...(layoutConfigData?.page?.layout ?? []),
     ...(isEditView
@@ -93,7 +91,7 @@ const RightSidebar = ({
     (widgetConfig: WidgetConfig) => {
       if (widgetConfig.i.endsWith('.EmptyWidgetPlaceholder')) {
         return (
-          <div className="p-l-sm h-full">
+          <div className="h-full">
             <EmptyWidgetPlaceholder
               handleOpenAddWidgetModal={handleOpenAddWidgetModal}
               handleRemoveWidget={handleRemoveWidget}
@@ -107,6 +105,22 @@ const RightSidebar = ({
       }
 
       switch (widgetConfig.i) {
+        case LandingPageWidgetKeys.MY_DATA:
+          return (
+            <MyDataWidget
+              handleRemoveWidget={handleRemoveWidget}
+              isEditView={isEditView}
+            />
+          );
+
+        case LandingPageWidgetKeys.KPI:
+          return (
+            <KPIWidget
+              handleRemoveWidget={handleRemoveWidget}
+              isEditView={isEditView}
+            />
+          );
+
         case LandingPageWidgetKeys.ANNOUNCEMENTS:
           return (
             <AnnouncementsWidget
@@ -154,7 +168,7 @@ const RightSidebar = ({
     () =>
       layout
         .filter((widget: WidgetConfig) =>
-          !isLoading &&
+          !isAnnouncementLoading &&
           widget.i === LandingPageWidgetKeys.ANNOUNCEMENTS &&
           !isEditView
             ? !isEmpty(announcements)
@@ -165,25 +179,8 @@ const RightSidebar = ({
             {getWidgetFromKey(widget)}
           </div>
         )),
-    [layout, announcements, getWidgetFromKey, isEditView, isLoading]
+    [layout, announcements, getWidgetFromKey, isEditView, isAnnouncementLoading]
   );
-
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await getActiveAnnouncement();
-
-      setAnnouncements(response.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
@@ -196,9 +193,9 @@ const RightSidebar = ({
 
   const addedWidgetsList = useMemo(
     () =>
-      LANDING_PAGE_RIGHT_PANEL_WIDGETS.filter((widget) =>
-        layout.some((item) => item.i === widget)
-      ),
+      layout
+        .filter((widget) => widget.i.startsWith('KnowledgePanel'))
+        .map((widget) => widget.i),
     [layout]
   );
 
@@ -246,8 +243,8 @@ const RightSidebar = ({
           addedWidgetsList={addedWidgetsList}
           handleAddWidget={handleAddWidget}
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          maxGridSizeSupport={LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE}
           open={isWidgetModalOpen}
-          widgetsToShow={LANDING_PAGE_RIGHT_PANEL_WIDGETS}
         />
       )}
     </>

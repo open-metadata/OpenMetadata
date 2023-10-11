@@ -17,6 +17,8 @@ export const DEFAULT_WIDGET_HEIGHT = 3;
 export const LANDING_PAGE_WIDGET_MARGIN = 16;
 export const LANDING_PAGE_ROW_HEIGHT = 100;
 export const LANDING_PAGE_RIGHT_CONTAINER_EDIT_HEIGHT = 16;
+export const LANDING_PAGE_MAX_GRID_SIZE = 3;
+export const LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE = 1;
 
 export const LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS = {
   activityFeed: 5,
@@ -28,19 +30,6 @@ export const LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS = {
   kpi: 2.8,
   totalDataAssets: 3.42,
 };
-
-export const LANDING_PAGE_OUTER_WIDGETS = [
-  LandingPageWidgetKeys.ACTIVITY_FEED,
-  LandingPageWidgetKeys.MY_DATA,
-  LandingPageWidgetKeys.KPI,
-  LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-];
-
-export const LANDING_PAGE_RIGHT_PANEL_WIDGETS = [
-  LandingPageWidgetKeys.FOLLOWING,
-  LandingPageWidgetKeys.ANNOUNCEMENTS,
-  LandingPageWidgetKeys.RECENTLY_VIEWED,
-];
 
 export const LANDING_PAGE_LAYOUT = [
   {

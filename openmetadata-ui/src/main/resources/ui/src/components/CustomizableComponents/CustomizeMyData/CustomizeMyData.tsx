@@ -20,17 +20,19 @@ import { useLocation } from 'react-router-dom';
 import AppState from '../../../AppState';
 import {
   LANDING_PAGE_LAYOUT,
-  LANDING_PAGE_OUTER_WIDGETS,
+  LANDING_PAGE_MAX_GRID_SIZE,
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_MARGIN,
 } from '../../../constants/CustomisePage.constants';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
+import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
 import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
+import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getUserById } from '../../../rest/userAPI';
 import {
   getAddWidgetHandler,
@@ -41,7 +43,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import KPIWidget from '../../KPIWidget/KPIWidget.component';
 import { MyDataWidget } from '../../MyData/MyDataWidget/MyDataWidget.component';
+import AnnouncementsWidget from '../../MyData/RightSidebar/AnnouncementsWidget';
+import FollowingWidget from '../../MyData/RightSidebar/FollowingWidget';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
+import RecentlyViewed from '../../recently-viewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../../TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from '../../Widgets/FeedsWidget/FeedsWidget.component';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
@@ -71,6 +76,9 @@ function CustomizeMyData({
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] =
+    useState<boolean>(true);
+  const [announcements, setAnnouncements] = useState<Thread[]>([]);
 
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -172,13 +180,43 @@ function CustomizeMyData({
             />
           );
 
+        case LandingPageWidgetKeys.ANNOUNCEMENTS:
+          return (
+            <AnnouncementsWidget
+              isEditView
+              announcements={announcements}
+              handleRemoveWidget={handleRemoveWidget}
+            />
+          );
+
+        case LandingPageWidgetKeys.FOLLOWING:
+          return (
+            <FollowingWidget
+              isEditView
+              followedData={followedData ?? []}
+              followedDataCount={followedDataCount}
+              handleRemoveWidget={handleRemoveWidget}
+              isLoadingOwnedData={isLoadingOwnedData}
+            />
+          );
+
+        case LandingPageWidgetKeys.RECENTLY_VIEWED:
+          return (
+            <RecentlyViewed
+              isEditView
+              handleRemoveWidget={handleRemoveWidget}
+            />
+          );
+
         case LandingPageWidgetKeys.RIGHT_PANEL:
           return (
-            <div className="h-full border-left">
+            <div className="h-full border-left p-l-md">
               <RightSidebar
                 isEditView
+                announcements={announcements}
                 followedData={followedData ?? []}
                 followedDataCount={followedDataCount}
+                isAnnouncementLoading={isAnnouncementLoading}
                 isLoadingOwnedData={isLoadingOwnedData}
                 layoutConfigData={widgetConfig.data}
                 parentLayoutData={layout}
@@ -199,14 +237,16 @@ function CustomizeMyData({
       isLoadingOwnedData,
       layout,
       handleLayoutChange,
+      isAnnouncementLoading,
+      announcements,
     ]
   );
 
   const addedWidgetsList = useMemo(
     () =>
-      LANDING_PAGE_OUTER_WIDGETS.filter((widget) =>
-        layout.some((item) => item.i === widget)
-      ),
+      layout
+        .filter((widget) => widget.i.startsWith('KnowledgePanel'))
+        .map((widget) => widget.i),
     [layout]
   );
 
@@ -224,6 +264,23 @@ function CustomizeMyData({
       )),
     [layout, getWidgetFromKey]
   );
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   useEffect(() => {
     handlePageDataChange({
@@ -271,8 +328,8 @@ function CustomizeMyData({
           addedWidgetsList={addedWidgetsList}
           handleAddWidget={handleAddWidget}
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          maxGridSizeSupport={LANDING_PAGE_MAX_GRID_SIZE}
           open={isWidgetModalOpen}
-          widgetsToShow={LANDING_PAGE_OUTER_WIDGETS}
         />
       )}
     </ActivityFeedProvider>

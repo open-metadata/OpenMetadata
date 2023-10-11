@@ -46,7 +46,7 @@ function FollowingWidget({
   }, []);
 
   return (
-    <div className="p-l-md" data-testid="following-data-container">
+    <div data-testid="following-data-container">
       <EntityListWithV1
         entityList={followedData}
         headerText={

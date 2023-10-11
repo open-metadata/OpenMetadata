@@ -30,7 +30,10 @@ import { useAuthContext } from '../../components/authentication/auth-provider/Au
 import KPIWidget from '../../components/KPIWidget/KPIWidget.component';
 import Loader from '../../components/Loader/Loader';
 import { MyDataWidget } from '../../components/MyData/MyDataWidget/MyDataWidget.component';
+import AnnouncementsWidget from '../../components/MyData/RightSidebar/AnnouncementsWidget';
+import FollowingWidget from '../../components/MyData/RightSidebar/FollowingWidget';
 import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
+import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import FeedsWidget from '../../components/Widgets/FeedsWidget/FeedsWidget.component';
@@ -41,10 +44,12 @@ import {
 } from '../../constants/CustomisePage.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomisablePages/CustomisablePage.interface';
@@ -64,6 +69,9 @@ const MyDataPageV1 = () => {
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
   const isMounted = useRef(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] =
+    useState<boolean>(true);
+  const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -168,12 +176,29 @@ const MyDataPageV1 = () => {
         case LandingPageWidgetKeys.TOTAL_DATA_ASSETS:
           return <TotalDataAssetsWidget />;
 
+        case LandingPageWidgetKeys.ANNOUNCEMENTS:
+          return <AnnouncementsWidget announcements={announcements} />;
+
+        case LandingPageWidgetKeys.FOLLOWING:
+          return (
+            <FollowingWidget
+              followedData={followedData ?? []}
+              followedDataCount={followedDataCount}
+              isLoadingOwnedData={isLoadingOwnedData}
+            />
+          );
+
+        case LandingPageWidgetKeys.RECENTLY_VIEWED:
+          return <RecentlyViewed />;
+
         case LandingPageWidgetKeys.RIGHT_PANEL:
           return (
-            <div className="h-full border-left">
+            <div className="h-full border-left p-l-md">
               <RightSidebar
+                announcements={announcements}
                 followedData={followedData ?? []}
                 followedDataCount={followedDataCount}
+                isAnnouncementLoading={isAnnouncementLoading}
                 isLoadingOwnedData={isLoadingOwnedData}
                 layoutConfigData={widgetConfig.data}
                 parentLayoutData={layout}
@@ -185,7 +210,14 @@ const MyDataPageV1 = () => {
           return;
       }
     },
-    [followedData, followedDataCount, isLoadingOwnedData, layout]
+    [
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+      layout,
+      announcements,
+      isAnnouncementLoading,
+    ]
   );
 
   const widgets = useMemo(
@@ -202,6 +234,23 @@ const MyDataPageV1 = () => {
       )),
     [layout, getWidgetFromKey]
   );
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   if (showWelcomeScreen) {
     return (

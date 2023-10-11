@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
+import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 
 export interface RightSidebarProps {
   isEditView?: boolean;
+  announcements: Thread[];
+  isAnnouncementLoading: boolean;
   followedDataCount: number;
   followedData: Array<EntityReference>;
   isLoadingOwnedData: boolean;
