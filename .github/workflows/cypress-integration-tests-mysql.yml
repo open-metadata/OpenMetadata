@@ -77,6 +77,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+    
       - name: Cache Maven Dependencies
         id: cache-output
         uses: actions/cache@v3
@@ -118,11 +123,6 @@ jobs:
           INGESTION_DEPENDENCY: "all"
         run: ./docker/run_local_docker.sh -d mysql
         timeout-minutes: 60
-      
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        with:
-          detached: true
 
       - name: Run Cypress Tests
         uses: cypress-io/github-action@v4
