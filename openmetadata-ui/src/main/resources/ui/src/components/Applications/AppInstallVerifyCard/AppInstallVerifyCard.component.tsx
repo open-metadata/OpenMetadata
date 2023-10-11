@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import {
   CheckCircleTwoTone,
   ClockCircleOutlined,
@@ -16,14 +28,14 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import AppState from '../../../AppState';
 import { Transi18next } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import AppLogo from '../AppLogo/AppLogo.component';
-import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
 import './app-install-verify-card.less';
+import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
 
 const AppInstallVerifyCard = ({
   appData,
@@ -45,7 +57,6 @@ const AppInstallVerifyCard = ({
         </Divider>
         <Avatar
           className="app-marketplace-avatar flex-center bg-white border"
-          size={120}
           icon={
             <BrandImage
               isMonoGram
@@ -56,6 +67,7 @@ const AppInstallVerifyCard = ({
               width={64}
             />
           }
+          size={120}
         />
       </Space>
       <Typography.Title className="m-t-md" level={5}>
@@ -69,11 +81,11 @@ const AppInstallVerifyCard = ({
             userName={currentUser?.displayName ?? currentUser?.name ?? ''}>
             <span className="d-flex cursor-pointer" data-testid="authorAvatar">
               <ProfilePicture
+                className="d-flex"
                 id=""
                 name={currentUser?.displayName ?? currentUser?.name ?? ''}
                 type="circle"
                 width="32"
-                className="d-flex"
               />
             </span>
           </UserPopOverCard>
@@ -103,12 +115,13 @@ const AppInstallVerifyCard = ({
           </div>
         </Space>
 
-        <Collapse className="w-full m-t-md" ghost expandIconPosition="end">
+        <Collapse ghost className="w-full m-t-md" expandIconPosition="end">
           <Collapse.Panel
             header={` ${t('label.all-entity', {
               entity: t('label.metadata'),
             })}`}
-            key="1"></Collapse.Panel>
+            key="1"
+          />
         </Collapse>
 
         <Divider />

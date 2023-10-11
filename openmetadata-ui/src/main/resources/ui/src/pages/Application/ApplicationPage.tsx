@@ -12,16 +12,17 @@
  */
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
-import Loader from '../../components/Loader/Loader';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import PageHeader from '../../components/header/PageHeader.component';
-import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { App } from '../../generated/entity/applications/app';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -30,7 +31,6 @@ import { showPagination } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { uniqueId } from 'lodash';
 
 const ApplicationPage = () => {
   const { t } = useTranslation();
@@ -114,13 +114,13 @@ const ApplicationPage = () => {
           <div className="d-flex flex-wrap gap-3">
             {applicationData?.map((item) => (
               <ApplicationCard
-                key={uniqueId()}
-                className="w-400"
-                title={getEntityName(item)}
-                description={item.description ?? ''}
-                linkTitle={t('label.configure')}
-                onClick={() => viewAppDetails(item)}
                 appName={item.fullyQualifiedName ?? ''}
+                className="w-400"
+                description={item.description ?? ''}
+                key={uniqueId()}
+                linkTitle={t('label.configure')}
+                title={getEntityName(item)}
+                onClick={() => viewAppDetails(item)}
               />
             ))}
           </div>

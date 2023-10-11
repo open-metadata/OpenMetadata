@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -10,14 +22,14 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getApplicationRuns } from '../../../rest/applicationAPI';
 import { getStatusTypeForApplication } from '../../../utils/ApplicationUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../common/Table/Table';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../common/next-previous/NextPrevious.interface';
+import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
+import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
+import Table from '../../common/Table/Table';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
 import { AppRunRecordWithId } from './AppRunsHistory.interface';
 

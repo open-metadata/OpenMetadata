@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 import { LeftOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -5,9 +17,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../assets/svg/ic-cloud-checkmark.svg';
-import Loader from '../../../components/Loader/Loader';
 import RichTextEditorPreviewer from '../../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
+import Loader from '../../../components/Loader/Loader';
 import { ROUTES } from '../../../constants/constants';
 import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { getApplicationByName } from '../../../rest/applicationAPI';
@@ -59,10 +71,10 @@ const MarketPlaceAppDetails = () => {
     return (
       <div className="p-x-md p-t-md ">
         <Button
-          size="small"
           className="p-0"
-          type="text"
           icon={<LeftOutlined />}
+          size="small"
+          type="text"
           onClick={onBrowseAppsClick}>
           <Typography.Text className="font-medium">
             {t('label.browse-app-plural')}
@@ -77,10 +89,10 @@ const MarketPlaceAppDetails = () => {
           title={isInstalled ? t('message.app-already-installed') : ''}
           trigger="hover">
           <Button
+            block
             className="m-t-md"
             disabled={isInstalled}
             type="primary"
-            block
             onClick={installApp}>
             {t('label.install')}
           </Button>
