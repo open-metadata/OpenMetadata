@@ -61,6 +61,7 @@ export enum GlobalSettingOptions {
   CUSTOM_DASHBOARDS = 'customDashboards',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
+  APPLICATIONS = 'apps',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

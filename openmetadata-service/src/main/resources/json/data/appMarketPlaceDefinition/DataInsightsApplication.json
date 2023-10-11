@@ -1,7 +1,7 @@
 {
   "name": "DataInsightsApplication",
   "fullyQualifiedName": "DataInsightsApplication",
-  "displayName": "DataInsights Application Application",
+  "displayName": "Data Insights",
   "description": "Open-metadata Data Insights Application.",
   "features": "Data Insights Application. Send Email Reports.",
   "appType": "internal",

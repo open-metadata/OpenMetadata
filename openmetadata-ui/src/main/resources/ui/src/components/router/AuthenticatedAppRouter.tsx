@@ -60,6 +60,10 @@ const AddCustomProperty = withSuspenseFallback(
   )
 );
 
+const MarketPlacePage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
+);
+
 const PipelineDetailsPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/PipelineDetails/PipelineDetailsPage.component')
@@ -126,6 +130,23 @@ const AddServicePage = withSuspenseFallback(
     () => import('../../pages/AddServicePage/AddServicePage.component')
   )
 );
+
+const MarketPlaceAppDetails = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+      )
+  )
+);
+
+const AppInstallPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../components/Applications/AppInstall/AppInstall.component')
+  )
+);
+
 const EditConnectionFormPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -395,6 +416,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.EDIT_INGESTION}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MarketPlacePage}
+        path={ROUTES.MARKETPLACE}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MarketPlaceAppDetails}
+        path={ROUTES.MARKETPLACE_APP_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AppInstallPage}
+        path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />

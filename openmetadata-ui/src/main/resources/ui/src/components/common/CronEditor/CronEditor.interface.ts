@@ -90,6 +90,7 @@ export interface CronEditorProp {
   disabled?: boolean;
   disabledCronChange?: boolean;
   includePeriodOptions?: string[];
+  isQuartzCron?: boolean;
 }
 
 export type CronType = 'minute' | 'hour' | 'day' | 'week';
