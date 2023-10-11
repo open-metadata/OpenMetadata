@@ -134,7 +134,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "mlFeatures": {
         "properties": {

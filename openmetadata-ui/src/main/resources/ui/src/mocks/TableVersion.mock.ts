@@ -93,7 +93,6 @@ export const tableVersionMockProps: TableVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   slashedTableName: [],
-  datasetFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

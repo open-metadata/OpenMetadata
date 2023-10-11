@@ -88,6 +88,7 @@ import {
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -131,6 +132,11 @@ const TableDetailsPageV1 = () => {
           FQN_SEPARATOR_CHAR
         )
       ),
+    [datasetFQN]
+  );
+
+  const decodedTableFQN = useMemo(
+    () => getDecodedFqn(datasetFQN),
     [datasetFQN]
   );
 
@@ -282,7 +288,7 @@ const TableDetailsPageV1 = () => {
   }, [tableFqn]);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, tableFqn, setFeedCount);
+    getFeedCounts(EntityType.TABLE, decodedTableFQN, setFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -444,7 +450,7 @@ const TableDetailsPageV1 = () => {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={
@@ -465,7 +471,7 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               hasDescriptionEditAccess={
                 tablePermissions.EditAll || tablePermissions.EditDescription
               }
@@ -498,7 +504,7 @@ const TableDetailsPageV1 = () => {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               entityType={EntityType.TABLE}
               permission={
                 (tablePermissions.EditAll || tablePermissions.EditTags) &&
@@ -512,7 +518,7 @@ const TableDetailsPageV1 = () => {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               entityType={EntityType.TABLE}
               permission={
                 (tablePermissions.EditAll || tablePermissions.EditTags) &&
