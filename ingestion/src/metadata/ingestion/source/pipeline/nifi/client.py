@@ -17,6 +17,7 @@ from typing import Any, Iterable, List, Optional
 import requests
 from requests import HTTPError
 
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -47,7 +48,7 @@ class NifiClient:
         self._resources = None
 
         self.content_headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.api_endpoint = host_port + "/nifi-api"
+        self.api_endpoint = clean_uri(host_port) + "/nifi-api"
         self.username = username
         self.password = password
 
@@ -94,6 +95,10 @@ class NifiClient:
                 logger.error(f"Cannot pick up the token from token response - {err}")
                 raise err
 
+            except Exception as err:
+                logger.error(f"Fetching token failed due to - {err}")
+                raise err
+
         return self._token
 
     @property
@@ -127,17 +132,15 @@ class NifiClient:
 
         except HTTPError as err:
             logger.warning(f"Connection error calling the Nifi API - {err}")
-            logger.debug(traceback.format_exc())
+            raise err
 
         except ValueError as err:
             logger.warning(f"Cannot pick up the JSON from API response - {err}")
-            logger.debug(traceback.format_exc())
+            raise err
 
         except Exception as err:
             logger.warning(f"Unknown error calling Nifi API - {err}")
-            logger.debug(traceback.format_exc())
-
-        return None
+            raise err
 
     def _get_process_group_ids(self) -> List[str]:
         return [
@@ -155,4 +158,15 @@ class NifiClient:
         one at a time.
         """
         for id_ in self._get_process_group_ids():
-            yield self.get_process_group(id_=id_)
+            try:
+                yield self.get_process_group(id_=id_)
+            except Exception:
+                logger.debug(traceback.format_exc())
+    
+    def test_list_process_groups(self):
+        """
+        test api access for process group
+        """
+        for id_ in self._get_process_group_ids():
+            self.get_process_group(id_=id_)
+            break
