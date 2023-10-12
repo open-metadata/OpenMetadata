@@ -13,10 +13,13 @@ Interface for sampler
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
+
+from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class SamplerInterface(ABC):
@@ -58,6 +61,12 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self) -> TableData:
-        """Fetch sample data"""
+    def fetch_sample_data(
+        self, columns: Optional[Union[List[Column], List[SQALikeColumn]]]
+    ) -> TableData:
+        """Fetch sample data
+
+        Args:
+            columns (Optional[List]): List of columns to fetch
+        """
         raise NotImplementedError

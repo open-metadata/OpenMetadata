@@ -64,5 +64,5 @@ def _clone_repo(
         Repo.clone_from(url, path)
 
         logger.info(f"repo {repo_name} cloned to {path}")
-    except Exception as e:
-        logger.error(f"GitHubCloneReader::_clone: ERROR {e} ")
+    except Exception as exc:
+        logger.error(f"GitHubCloneReader::_clone: ERROR {exc} ")

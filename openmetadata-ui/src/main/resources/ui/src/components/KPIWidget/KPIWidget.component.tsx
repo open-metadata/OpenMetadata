@@ -32,7 +32,6 @@ import {
 } from '../../constants/constants';
 import { KPI_WIDGET_GRAPH_COLORS } from '../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { Kpi, KpiResult } from '../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import {
@@ -88,6 +87,7 @@ const KPIWidget = ({
   isEditView = false,
   selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
+  widgetKey,
 }: KPIWidgetProps) => {
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
@@ -184,9 +184,8 @@ const KPIWidget = ({
   };
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.KPI);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   useEffect(() => {
     fetchKpiList().catch(() => {

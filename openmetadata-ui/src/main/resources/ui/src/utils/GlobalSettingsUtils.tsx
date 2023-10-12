@@ -24,6 +24,7 @@ import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.sv
 import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -48,6 +49,7 @@ import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -332,10 +334,10 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
-          label: i18next.t('label.custom-dashboard'),
+          label: i18next.t('label.customize-landing-page'),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.customDashboards',
-          icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
+          key: 'openMetadata.customizeLandingPage',
+          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.custom-logo'),
@@ -433,10 +435,10 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
   }
 };
 
-export const getCustomisePagePath = (personaFqn: string, pageFqn: string) => {
-  const path = ROUTES.CUSTOMISE_PAGE;
+export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMIZE_PAGE;
 
   return path
-    .replaceAll(PLACEHOLDER_ROUTE_FQN, personaFqn)
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
     .replace(':pageFqn', pageFqn);
 };
