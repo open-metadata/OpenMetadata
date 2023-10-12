@@ -103,7 +103,6 @@ const AssetsTabs = forwardRef(
         (key) => openKeys.indexOf(key as EntityType) === -1
       );
       if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
-        EntityType;
         setOpenKeys(keys as EntityType[]);
       } else {
         setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
