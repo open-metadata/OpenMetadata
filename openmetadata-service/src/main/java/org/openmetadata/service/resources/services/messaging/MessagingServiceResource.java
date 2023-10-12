@@ -418,7 +418,8 @@ public class MessagingServiceResource
   }
 
   private MessagingService getService(CreateMessagingService create, String user) {
-    return copy(new MessagingService(), create, user)
+    return repository
+        .copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
         .withServiceType(create.getServiceType());
   }

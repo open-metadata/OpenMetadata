@@ -419,7 +419,8 @@ public class DashboardServiceResource
   }
 
   private DashboardService getService(CreateDashboardService create, String user) {
-    return copy(new DashboardService(), create, user)
+    return repository
+        .copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }
