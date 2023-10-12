@@ -340,7 +340,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   private Document getDocument(CreateDocument cd, String user) {
-    return copy(new Document(), cd, user)
+    return repository
+        .copy(new Document(), cd, user)
         .withFullyQualifiedName(cd.getFullyQualifiedName())
         .withData(cd.getData())
         .withEntityType(cd.getEntityType());

@@ -648,6 +648,7 @@ export const getIngestionFrequency = (pipelineType: PipelineType) => {
   switch (pipelineType) {
     case PipelineType.TestSuite:
     case PipelineType.Metadata:
+    case PipelineType.Application:
       return getHourCron(value);
 
     default:
