@@ -18,5 +18,6 @@ export interface EmptyWidgetPlaceholderProps {
   isEditable?: boolean;
   widgetKey: string;
   handleOpenAddWidgetModal: () => void;
+  handlePlaceholderWidgetKey: (key: string) => void;
   handleRemoveWidget: (key: string) => void;
 }
