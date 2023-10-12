@@ -11,15 +11,14 @@
 """Clickhouse source module"""
 
 import traceback
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, Optional
 
 from clickhouse_sqlalchemy.drivers.base import ClickHouseDialect
 from clickhouse_sqlalchemy.drivers.http.transport import RequestsTransport, _get_type
 from clickhouse_sqlalchemy.drivers.http.utils import parse_tsv
 from sqlalchemy.engine import Inspector
 
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableType
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
 )
@@ -47,8 +46,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.utils import fqn
-from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -188,93 +185,3 @@ class ClickhouseSource(CommonDbSourceService):
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name
-
-    def _get_filtered_schema_names(
-        self, return_fqn: bool = False, add_to_status: bool = True
-    ) -> Iterable[str]:
-        for schema_name in self.get_raw_database_schema_names():
-            schema_fqn = fqn.build(
-                self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=self.context.database_service.name.__root__,
-                database_name=self.context.database.name.__root__,
-                schema_name=schema_name,
-            )
-            if not self.source_config.pushFilterDown:
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern,
-                    schema_fqn
-                    if self.source_config.useFqnForFiltering
-                    else schema_name,
-                ):
-                    if add_to_status:
-                        self.status.filter(schema_fqn, "Schema Filtered Out")
-                    continue
-            yield schema_fqn if return_fqn else schema_name
-
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
-        """
-        Handle table and views.
-        Fetches them up using the context information and
-        the inspector set when preparing the db.
-        :return: tables or views, depending on config
-        """
-        try:
-            schema_name = self.context.database_schema.name.__root__
-            if self.source_config.includeTables:
-                for table_and_type in self.query_table_names_and_types(schema_name):
-                    table_name = self.standardize_table_name(
-                        schema_name, table_and_type.name
-                    )
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=table_name,
-                        skip_es_search=True,
-                    )
-                    if not self.source_config.pushFilterDown:
-                        if filter_by_table(
-                            self.source_config.tableFilterPattern,
-                            table_fqn
-                            if self.source_config.useFqnForFiltering
-                            else table_name,
-                        ):
-                            self.status.filter(
-                                table_fqn,
-                                "Table Filtered Out",
-                            )
-                            continue
-                    yield table_name, table_and_type.type_
-
-            if self.source_config.includeViews:
-                for view_name in self.inspector.get_view_names(schema_name):
-                    view_name = self.standardize_table_name(schema_name, view_name)
-                    view_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.database_service.name.__root__,
-                        database_name=self.context.database.name.__root__,
-                        schema_name=self.context.database_schema.name.__root__,
-                        table_name=view_name,
-                    )
-
-                    if filter_by_table(
-                        self.source_config.tableFilterPattern,
-                        view_fqn
-                        if self.source_config.useFqnForFiltering
-                        else view_name,
-                    ):
-                        self.status.filter(
-                            view_fqn,
-                            "Table Filtered Out",
-                        )
-                        continue
-                    yield view_name, TableType.View
-        except Exception as err:
-            logger.warning(
-                f"Fetching tables names failed for schema {schema_name} due to - {err}"
-            )
-            logger.debug(traceback.format_exc())

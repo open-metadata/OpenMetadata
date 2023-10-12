@@ -93,6 +93,9 @@
     },
     "supportsLineageExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsPushDownFilter": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsPushDownFilter"
     }
   },
   "additionalProperties": false,

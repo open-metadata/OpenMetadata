@@ -100,6 +100,9 @@
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsPushDownFilter": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsPushDownFilter"
     }
   },
   "additionalProperties": false,

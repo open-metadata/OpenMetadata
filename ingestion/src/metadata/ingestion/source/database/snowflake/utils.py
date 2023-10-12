@@ -105,8 +105,7 @@ def get_schema_names(self, connection, **kw):
 
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushFilterDown") is not None
-        and kw["filter_pattern"]
+        if kw.get("pushFilterDown") and kw["filter_pattern"]
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]
@@ -131,7 +130,7 @@ def get_table_names(self, connection, schema, **kw):
 
     cursor = connection.execute(
         query.format(fqn.unquote_name(schema), format_pattern)
-        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
+        if kw.get("pushFilterDown") and kw["filter_pattern"]
         else query.format(fqn.unquote_name(schema), "")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

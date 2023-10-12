@@ -64,6 +64,11 @@
       "description": "Supports DBT Extraction.",
       "type": "boolean",
       "default": true
+    },
+    "supportsPushDownFilter": {
+      "description": "Supports PushDown Filter",
+      "type": "boolean",
+      "default": true
     }
   }
 }

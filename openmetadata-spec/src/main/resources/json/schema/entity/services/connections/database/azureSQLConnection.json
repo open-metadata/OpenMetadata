@@ -95,6 +95,9 @@
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"
+    },
+    "supportsPushDownFilter": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsPushDownFilter"
     }
   },
   "additionalProperties": false,

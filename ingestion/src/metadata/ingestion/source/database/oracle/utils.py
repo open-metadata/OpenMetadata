@@ -261,7 +261,7 @@ def get_table_names(self, connection, schema=None, **kw):
             "nvl(tablespace_name, 'no tablespace') "
             f"NOT IN ({exclude_tablespace}) AND "
         )
-    if kw["filter_pattern"]:    
+    if kw["filter_pattern"]:
         tb_patterns_include = [
             tb_name.replace("%", "%%")
             for tb_name in kw["filter_pattern"].includes
@@ -284,7 +284,7 @@ def get_table_names(self, connection, schema=None, **kw):
                 tablespace=tablespace, table_filter=format_pattern
             )
         )
-        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
+        if kw.get("pushFilterDown") and kw["filter_pattern"]
         else sql.text(
             ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, table_filter="")
         ),
@@ -360,7 +360,7 @@ def get_schema_names(self, connection, **kw):
 
     cursor = connection.execute(
         query.format(format_pattern)
-        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
+        if kw.get("pushFilterDown") and kw["filter_pattern"]
         else query.format("")
     )
     result = [self.normalize_name(row[0]) for row in cursor]

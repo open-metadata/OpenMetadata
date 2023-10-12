@@ -71,8 +71,9 @@ views.schema_id=sch.schema_id
 )
 
 MSSQL_GET_DATABASE = """
-SELECT name FROM master.sys.databases order by name
+SELECT name FROM master.sys.databases {} order by name
 """
+
 
 MSSQL_TEST_GET_QUERIES = textwrap.dedent(
     """

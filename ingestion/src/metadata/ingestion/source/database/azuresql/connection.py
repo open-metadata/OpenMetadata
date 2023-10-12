@@ -93,7 +93,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     queries = {
-        "GetDatabases": MSSQL_GET_DATABASE,
+        "GetDatabases": MSSQL_GET_DATABASE.format(""),
         "GetSchemas": MSSQL_GET_SCHEMA_NAMES.format(""),
         "GetTables": MSSQL_GET_TABLES_NAMES.format(""),
     }

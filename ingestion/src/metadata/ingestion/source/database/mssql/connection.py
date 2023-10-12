@@ -69,7 +69,7 @@ def test_connection(
     """
     queries = {
         "GetQueries": MSSQL_TEST_GET_QUERIES,
-        "GetDatabases": MSSQL_GET_DATABASE,
+        "GetDatabases": MSSQL_GET_DATABASE.format(""),
         "GetSchemas": MSSQL_GET_SCHEMA_NAMES.format(""),
         "GetTables": MSSQL_GET_TABLES_NAMES.format(""),
     }

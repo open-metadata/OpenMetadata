@@ -288,7 +288,7 @@ def get_table_names(self, connection, schema, **kw):
 
     cursor = connection.execute(
         CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), format_pattern)
-        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
+        if kw.get("pushFilterDown") and kw["filter_pattern"]
         else CLICKHOUSE_GET_TABLE.format(fqn.unquote_name(schema), "")
     )
     result = [row[0] for row in cursor]
@@ -326,7 +326,7 @@ def get_schema_names(self, connection, **kw):
         )
     cursor = connection.execute(
         CLICKHOUSE_GET_SCHEMA.format(format_pattern)
-        if kw.get("pushFilterDown") is not None and kw["filter_pattern"]
+        if kw.get("pushFilterDown") and kw["filter_pattern"]
         else CLICKHOUSE_GET_SCHEMA.format("")
     )
     result = [row[0] for row in cursor]
