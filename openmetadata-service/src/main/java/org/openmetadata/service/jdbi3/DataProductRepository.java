@@ -21,6 +21,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -95,6 +96,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateAssets();

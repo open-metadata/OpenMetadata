@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.service.Entity;
@@ -57,6 +58,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
