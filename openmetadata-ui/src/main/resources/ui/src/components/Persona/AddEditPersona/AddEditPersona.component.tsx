@@ -14,6 +14,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space } from 'antd';
 import { useForm } from 'antd/es/form/Form';
 import Modal from 'antd/lib/modal/Modal';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -63,7 +64,7 @@ export const AddEditPersonaForm = ({
         }
         onSave();
       } catch (error) {
-        showErrorToast(error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsSaving(false);
       }
@@ -93,7 +94,7 @@ export const AddEditPersonaForm = ({
       },
       {
         name: 'displayName',
-        required: true,
+        required: false,
         label: t('label.display-name'),
         id: 'root/displayName',
         type: FieldTypes.TEXT,
@@ -105,7 +106,7 @@ export const AddEditPersonaForm = ({
       },
       {
         name: 'description',
-        required: true,
+        required: false,
         label: t('label.description'),
         id: 'root/description',
         type: FieldTypes.DESCRIPTION,
@@ -122,7 +123,7 @@ export const AddEditPersonaForm = ({
   const usersField = useMemo(
     () => ({
       name: 'users',
-      required: true,
+      required: false,
       label: t('label.user-plural'),
       id: 'root/users',
       formItemProps: {

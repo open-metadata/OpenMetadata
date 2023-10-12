@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { floor, isEmpty, isUndefined, max, maxBy, round } from 'lodash';
+import {
+  floor,
+  isEmpty,
+  isUndefined,
+  max,
+  maxBy,
+  round,
+  uniqueId,
+} from 'lodash';
 import { Layout } from 'react-grid-layout';
 import {
   DEFAULT_WIDGET_HEIGHT,
@@ -19,37 +27,33 @@ import {
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS,
   LANDING_PAGE_WIDGET_MARGIN,
-} from '../constants/CustomisePage.constants';
+} from '../constants/CustomizePage.constants';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { WidgetConfig } from '../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
 export const getAddWidgetHandler =
-  (newWidgetData: Document) => (currentLayout: Array<WidgetConfig>) => {
-    const widgetFQN = newWidgetData.fullyQualifiedName;
+  (
+    newWidgetData: Document,
+    placeholderWidgetKey: string,
+    maxGridSize: number
+  ) =>
+  (currentLayout: Array<WidgetConfig>) => {
+    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
     const widgetWidth = getWidgetWidth(newWidgetData);
     const widgetHeight = getWidgetHeight(newWidgetData.name);
 
-    const isEmptyPlaceholderPresent = currentLayout.find(
-      (widget: WidgetConfig) =>
-        widget.i === `${widgetFQN}.EmptyWidgetPlaceholder`
-    );
-
-    if (isEmptyPlaceholderPresent) {
-      return currentLayout.map((widget: WidgetConfig) =>
-        widget.i === `${widgetFQN}.EmptyWidgetPlaceholder`
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-            }
-          : widget
-      );
-    } else {
+    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
+    // and is not meant to be replaced hence
+    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
+    // append the new widget in the array
+    // else replace the new widget with other placeholder widgets
+    if (
+      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    ) {
       return [
         ...currentLayout,
         {
@@ -61,6 +65,23 @@ export const getAddWidgetHandler =
           static: false,
         },
       ];
+    } else {
+      return currentLayout.map((widget: WidgetConfig) => {
+        const widgetX =
+          widget.x + widgetWidth <= maxGridSize
+            ? widget.x
+            : maxGridSize - widgetWidth;
+
+        return widget.i === placeholderWidgetKey
+          ? {
+              ...widget,
+              i: widgetFQN,
+              h: widgetHeight,
+              w: widgetWidth,
+              x: widgetX,
+            }
+          : widget;
+      });
     }
   };
 

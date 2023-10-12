@@ -10,25 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton } from 'antd';
+
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import { NextPreviousProps } from '../../components/common/next-previous/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageHeader from '../../components/header/PageHeader.component';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Persona } from '../../generated/entity/teams/persona';
 import { PageType } from '../../generated/system/ui/page';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../rest/PersonaAPI';
-import { showPagination } from '../../utils/CommonUtils';
+import { showPagination, Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getCustomisePagePath } from '../../utils/GlobalSettingsUtils';
+import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import './CustomPageSettings.less';
 
 export const CustomPageSettings = () => {
   const { t } = useTranslation();
@@ -66,7 +76,7 @@ export const CustomPageSettings = () => {
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
       history.push(
-        getCustomisePagePath(persona.fullyQualifiedName, PageType.LandingPage)
+        getCustomizePagePath(persona.fullyQualifiedName, PageType.LandingPage)
       );
     }
   };
@@ -77,9 +87,43 @@ export const CustomPageSettings = () => {
     handlePageChange(currentPage);
   };
 
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Col className="mt-24 text-center" span={24}>
+        <ErrorPlaceHolder
+          className="m-t-lg"
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <Typography.Paragraph className="w-max-500">
+            <Transi18next
+              i18nKey="message.no-persona-message"
+              renderElement={
+                <Link
+                  style={{ color: '#1890ff' }}
+                  to={getSettingPath(
+                    GlobalSettingsMenuCategory.MEMBERS,
+                    GlobalSettingOptions.PERSONA
+                  )}
+                />
+              }
+              values={{
+                link: t('label.here-lowercase'),
+              }}
+            />
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
+      </Col>
+    ),
+    []
+  );
+
+  const showErrorPlaceholder = useMemo(
+    () => (isEmpty(personas) || isUndefined(personas)) && !isLoading,
+    [personas, isLoading]
+  );
+
   return (
     <Row
-      className="user-listing p-b-md"
+      className="customize-landing-page user-listing p-b-md"
       data-testid="user-list-v1-component"
       gutter={[16, 16]}>
       <Col span={18}>
@@ -95,6 +139,8 @@ export const CustomPageSettings = () => {
           </Col>
         ))}
 
+      {showErrorPlaceholder && errorPlaceHolder}
+
       {personas?.map((persona) => (
         <Col key={persona.id} span={8}>
           <Card
@@ -106,11 +152,17 @@ export const CustomPageSettings = () => {
                 size="small"
                 type="text"
                 onClick={() => handleCustomisePersona(persona)}>
-                {t('label.customise')}
+                {t('label.customize-landing-page')}
               </Button>
             }
             title={getEntityName(persona)}>
-            <RichTextEditorPreviewer markdown={persona.description ?? ''} />
+            {persona.description ? (
+              <RichTextEditorPreviewer markdown={persona.description ?? ''} />
+            ) : (
+              <Typography.Text className="text-grey-muted">
+                {t('label.no-description')}
+              </Typography.Text>
+            )}
           </Card>
         </Col>
       ))}

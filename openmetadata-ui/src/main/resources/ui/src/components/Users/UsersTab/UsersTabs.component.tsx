@@ -14,9 +14,11 @@ import Icon from '@ant-design/icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-delete.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/entity/type';
 import { getUserById } from '../../../rest/userAPI';
+import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { commonUserDetailColumns } from '../Users.util';
 
@@ -87,6 +89,17 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       dataSource={
         isDetailsLoading ? (users as unknown as User[]) : additionalUsersDetails
       }
+      loading={isDetailsLoading}
+      locale={{
+        emptyText: (
+          <ErrorPlaceHolder
+            permission
+            className="p-y-md"
+            heading={t('label.user')}
+            type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
+          />
+        ),
+      }}
       pagination={false}
       rowKey="fullyQualifiedName"
       size="small"

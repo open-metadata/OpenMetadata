@@ -594,7 +594,7 @@ export const getPersonaDetailsPath = (fqn: string) => {
   path = path
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
-    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };

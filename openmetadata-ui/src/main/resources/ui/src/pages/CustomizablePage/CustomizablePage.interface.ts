@@ -11,7 +11,19 @@
  *  limitations under the License.
  */
 
-export interface MyDataWidgetProps {
+import { Layout } from 'react-grid-layout';
+
+export interface WidgetConfig
+  extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
+  data?: {
+    page: {
+      layout: Array<WidgetConfig>;
+    };
+  };
+}
+
+export interface WidgetCommonProps {
   isEditView?: boolean;
+  widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
 }

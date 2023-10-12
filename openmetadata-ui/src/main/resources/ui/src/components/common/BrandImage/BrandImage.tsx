@@ -13,7 +13,7 @@
 import React, { FC } from 'react';
 import MonoGram from '../../../assets/svg/logo-monogram.svg';
 import Logo from '../../../assets/svg/logo.svg';
-import { useApplicationConfigProvider } from '../../../components/ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 
 interface BrandImageProps {
   dataTestId?: string;
@@ -33,7 +33,7 @@ const BrandImage: FC<BrandImageProps> = ({
   isMonoGram = false,
 }) => {
   const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
-    useApplicationConfigProvider();
+    useApplicationConfigContext();
 
   const logoSource = isMonoGram
     ? customMonogramUrlPath || MonoGram

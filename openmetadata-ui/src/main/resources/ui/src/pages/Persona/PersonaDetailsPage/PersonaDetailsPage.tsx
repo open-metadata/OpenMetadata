@@ -12,6 +12,7 @@
  */
 import { Button, Row, Tabs } from 'antd';
 import Col from 'antd/es/grid/col';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +36,6 @@ import { Persona } from '../../../generated/entity/teams/persona';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 export const PersonaDetailsPage = () => {
@@ -60,10 +60,10 @@ export const PersonaDetailsPage = () => {
   const fetchPersonaDetails = async () => {
     try {
       setIsLoading(true);
-      const persona = await getPersonaByName(getEncodedFqn(fqn));
+      const persona = await getPersonaByName(fqn);
       setPersonaDetails(persona);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +86,7 @@ export const PersonaDetailsPage = () => {
       const response = await updatePersona(personaDetails?.id, diff);
       setPersonaDetails(response);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsEdit(false);
     }
@@ -103,7 +103,7 @@ export const PersonaDetailsPage = () => {
       const response = await updatePersona(personaDetails?.id, diff);
       setPersonaDetails(response);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsEdit(false);
     }
@@ -120,7 +120,7 @@ export const PersonaDetailsPage = () => {
       const response = await updatePersona(personaDetails?.id, diff);
       setPersonaDetails(response);
     } catch (error) {
-      showErrorToast(error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsEdit(false);
     }
@@ -137,7 +137,7 @@ export const PersonaDetailsPage = () => {
         const response = await updatePersona(personaDetails?.id, diff);
         setPersonaDetails(response);
       } catch (error) {
-        showErrorToast(error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsEdit(false);
       }

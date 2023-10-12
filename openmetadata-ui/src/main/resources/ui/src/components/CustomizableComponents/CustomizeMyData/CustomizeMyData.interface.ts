@@ -15,5 +15,6 @@ import { Document } from '../../../generated/entity/docStore/document';
 
 export interface CustomizeMyDataProps {
   initialPageData: Document;
+  onSaveLayout: () => Promise<void>;
   handlePageDataChange: (newPageData: Document) => void;
 }

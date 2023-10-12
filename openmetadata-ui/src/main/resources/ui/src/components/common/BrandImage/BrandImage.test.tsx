@@ -15,7 +15,7 @@ import React from 'react';
 import BrandImage from './BrandImage';
 
 jest.mock('../../ApplicationConfigProvider/ApplicationConfigProvider', () => ({
-  useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
+  useApplicationConfigContext: jest.fn().mockImplementation(() => ({
     customLogoUrlPath: 'https://custom-logo.png',
     customMonogramUrlPath: 'https://custom-monogram.png',
   })),

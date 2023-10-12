@@ -33,7 +33,6 @@ import {
 } from 'recharts';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -57,6 +56,7 @@ const TotalDataAssetsWidget = ({
   isEditView = false,
   selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
+  widgetKey,
 }: TotalDataAssetsWidgetProps) => {
   const [totalEntitiesByType, setTotalEntitiesByType] =
     useState<DataInsightChartResult>();
@@ -93,9 +93,8 @@ const TotalDataAssetsWidget = ({
   }, [selectedDays]);
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.TOTAL_DATA_ASSETS);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   useEffect(() => {
     fetchTotalEntitiesByType();

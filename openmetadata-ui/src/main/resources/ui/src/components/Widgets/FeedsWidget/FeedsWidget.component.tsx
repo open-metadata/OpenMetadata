@@ -22,24 +22,24 @@ import { useActivityFeedProvider } from '../../../components/ActivityFeed/Activi
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { useTourProvider } from '../../../components/TourProvider/TourProvider';
 import { mockFeedData } from '../../../constants/mockTourData.constants';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
-import { FeedsWidgetProps } from './FeedsWidget.interface';
 
 const FeedsWidget = ({
   isEditView = false,
   handleRemoveWidget,
-}: FeedsWidgetProps) => {
+  widgetKey,
+}: WidgetCommonProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
@@ -133,9 +133,8 @@ const FeedsWidget = ({
   }, [activeTab, entityThread]);
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.ACTIVITY_FEED);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   return (
     <div

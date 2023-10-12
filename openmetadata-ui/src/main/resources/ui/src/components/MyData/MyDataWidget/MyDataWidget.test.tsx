@@ -53,7 +53,7 @@ jest.mock(
 describe('MyDataWidget component', () => {
   it('should fetch data', () => {
     act(() => {
-      render(<MyDataWidget />, { wrapper: MemoryRouter });
+      render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
     });
 
     expect(getUserById).toHaveBeenCalledWith('123', 'owns');
@@ -63,7 +63,7 @@ describe('MyDataWidget component', () => {
     act(() => {
       render(
         <MemoryRouter>
-          <MyDataWidget />
+          <MyDataWidget widgetKey="widgetKey" />
         </MemoryRouter>
       );
     });
@@ -75,7 +75,7 @@ describe('MyDataWidget component', () => {
     act(() => {
       render(
         <MemoryRouter>
-          <MyDataWidget />
+          <MyDataWidget widgetKey="widgetKey" />
         </MemoryRouter>
       );
     });
@@ -105,7 +105,7 @@ describe('MyDataWidget component', () => {
     act(() => {
       render(
         <MemoryRouter>
-          <MyDataWidget />
+          <MyDataWidget widgetKey="widgetKey" />
         </MemoryRouter>
       );
     });
@@ -133,7 +133,7 @@ describe('MyDataWidget component', () => {
     act(() => {
       render(
         <MemoryRouter>
-          <MyDataWidget />
+          <MyDataWidget widgetKey="widgetKey" />
         </MemoryRouter>
       );
     });
