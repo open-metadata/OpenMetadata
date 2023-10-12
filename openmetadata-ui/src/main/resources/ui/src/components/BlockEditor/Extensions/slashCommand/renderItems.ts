@@ -12,13 +12,15 @@
  */
 import { ReactRenderer } from '@tiptap/react';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
+import { isEmpty } from 'lodash';
 import tippy, { Instance, Props } from 'tippy.js';
 import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
 
 const renderItems = () => {
   let component: ReactRenderer;
-  let popup: Instance<Props>[];
+  let popup: Instance<Props>[] = [];
   let suggestionProps: SuggestionProps;
+  const hasPopup = !isEmpty(popup);
 
   return {
     onStart: (props: SuggestionProps) => {
@@ -50,14 +52,19 @@ const renderItems = () => {
       if (!props.clientRect) {
         return;
       }
-
-      popup[0].setProps({
-        getReferenceClientRect:
-          props.clientRect as Props['getReferenceClientRect'],
-      });
+      if (hasPopup) {
+        popup[0].setProps({
+          getReferenceClientRect:
+            props.clientRect as Props['getReferenceClientRect'],
+        });
+      }
     },
     onKeyDown(props: SuggestionKeyDownProps) {
-      if (props.event.key === 'Escape' && !popup[0].state.isDestroyed) {
+      if (
+        props.event.key === 'Escape' &&
+        hasPopup &&
+        !popup[0].state.isDestroyed
+      ) {
         popup[0].hide();
 
         return true;
@@ -75,10 +82,10 @@ const renderItems = () => {
         }
       }
 
-      return (component.ref as SlashCommandRef)?.onKeyDown(props) || false;
+      return (component?.ref as SlashCommandRef)?.onKeyDown(props) || false;
     },
     onExit() {
-      if (!popup[0].state.isDestroyed) {
+      if (hasPopup && !popup[0].state.isDestroyed) {
         popup[0].destroy();
       }
     },

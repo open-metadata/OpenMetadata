@@ -434,7 +434,8 @@ public class DatabaseServiceResource
   }
 
   private DatabaseService getService(CreateDatabaseService create, String user) {
-    return copy(new DatabaseService(), create, user)
+    return repository
+        .copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

@@ -83,6 +83,14 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
     () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
+
+const AppDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../components/Applications/AppDetails/AppDetails.component')
+  )
+);
+
 const RolesListPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
@@ -108,15 +116,6 @@ const UserListPageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
 );
 
-const DataInsightsSettingsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
-      )
-  )
-);
-
 const EmailConfigSettingsPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -132,6 +131,10 @@ const CustomLogoConfigSettingsPage = withSuspenseFallback(
         '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage'
       )
   )
+);
+
+const ApplicationPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
 
 const GlobalSettingRouter = () => {
@@ -257,16 +260,6 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={DataInsightsSettingsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.DATA_INSIGHT
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={EmailConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
@@ -384,6 +377,24 @@ const GlobalSettingRouter = () => {
         hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ApplicationPageV1}
+        hasPermission={false}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.INTEGRATIONS)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AppDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.APPLICATIONS,
+          true
         )}
       />
     </Switch>

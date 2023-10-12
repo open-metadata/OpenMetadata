@@ -189,7 +189,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
-      entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName()));
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.build(entity.getGlossary().getFullyQualifiedName(), entity.getName()));
     } else { // Glossary term that is a child of another glossary term
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));

@@ -35,7 +35,7 @@ import { getMetadataConfig } from '../../utils/MetadataServiceUtils';
 import { getMlmodelConfig } from '../../utils/MlmodelServiceUtils';
 import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
-import { getStorageServiceConfig } from '../../utils/StorageServiceUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
 
 interface Props {
@@ -119,7 +119,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         break;
       }
       case ServiceCategory.STORAGE_SERVICES: {
-        connSch = getStorageServiceConfig(serviceType as StorageServiceType);
+        connSch = serviceUtilClassBase.getStorageServiceConfig(
+          serviceType as StorageServiceType
+        );
 
         break;
       }

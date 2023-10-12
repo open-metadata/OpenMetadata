@@ -54,8 +54,7 @@
   },
   "required": [
     "name",
-    "description",
-    "domain"
+    "description"
   ],
   "additionalProperties": false
 }
