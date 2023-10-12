@@ -60,8 +60,6 @@ execute() {
   if  [ ${debug} ] ; then
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
   fi
-  echo ${1}
-  echo "${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} --${1} -force ${force}  -${debug}"
   ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} --${1} -force ${force}  -${debug}
 }
 
