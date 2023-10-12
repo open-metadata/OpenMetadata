@@ -12,6 +12,13 @@
  */
 
 import { FC } from 'react';
+import ActivityFeedImg from '../assets/img/activity-feed.png';
+import AnnouncementImg from '../assets/img/announcement.png';
+import FollowingImg from '../assets/img/following.png';
+import KPIImg from '../assets/img/kpi.png';
+import MyDataImg from '../assets/img/my-data.png';
+import RecentViewsImg from '../assets/img/recent-views.png';
+import TotalAssetsImg from '../assets/img/total-assets.png';
 import KPIWidget from '../components/KPIWidget/KPIWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
@@ -70,5 +77,34 @@ export class CustomizePageClassBase {
     }
 
     return (() => null) as React.FC;
+  };
+
+  static getWidgetImageFromKey = (widgetKey: string): string => {
+    switch (widgetKey) {
+      case LandingPageWidgetKeys.ACTIVITY_FEED: {
+        return ActivityFeedImg;
+      }
+      case LandingPageWidgetKeys.MY_DATA: {
+        return MyDataImg;
+      }
+      case LandingPageWidgetKeys.KPI: {
+        return KPIImg;
+      }
+      case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
+        return TotalAssetsImg;
+      }
+      case LandingPageWidgetKeys.ANNOUNCEMENTS: {
+        return AnnouncementImg;
+      }
+      case LandingPageWidgetKeys.FOLLOWING: {
+        return FollowingImg;
+      }
+      case LandingPageWidgetKeys.RECENTLY_VIEWED: {
+        return RecentViewsImg;
+      }
+      default: {
+        return '';
+      }
+    }
   };
 }

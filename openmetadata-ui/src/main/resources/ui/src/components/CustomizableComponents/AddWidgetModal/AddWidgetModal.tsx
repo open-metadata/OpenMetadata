@@ -15,6 +15,7 @@ import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Col,
+  Image,
   Modal,
   Row,
   Space,
@@ -31,7 +32,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WidgetWidths } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../rest/DocStoreAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { AddWidgetModalProps } from './AddWidgetModal.interface';
@@ -81,6 +82,9 @@ function AddWidgetModal({
     () =>
       widgetsList?.map((widget) => {
         const widgetAddable = checkAddWidgetValidity(widget);
+        const widgetImage = CustomizePageClassBase.getWidgetImageFromKey(
+          widget.fullyQualifiedName
+        );
 
         return {
           label: (
@@ -98,10 +102,13 @@ function AddWidgetModal({
           ),
           key: widget.fullyQualifiedName,
           children: (
-            <Row align="middle" className="h-min-400" justify="center">
+            <Row align="middle" className="h-min-480" justify="center">
               <Col>
                 <Space align="center" direction="vertical">
-                  <Typography.Text>{getEntityName(widget)}</Typography.Text>
+                  <Image className="p-y-md" preview={false} src={widgetImage} />
+                  <Typography.Paragraph className="d-block text-center">
+                    {widget.description}
+                  </Typography.Paragraph>
                   <Tooltip
                     placement="bottom"
                     title={
@@ -142,7 +149,7 @@ function AddWidgetModal({
       onCancel={handleCloseAddWidgetModal}>
       {isEmpty(widgetsList) ? (
         <ErrorPlaceHolder
-          className="h-min-400"
+          className="h-min-480"
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           {t('message.no-widgets-to-add')}
         </ErrorPlaceHolder>
