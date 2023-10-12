@@ -10,7 +10,6 @@ import org.openmetadata.schema.type.TagLabel;
 @Builder
 public class FlattenColumn {
   String name;
-  String fullyQualifiedName;
   String description;
   @Setter List<TagLabel> tags;
 }

@@ -148,10 +148,6 @@
             "analyzer": "ik_max_word",
             "search_analyzer": "ik_smart"
           },
-          "fullyQualifiedName": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
-          },
           "tags": {
             "properties": {
               "tagFQN": {

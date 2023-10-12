@@ -23,12 +23,7 @@ public interface ColumnIndex extends SearchIndex {
         tags = col.getTags();
       }
 
-      FlattenColumn flattenColumn =
-          FlattenColumn.builder()
-              .name(columnName)
-              .fullyQualifiedName(fullQualifiedName)
-              .description(col.getDescription())
-              .build();
+      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).description(col.getDescription()).build();
 
       if (!tags.isEmpty()) {
         flattenColumn.setTags(tags);

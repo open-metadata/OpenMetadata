@@ -164,10 +164,6 @@
             "type": "text",
             "analyzer": "om_analyzer"
           },
-          "fullyQualifiedName": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
-          },
           "tags": {
             "properties": {
               "tagFQN": {

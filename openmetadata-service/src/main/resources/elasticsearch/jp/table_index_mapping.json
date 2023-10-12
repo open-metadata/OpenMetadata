@@ -173,10 +173,6 @@
             "type": "text",
             "analyzer": "om_analyzer_jp"
           },
-          "fullyQualifiedName": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
-          },
           "tags": {
             "properties": {
               "tagFQN": {
