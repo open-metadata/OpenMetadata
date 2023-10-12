@@ -439,7 +439,8 @@ public class DashboardDataModelResource extends EntityResource<DashboardDataMode
 
   private DashboardDataModel getDataModel(CreateDashboardDataModel create, String user) {
     DatabaseUtil.validateColumns(create.getColumns());
-    return copy(new DashboardDataModel(), create, user)
+    return repository
+        .copy(new DashboardDataModel(), create, user)
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withDataModelType(create.getDataModelType())
         .withSql(create.getSql())

@@ -331,7 +331,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   private DataProduct getDataProduct(CreateDataProduct create, String user) {
     List<String> experts = create.getExperts();
     DataProduct dataProduct =
-        copy(new DataProduct(), create, user)
+        repository
+            .copy(new DataProduct(), create, user)
             .withFullyQualifiedName(create.getName())
             .withStyle(create.getStyle())
             .withExperts(EntityUtil.populateEntityReferences(getEntityReferences(Entity.USER, experts)));
