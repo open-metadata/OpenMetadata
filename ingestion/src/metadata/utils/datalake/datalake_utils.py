@@ -16,8 +16,7 @@ from different auths and different file systems.
 import ast
 import json
 import traceback
-from functools import reduce
-from typing import List, Optional
+from typing import Dict, List, Optional, cast
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
@@ -26,7 +25,6 @@ from metadata.readers.dataframe.models import (
     DatalakeTableSchemaWrapper,
 )
 from metadata.readers.dataframe.reader_factory import SupportedTypes, get_df_reader
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -101,42 +99,70 @@ def get_file_format_type(key_name, metadata_entry=None):
     return False
 
 
-def get_parent_col(data_frame, complex_cols, parent_col_fqn=""):
-    """Get Complex Column Objects"""
-    cols = []
-    parent_cols = [top_level[0] for top_level in complex_cols if len(top_level) > 0]
-    filter_unique = (
-        lambda l, x: l  # pylint: disable=unnecessary-lambda-assignment
-        if x in l
-        else l + [x]
-    )
-    parent_cols = reduce(filter_unique, parent_cols, [])
-    for top_level in parent_cols:
-        if parent_col_fqn.startswith(COMPLEX_COLUMN_SEPARATOR) or not parent_col_fqn:
-            col_fqn = COMPLEX_COLUMN_SEPARATOR.join([parent_col_fqn, top_level])
-        else:
-            col_fqn = COMPLEX_COLUMN_SEPARATOR.join(["", parent_col_fqn, top_level])
-        col_obj = {
-            "name": truncate_column_name(top_level),
-            "displayName": top_level,
-        }
-        leaf_node = [
-            leaf_parse[1:] for leaf_parse in complex_cols if top_level == leaf_parse[0]
-        ]
-        if any(leaf_node):
-            col_obj["children"] = []
-            col_obj["dataTypeDisplay"] = DataType.RECORD.value
-            col_obj["dataType"] = DataType.RECORD
-            col_obj["children"].extend(get_parent_col(data_frame, leaf_node, col_fqn))
-        else:
-            col_type = fetch_col_types(data_frame, col_fqn)
-            col_obj["dataTypeDisplay"] = col_type.value
-            col_obj["dataType"] = col_type
-            col_obj["arrayDataType"] = (
-                DataType.UNKNOWN if col_type == DataType.ARRAY else None
-            )
-        cols.append(Column(**col_obj))
-    return cols
+def unique_json_structure(dicts: List[Dict]) -> Dict:
+    """Given a sample of `n` json objects, return a json object that represents the unique structure of all `n` objects.
+    Note that the type of the key will be that of the last object seen in the sample.
+
+    Args:
+        dicts: list of json objects
+    """
+    result = {}
+    for dict_ in dicts:
+        for key, value in dict_.items():
+            if isinstance(value, dict):
+                nested_json = result.get(key, {})
+                # `isinstance(nested_json, dict)` if for a key we first see a non dict value
+                # but then see a dict value later, we will consider the key to be a dict.
+                result[key] = unique_json_structure(
+                    [nested_json if isinstance(nested_json, dict) else {}, value]
+                )
+            else:
+                result[key] = value
+    return result
+
+
+def construct_json_column_children(json_column: Dict) -> List[Dict]:
+    """Construt a dict representation of a Column object
+
+    Args:
+        json_column: unique json structure of a column
+    """
+    children = []
+    for key, value in json_column.items():
+        column = {}
+        type_ = type(value).__name__.lower()
+        column["dataTypeDisplay"] = DATALAKE_DATA_TYPES.get(
+            type_, DataType.UNKNOWN
+        ).value
+        column["dataType"] = DATALAKE_DATA_TYPES.get(type_, DataType.UNKNOWN).value
+        column["name"] = truncate_column_name(key)
+        column["displayName"] = key
+        if isinstance(value, dict):
+            column["children"] = construct_json_column_children(value)
+        children.append(column)
+
+    return children
+
+
+def get_children(json_column) -> List[Dict]:
+    """Get children of json column.
+
+    Args:
+        json_column (pandas.Series): column with 100 sample rows.
+            Sample rows will be used to infer children.
+    """
+    from pandas import Series  # pylint: disable=import-outside-toplevel
+
+    json_column = cast(Series, json_column)
+    try:
+        json_column = json_column.apply(json.loads)
+    except TypeError:
+        # if values are not strings, we will assume they are already json objects
+        # based on the read class logic
+        pass
+    json_structure = unique_json_structure(json_column.values.tolist())
+
+    return construct_json_column_children(json_structure)
 
 
 def get_columns(data_frame: "DataFrame"):
@@ -147,36 +173,30 @@ def get_columns(data_frame: "DataFrame"):
     if hasattr(data_frame, "columns"):
         df_columns = list(data_frame.columns)
         for column in df_columns:
-            if COMPLEX_COLUMN_SEPARATOR not in column:
-                # use String by default
-                data_type = DataType.STRING
-                try:
-                    if hasattr(data_frame[column], "dtypes"):
-                        data_type = fetch_col_types(data_frame, column_name=column)
+            # use String by default
+            data_type = DataType.STRING
+            try:
+                if hasattr(data_frame[column], "dtypes"):
+                    data_type = fetch_col_types(data_frame, column_name=column)
 
-                    parsed_string = {
-                        "dataTypeDisplay": data_type.value,
-                        "dataType": data_type,
-                        "name": truncate_column_name(column),
-                        "displayName": column,
-                    }
-                    if data_type == DataType.ARRAY:
-                        parsed_string["arrayDataType"] = DataType.UNKNOWN
+                parsed_string = {
+                    "dataTypeDisplay": data_type.value,
+                    "dataType": data_type,
+                    "name": truncate_column_name(column),
+                    "displayName": column,
+                }
+                if data_type == DataType.ARRAY:
+                    parsed_string["arrayDataType"] = DataType.UNKNOWN
 
-                    cols.append(Column(**parsed_string))
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Unexpected exception parsing column [{column}]: {exc}"
+                if data_type == DataType.JSON:
+                    parsed_string["children"] = get_children(
+                        data_frame[column].dropna()[:100]
                     )
-    complex_cols = [
-        complex_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
-        for complex_col in json.loads(
-            data_frame.apply(lambda row: row.to_json(), axis=1).values[0]
-        ).keys()
-        if COMPLEX_COLUMN_SEPARATOR in complex_col
-    ]
-    cols.extend(get_parent_col(data_frame, complex_cols))
+
+                cols.append(Column(**parsed_string))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Unexpected exception parsing column [{column}]: {exc}")
     return cols
 
 
@@ -187,8 +207,8 @@ def fetch_col_types(data_frame, column_name):
         data_frame (DataFrame)
         column_name (string)
     """
+    data_type = None
     try:
-        data_type = None
         if data_frame[column_name].dtypes.name == "object" and any(
             data_frame[column_name].dropna().values
         ):
