@@ -160,12 +160,6 @@
               }
             }
           },
-          "dataType": {
-            "type": "text"
-          },
-          "dataTypeDisplay": {
-            "type": "text"
-          },
           "description": {
             "type": "text",
             "analyzer": "om_analyzer"
@@ -173,9 +167,6 @@
           "fullyQualifiedName": {
             "type": "keyword",
             "normalizer": "lowercase_normalizer"
-          },
-          "fqnParts": {
-            "type": "keyword"
           },
           "tags": {
             "properties": {
@@ -195,9 +186,6 @@
                 "type": "keyword"
               }
             }
-          },
-          "ordinalPosition": {
-            "type": "integer"
           }
         }
       },

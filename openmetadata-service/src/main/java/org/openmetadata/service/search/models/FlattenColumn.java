@@ -1,11 +1,10 @@
 package org.openmetadata.service.search.models;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.type.TagLabel;
-
-import java.util.List;
 
 @Getter
 @Builder

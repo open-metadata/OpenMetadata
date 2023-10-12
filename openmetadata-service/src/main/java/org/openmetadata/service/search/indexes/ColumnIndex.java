@@ -1,14 +1,13 @@
 package org.openmetadata.service.search.indexes;
 
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.search.models.FlattenColumn;
-import org.openmetadata.service.util.FullyQualifiedName;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.search.models.FlattenColumn;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public interface ColumnIndex extends SearchIndex {
   default void parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns, String parentColumn) {
@@ -24,7 +23,12 @@ public interface ColumnIndex extends SearchIndex {
         tags = col.getTags();
       }
 
-      FlattenColumn flattenColumn = FlattenColumn.builder().name(columnName).fullyQualifiedName(fullQualifiedName).description(col.getDescription()).build();
+      FlattenColumn flattenColumn =
+          FlattenColumn.builder()
+              .name(columnName)
+              .fullyQualifiedName(fullQualifiedName)
+              .description(col.getDescription())
+              .build();
 
       if (!tags.isEmpty()) {
         flattenColumn.setTags(tags);

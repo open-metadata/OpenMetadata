@@ -611,6 +611,7 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms("columns_arr.name.keyword").field("columns_arr.name.keyword"))
         .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
     return addAggregation(searchSourceBuilder);
   }

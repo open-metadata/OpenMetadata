@@ -157,6 +157,47 @@
           }
         }
       },
+      "columns_arr": {
+        "properties": {
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "tags": {
+            "properties": {
+              "tagFQN": {
+                "type": "keyword"
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
       "databaseSchema": {
         "properties": {
           "id": {
