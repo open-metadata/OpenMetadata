@@ -12,42 +12,34 @@
  */
 
 import { Menu, MenuProps } from 'antd';
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useMemo } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
-import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
+import { DataInsightTabs } from '../../../interface/data-insight.interface';
+import { getDataInsightPathWithFqn } from '../../../utils/DataInsightUtils';
+import DataInsightClassBase from '../DataInsightClassBase';
 
 const DataInsightLeftPanel = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
 
   const history = useHistory();
-  const { t } = useTranslation();
 
-  const menuItems: MenuProps['items'] = [
-    {
-      key: DataInsightTabs.DATA_ASSETS,
-      label: t('label.data-asset-plural'),
-      icon: <AppAnalyticsIcon className="side-panel-icons" />,
-    },
-    {
-      key: DataInsightTabs.APP_ANALYTICS,
-      label: t('label.app-analytic-plural'),
-      icon: <DataAssetsIcon className="side-panel-icons" />,
-    },
-    {
-      key: DataInsightTabs.KPIS,
-      label: `${t('label.kpi-uppercase')}s`,
-      icon: <KPIIcon className="side-panel-icons" />,
-    },
-  ];
+  const menuItems: MenuProps['items'] = useMemo(() => {
+    const data = DataInsightClassBase.getLeftSideBar();
+
+    return data.map((value) => {
+      const SvgIcon = value.icon;
+
+      return {
+        key: value.key,
+        label: value.label,
+        icon: <SvgIcon {...value.iconProps} />,
+      };
+    });
+  }, []);
 
   const handleMenuClick: MenuProps['onClick'] = (e) => {
-    history.push(getDataInsightPathWithFqn(e.key));
+    history.push(getDataInsightPathWithFqn(e.key as DataInsightTabs));
   };
 
   return (
