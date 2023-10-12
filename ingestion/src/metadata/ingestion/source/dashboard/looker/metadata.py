@@ -223,7 +223,7 @@ class LookerSource(DashboardServiceSource):
 
                 url_parsed = giturlparse.parse(remote_git_url)
                 _clone_repo(
-                    f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
+                    f"{url_parsed.owner}/{url_parsed.repo}",
                     f"{self._main_lookml_repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
                     credentials,
                 )
