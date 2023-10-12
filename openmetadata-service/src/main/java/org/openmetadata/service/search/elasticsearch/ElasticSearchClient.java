@@ -1475,9 +1475,6 @@ public class ElasticSearchClient implements SearchClient {
         RestClientBuilder restClientBuilder =
             RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
 
-        RestClient restClient =
-            RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme())).build();
-
         if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
           CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
           credentialsProvider.setCredentials(
@@ -1502,7 +1499,7 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        return new RestHighLevelClientBuilder(restClient).setApiCompatibilityMode(true).build();
+        return new RestHighLevelClientBuilder(restClientBuilder.build()).setApiCompatibilityMode(true).build();
       } catch (Exception e) {
         LOG.error("Failed to create elastic search client ", e);
         return null;
