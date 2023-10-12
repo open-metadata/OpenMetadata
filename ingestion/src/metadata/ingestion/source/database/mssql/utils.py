@@ -159,7 +159,7 @@ def get_columns(
         # tds_version 4.2 does not support NVARCHAR(MAX)
         computed_definition = sql.cast(computed_cols.c.definition, NVARCHAR(4000))
 
-    s = (
+    sql_qry = (
         sql.select(
             columns,
             computed_definition,
@@ -174,10 +174,10 @@ def get_columns(
         .order_by(columns.c.ordinal_position)
     )
 
-    c = connection.execution_options(future_result=True).execute(s)
+    cursr = connection.execution_options(future_result=True).execute(sql_qry)
 
     cols = []
-    for row in c.mappings():
+    for row in cursr.mappings():
         name = row[columns.c.column_name]
         type_ = row[columns.c.data_type]
         nullable = row[columns.c.is_nullable] == "YES"
