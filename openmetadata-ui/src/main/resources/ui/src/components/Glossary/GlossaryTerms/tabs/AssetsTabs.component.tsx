@@ -146,13 +146,11 @@ const AssetsTabs = forwardRef(
       });
     }, [activeFilter, itemCount]);
 
-    const getAssetMenuCountBadge = useCallback(
+    const getAssetMenuCount = useCallback(
       (key: EntityType) =>
-        getCountBadge(
-          ASSET_SUB_MENU_FILTER.find((item) => item.key === key)
-            ?.children.map((item) => itemCount[item.value] ?? 0)
-            ?.reduce((acc, cv) => acc + cv, 0)
-        ),
+        ASSET_SUB_MENU_FILTER.find((item) => item.key === key)
+          ?.children.map((item) => itemCount[item.value] ?? 0)
+          ?.reduce((acc, cv) => acc + cv, 0),
       [itemCount]
     );
 
@@ -165,7 +163,11 @@ const AssetsTabs = forwardRef(
         },
         isChildren?: boolean
       ) => {
-        const assetCount = option.value && itemCount[option.value];
+        const assetCount = isChildren
+          ? option.value
+            ? itemCount[option.value]
+            : 0
+          : getAssetMenuCount(option.key as EntityType);
 
         return {
           label: isChildren ? (
@@ -190,14 +192,12 @@ const AssetsTabs = forwardRef(
           ) : (
             <div className="d-flex justify-between">
               <span>{option.label}</span>
-              <span className="p-l-xs">
-                {getAssetMenuCountBadge(option.key as EntityType)}
-              </span>
+              <span className="p-l-xs">{getCountBadge(assetCount)}</span>
             </div>
           ),
           key: option.key,
           value: option.key,
-          disabled: isChildren && !assetCount,
+          disabled: !assetCount,
         };
       },
       [
