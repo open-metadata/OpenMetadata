@@ -13,7 +13,6 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.SSLUtil;
@@ -29,14 +28,16 @@ public interface SearchClient {
 
   String DELETE = "delete";
   String GLOBAL_SEARCH_ALIAS = "AllEntities";
-
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-  String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
-  String PROPAGATE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
-  String REMOVE_PROPAGATED_FIELD_SCRIPT =
+  String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
+
+  String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
+
+  String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
-  String UPDATE_PROPAGATED_FIELD_SCRIPT =
+  String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
+  String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
@@ -84,7 +85,7 @@ public interface SearchClient {
 
   void softDeleteOrRestoreChildren(String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
-  void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates);
+  void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates);
 
   TreeMap<Long, List<Object>> getSortedDate(
       String team,
