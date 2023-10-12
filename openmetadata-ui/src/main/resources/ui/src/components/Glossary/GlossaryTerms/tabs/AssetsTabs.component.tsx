@@ -164,9 +164,7 @@ const AssetsTabs = forwardRef(
         isChildren?: boolean
       ) => {
         const assetCount = isChildren
-          ? option.value
-            ? itemCount[option.value]
-            : 0
+          ? itemCount[option.value as EntityType]
           : getAssetMenuCount(option.key as EntityType);
 
         return {
