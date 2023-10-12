@@ -61,7 +61,8 @@ export const mentionSuggestion = () => ({
 
   render: () => {
     let component: ReactRenderer;
-    let popup: Instance<Props>[];
+    let popup: Instance<Props>[] = [];
+    const hasPopup = !isEmpty(popup);
 
     return {
       onStart: (props: SuggestionProps) => {
@@ -93,7 +94,7 @@ export const mentionSuggestion = () => ({
           return;
         }
 
-        if (!isEmpty(popup)) {
+        if (hasPopup) {
           popup[0].setProps({
             getReferenceClientRect:
               props.clientRect as Props['getReferenceClientRect'],
@@ -104,7 +105,7 @@ export const mentionSuggestion = () => ({
       onKeyDown(props: SuggestionKeyDownProps) {
         if (
           props.event.key === 'Escape' &&
-          !isEmpty(popup) &&
+          hasPopup &&
           !popup[0].state.isDestroyed
         ) {
           popup[0].hide();
@@ -116,7 +117,7 @@ export const mentionSuggestion = () => ({
       },
 
       onExit() {
-        if (!isEmpty(popup) && !popup[0].state.isDestroyed) {
+        if (hasPopup && !popup[0].state.isDestroyed) {
           popup[0].destroy();
         }
       },
