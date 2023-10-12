@@ -32,6 +32,7 @@ import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplat
 import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
 import TestConnection from '../TestConnection/TestConnection';
+import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 
 interface Props extends FormProps {
   okText: string;
@@ -43,6 +44,8 @@ interface Props extends FormProps {
   showFormHeader?: boolean;
   status?: LoadingState;
   onCancel?: () => void;
+  showTestConnection?: boolean;
+  useSelectWidget?: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -60,6 +63,8 @@ const FormBuilder: FunctionComponent<Props> = ({
   serviceCategory,
   serviceType,
   serviceName,
+  showTestConnection = true,
+  useSelectWidget = false,
   ...props
 }: Props) => {
   const { isAirflowAvailable } = useAirflowStatus();
@@ -70,6 +75,11 @@ const FormBuilder: FunctionComponent<Props> = ({
   );
 
   const [hostIp, setHostIp] = useState<string>();
+
+  const widgets = {
+    PasswordWidget: PasswordWidget,
+    ...(useSelectWidget && { SelectWidget: MultiSelectWidget }),
+  };
 
   const fetchHostIp = async () => {
     try {
@@ -128,7 +138,7 @@ const FormBuilder: FunctionComponent<Props> = ({
       }}
       transformErrors={transformErrors}
       uiSchema={uiSchema}
-      widgets={{ PasswordWidget: PasswordWidget }}
+      widgets={widgets}
       onChange={handleFormChange}
       onFocus={onFocus}
       onSubmit={onSubmit}
@@ -147,7 +157,8 @@ const FormBuilder: FunctionComponent<Props> = ({
           </div>
         </div>
       )}
-      {!isEmpty(schema) &&
+      {showTestConnection &&
+        !isEmpty(schema) &&
         !isUndefined(localFormData) &&
         isAirflowAvailable && (
           <TestConnection

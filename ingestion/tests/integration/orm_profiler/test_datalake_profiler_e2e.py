@@ -309,6 +309,114 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert profile.rowCount == 2.0
 
+    def test_datalake_profiler_workflow_with_custom_profiler_config(self):
+        """Test custom profiler config return expected sample and metric computation"""
+        profiler_metrics = [
+            "MIN",
+            "MAX",
+            "MEAN",
+            "MEDIAN",
+        ]
+        id_metrics = ["MIN", "MAX"]
+        non_metric_values = ["name", "timestamp"]
+
+        workflow_config = deepcopy(INGESTION_CONFIG)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "ingestion_profiler",
+                    "metrics": profiler_metrics,
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": 'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+                        "columnConfig": {
+                            "includeColumns": [
+                                {"columnName": "id", "metrics": id_metrics},
+                                {"columnName": "age"},
+                            ]
+                        },
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn='datalake_for_integration_tests.default.MyBucket."profiler_test_.csv"',
+            fields=["tableProfilerConfig"],
+        )
+
+        id_profile = self.metadata.get_profile_data(
+            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".id',
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.__root__)
+
+        id_metric_ln = 0
+        for metric_name, metric in latest_id_profile:
+            if metric_name.upper() in id_metrics:
+                assert metric is not None
+                id_metric_ln += 1
+            else:
+                assert metric is None if metric_name not in non_metric_values else True
+
+        assert id_metric_ln == len(id_metrics)
+
+        age_profile = self.metadata.get_profile_data(
+            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".age',
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.__root__)
+
+        age_metric_ln = 0
+        for metric_name, metric in latest_age_profile:
+            if metric_name.upper() in profiler_metrics:
+                assert metric is not None
+                age_metric_ln += 1
+            else:
+                assert metric is None if metric_name not in non_metric_values else True
+
+        assert age_metric_ln == len(profiler_metrics)
+
+        latest_exc_timestamp = latest_age_profile.timestamp.__root__
+        first_name_profile = self.metadata.get_profile_data(
+            'datalake_for_integration_tests.default.MyBucket."profiler_test_.csv".first_name_profile',
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+            profile_type=ColumnProfile,
+        ).entities
+
+        assert not [
+            p
+            for p in first_name_profile
+            if p.timestamp.__root__ == latest_exc_timestamp
+        ]
+
+        sample_data = self.metadata.get_sample_data(table)
+        assert sorted([c.__root__ for c in sample_data.sampleData.columns]) == sorted(
+            ["id", "age"]
+        )
+
     def tearDown(self):
         s3 = boto3.resource(
             "s3",

@@ -414,7 +414,8 @@ public class StoredProcedureResource extends EntityResource<StoredProcedure, Sto
   }
 
   private StoredProcedure getStoredProcedure(CreateStoredProcedure create, String user) {
-    return copy(new StoredProcedure(), create, user)
+    return repository
+        .copy(new StoredProcedure(), create, user)
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withTags(create.getTags())
         .withStoredProcedureCode(create.getStoredProcedureCode())

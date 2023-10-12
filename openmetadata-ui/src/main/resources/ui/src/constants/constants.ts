@@ -18,14 +18,14 @@ import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData'
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import i18n from '../utils/i18next/LocalUtil';
+import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
@@ -260,6 +260,14 @@ export const ROUTES = {
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
 
+  ADD_APPLICATION: '/add-application',
+  MARKETPLACE: '/marketplace',
+  MARKETPLACE_APP_DETAILS: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}`,
+  MARKETPLACE_APP_INSTALL: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}/install`,
+
+  APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
+  APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
   DOMAIN: '/domain',
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -327,7 +335,7 @@ export const ROUTES = {
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
 
-  CUSTOMISE_PAGE: `/customise-page/:fqn/:pageFqn`,
+  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };
 
 export const SOCKET_EVENTS = {

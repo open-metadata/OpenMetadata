@@ -18,16 +18,14 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath } from '../../../constants/constants';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 
-interface FollowingWidgetProps {
-  isEditView?: boolean;
+export interface FollowingWidgetProps extends WidgetCommonProps {
   followedData: EntityReference[];
   followedDataCount: number;
   isLoadingOwnedData: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 function FollowingWidget({
@@ -36,17 +34,17 @@ function FollowingWidget({
   followedDataCount,
   isLoadingOwnedData,
   handleRemoveWidget,
+  widgetKey,
 }: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.FOLLOWING);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   return (
-    <div className="p-l-md" data-testid="following-data-container">
+    <div className="bg-white h-full" data-testid="following-data-container">
       <EntityListWithV1
         entityList={followedData}
         headerText={

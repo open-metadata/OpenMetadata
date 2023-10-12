@@ -461,7 +461,8 @@ public class MetadataServiceResource
   }
 
   private MetadataService getMetadataService(CreateMetadataService create, String user) {
-    return copy(new MetadataService(), create, user)
+    return repository
+        .copy(new MetadataService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection());
   }

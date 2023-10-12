@@ -170,6 +170,28 @@ export const getGlossaryPath = (fqn?: string) => {
   return path;
 };
 
+export const getApplicationDetailsPath = (fqn: string) => {
+  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+
+  path = path
+    .replace(
+      PLACEHOLDER_SETTING_CATEGORY,
+      GlobalSettingsMenuCategory.INTEGRATIONS
+    )
+    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.APPLICATIONS)
+    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+
+  return path;
+};
+
+export const getMarketPlaceAppDetailsPath = (fqn: string) => {
+  return ROUTES.MARKETPLACE_APP_DETAILS.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
+export const getAppInstallPath = (fqn: string) => {
+  return ROUTES.MARKETPLACE_APP_INSTALL.replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
 export const getSettingPath = (
   category?: string,
   tab?: string,
@@ -572,7 +594,7 @@ export const getPersonaDetailsPath = (fqn: string) => {
   path = path
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
-    .replace(PLACEHOLDER_ROUTE_FQN, fqn);
+    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };
