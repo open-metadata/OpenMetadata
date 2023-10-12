@@ -70,9 +70,6 @@ public final class TablesInitializer {
   static {
     OPTIONS = new Options();
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
-    OPTIONS.addOption("s", OPTION_FLYWAY_SCRIPT_ROOT_PATH, true, "Root directory of flyway sql script path");
-    OPTIONS.addOption("n", OPTION_NATIVE_SQL_ROOT_PATH, true, "Root directory of native sql script path");
-
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
         OPTION_FORCE_MIGRATIONS,
@@ -118,12 +115,6 @@ public final class TablesInitializer {
   public static void main(String[] args) throws Exception {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(OPTIONS, args);
-    if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH)
-        || !commandLine.hasOption(OPTION_NATIVE_SQL_ROOT_PATH)
-        || !commandLine.hasOption(OPTION_FLYWAY_SCRIPT_ROOT_PATH)) {
-      usage();
-      System.exit(1);
-    }
     if (commandLine.hasOption(DEBUG_MODE_ENABLED)) {
       debugMode = true;
     }
@@ -203,15 +194,15 @@ public final class TablesInitializer {
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
     }
-    String nativeSQLScriptRootPath = commandLine.getOptionValue(OPTION_NATIVE_SQL_ROOT_PATH);
-    String scriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
+    String nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
+    String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
     String extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
     Flyway flyway =
         get(
             jdbcUrl,
             user,
             password,
-            scriptRootPath,
+            flywayRootPath,
             config.getDataSourceFactory().getDriverClass(),
             !disableValidateOnMigrate);
     try {

@@ -33,7 +33,6 @@ done
 
 BOOTSTRAP_DIR=`dirname ${PRG}`
 CONFIG_FILE_PATH=${BOOTSTRAP_DIR}/../conf/openmetadata.yaml
-FLYWAY_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/migrations/flyway"
 NATIVE_SQL_ROOT_DIR="${BOOTSTRAP_DIR}/sql/migrations/native"
 
 # Which java to use
@@ -61,7 +60,9 @@ execute() {
   if  [ ${debug} ] ; then
     echo "Using Configuration file: ${CONFIG_FILE_PATH}"
   fi
-  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} -s ${FLYWAY_SQL_ROOT_DIR} -n ${NATIVE_SQL_ROOT_DIR} --${1} -force ${force}  -${debug}
+  echo ${1}
+  echo "${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} --${1} -force ${force}  -${debug}"
+  ${JAVA} -Dbootstrap.dir=$BOOTSTRAP_DIR  -cp ${CLASSPATH} ${TABLE_INITIALIZER_MAIN_CLASS} -c ${CONFIG_FILE_PATH} --${1} -force ${force}  -${debug}
 }
 
 printUsage() {
