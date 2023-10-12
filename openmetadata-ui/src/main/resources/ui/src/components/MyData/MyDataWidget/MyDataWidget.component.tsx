@@ -21,7 +21,7 @@ import AppState from '../../../AppState';
 import { getUserPath, ROUTES } from '../../../constants/constants';
 import { AssetsType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getUserById } from '../../../rest/userAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';

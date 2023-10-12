@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { WidgetCommonProps } from '../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetCommonProps } from '../../pages/CustomizablePage/CustomizablePage.interface';
 
 export interface KPIWidgetProps extends WidgetCommonProps {
   selectedDays?: number;

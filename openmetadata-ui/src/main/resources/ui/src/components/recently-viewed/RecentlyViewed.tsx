@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { EntityReference } from '../../generated/type/entityReference';
-import { WidgetCommonProps } from '../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetCommonProps } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';

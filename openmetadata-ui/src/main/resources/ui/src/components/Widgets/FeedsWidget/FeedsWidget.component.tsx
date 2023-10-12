@@ -28,7 +28,7 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

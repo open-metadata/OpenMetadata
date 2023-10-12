@@ -51,6 +51,7 @@ import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -441,10 +442,10 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
   }
 };
 
-export const getCustomisePagePath = (personaFqn: string, pageFqn: string) => {
-  const path = ROUTES.CUSTOMISE_PAGE;
+export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMIZE_PAGE;
 
   return path
-    .replaceAll(PLACEHOLDER_ROUTE_FQN, personaFqn)
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
     .replace(':pageFqn', pageFqn);
 };

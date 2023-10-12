@@ -18,7 +18,7 @@ import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
 import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/policy';
-import { CustomisablePage } from '../../pages/CustomisablePages/CustomisablePage';
+import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
@@ -847,8 +847,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <AdminProtectedRoute
         exact
-        component={CustomisablePage}
-        path={ROUTES.CUSTOMISE_PAGE}
+        component={CustomizablePage}
+        path={ROUTES.CUSTOMIZE_PAGE}
       />
       {routeElements}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />

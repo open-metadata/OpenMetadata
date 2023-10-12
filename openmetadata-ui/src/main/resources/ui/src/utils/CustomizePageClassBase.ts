@@ -31,7 +31,7 @@ import RecentlyViewed from '../components/recently-viewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from '../components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
-import { WidgetCommonProps } from '../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetCommonProps } from '../pages/CustomizablePage/CustomizablePage.interface';
 
 export class CustomizePageClassBase {
   /**

@@ -35,7 +35,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../rest/PersonaAPI';
 import { showPagination, Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getCustomisePagePath } from '../../utils/GlobalSettingsUtils';
+import { getCustomizePagePath } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './CustomPageSettings.less';
@@ -76,7 +76,7 @@ export const CustomPageSettings = () => {
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
       history.push(
-        getCustomisePagePath(persona.fullyQualifiedName, PageType.LandingPage)
+        getCustomizePagePath(persona.fullyQualifiedName, PageType.LandingPage)
       );
     }
   };

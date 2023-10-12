@@ -27,16 +27,20 @@ import {
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS,
   LANDING_PAGE_WIDGET_MARGIN,
-} from '../constants/CustomisePage.constants';
+} from '../constants/CustomizePage.constants';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { WidgetConfig } from '../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
 export const getAddWidgetHandler =
-  (newWidgetData: Document, placeholderWidgetKey: string) =>
+  (
+    newWidgetData: Document,
+    placeholderWidgetKey: string,
+    maxGridSize: number
+  ) =>
   (currentLayout: Array<WidgetConfig>) => {
     const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
     const widgetWidth = getWidgetWidth(newWidgetData);
@@ -62,16 +66,22 @@ export const getAddWidgetHandler =
         },
       ];
     } else {
-      return currentLayout.map((widget: WidgetConfig) =>
-        widget.i === placeholderWidgetKey
+      return currentLayout.map((widget: WidgetConfig) => {
+        const widgetX =
+          widget.x + widgetWidth <= maxGridSize
+            ? widget.x
+            : maxGridSize - widgetWidth;
+
+        return widget.i === placeholderWidgetKey
           ? {
               ...widget,
               i: widgetFQN,
               h: widgetHeight,
               w: widgetWidth,
+              x: widgetX,
             }
-          : widget
-      );
+          : widget;
+      });
     }
   };
 

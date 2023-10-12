@@ -26,7 +26,7 @@ import {
   LANDING_PAGE_MAX_GRID_SIZE,
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_MARGIN,
-} from '../../../constants/CustomisePage.constants';
+} from '../../../constants/CustomizePage.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -38,7 +38,7 @@ import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { PageType } from '../../../generated/system/ui/page';
 import { useAuth } from '../../../hooks/authHooks';
-import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getUserById } from '../../../rest/userAPI';
@@ -53,6 +53,7 @@ import {
   getPersonaDetailsPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
+import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
@@ -69,7 +70,7 @@ function CustomizeMyData({
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string; pageFqn: PageType }>();
+  const { fqn: personaFQN } = useParams<{ fqn: string; pageFqn: PageType }>();
   const location = useLocation();
   const [resetRightPanelLayout, setResetRightPanelLayout] =
     useState<boolean>(false);
@@ -96,6 +97,11 @@ function CustomizeMyData({
     useState<boolean>(true);
   const [announcements, setAnnouncements] = useState<Thread[]>([]);
 
+  const decodedPersonaFQN = useMemo(
+    () => getDecodedFqn(personaFQN),
+    [personaFQN]
+  );
+
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
     [AppState.userDetails, AppState.nonSecureUserDetails]
@@ -119,7 +125,13 @@ function CustomizeMyData({
 
   const handleAddWidget = useCallback(
     (newWidgetData: Document, placeholderWidgetKey: string) => {
-      setLayout(getAddWidgetHandler(newWidgetData, placeholderWidgetKey));
+      setLayout(
+        getAddWidgetHandler(
+          newWidgetData,
+          placeholderWidgetKey,
+          LANDING_PAGE_MAX_GRID_SIZE
+        )
+      );
       setIsWidgetModalOpen(false);
     },
     [layout]
@@ -338,11 +350,11 @@ function CustomizeMyData({
               renderElement={
                 <Link
                   style={{ color: '#1890ff', fontSize: '16px' }}
-                  to={getPersonaDetailsPath(fqn)}
+                  to={getPersonaDetailsPath(decodedPersonaFQN)}
                 />
               }
               values={{
-                persona: fqn,
+                persona: decodedPersonaFQN,
               }}
             />
           </Typography.Title>

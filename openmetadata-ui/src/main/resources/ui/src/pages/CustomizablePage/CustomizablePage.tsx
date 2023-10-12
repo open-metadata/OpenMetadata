@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
-import { LANDING_PAGE_LAYOUT } from '../../constants/CustomisePage.constants';
+import { LANDING_PAGE_LAYOUT } from '../../constants/CustomizePage.constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
@@ -28,7 +28,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
 
-export const CustomisablePage = () => {
+export const CustomizablePage = () => {
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
   const [page, setPage] = useState<Document>({} as Document);
   const [editedPage, setEditedPage] = useState<Document>({} as Document);

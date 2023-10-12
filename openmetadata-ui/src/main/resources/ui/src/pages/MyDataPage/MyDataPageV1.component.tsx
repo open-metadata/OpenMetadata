@@ -34,7 +34,7 @@ import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import {
   LANDING_PAGE_LAYOUT,
   LANDING_PAGE_WIDGET_MARGIN,
-} from '../../constants/CustomisePage.constants';
+} from '../../constants/CustomizePage.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -46,7 +46,7 @@ import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
 import { CustomizePageClassBase } from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { WidgetConfig } from '../CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);

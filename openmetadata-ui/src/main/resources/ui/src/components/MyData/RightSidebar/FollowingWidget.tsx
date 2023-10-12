@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
-import { WidgetCommonProps } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 
 export interface FollowingWidgetProps extends WidgetCommonProps {

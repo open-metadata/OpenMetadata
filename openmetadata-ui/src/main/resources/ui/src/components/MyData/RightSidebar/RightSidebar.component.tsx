@@ -18,11 +18,11 @@ import {
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_MARGIN,
   RIGHT_PANEL_LAYOUT,
-} from '../../../constants/CustomisePage.constants';
+} from '../../../constants/CustomizePage.constants';
 import { SIZE } from '../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
-import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
@@ -87,7 +87,13 @@ const RightSidebar = ({
 
   const handleAddWidget = useCallback(
     (newWidgetData: Document, placeholderWidgetKey: string) => {
-      setLayout(getAddWidgetHandler(newWidgetData, placeholderWidgetKey));
+      setLayout(
+        getAddWidgetHandler(
+          newWidgetData,
+          placeholderWidgetKey,
+          LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE
+        )
+      );
       setIsWidgetModalOpen(false);
     },
     [layout]
