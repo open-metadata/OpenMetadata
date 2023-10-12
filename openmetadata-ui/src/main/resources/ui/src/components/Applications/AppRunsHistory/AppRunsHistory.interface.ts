@@ -16,3 +16,12 @@ import { AppRunRecord } from '../../../generated/entity/applications/appRunRecor
 export interface AppRunRecordWithId extends AppRunRecord {
   id: string;
 }
+
+export interface AppRunsHistoryRef {
+  refreshAppHistory: () => void;
+}
+
+export interface AppRunsHistoryProps {
+  maxRecords?: number;
+  showPagination?: boolean;
+}

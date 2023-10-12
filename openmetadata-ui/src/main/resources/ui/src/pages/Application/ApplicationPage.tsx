@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Button, Card, Col, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { isEmpty, uniqueId } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import PageHeader from '../../components/header/PageHeader.component';
-import Loader from '../../components/Loader/Loader';
 import { ROUTES } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -84,13 +85,22 @@ const ApplicationPage = () => {
     history.push(ROUTES.MARKETPLACE);
   };
 
+  const errorPlaceHolder = useMemo(
+    () => (
+      <Col className="mt-24 text-center" span={24}>
+        <ErrorPlaceHolder
+          heading={t('label.application-plural')}
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <div>{t('message.no-installed-applications-found')}</div>
+        </ErrorPlaceHolder>
+      </Col>
+    ),
+    []
+  );
+
   useEffect(() => {
     fetchApplicationList();
   }, []);
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <>
@@ -110,32 +120,47 @@ const ApplicationPage = () => {
         </Col>
       </Row>
       <Row className="m-t-lg">
-        <Col span={24}>
-          <div className="d-flex flex-wrap gap-3">
-            {applicationData?.map((item) => (
-              <ApplicationCard
-                appName={item.fullyQualifiedName ?? ''}
-                className="w-400"
-                description={item.description ?? ''}
-                key={uniqueId()}
-                linkTitle={t('label.configure')}
-                title={getEntityName(item)}
-                onClick={() => viewAppDetails(item)}
-              />
-            ))}
-          </div>
-        </Col>
-        <Col span={24}>
-          {showPagination(paging) && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handleBotPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-        </Col>
+        {isLoading &&
+          [1, 2].map((key) => (
+            <Col key={key} span={12}>
+              <Card className="w-400">
+                <Skeleton active paragraph title />
+              </Card>
+            </Col>
+          ))}
+
+        {isEmpty(applicationData) && !isLoading && errorPlaceHolder}
+
+        {!isLoading && (
+          <>
+            <Col span={24}>
+              <div className="d-flex flex-wrap gap-3">
+                {applicationData?.map((item) => (
+                  <ApplicationCard
+                    appName={item.fullyQualifiedName ?? ''}
+                    className="w-400"
+                    description={item.description ?? ''}
+                    key={uniqueId()}
+                    linkTitle={t('label.configure')}
+                    title={getEntityName(item)}
+                    onClick={() => viewAppDetails(item)}
+                  />
+                ))}
+              </div>
+            </Col>
+            <Col span={24}>
+              {showPagination(paging) && (
+                <NextPrevious
+                  currentPage={currentPage}
+                  pageSize={pageSize}
+                  paging={paging}
+                  pagingHandler={handleBotPageChange}
+                  onShowSizeChange={handlePageSizeChange}
+                />
+              )}
+            </Col>
+          </>
+        )}
       </Row>
     </>
   );
