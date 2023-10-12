@@ -17,6 +17,8 @@ import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.
 
 export interface RightSidebarProps {
   isEditView?: boolean;
+  resetLayout?: boolean;
+  handleResetLayout?: (value: boolean) => void;
   announcements: Thread[];
   isAnnouncementLoading: boolean;
   followedDataCount: number;

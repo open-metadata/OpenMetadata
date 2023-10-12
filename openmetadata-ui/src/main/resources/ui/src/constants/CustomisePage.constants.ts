@@ -31,6 +31,33 @@ export const LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS = {
   totalDataAssets: 3.42,
 };
 
+export const RIGHT_PANEL_LAYOUT = [
+  {
+    h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements,
+    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    w: 1,
+    x: 0,
+    y: 0,
+    static: false,
+  },
+  {
+    h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following,
+    i: LandingPageWidgetKeys.FOLLOWING,
+    w: 1,
+    x: 0,
+    y: 1.5,
+    static: false,
+  },
+  {
+    h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.recentlyViewed,
+    i: LandingPageWidgetKeys.RECENTLY_VIEWED,
+    w: 1,
+    x: 0,
+    y: 3,
+    static: false,
+  },
+];
+
 export const LANDING_PAGE_LAYOUT = [
   {
     h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.activityFeed,
@@ -48,32 +75,7 @@ export const LANDING_PAGE_LAYOUT = [
     y: 0,
     data: {
       page: {
-        layout: [
-          {
-            h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements,
-            i: LandingPageWidgetKeys.ANNOUNCEMENTS,
-            w: 1,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following,
-            i: LandingPageWidgetKeys.FOLLOWING,
-            w: 1,
-            x: 0,
-            y: 1.5,
-            static: false,
-          },
-          {
-            h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.recentlyViewed,
-            i: LandingPageWidgetKeys.RECENTLY_VIEWED,
-            w: 1,
-            x: 0,
-            y: 3,
-            static: false,
-          },
-        ],
+        layout: RIGHT_PANEL_LAYOUT,
       },
     },
     static: true,

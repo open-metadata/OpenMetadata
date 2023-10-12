@@ -17,6 +17,7 @@ import {
   LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE,
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_MARGIN,
+  RIGHT_PANEL_LAYOUT,
 } from '../../../constants/CustomisePage.constants';
 import { SIZE } from '../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
@@ -45,6 +46,8 @@ const RightSidebar = ({
   isLoadingOwnedData,
   layoutConfigData,
   updateParentLayout,
+  resetLayout = false,
+  handleResetLayout,
 }: RightSidebarProps) => {
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
     ...(layoutConfigData?.page?.layout ?? []),
@@ -52,7 +55,7 @@ const RightSidebar = ({
       ? [
           {
             h: 2.3,
-            i: 'ExtraWidget.EmptyWidgetPlaceholder',
+            i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
             w: 1,
             x: 0,
             y: 100,
@@ -61,7 +64,14 @@ const RightSidebar = ({
         ]
       : []),
   ]);
+  const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
+    LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+  );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
+
+  const handlePlaceholderWidgetKey = useCallback((value: string) => {
+    setPlaceholderWidgetKey(value);
+  }, []);
 
   const handleOpenAddWidgetModal = useCallback(() => {
     setIsWidgetModalOpen(true);
@@ -76,8 +86,8 @@ const RightSidebar = ({
   }, []);
 
   const handleAddWidget = useCallback(
-    (newWidgetData: Document) => {
-      setLayout(getAddWidgetHandler(newWidgetData));
+    (newWidgetData: Document, placeholderWidgetKey: string) => {
+      setLayout(getAddWidgetHandler(newWidgetData, placeholderWidgetKey));
       setIsWidgetModalOpen(false);
     },
     [layout]
@@ -90,6 +100,7 @@ const RightSidebar = ({
           <div className="h-full">
             <EmptyWidgetPlaceholder
               handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
               handleRemoveWidget={handleRemoveWidget}
               iconHeight={SIZE.SMALL}
               iconWidth={SIZE.SMALL}
@@ -122,6 +133,7 @@ const RightSidebar = ({
       isEditView,
       handleRemoveWidget,
       handleOpenAddWidgetModal,
+      handlePlaceholderWidgetKey,
     ]
   );
 
@@ -186,6 +198,27 @@ const RightSidebar = ({
     }
   }, [layout]);
 
+  useEffect(() => {
+    if (resetLayout && handleResetLayout) {
+      setLayout([
+        ...RIGHT_PANEL_LAYOUT,
+        ...(isEditView
+          ? [
+              {
+                h: 2.3,
+                i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+                w: 1,
+                x: 0,
+                y: 100,
+                isDraggable: false,
+              },
+            ]
+          : []),
+      ]);
+      handleResetLayout(false);
+    }
+  }, [resetLayout]);
+
   return (
     <>
       <ResponsiveGridLayout
@@ -206,6 +239,7 @@ const RightSidebar = ({
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
           maxGridSizeSupport={LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE}
           open={isWidgetModalOpen}
+          placeholderWidgetKey={placeholderWidgetKey}
         />
       )}
     </>

@@ -63,7 +63,7 @@ const RecentlyViewed = ({
   }, []);
 
   return (
-    <div data-testid="recently-viewed-container">
+    <div className="bg-white h-full" data-testid="recently-viewed-container">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>

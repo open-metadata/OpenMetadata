@@ -11,35 +11,48 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
-import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
+import gridBgImg from '../../../assets/img/grid-bg-img.png';
 import {
   LANDING_PAGE_LAYOUT,
   LANDING_PAGE_MAX_GRID_SIZE,
   LANDING_PAGE_ROW_HEIGHT,
   LANDING_PAGE_WIDGET_MARGIN,
 } from '../../../constants/CustomisePage.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
+import { PageType } from '../../../generated/system/ui/page';
 import { useAuth } from '../../../hooks/authHooks';
 import { WidgetConfig } from '../../../pages/CustomisablePages/CustomisablePage.interface';
 import '../../../pages/MyDataPage/my-data.less';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getUserById } from '../../../rest/userAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
 import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
+import {
+  getPersonaDetailsPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import RightSidebar from '../../MyData/RightSidebar/RightSidebar.component';
@@ -51,20 +64,29 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 function CustomizeMyData({
   initialPageData,
+  onSaveLayout,
   handlePageDataChange,
 }: Readonly<CustomizeMyDataProps>) {
+  const { t } = useTranslation();
+  const history = useHistory();
+  const { fqn } = useParams<{ fqn: string; pageFqn: PageType }>();
   const location = useLocation();
+  const [resetRightPanelLayout, setResetRightPanelLayout] =
+    useState<boolean>(false);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
     ...(initialPageData.data?.page?.layout ?? LANDING_PAGE_LAYOUT),
     {
       h: 2,
-      i: 'ExtraWidget.EmptyWidgetPlaceholder',
+      i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
       w: 3,
       x: 0,
       y: 100,
       isDraggable: false,
     },
   ]);
+  const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
+    LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+  );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
@@ -79,6 +101,14 @@ function CustomizeMyData({
     [AppState.userDetails, AppState.nonSecureUserDetails]
   );
 
+  const handlePlaceholderWidgetKey = useCallback((value: string) => {
+    setPlaceholderWidgetKey(value);
+  }, []);
+
+  const handleResetRightPanelLayout = useCallback((value: boolean) => {
+    setResetRightPanelLayout(value);
+  }, []);
+
   const handleLayoutChange = useCallback((newLayout: Array<WidgetConfig>) => {
     setLayout(newLayout);
   }, []);
@@ -88,8 +118,8 @@ function CustomizeMyData({
   }, []);
 
   const handleAddWidget = useCallback(
-    (newWidgetData: Document) => {
-      setLayout(getAddWidgetHandler(newWidgetData));
+    (newWidgetData: Document, placeholderWidgetKey: string) => {
+      setLayout(getAddWidgetHandler(newWidgetData, placeholderWidgetKey));
       setIsWidgetModalOpen(false);
     },
     [layout]
@@ -143,6 +173,7 @@ function CustomizeMyData({
         return (
           <EmptyWidgetPlaceholder
             handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
             handleRemoveWidget={handleRemoveWidget}
             isEditable={widgetConfig.isDraggable}
             widgetKey={widgetConfig.i}
@@ -157,10 +188,12 @@ function CustomizeMyData({
               announcements={announcements}
               followedData={followedData ?? []}
               followedDataCount={followedDataCount}
+              handleResetLayout={handleResetRightPanelLayout}
               isAnnouncementLoading={isAnnouncementLoading}
               isLoadingOwnedData={isLoadingOwnedData}
               layoutConfigData={widgetConfig.data}
               parentLayoutData={layout}
+              resetLayout={resetRightPanelLayout}
               updateParentLayout={handleLayoutChange}
             />
           </div>
@@ -191,6 +224,9 @@ function CustomizeMyData({
       handleLayoutChange,
       isAnnouncementLoading,
       announcements,
+      resetRightPanelLayout,
+      handleResetRightPanelLayout,
+      handlePlaceholderWidgetKey,
     ]
   );
 
@@ -251,6 +287,35 @@ function CustomizeMyData({
     });
   }, [layout]);
 
+  const handleCancel = useCallback(() => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
+      )
+    );
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    await onSaveLayout();
+    handleCancel();
+  }, [onSaveLayout]);
+
+  const handleReset = useCallback(() => {
+    setLayout([
+      ...LANDING_PAGE_LAYOUT,
+      {
+        h: 2,
+        i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+        w: 3,
+        x: 0,
+        y: 100,
+        isDraggable: false,
+      },
+    ]);
+    setResetRightPanelLayout(true);
+  }, []);
+
   useEffect(() => {
     if (
       ((isAuthDisabled && AppState.users.length) ||
@@ -262,29 +327,68 @@ function CustomizeMyData({
   }, [AppState.userDetails, AppState.users, isAuthDisabled]);
 
   return (
-    <ActivityFeedProvider>
-      <ResponsiveGridLayout
-        autoSize
-        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-        className="bg-white"
-        cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
-        draggableHandle=".drag-widget-icon"
-        isResizable={false}
-        margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
-        rowHeight={LANDING_PAGE_ROW_HEIGHT}
-        onLayoutChange={handleLayoutUpdate}>
-        {widgets}
-      </ResponsiveGridLayout>
-      {isWidgetModalOpen && (
-        <AddWidgetModal
-          addedWidgetsList={addedWidgetsList}
-          handleAddWidget={handleAddWidget}
-          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          maxGridSizeSupport={LANDING_PAGE_MAX_GRID_SIZE}
-          open={isWidgetModalOpen}
-        />
-      )}
-    </ActivityFeedProvider>
+    <Row>
+      <Col
+        className="bg-white d-flex justify-between border-bottom p-sm"
+        span={24}>
+        <div className="d-flex gap-2 items-center">
+          <Typography.Title className="m-0" level={5}>
+            <Transi18next
+              i18nKey="message.customize-landing-page-header"
+              renderElement={
+                <Link
+                  style={{ color: '#1890ff', fontSize: '16px' }}
+                  to={getPersonaDetailsPath(fqn)}
+                />
+              }
+              values={{
+                persona: fqn,
+              }}
+            />
+          </Typography.Title>
+        </div>
+        <Space>
+          <Button size="small" onClick={handleCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button size="small" onClick={handleReset}>
+            {t('label.reset-default-layout')}
+          </Button>
+          <Button size="small" type="primary" onClick={handleSave}>
+            {t('label.save')}
+          </Button>
+        </Space>
+      </Col>
+      <Col span={24}>
+        <ActivityFeedProvider>
+          <ResponsiveGridLayout
+            autoSize
+            breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+            className="grid-container"
+            cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
+            draggableHandle=".drag-widget-icon"
+            isResizable={false}
+            margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
+            rowHeight={LANDING_PAGE_ROW_HEIGHT}
+            style={{
+              backgroundImage: `url(${gridBgImg})`,
+            }}
+            onLayoutChange={handleLayoutUpdate}>
+            {widgets}
+          </ResponsiveGridLayout>
+          {isWidgetModalOpen && (
+            <AddWidgetModal
+              addedWidgetsList={addedWidgetsList}
+              handleAddWidget={handleAddWidget}
+              handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+              maxGridSizeSupport={LANDING_PAGE_MAX_GRID_SIZE}
+              open={isWidgetModalOpen}
+              placeholderWidgetKey={placeholderWidgetKey}
+            />
+          )}
+        </ActivityFeedProvider>
+      </Col>
+    </Row>
   );
 }
 

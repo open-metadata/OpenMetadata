@@ -43,6 +43,7 @@ function AddWidgetModal({
   handleCloseAddWidgetModal,
   handleAddWidget,
   maxGridSizeSupport,
+  placeholderWidgetKey,
 }: Readonly<AddWidgetModalProps>) {
   const { t } = useTranslation();
   const [widgetsList, setWidgetsList] = useState<Array<Document>>();
@@ -60,8 +61,8 @@ function AddWidgetModal({
   }, []);
 
   const getAddWidgetHandler = useCallback(
-    (widget: Document) => () => handleAddWidget(widget),
-    []
+    (widget: Document) => () => handleAddWidget(widget, placeholderWidgetKey),
+    [handleAddWidget, placeholderWidgetKey]
   );
 
   const checkAddWidgetValidity = useCallback(

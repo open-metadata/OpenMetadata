@@ -36,28 +36,20 @@ import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomisablePages/CustomisablePage.interface';
 
 export const getAddWidgetHandler =
-  (newWidgetData: Document) => (currentLayout: Array<WidgetConfig>) => {
+  (newWidgetData: Document, placeholderWidgetKey: string) =>
+  (currentLayout: Array<WidgetConfig>) => {
     const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
     const widgetWidth = getWidgetWidth(newWidgetData);
     const widgetHeight = getWidgetHeight(newWidgetData.name);
 
-    const isEmptyPlaceholderPresent = currentLayout.find(
-      (widget: WidgetConfig) =>
-        widget.i === `${widgetFQN}.EmptyWidgetPlaceholder`
-    );
-
-    if (isEmptyPlaceholderPresent) {
-      return currentLayout.map((widget: WidgetConfig) =>
-        widget.i === `${widgetFQN}.EmptyWidgetPlaceholder`
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-            }
-          : widget
-      );
-    } else {
+    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
+    // and is not meant to be replaced hence
+    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
+    // append the new widget in the array
+    // else replace the new widget with other placeholder widgets
+    if (
+      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    ) {
       return [
         ...currentLayout,
         {
@@ -69,6 +61,17 @@ export const getAddWidgetHandler =
           static: false,
         },
       ];
+    } else {
+      return currentLayout.map((widget: WidgetConfig) =>
+        widget.i === placeholderWidgetKey
+          ? {
+              ...widget,
+              i: widgetFQN,
+              h: widgetHeight,
+              w: widgetWidth,
+            }
+          : widget
+      );
     }
   };
 

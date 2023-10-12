@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
 import { LANDING_PAGE_LAYOUT } from '../../constants/CustomisePage.constants';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
@@ -32,13 +26,9 @@ import {
   getDocumentByFQN,
   updateDocument,
 } from '../../rest/DocStoreAPI';
-import { Transi18next } from '../../utils/CommonUtils';
 import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
-import { getPersonaDetailsPath, getSettingPath } from '../../utils/RouterUtils';
 
 export const CustomisablePage = () => {
-  const { t } = useTranslation();
-  const history = useHistory();
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
   const [page, setPage] = useState<Document>({} as Document);
   const [editedPage, setEditedPage] = useState<Document>({} as Document);
@@ -80,28 +70,6 @@ export const CustomisablePage = () => {
     }
   };
 
-  const pageRendered = useMemo(() => {
-    if (pageFqn === PageType.LandingPage) {
-      return (
-        <CustomizeMyData
-          handlePageDataChange={handlePageDataChange}
-          initialPageData={page}
-        />
-      );
-    }
-
-    return null;
-  }, [page, pageFqn]);
-
-  const handleCancel = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
-        GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
-      )
-    );
-  };
-
   const handleSave = async () => {
     try {
       const finalPage = getFinalLandingPage(editedPage);
@@ -113,8 +81,6 @@ export const CustomisablePage = () => {
       } else {
         await createDocument(finalPage);
       }
-
-      handleCancel();
     } catch {
       // Error
     }
@@ -128,37 +94,15 @@ export const CustomisablePage = () => {
     return <Loader />;
   }
 
-  return (
-    <Row>
-      <Col
-        className="bg-white d-flex justify-between border-bottom p-sm"
-        span={24}>
-        <div className="d-flex gap-2 items-center">
-          <Typography.Title className="m-0" level={5}>
-            <Transi18next
-              i18nKey="message.customize-landing-page-header"
-              renderElement={
-                <Link
-                  style={{ color: '#1890ff', fontSize: '16px' }}
-                  to={getPersonaDetailsPath(fqn)}
-                />
-              }
-              values={{
-                persona: fqn,
-              }}
-            />
-          </Typography.Title>
-        </div>
-        <Space>
-          <Button size="small" onClick={handleCancel}>
-            {t('label.cancel')}
-          </Button>
-          <Button size="small" type="primary" onClick={handleSave}>
-            {t('label.save')}
-          </Button>
-        </Space>
-      </Col>
-      <Col span={24}>{pageRendered}</Col>
-    </Row>
-  );
+  if (pageFqn === PageType.LandingPage) {
+    return (
+      <CustomizeMyData
+        handlePageDataChange={handlePageDataChange}
+        initialPageData={page}
+        onSaveLayout={handleSave}
+      />
+    );
+  }
+
+  return null;
 };

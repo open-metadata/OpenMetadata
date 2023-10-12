@@ -26,4 +26,5 @@ export enum LandingPageWidgetKeys {
   MY_DATA = 'KnowledgePanel.MyData',
   KPI = 'KnowledgePanel.KPI',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
+  EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
 }

@@ -38,7 +38,7 @@ function AnnouncementsWidget({
   }, [widgetKey]);
 
   return (
-    <>
+    <div className="bg-white h-full">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="right-panel-label m-b-sm">
@@ -102,7 +102,7 @@ function AnnouncementsWidget({
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
 

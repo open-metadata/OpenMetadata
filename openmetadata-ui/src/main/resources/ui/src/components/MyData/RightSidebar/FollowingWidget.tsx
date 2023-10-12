@@ -44,7 +44,7 @@ function FollowingWidget({
   }, [widgetKey]);
 
   return (
-    <div data-testid="following-data-container">
+    <div className="bg-white h-full" data-testid="following-data-container">
       <EntityListWithV1
         entityList={followedData}
         headerText={
