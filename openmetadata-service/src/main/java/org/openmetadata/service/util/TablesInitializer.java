@@ -72,7 +72,6 @@ public final class TablesInitializer {
     OPTIONS.addOption("debug", DEBUG_MODE_ENABLED, false, "Enable Debug Mode");
     OPTIONS.addOption("s", OPTION_FLYWAY_SCRIPT_ROOT_PATH, true, "Root directory of flyway sql script path");
     OPTIONS.addOption("n", OPTION_NATIVE_SQL_ROOT_PATH, true, "Root directory of native sql script path");
-    OPTIONS.addOption("e", OPTION_EXTENSION_SQL_ROOT_PATH, true, "Root directory for extension migrations to execute");
 
     OPTIONS.addOption("c", OPTION_CONFIG_FILE_PATH, true, "Config file path");
     OPTIONS.addOption(
@@ -204,7 +203,7 @@ public final class TablesInitializer {
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
     }
-    String nativeSQLScriptRootPath = commandLine.getOptionValue(OPTION_NATIVE_SQL_ROOT_PATH);
+    String nativeSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
     String scriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
     String extensionSQLScriptRootPath = commandLine.getOptionValue(OPTION_EXTENSION_SQL_ROOT_PATH);
     Flyway flyway =
