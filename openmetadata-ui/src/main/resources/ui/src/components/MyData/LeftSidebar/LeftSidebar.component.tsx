@@ -23,12 +23,12 @@ import {
   SIDEBAR_GOVERN_LIST,
   SIDEBAR_LIST,
 } from '../../../constants/LeftSidebar.constants';
-import { useApplicationConfigProvider } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import './left-sidebar.less';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
-  const { sideBarElements } = useApplicationConfigProvider();
+  const { sideBarElements } = useApplicationConfigContext();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthContext();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);

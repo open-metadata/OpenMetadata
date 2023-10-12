@@ -28,7 +28,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -89,12 +88,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void restorePatchAttributes(DataProduct original, DataProduct updated) {
     updated.withDomain(original.getDomain()); // Domain can't be changed
-  }
-
-  @Override
-  public void setFullyQualifiedName(DataProduct entity) {
-    EntityReference domain = entity.getDomain();
-    entity.setFullyQualifiedName(FullyQualifiedName.add(domain.getFullyQualifiedName(), entity.getName()));
   }
 
   public class DataProductUpdater extends EntityUpdater {

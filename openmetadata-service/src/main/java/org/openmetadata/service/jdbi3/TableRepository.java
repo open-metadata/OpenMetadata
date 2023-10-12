@@ -557,6 +557,21 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table = dao.findEntityById(tableId);
+
+    // Update the sql fields only if correct value is present
+    if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
+      if (table.getDataModel() != null
+          && (table.getDataModel().getRawSql() != null && !table.getDataModel().getRawSql().isBlank())) {
+        dataModel.setRawSql(table.getDataModel().getRawSql());
+      }
+    }
+
+    if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
+      if (table.getDataModel() != null
+          && (table.getDataModel().getSql() != null || !table.getDataModel().getSql().isBlank())) {
+        dataModel.setSql(table.getDataModel().getSql());
+      }
+    }
     table.withDataModel(dataModel);
 
     // Carry forward the table owner from the model to table entity, if empty

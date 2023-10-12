@@ -406,7 +406,8 @@ public class DatabaseSchemaResource extends EntityResource<DatabaseSchema, Datab
   }
 
   private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
-    return copy(new DatabaseSchema(), create, user)
+    return repository
+        .copy(new DatabaseSchema(), create, user)
         .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
         .withTags(create.getTags())
         .withSourceUrl(create.getSourceUrl())
