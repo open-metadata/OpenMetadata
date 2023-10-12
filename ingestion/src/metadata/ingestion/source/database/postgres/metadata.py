@@ -156,7 +156,7 @@ class PostgresSource(CommonDbSourceService):
 
         result = self.connection.execute(
             sql.text(POSTGRES_GET_TABLE_NAMES.format(format_pattern))
-            if self.source_config.pushFilterDown
+            if self.source_config.pushDownFilter
             and self.source_config.tableFilterPattern
             else sql.text(POSTGRES_GET_TABLE_NAMES.format("")),
             {"schema": schema_name},
@@ -195,7 +195,7 @@ class PostgresSource(CommonDbSourceService):
 
             results = self.connection.execute(
                 POSTGRES_GET_DB_NAMES.format(format_pattern)
-                if self.source_config.pushFilterDown
+                if self.source_config.pushDownFilter
                 and self.source_config.databaseFilterPattern
                 else POSTGRES_GET_DB_NAMES.format("")
             )
@@ -208,7 +208,7 @@ class PostgresSource(CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-                if not self.source_config.pushFilterDown:
+                if not self.source_config.pushDownFilter:
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
                         database_fqn
@@ -232,7 +232,7 @@ class PostgresSource(CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushFilterDown=self.source_config.pushFilterDown,
+                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name

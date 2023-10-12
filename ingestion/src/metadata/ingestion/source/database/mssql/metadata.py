@@ -126,7 +126,7 @@ class MssqlSource(CommonDbSourceService):
                 )
             results = self.connection.execute(
                 query.format(format_pattern)
-                if self.source_config.pushFilterDown
+                if self.source_config.pushDownFilter
                 and self.source_config.databaseFilterPattern
                 else query.format("")
             )
@@ -139,7 +139,7 @@ class MssqlSource(CommonDbSourceService):
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-                if not self.source_config.pushFilterDown:
+                if not self.source_config.pushDownFilter:
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
                         database_fqn
@@ -163,7 +163,7 @@ class MssqlSource(CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushFilterDown=self.source_config.pushFilterDown,
+                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name
@@ -194,7 +194,7 @@ class MssqlSource(CommonDbSourceService):
 
         result = self.connection.execute(
             query.format(format_pattern)
-            if self.source_config.pushFilterDown
+            if self.source_config.pushDownFilter
             and self.source_config.databaseFilterPattern
             else query.format("")
         )

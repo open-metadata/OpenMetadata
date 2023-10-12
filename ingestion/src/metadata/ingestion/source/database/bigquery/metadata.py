@@ -250,7 +250,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
             for project_id in self.get_database_names():
                 for schema_name in self.inspector.get_schema_names(
                     project_id=project_id,
-                    pushFilterDown=self.source_config.pushFilterDown,
+                    pushDownFilter=self.source_config.pushDownFilter,
                     filter_pattern=self.source_config.schemaFilterPattern,
                 ):
                     yield schema_name
@@ -291,7 +291,7 @@ class BigquerySource(StoredProcedureMixin, CommonDbSourceService):
                     schema_name=schema_name,
                     table_filter=format_pattern,
                 )
-                if self.source_config.pushFilterDown
+                if self.source_config.pushDownFilter
                 and self.source_config.tableFilterPattern
                 else BIGQUERY_TABLE_AND_TYPE.format(
                     project_id=self.client.project,

@@ -24,7 +24,7 @@
             "includeViews": false,
             "includeTags": false,
             "useFqnForFiltering": false,
-            "pushFilterDown": false,
+            "pushDownFilter": false,
             "schemaFilterPattern": {
                 "includes": [
                     "dbt_jaffle"

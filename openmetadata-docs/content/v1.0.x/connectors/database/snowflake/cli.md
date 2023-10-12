@@ -201,8 +201,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 **includeTables**: true or false, to ingest table data. Default is true.
 
 **includeViews**: true or false, to ingest views definitions.
-**pushFilterDown** : To Flag filter pattern using Like operator. Default is False.
-**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the by default filter supports regex as include or exclude but if pushFilterDown is set as true then it will support Like Operator. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
+**pushDownFilter** : To Flag filter pattern using Like operator. Default is False.
+**databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the by default filter supports regex as include or exclude but if pushDownFilter is set as true then it will support Like Operator. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 {% /codeInfo %}
 

@@ -80,7 +80,7 @@ def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
         )
     cursor = connection.execute(
         MYSQL_GET_SCHEMA.format(format_pattern)
-        if kw.get("pushFilterDown") and kw["filter_pattern"]
+        if kw.get("pushDownFilter") and kw["filter_pattern"]
         else MYSQL_GET_SCHEMA.format("")
     )
     result = [row[0] for row in cursor]

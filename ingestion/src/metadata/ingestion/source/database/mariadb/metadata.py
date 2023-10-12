@@ -74,7 +74,7 @@ class MariadbSource(CommonDbSourceService):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushFilterDown=self.source_config.pushFilterDown,
+                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name
@@ -106,7 +106,7 @@ class MariadbSource(CommonDbSourceService):
         query = MYSQL_GET_TABLE
         result = self.connection.execute(
             query.format(format_pattern)
-            if self.source_config.pushFilterDown
+            if self.source_config.pushDownFilter
             and self.source_config.tableFilterPattern
             else query.format("")
         )

@@ -67,7 +67,7 @@
       "default": false,
       "title": "Use FQN For Filtering"
     },
-    "pushFilterDown": {
+    "pushDownFilter": {
       "description": "LIKE Operator will be applied to filter the data",
       "type": "boolean",
       "default": false,

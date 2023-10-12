@@ -440,7 +440,7 @@ class DatabaseServiceSource(
                 schema_name=schema_name,
             )
             if (
-                not self.source_config.pushFilterDown
+                not self.source_config.pushDownFilter
                 and not hasattr(
                     self.config.serviceConnection.__root__.config,
                     "supportsPushDownFilter",

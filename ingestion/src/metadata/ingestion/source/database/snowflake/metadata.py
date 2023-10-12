@@ -258,7 +258,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             query = SNOWFLAKE_GET_FILTER_DATABASES.format("")
             results = self.connection.execute(
                 filter_query
-                if self.source_config.pushFilterDown
+                if self.source_config.pushDownFilter
                 and self.source_config.databaseFilterPattern
                 else query
             )
@@ -271,7 +271,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                     service_name=self.context.database_service.name.__root__,
                     database_name=new_database,
                 )
-                if not self.source_config.pushFilterDown:
+                if not self.source_config.pushDownFilter:
                     if filter_by_database(
                         self.source_config.databaseFilterPattern,
                         database_fqn
@@ -299,7 +299,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names(
-                pushFilterDown=self.source_config.pushFilterDown,
+                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.schemaFilterPattern,
             ):
                 yield schema_name
@@ -429,7 +429,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
             TableNameAndType(name=table_name)
             for table_name in self.inspector.get_table_names(
                 schema=schema_name,
-                pushFilterDown=self.source_config.pushFilterDown,
+                pushDownFilter=self.source_config.pushDownFilter,
                 filter_pattern=self.source_config.tableFilterPattern,
             )
         ]
@@ -440,7 +440,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                 for table_name in self.inspector.get_table_names(
                     schema=schema_name,
                     external_tables=True,
-                    pushFilterDown=self.source_config.pushFilterDown,
+                    pushDownFilter=self.source_config.pushDownFilter,
                     filter_pattern=self.source_config.tableFilterPattern,
                 )
             ]
@@ -453,7 +453,7 @@ class SnowflakeSource(LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceS
                     for table_name in self.inspector.get_table_names(
                         schema=schema_name,
                         include_transient_tables=True,
-                        pushFilterDown=self.source_config.pushFilterDown,
+                        pushDownFilter=self.source_config.pushDownFilter,
                         filter_pattern=self.source_config.tableFilterPattern,
                     )
                 ]
