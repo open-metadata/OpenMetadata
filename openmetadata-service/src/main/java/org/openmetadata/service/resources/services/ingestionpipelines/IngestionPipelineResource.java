@@ -780,7 +780,8 @@ public class IngestionPipelineResource extends EntityResource<IngestionPipeline,
   private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    return copy(new IngestionPipeline(), create, user)
+    return repository
+        .copy(new IngestionPipeline(), create, user)
         .withPipelineType(create.getPipelineType())
         .withAirflowConfig(create.getAirflowConfig())
         .withOpenMetadataServerConnection(openMetadataServerConnection)

@@ -440,7 +440,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
   }
 
   private Container getContainer(CreateContainer create, String user) {
-    return copy(new Container(), create, user)
+    return repository
+        .copy(new Container(), create, user)
         .withService(getEntityReference(Entity.STORAGE_SERVICE, create.getService()))
         .withParent(create.getParent())
         .withDataModel(create.getDataModel())
