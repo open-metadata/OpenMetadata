@@ -12,5 +12,23 @@
  */
 @import url('../../../../styles/variables.less');
 
-.assets-tab-container {
+.ant-popover-asset {
+  .ant-popover-inner-content {
+    padding: 0;
+    overflow-y: scroll;
+  }
+}
+
+.asset-multi-menu-selector {
+  .ant-menu-inline .ant-menu-item::after {
+    border: none;
+  }
+
+  .ant-menu-submenu-inline {
+    .ant-menu-sub {
+      .ant-menu-item-only-child {
+        padding-left: 30px !important;
+      }
+    }
+  }
 }

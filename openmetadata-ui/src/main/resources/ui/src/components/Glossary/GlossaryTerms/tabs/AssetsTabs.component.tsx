@@ -11,11 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, Row, Skeleton, Space } from 'antd';
-import type { ButtonType } from 'antd/lib/button';
+import {
+  Button,
+  Checkbox,
+  Col,
+  Menu,
+  MenuProps,
+  Popover,
+  Row,
+  Skeleton,
+  Space,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { find, startCase } from 'lodash';
+import { find, isEmpty } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -28,6 +38,8 @@ import { useParams } from 'react-router-dom';
 import {
   AssetsFilterOptions,
   ASSETS_INDEXES,
+  ASSET_MENU_KEYS,
+  ASSET_SUB_MENU_FILTER,
 } from '../../../../constants/Assets.constants';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
@@ -46,6 +58,9 @@ import {
   SearchedDataProps,
   SourceType,
 } from '../../../searched-data/SearchedData.interface';
+
+import { FilterOutlined } from '@ant-design/icons';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import './assets-tabs.less';
 import {
   AssetsOfEntity,
@@ -70,24 +85,43 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
-    const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
-      table: 0,
-      pipeline: 0,
-      mlmodel: 0,
-      container: 0,
-      topic: 0,
-      dashboard: 0,
-      glossaryTerm: 0,
-    } as Record<EntityType, number>);
-    const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-      SearchIndex.TABLE
+    const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
+      {} as Record<EntityType, number>
     );
+    const [activeFilter, setActiveFilter] = useState<SearchIndex[]>([]);
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [total, setTotal] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
+    const [visible, setVisible] = useState<boolean>(false);
+    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
+
+    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
+      const latestOpenKey = keys.find(
+        (key) => openKeys.indexOf(key as EntityType) === -1
+      );
+      if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
+        EntityType;
+        setOpenKeys(keys as EntityType[]);
+      } else {
+        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
+      }
+    };
+
+    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
+      setVisible(newVisible);
+
+    const handleActiveFilter = (key: SearchIndex) => {
+      if (activeFilter.includes(key)) {
+        if (activeFilter.length > 1) {
+          setActiveFilter((prev) => prev.filter((item) => item !== key));
+        }
+      } else {
+        setActiveFilter((prev) => [...prev, key]);
+      }
+    };
 
     const tabs = useMemo(() => {
       return AssetsFilterOptions.map((option) => {
@@ -102,7 +136,7 @@ const AssetsTabs = forwardRef(
                 {getCountBadge(
                   itemCount[option.key],
                   '',
-                  activeFilter === option.value
+                  activeFilter.includes(option.value)
                 )}
               </span>
             </div>
@@ -111,7 +145,77 @@ const AssetsTabs = forwardRef(
           value: option.value,
         };
       });
-    }, [itemCount]);
+    }, [activeFilter, itemCount]);
+
+    const getAssetMenuCountBadge = useCallback(
+      (key: EntityType) =>
+        getCountBadge(
+          ASSET_SUB_MENU_FILTER.find((item) => item.key === key)
+            ?.children.map((item) => itemCount[item.value] ?? 0)
+            ?.reduce((acc, cv) => acc + cv, 0)
+        ),
+      [itemCount]
+    );
+
+    const getOptions = useCallback(
+      (
+        option: {
+          label: string;
+          key: EntityType | SearchIndex;
+          value?: EntityType;
+        },
+        isChildren?: boolean
+      ) => {
+        const assetCount = option.value && itemCount[option.value];
+
+        return {
+          label: isChildren ? (
+            <Space className="w-full d-flex justify-between">
+              <div className="d-flex items-center">
+                <span className="m-r-xs w-4 d-flex">
+                  {getEntityIcon(option.key)}
+                </span>
+
+                <Typography.Text
+                  className="w-32 text-color-inherit"
+                  ellipsis={{ tooltip: true }}>
+                  {option.label}
+                </Typography.Text>
+
+                {getCountBadge(assetCount)}
+              </div>
+              <Checkbox
+                checked={activeFilter.includes(option.key as SearchIndex)}
+              />
+            </Space>
+          ) : (
+            <div className="d-flex justify-between">
+              <span>{option.label}</span>
+              <span className="p-l-xs">
+                {getAssetMenuCountBadge(option.key as EntityType)}
+              </span>
+            </div>
+          ),
+          key: option.key,
+          value: option.key,
+          disabled: isChildren && !assetCount,
+        };
+      },
+      [
+        getEntityIcon,
+        setCurrentPage,
+        handleActiveFilter,
+        setSelectedCard,
+        activeFilter,
+      ]
+    );
+
+    const subMenuItems = useMemo(() => {
+      return ASSET_SUB_MENU_FILTER.map((option) => ({
+        ...getOptions(option),
+        children: option.children.map((item) => getOptions(item, true)),
+      }));
+    }, [itemCount, getOptions]);
 
     const queryParam = useMemo(() => {
       if (type === AssetsOfEntity.DOMAIN) {
@@ -204,7 +308,7 @@ const AssetsTabs = forwardRef(
               if (count > 0) {
                 const option = AssetsFilterOptions.find((el) => el.key === key);
                 if (option) {
-                  setActiveFilter(option.value);
+                  handleActiveFilter(option.value);
                 }
 
                 return true;
@@ -233,7 +337,7 @@ const AssetsTabs = forwardRef(
         index = activeFilter,
         page = 1,
       }: {
-        index?: SearchIndex;
+        index?: SearchIndex[];
         page?: number;
       }) => {
         try {
@@ -253,8 +357,8 @@ const AssetsTabs = forwardRef(
           const hits = res?.data?.hits?.hits;
 
           // Find EntityType for selected searchIndex
-          const entityType = AssetsFilterOptions.find(
-            (f) => f.value === activeFilter
+          const entityType = AssetsFilterOptions.find((f) =>
+            activeFilter.includes(f.value)
           )?.label;
 
           // Update states
@@ -333,51 +437,69 @@ const AssetsTabs = forwardRef(
 
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
-        return AssetsFilterOptions.map((option) => {
-          const buttonStyle =
-            activeFilter === option.value
-              ? {
-                  ghost: true,
-                  type: 'primary' as ButtonType,
-                  style: { background: 'white' },
-                }
-              : {};
-
-          return itemCount[option.key] > 0 ? (
-            <Button
-              {...buttonStyle}
-              className="m-r-sm m-b-sm"
-              key={option.value}
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveFilter(option.value);
-              }}>
-              {startCase(option.label)}{' '}
-              <span className="p-l-xs">
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter === option.value
-                )}
-              </span>
-            </Button>
-          ) : null;
-        });
+        return (
+          <div className="w-full d-flex justify-end">
+            <Popover
+              content={
+                <Menu
+                  multiple
+                  className="p-t-sm"
+                  items={subMenuItems}
+                  mode="inline"
+                  openKeys={openKeys}
+                  rootClassName="asset-multi-menu-selector"
+                  selectedKeys={activeFilter}
+                  style={{ width: 256, height: 300 }}
+                  onClick={(value) => {
+                    setCurrentPage(1);
+                    handleActiveFilter(value.key as SearchIndex);
+                    setSelectedCard(undefined);
+                  }}
+                  onOpenChange={onOpenChange}
+                />
+              }
+              key="asset-options-popover"
+              open={visible}
+              overlayClassName="ant-popover-asset"
+              placement="bottomRight"
+              showArrow={false}
+              trigger="click"
+              onOpenChange={handleAssetButtonVisibleChange}>
+              <Button
+                ghost
+                icon={<FilterOutlined />}
+                style={{ background: 'white' }}
+                type="primary">
+                {t('label.filter-plural')}
+              </Button>
+            </Popover>
+          </div>
+        );
       } else {
         return (
           <Menu
             className="p-t-sm"
             items={tabs}
-            selectedKeys={[activeFilter]}
+            selectedKeys={activeFilter}
             onClick={(value) => {
               setCurrentPage(1);
-              setActiveFilter(value.key as SearchIndex);
+              setActiveFilter([value.key as SearchIndex]);
               setSelectedCard(undefined);
             }}
           />
         );
       }
-    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+    }, [
+      viewType,
+      activeFilter,
+      openKeys,
+      visible,
+      currentPage,
+      tabs,
+      itemCount,
+      onOpenChange,
+      handleAssetButtonVisibleChange,
+    ]);
 
     const layout = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
@@ -397,7 +519,9 @@ const AssetsTabs = forwardRef(
     }, [viewType, assetsHeader, assetListing, selectedCard]);
 
     useEffect(() => {
-      fetchAssets({ index: activeFilter, page: currentPage });
+      if (!isEmpty(activeFilter)) {
+        fetchAssets({ index: activeFilter, page: currentPage });
+      }
     }, [activeFilter, currentPage]);
 
     useImperativeHandle(ref, () => ({
