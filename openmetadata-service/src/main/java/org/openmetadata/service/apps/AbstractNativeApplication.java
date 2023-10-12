@@ -3,6 +3,7 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.COLLECTION_DAO_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.SEARCH_CLIENT_KEY;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_APP_TYPE;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
 
 import lombok.extern.slf4j.Slf4j;
@@ -45,16 +46,26 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void schedule() {
+  public void scheduleInternal() {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (app.getAppType() == AppType.Internal && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       AppRuntime runtime = JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
       validateServerExecutableApp(runtime);
       // Schedule New Application Run
       AppScheduler.getInstance().addApplicationSchedule(app);
-    } else {
-      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
+      return;
     }
+    throw new IllegalArgumentException(INVALID_APP_TYPE);
+  }
+
+  @Override
+  public void initializeExternalApp() {
+    if (app.getAppType() == AppType.External && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      // Init Application Code for Some Initialization
+      this.init(app, collectionDAO, searchRepository);
+      return;
+    }
+    throw new IllegalArgumentException(INVALID_APP_TYPE);
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {

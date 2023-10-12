@@ -1,11 +1,5 @@
 {
   "name": "DataInsightsApplication",
-  "appConfiguration": {
-    "sendToAdmins": true,
-    "sendToTeams": true
-  },
-  "appSchedule": {
-    "scheduleType": "Custom",
-    "cronExpression": "0 0 0 1/1 * ? *"
-  }
+  "appConfiguration": null,
+  "appSchedule": null
 }

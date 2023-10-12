@@ -21,6 +21,7 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -65,7 +66,6 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
 
@@ -517,7 +517,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           app,
           JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
           searchRepository);
-      Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
+      if (app.getAppType().equals(AppType.Internal)) {
+        Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
+      } else {
+        Response.status(Response.Status.OK).entity("App is External, Use Ingestion for scheduling App pipeline.");
+      }
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
   }
@@ -547,11 +551,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
           searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
-    } else {
-      app.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
-      return Response.status(Response.Status.OK).entity(pipelineServiceClient.runApplicationFlow(app)).build();
     }
+    throw new BadRequestException("App Type is External. Please use Ingestion Triggers.");
   }
 
   private App getApplication(

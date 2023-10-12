@@ -149,7 +149,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // repository
     new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
-    Entity.initializeRepositories(jdbi);
+    Entity.initializeRepositories(catalogConfig, jdbi);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);

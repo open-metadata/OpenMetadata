@@ -1,22 +1,19 @@
 {
   "name": "DataInsightsApplication",
   "fullyQualifiedName": "DataInsightsApplication",
-  "displayName": "Data Insights",
-  "description": "Open-metadata Data Insights Application.",
-  "features": "Data Insights Application. Send Email Reports.",
-  "appType": "internal",
+  "displayName": "Data Insights Application",
+  "description": "Open-metadata Data Insights Application runs a Data Insights Pipeline on the Ingestion Framework.",
+  "features": "Run Ingestion Framework Data Insight Module.",
+  "appType": "external",
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
   "supportEmail": "support@getcollate.io",
   "scheduleType": "Scheduled",
   "permission": "All",
-  "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsReportApp",
+  "className": "org.openmetadata.service.apps.bundles.insights.DataInsightsApp",
   "runtime": {
     "enabled": "true"
   },
-  "appConfiguration": {
-    "sendToAdmins": true,
-    "sendToTeams": true
-  }
+  "appConfiguration": null
 }
