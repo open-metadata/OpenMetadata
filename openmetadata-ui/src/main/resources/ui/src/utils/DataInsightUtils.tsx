@@ -25,6 +25,7 @@ import {
   omit,
   round,
   sortBy,
+  startCase,
   sumBy,
   toNumber,
 } from 'lodash';
@@ -34,14 +35,14 @@ import { ListItem } from 'react-awesome-query-builder';
 import { LegendProps, Surface } from 'recharts';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
+  ENTITIES_SUMMARY_LIST,
+  WEB_SUMMARY_LIST,
+} from '../constants/DataInsight.constants';
+import {
   GRAYED_OUT_COLOR,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from '../constants/constants';
-import {
-  ENTITIES_SUMMARY_LIST,
-  WEB_SUMMARY_LIST,
-} from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   DataInsightChartResult,
@@ -53,6 +54,7 @@ import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntities
 import {
   ChartValue,
   DataInsightChartTooltipProps,
+  DataInsightTabs,
 } from '../interface/data-insight.interface';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
@@ -67,7 +69,8 @@ const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
 
 export const renderLegend = (
   legendData: LegendProps,
-  activeKeys = [] as string[]
+  activeKeys = [] as string[],
+  valueFormatter?: (value: string) => string
 ) => {
   const { payload = [] } = legendData;
 
@@ -101,7 +104,7 @@ export const renderLegend = (
               />
             </Surface>
             <span style={{ color: isActive ? 'inherit' : GRAYED_OUT_COLOR }}>
-              {entry.value}
+              {valueFormatter ? valueFormatter(entry.value) : entry.value}
             </span>
           </li>
         );
@@ -110,7 +113,7 @@ export const renderLegend = (
   );
 };
 
-const getEntryFormattedValue = (
+export const getEntryFormattedValue = (
   value: number | string | undefined,
   dataKey: number | string | undefined,
   kpiTooltipRecord: DataInsightChartTooltipProps['kpiTooltipRecord'],
@@ -138,7 +141,7 @@ const getEntryFormattedValue = (
     } else if (isInteger(value)) {
       return `${value}${suffix}`;
     } else {
-      return `${value.toFixed(2)}${suffix}`;
+      return `${round(value, 2)}${suffix}`;
     }
   } else {
     return '';
@@ -146,7 +149,13 @@ const getEntryFormattedValue = (
 };
 
 export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
-  const { active, payload = [], isPercentage, kpiTooltipRecord } = props;
+  const {
+    active,
+    payload = [],
+    isPercentage,
+    valueFormatter,
+    kpiTooltipRecord,
+  } = props;
 
   if (active && payload && payload.length) {
     const timestamp = formatDate(payload[0].payload.timestampValue || 0);
@@ -163,15 +172,17 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               <Surface className="mr-2" height={12} version="1.1" width={12}>
                 <rect fill={entry.color} height="14" rx="2" width="14" />
               </Surface>
-              {entry.dataKey}
+              {startCase(entry.dataKey as string)}
             </span>
             <span className="font-medium">
-              {getEntryFormattedValue(
-                entry.value,
-                entry.dataKey,
-                kpiTooltipRecord,
-                isPercentage
-              )}
+              {valueFormatter
+                ? valueFormatter(entry.value)
+                : getEntryFormattedValue(
+                    entry.value,
+                    entry.dataKey,
+                    kpiTooltipRecord,
+                    isPercentage
+                  )}
             </span>
           </li>
         ))}
@@ -656,5 +667,15 @@ export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   }
 };
 
-export const getDataInsightPathWithFqn = (fqn: string) =>
-  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, fqn);
+export const getDataInsightPathWithFqn = (tab = DataInsightTabs.DATA_ASSETS) =>
+  ROUTES.DATA_INSIGHT_WITH_TAB.replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+export const getOptionalDataInsightTabFlag = (tab: DataInsightTabs) => {
+  return {
+    showDataInsightSummary:
+      tab === DataInsightTabs.APP_ANALYTICS ||
+      tab === DataInsightTabs.DATA_ASSETS,
+    showKpiChart:
+      tab === DataInsightTabs.KPIS || tab === DataInsightTabs.DATA_ASSETS,
+  };
+};

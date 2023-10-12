@@ -56,6 +56,7 @@ jest.mock('../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../utils/DataInsightUtils', () => ({
+  ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
   getDisabledDates: jest.fn().mockReturnValue(true),
 }));

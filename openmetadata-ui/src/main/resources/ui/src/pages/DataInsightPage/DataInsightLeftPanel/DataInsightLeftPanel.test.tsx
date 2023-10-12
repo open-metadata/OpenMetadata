@@ -32,7 +32,7 @@ describe('Test Data insight left panel', () => {
 
     const dataAssets = await screen.findByText('label.data-asset-plural');
     const appAnalytics = await screen.findByText('label.app-analytic-plural');
-    const kpi = await screen.findByText('label.kpi-uppercases');
+    const kpi = await screen.findByText('label.kpi-uppercase-plural');
 
     expect(menuContainer).toBeInTheDocument();
     expect(dataAssets).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe('Test Data insight left panel', () => {
     render(<DataInsightLeftPanel />);
 
     const appAnalytics = await screen.findByText('label.app-analytic-plural');
-    const kpi = await screen.findByText('label.kpi-uppercases');
+    const kpi = await screen.findByText('label.kpi-uppercase-plural');
 
     expect(appAnalytics).toBeInTheDocument();
     expect(kpi).toBeInTheDocument();

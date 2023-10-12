@@ -45,6 +45,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { getChartById } from '../../rest/DataInsightAPI';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
 import {
+  getDataInsightPathWithFqn,
   getDisabledDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
@@ -74,7 +75,7 @@ const EditKPIPage = () => {
     () => [
       {
         name: t('label.data-insight'),
-        url: ROUTES.DATA_INSIGHT,
+        url: getDataInsightPathWithFqn(),
       },
       {
         name: t('label.kpi-list'),
