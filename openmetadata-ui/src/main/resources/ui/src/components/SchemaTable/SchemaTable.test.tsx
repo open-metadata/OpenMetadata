@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../generated/entity/data/container';
-import { Table } from '../../generated/entity/data/table';
+import { Table, TablePartition } from '../../generated/entity/data/table';
 import EntityTableV1 from './SchemaTable.component';
 
 const onEntityFieldSelect = jest.fn();
@@ -78,6 +78,7 @@ const mockEntityTableProp = {
   columnName: '',
   hasTagEditAccess: true,
   tableConstraints: mockTableConstraints,
+  tablePartitioned: {} as TablePartition,
   onEntityFieldSelect,
   onThreadLinkSelect,
   onUpdate,

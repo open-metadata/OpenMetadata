@@ -482,6 +482,7 @@ const TableDetailsPageV1 = () => {
               isReadOnly={tableDetails?.deleted}
               joins={tableDetails?.joins?.columnJoins || []}
               tableConstraints={tableDetails?.tableConstraints}
+              tablePartitioned={tableDetails?.tablePartition}
               onThreadLinkSelect={onThreadLinkSelect}
               onUpdate={onColumnsUpdate}
             />

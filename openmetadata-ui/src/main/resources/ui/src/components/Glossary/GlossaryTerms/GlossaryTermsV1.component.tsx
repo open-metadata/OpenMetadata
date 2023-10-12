@@ -26,7 +26,6 @@ import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -98,7 +97,7 @@ const GlossaryTermsV1 = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY_TERM,
-      getEncodedFqn(glossaryTerm.fullyQualifiedName ?? ''),
+      glossaryTerm.fullyQualifiedName ?? '',
       setFeedCount
     );
   };
