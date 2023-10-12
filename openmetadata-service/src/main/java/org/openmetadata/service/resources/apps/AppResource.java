@@ -118,10 +118,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
           // Schedule
           if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
-            ApplicationHandler.scheduleApplication(
-                app,
-                Entity.getCollectionDAO(),
-                searchRepository);
+            ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
           }
 
         } catch (Exception ex) {
@@ -372,10 +369,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          Entity.getCollectionDAO(),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return create(uriInfo, securityContext, app);
   }
@@ -426,10 +420,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          Entity.getCollectionDAO(),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return createOrUpdate(uriInfo, securityContext, app);
   }
@@ -512,10 +503,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          Entity.getCollectionDAO(),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
       Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -541,10 +529,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.triggerApplicationOnDemand(
-          app,
-          Entity.getCollectionDAO(),
-          searchRepository);
+      ApplicationHandler.triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       app.setOpenMetadataServerConnection(

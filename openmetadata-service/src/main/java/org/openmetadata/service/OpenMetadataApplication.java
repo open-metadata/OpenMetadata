@@ -40,7 +40,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
