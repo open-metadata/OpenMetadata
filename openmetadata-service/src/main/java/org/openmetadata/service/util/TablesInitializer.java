@@ -203,9 +203,9 @@ public final class TablesInitializer {
     if (disableValidateOnMigrate) {
       printToConsoleInDebug("Disabling validation on schema migrate");
     }
-    String nativeSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
+    String nativeSQLScriptRootPath = commandLine.getOptionValue(OPTION_NATIVE_SQL_ROOT_PATH);
     String scriptRootPath = commandLine.getOptionValue(OPTION_FLYWAY_SCRIPT_ROOT_PATH);
-    String extensionSQLScriptRootPath = commandLine.getOptionValue(OPTION_EXTENSION_SQL_ROOT_PATH);
+    String extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
     Flyway flyway =
         get(
             jdbcUrl,
