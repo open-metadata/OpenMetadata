@@ -533,7 +533,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   private TestSuite getTestSuite(CreateTestSuite create, String user) {
     TestSuite testSuite =
-        copy(new TestSuite(), create, user)
+        repository
+            .copy(new TestSuite(), create, user)
             .withDescription(create.getDescription())
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());

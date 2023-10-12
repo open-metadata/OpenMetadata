@@ -440,7 +440,8 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   private MlModel getMlModel(CreateMlModel create, String user) {
-    return copy(new MlModel(), create, user)
+    return repository
+        .copy(new MlModel(), create, user)
         .withService(getEntityReference(Entity.MLMODEL_SERVICE, create.getService()))
         .withDashboard(getEntityReference(Entity.DASHBOARD, create.getDashboard()))
         .withAlgorithm(create.getAlgorithm())

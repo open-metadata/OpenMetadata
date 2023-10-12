@@ -61,6 +61,7 @@ export enum GlobalSettingOptions {
   CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
+  APPLICATIONS = 'apps',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

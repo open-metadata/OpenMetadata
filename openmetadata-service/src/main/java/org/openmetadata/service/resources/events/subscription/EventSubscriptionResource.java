@@ -540,7 +540,8 @@ public class EventSubscriptionResource extends EntityResource<EventSubscription,
   }
 
   public EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
-    return copy(new EventSubscription(), create, user)
+    return repository
+        .copy(new EventSubscription(), create, user)
         .withAlertType(create.getAlertType())
         .withTrigger(create.getTrigger())
         .withEnabled(create.getEnabled())

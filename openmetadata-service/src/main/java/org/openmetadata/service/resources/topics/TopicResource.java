@@ -489,7 +489,8 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   private Topic getTopic(CreateTopic create, String user) {
-    return copy(new Topic(), create, user)
+    return repository
+        .copy(new Topic(), create, user)
         .withService(getEntityReference(Entity.MESSAGING_SERVICE, create.getService()))
         .withPartitions(create.getPartitions())
         .withMessageSchema(create.getMessageSchema())
