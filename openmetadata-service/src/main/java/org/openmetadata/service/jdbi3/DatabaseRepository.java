@@ -18,6 +18,7 @@ import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -129,6 +130,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());

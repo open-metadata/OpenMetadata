@@ -91,6 +91,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
@@ -415,6 +416,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /** Initialize a given entity if it does not exist. */
+  @Transaction
   public void initializeEntity(T entity) {
     String existingJson = dao.findJsonByFqn(entity.getFullyQualifiedName(), ALL);
     if (existingJson != null) {
@@ -732,6 +734,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
+  @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
     T original = JsonUtils.readValue(dao.findJsonByFqn(updated.getFullyQualifiedName(), ALL), entityClass);
     if (original == null) { // If an original entity does not exist then create it, else update
@@ -754,6 +757,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   public PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
@@ -771,6 +775,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
+  @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(dao.findEntityById(id), patchFields);
@@ -792,6 +797,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
+  @Transaction
   public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) {
     // Get entity
     T entity = dao.findEntityById(entityId);
@@ -827,6 +833,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
+  @Transaction
   public PutResponse<T> updateVote(String updatedBy, UUID entityId, VoteRequest request) {
     T originalEntity = dao.findEntityById(entityId);
 
@@ -871,12 +878,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
+  @Transaction
   public final DeleteResponse<T> delete(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.getEntity());
     return response;
   }
 
+  @Transaction
   public final DeleteResponse<T> deleteByName(String updatedBy, String name, boolean recursive, boolean hardDelete) {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
@@ -907,6 +916,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   private DeleteResponse<T> delete(String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
     preDelete(original, deletedBy);
@@ -930,6 +940,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new DeleteResponse<>(updated, changeType);
   }
 
+  @Transaction
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
@@ -937,12 +948,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
+  @Transaction
   public final DeleteResponse<T> deleteInternal(String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     // Validate entity
     T entity = dao.findEntityById(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
   }
 
+  @Transaction
   private void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
     // If an entity being deleted contains other **non-deleted** children entities, it can't be deleted
     List<EntityRelationshipRecord> childrenRecords =
@@ -970,6 +983,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   protected void cleanup(T entityInterface) {
     UUID id = entityInterface.getId();
 
@@ -1008,6 +1022,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, entity.getFullyQualifiedName()));
   }
 
+  @Transaction
   public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) {
     T entity = find(entityId, NON_DELETED);
 
@@ -1045,6 +1060,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
+  @Transaction
   private T createNewEntity(T entity) {
     storeEntity(entity, false);
     storeExtension(entity);
@@ -1054,6 +1070,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
+  @Transaction
   protected void store(T entity, boolean update) {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
     entity.withHref(null);
@@ -1091,10 +1108,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExperts(experts);
   }
 
+  @Transaction
   protected void storeTimeSeries(String fqn, String extension, String jsonSchema, String entityJson, Long timestamp) {
     daoCollection.entityExtensionTimeSeriesDao().insert(fqn, extension, jsonSchema, entityJson);
   }
 
+  @Transaction
   public String getExtensionAtTimestamp(String fqn, String extension, Long timestamp) {
     return daoCollection.entityExtensionTimeSeriesDao().getExtensionAtTimestamp(fqn, extension, timestamp);
   }
@@ -1116,10 +1135,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
   }
 
+  @Transaction
   public void deleteExtensionAtTimestamp(String fqn, String extension, Long timestamp) {
     daoCollection.entityExtensionTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
   }
 
+  @Transaction
   public void deleteExtensionBeforeTimestamp(String fqn, String extension, Long timestamp) {
     daoCollection.entityExtensionTimeSeriesDao().deleteBeforeTimestamp(fqn, extension, timestamp);
   }
@@ -1230,6 +1251,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
@@ -1318,6 +1340,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
+  @Transaction
   public PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
     List<EntityRelationshipRecord> records =
@@ -1352,6 +1375,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     addRelationship(fromId, toId, fromEntity, toEntity, relationship, null, bidirectional);
   }
 
+  @Transaction
   public void addRelationship(
       UUID fromId,
       UUID toId,
@@ -1371,6 +1395,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection.relationshipDAO().insert(from, to, fromEntity, toEntity, relationship.ordinal(), json);
   }
 
+  @Transaction
   public final void bulkAddToRelationship(
       UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
     daoCollection
@@ -1577,6 +1602,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUtil.copy(ref, owner);
   }
 
+  @Transaction
   protected void storeOwner(T entity, EntityReference owner) {
     if (supportsOwner && owner != null) {
       // Add relationship owner --- owns ---> ownedEntity
@@ -1590,6 +1616,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   protected void storeDomain(T entity, EntityReference domain) {
     if (supportsDomain && domain != null) {
       // Add relationship domain --- has ---> entity
@@ -1598,6 +1625,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
     if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
       for (EntityReference dataProduct : dataProducts) {
@@ -1609,6 +1637,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   /** Remove owner relationship for a given entity */
   private void removeOwner(T entity, EntityReference owner) {
     if (EntityUtil.getId(owner) != null) {
@@ -1617,6 +1646,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   public void updateOwner(T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
     // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
     validateOwner(newOwner);
@@ -1779,6 +1809,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
+    @Transaction
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     public final void update() {
       if (operation.isDelete()) { // DELETE Operation
