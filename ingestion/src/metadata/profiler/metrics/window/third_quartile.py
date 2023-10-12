@@ -83,7 +83,7 @@ class ThirdQuartile(StaticMetric, PercentilMixin):
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
-                df = pd.to_numeric(pd.concat([df[self.col.name] for df in dfs]))
+                df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."

@@ -73,8 +73,8 @@ class LocalReader(Reader):
 
         file_paths = []
         for root, _, file in os.walk(self.base_path):
-            for f in file:
-                if search_key in f and f not in excluded_files:
-                    file_paths.append(f"{root}/{f}")
+            for fle in file:
+                if search_key in fle and fle not in excluded_files:
+                    file_paths.append(f"{root}/{fle}")
 
         return file_paths

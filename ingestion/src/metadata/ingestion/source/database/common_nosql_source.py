@@ -16,8 +16,6 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
-from pandas import json_normalize
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -45,7 +43,7 @@ from metadata.ingestion.source.database.database_service import (
     QueryByProcedure,
 )
 from metadata.utils import fqn
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, DEFAULT_DATABASE
+from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import get_columns
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
@@ -205,11 +203,13 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         From topology.
         Prepare a table request and pass it to the sink
         """
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
         table_name, table_type = table_name_and_type
         schema_name = self.context.database_schema.name.__root__
         try:
             data = self.get_table_columns_dict(schema_name, table_name)
-            df = json_normalize(list(data), sep=COMPLEX_COLUMN_SEPARATOR)
+            df = pd.DataFrame.from_records(list(data))
             columns = get_columns(df)
             table_request = CreateTableRequest(
                 name=table_name,

@@ -21,7 +21,7 @@ from typing import List, Union
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, UTF_8
+from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -56,7 +56,7 @@ class JSONDataFrameReader(DataFrameReader):
         correct column name to match with the metadata description.
         """
         # pylint: disable=import-outside-toplevel
-        from pandas import json_normalize
+        import pandas as pd
 
         json_text = _get_json_text(key=key, text=json_text, decode=decode)
         try:
@@ -65,7 +65,9 @@ class JSONDataFrameReader(DataFrameReader):
             logger.debug("Failed to read as JSON object. Trying to read as JSON Lines")
             data = [json.loads(json_obj) for json_obj in json_text.strip().split("\n")]
 
-        return dataframe_to_chunks(json_normalize(data, sep=COMPLEX_COLUMN_SEPARATOR))
+        # if we get a scalar value (e.g. {"a":"b"}) then we need to specify the index
+        data = data if not isinstance(data, dict) else [data]
+        return dataframe_to_chunks(pd.DataFrame.from_records(data))
 
     def _read(self, *, key: str, bucket_name: str, **kwargs) -> DatalakeColumnWrapper:
         text = self.reader.read(key, bucket_name=bucket_name)

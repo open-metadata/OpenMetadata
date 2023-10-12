@@ -12,10 +12,9 @@
 Helper module to handle data sampling
 for the profiler
 """
-import json
 import math
 import random
-from typing import cast
+from typing import List, Optional, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -26,9 +25,8 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     TableData,
 )
-from metadata.ingestion.source.database.datalake.columns import _get_root_col
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class DatalakeSampler(SamplerInterface):
@@ -121,6 +119,23 @@ class DatalakeSampler(SamplerInterface):
             for df in self.table
         ]
 
+    def get_col_row(self, data_frame, columns: Optional[List[SQALikeColumn]] = None):
+        """
+        Fetches columns and rows from the data_frame
+        """
+        if columns:
+            cols = [col.name for col in columns]
+        else:
+            # we'll use the first dataframe to get the columns
+            cols = data_frame[0].columns.tolist()
+        rows = []
+        # Sample Data should not exceed sample limit
+        for chunk in data_frame:
+            rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
+            if len(rows) >= self.sample_limit:
+                break
+        return cols, rows
+
     def random_sample(self):
         """Generate random sample from the table
 
@@ -138,68 +153,12 @@ class DatalakeSampler(SamplerInterface):
 
         return self._get_sampled_dataframe()
 
-    def get_col_row(self, data_frame):
-        """
-        Fetches columns and rows from the data_frame
-        """
-        result_rows = []
+    def _fetch_rows(self, data_frame):
+        return data_frame.dropna().values.tolist()
 
-        for chunk in data_frame:
-            row_df = self._fetch_rows_df(chunk)
-            result_rows.extend(row_df.values.tolist()[: self.sample_limit])
-            if len(result_rows) >= self.sample_limit:
-                break
-        cols = row_df.columns.tolist()
-        return cols, result_rows
-
-    @staticmethod
-    def unflatten_dict(flat_dict):
-        unflattened_dict = {}
-        for key, value in flat_dict.items():
-            keys = key.split(".")
-            current_dict = unflattened_dict
-
-            for key in keys[:-1]:
-                current_dict = current_dict.setdefault(key, {})
-
-            current_dict[keys[-1]] = value
-
-        return unflattened_dict
-
-    def _fetch_rows_df(self, data_frame):
-        # pylint: disable=import-outside-toplevel
-        import numpy as np
-        import pandas as pd
-
-        complex_columns = list(
-            set(
-                _get_root_col(col)
-                for col in data_frame.columns
-                if COMPLEX_COLUMN_SEPARATOR in col
-            )
-        )
-        for complex_col in complex_columns or []:
-            for df_col in data_frame.columns:
-                if complex_col in df_col:
-                    complex_col_name = ".".join(
-                        df_col.split(COMPLEX_COLUMN_SEPARATOR)[1:]
-                    )
-                    if complex_col_name:
-                        data_frame.rename(
-                            columns={df_col: complex_col_name},
-                            inplace=True,
-                        )
-        return pd.json_normalize(
-            [
-                self.unflatten_dict(json.loads(row_values))
-                for row_values in data_frame.apply(
-                    lambda row: row.to_json(), axis=1
-                ).values
-            ],
-            max_level=0,
-        ).replace(np.nan, None)
-
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sample_data(
+        self, columns: Optional[List[SQALikeColumn]] = None
+    ) -> TableData:
         """Fetch sample data from the table
 
         Returns:
@@ -208,5 +167,5 @@ class DatalakeSampler(SamplerInterface):
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 
-        cols, rows = self.get_col_row(data_frame=self.table)
+        cols, rows = self.get_col_row(data_frame=self.table, columns=columns)
         return TableData(columns=cols, rows=rows)

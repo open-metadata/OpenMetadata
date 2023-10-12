@@ -75,9 +75,11 @@ logger = ingestion_logger()
 
 # pylint: disable=not-callable
 @classmethod
-def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
+def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
     return cls(
-        table_constraints=[DBTableConstraint.from_dict(constraint) for constraint in d]
+        table_constraints=[
+            DBTableConstraint.from_dict(constraint) for constraint in dct
+        ]
     )
 
 
