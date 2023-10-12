@@ -58,7 +58,6 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -89,7 +88,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
 
     // Create an On Demand DAO
-    CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
+    CollectionDAO dao = Entity.getCollectionDAO();
     searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     try {
@@ -121,7 +120,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
             ApplicationHandler.scheduleApplication(
                 app,
-                JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+                Entity.getCollectionDAO(),
                 searchRepository);
           }
 
@@ -375,7 +374,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(
           app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          Entity.getCollectionDAO(),
           searchRepository);
     }
     return create(uriInfo, securityContext, app);
@@ -429,7 +428,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(
           app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          Entity.getCollectionDAO(),
           searchRepository);
     }
     return createOrUpdate(uriInfo, securityContext, app);
@@ -515,7 +514,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.scheduleApplication(
           app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          Entity.getCollectionDAO(),
           searchRepository);
       Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
     }
@@ -544,7 +543,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.triggerApplicationOnDemand(
           app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
+          Entity.getCollectionDAO(),
           searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
