@@ -15,7 +15,6 @@ public interface ColumnIndex extends SearchIndex {
     List<TagLabel> tags = new ArrayList<>();
     for (Column col : columns) {
       String columnName = col.getName();
-      String fullQualifiedName = col.getFullyQualifiedName();
       if (optParentColumn.isPresent()) {
         columnName = FullyQualifiedName.add(optParentColumn.get(), columnName);
       }
