@@ -807,6 +807,10 @@
         "modelType": {
           "$ref": "#/definitions/modelType"
         },
+        "resourceType": {
+          "description": "Resource Type of the model.",
+          "type": "string"
+        },
         "description": {
           "description": "Description of the Table from the model.",
           "$ref": "../../type/basic.json#/definitions/markdown"
