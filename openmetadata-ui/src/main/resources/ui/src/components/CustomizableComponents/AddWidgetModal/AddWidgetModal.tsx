@@ -32,7 +32,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WidgetWidths } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../rest/DocStoreAPI';
-import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
 import { AddWidgetModalProps } from './AddWidgetModal.interface';
@@ -82,7 +82,7 @@ function AddWidgetModal({
     () =>
       widgetsList?.map((widget) => {
         const widgetAddable = checkAddWidgetValidity(widget);
-        const widgetImage = CustomizePageClassBase.getWidgetImageFromKey(
+        const widgetImage = customizePageClassBase.getWidgetImageFromKey(
           widget.fullyQualifiedName
         );
 

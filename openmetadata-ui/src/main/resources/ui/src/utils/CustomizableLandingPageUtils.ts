@@ -22,18 +22,12 @@ import {
 } from 'lodash';
 import { Layout } from 'react-grid-layout';
 import {
-  DEFAULT_WIDGET_HEIGHT,
-  LANDING_PAGE_RIGHT_CONTAINER_EDIT_HEIGHT,
-  LANDING_PAGE_ROW_HEIGHT,
-  LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../constants/CustomizePage.constants';
-import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import customizePageClassBase from './CustomizePageClassBase';
 
 export const getAddWidgetHandler =
   (
@@ -44,7 +38,9 @@ export const getAddWidgetHandler =
   (currentLayout: Array<WidgetConfig>) => {
     const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
     const widgetWidth = getWidgetWidth(newWidgetData);
-    const widgetHeight = getWidgetHeight(newWidgetData.name);
+    const widgetHeight = customizePageClassBase.getWidgetHeight(
+      newWidgetData.name
+    );
 
     // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
     // and is not meant to be replaced hence
@@ -142,29 +138,6 @@ export const getWidgetWidth = (widget: Document) => {
   return widgetSize as number;
 };
 
-export const getWidgetHeight = (widgetName: string) => {
-  switch (widgetName) {
-    case 'ActivityFeed':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.activityFeed;
-    case 'RightSidebar':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.rightSidebar;
-    case 'Announcements':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements;
-    case 'Following':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following;
-    case 'RecentlyViewed':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.recentlyViewed;
-    case 'MyData':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.myData;
-    case 'KPI':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.kpi;
-    case 'TotalDataAssets':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.totalDataAssets;
-    default:
-      return DEFAULT_WIDGET_HEIGHT;
-  }
-};
-
 const getAllWidgetsArray = (layout: WidgetConfig[]) => {
   const widgetsArray: WidgetConfig[] = [];
 
@@ -191,13 +164,15 @@ const getLayoutWithCalculatedRightPanelHeight = (
     const floorHeightAndPosValue = floor(widgetHeightAndPos);
 
     const heightOfWidget =
-      widgetHeightAndPos * LANDING_PAGE_ROW_HEIGHT +
-      (floorHeightAndPosValue + 1) * LANDING_PAGE_WIDGET_MARGIN;
+      widgetHeightAndPos * customizePageClassBase.landingPageRowHeight +
+      (floorHeightAndPosValue + 1) *
+        customizePageClassBase.landingPageWidgetMargin;
 
     return {
       h: round(
-        (heightOfWidget + LANDING_PAGE_WIDGET_MARGIN) /
-          (LANDING_PAGE_ROW_HEIGHT + LANDING_PAGE_WIDGET_MARGIN),
+        (heightOfWidget + customizePageClassBase.landingPageWidgetMargin) /
+          (customizePageClassBase.landingPageRowHeight +
+            customizePageClassBase.landingPageWidgetMargin),
         2
       ),
       height: heightOfWidget,
@@ -211,7 +186,7 @@ const getLayoutWithCalculatedRightPanelHeight = (
       ? {
           ...widget,
           h: increaseHeight
-            ? LANDING_PAGE_RIGHT_CONTAINER_EDIT_HEIGHT
+            ? customizePageClassBase.landingPageRightContainerEditHeight
             : maxHeight?.h ?? widget.h,
         }
       : widget

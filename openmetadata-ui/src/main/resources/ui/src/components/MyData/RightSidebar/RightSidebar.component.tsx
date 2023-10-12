@@ -13,12 +13,6 @@
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
-import {
-  LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE,
-  LANDING_PAGE_ROW_HEIGHT,
-  LANDING_PAGE_WIDGET_MARGIN,
-  RIGHT_PANEL_LAYOUT,
-} from '../../../constants/CustomizePage.constants';
 import { SIZE } from '../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
@@ -28,7 +22,7 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
-import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import AddWidgetModal from '../../CustomizableComponents/AddWidgetModal/AddWidgetModal';
 import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import './right-sidebar.less';
@@ -91,7 +85,7 @@ const RightSidebar = ({
         getAddWidgetHandler(
           newWidgetData,
           placeholderWidgetKey,
-          LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE
+          customizePageClassBase.landingPageRightContainerMaxGridSize
         )
       );
       setIsWidgetModalOpen(false);
@@ -117,7 +111,7 @@ const RightSidebar = ({
         );
       }
 
-      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
       return (
         <Widget
@@ -207,7 +201,7 @@ const RightSidebar = ({
   useEffect(() => {
     if (resetLayout && handleResetLayout) {
       setLayout([
-        ...RIGHT_PANEL_LAYOUT,
+        ...customizePageClassBase.rightPanelDefaultLayout,
         ...(isEditView
           ? [
               {
@@ -230,11 +224,14 @@ const RightSidebar = ({
       <ResponsiveGridLayout
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
-        containerPadding={[0, LANDING_PAGE_WIDGET_MARGIN]}
+        containerPadding={[0, customizePageClassBase.landingPageWidgetMargin]}
         draggableHandle=".drag-widget-icon"
         isResizable={false}
-        margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
-        rowHeight={LANDING_PAGE_ROW_HEIGHT}
+        margin={[
+          customizePageClassBase.landingPageWidgetMargin,
+          customizePageClassBase.landingPageWidgetMargin,
+        ]}
+        rowHeight={customizePageClassBase.landingPageRowHeight}
         onLayoutChange={handleLayoutUpdate}>
         {widgets}
       </ResponsiveGridLayout>
@@ -243,7 +240,9 @@ const RightSidebar = ({
           addedWidgetsList={addedWidgetsList}
           handleAddWidget={handleAddWidget}
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          maxGridSizeSupport={LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE}
+          maxGridSizeSupport={
+            customizePageClassBase.landingPageRightContainerMaxGridSize
+          }
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}
         />

@@ -22,12 +22,6 @@ import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import gridBgImg from '../../../assets/img/grid-bg-img.png';
 import {
-  LANDING_PAGE_LAYOUT,
-  LANDING_PAGE_MAX_GRID_SIZE,
-  LANDING_PAGE_ROW_HEIGHT,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../../../constants/CustomizePage.constants';
-import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
@@ -48,7 +42,7 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
-import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import {
   getPersonaDetailsPath,
   getSettingPath,
@@ -75,7 +69,8 @@ function CustomizeMyData({
   const [resetRightPanelLayout, setResetRightPanelLayout] =
     useState<boolean>(false);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
-    ...(initialPageData.data?.page?.layout ?? LANDING_PAGE_LAYOUT),
+    ...(initialPageData.data?.page?.layout ??
+      customizePageClassBase.landingPageDefaultLayout),
     {
       h: 2,
       i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
@@ -129,7 +124,7 @@ function CustomizeMyData({
         getAddWidgetHandler(
           newWidgetData,
           placeholderWidgetKey,
-          LANDING_PAGE_MAX_GRID_SIZE
+          customizePageClassBase.landingPageMaxGridSize
         )
       );
       setIsWidgetModalOpen(false);
@@ -212,7 +207,7 @@ function CustomizeMyData({
         );
       }
 
-      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
       return (
         <Widget
@@ -315,7 +310,7 @@ function CustomizeMyData({
 
   const handleReset = useCallback(() => {
     setLayout([
-      ...LANDING_PAGE_LAYOUT,
+      ...customizePageClassBase.landingPageDefaultLayout,
       {
         h: 2,
         i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
@@ -380,8 +375,11 @@ function CustomizeMyData({
             cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
             draggableHandle=".drag-widget-icon"
             isResizable={false}
-            margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
-            rowHeight={LANDING_PAGE_ROW_HEIGHT}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizePageClassBase.landingPageRowHeight}
             style={{
               backgroundImage: `url(${gridBgImg})`,
             }}
@@ -393,7 +391,7 @@ function CustomizeMyData({
               addedWidgetsList={addedWidgetsList}
               handleAddWidget={handleAddWidget}
               handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-              maxGridSizeSupport={LANDING_PAGE_MAX_GRID_SIZE}
+              maxGridSizeSupport={customizePageClassBase.landingPageMaxGridSize}
               open={isWidgetModalOpen}
               placeholderWidgetKey={placeholderWidgetKey}
             />
