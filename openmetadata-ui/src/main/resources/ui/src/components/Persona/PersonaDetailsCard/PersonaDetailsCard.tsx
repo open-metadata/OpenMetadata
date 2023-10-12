@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space } from 'antd';
+import { Card, Space, Typography } from 'antd';
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -24,6 +25,7 @@ interface PersonaDetailsCardProps {
 
 export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
   const history = useHistory();
+  const { t } = useTranslation();
 
   const handleCardClick = useCallback(() => {
     if (persona.fullyQualifiedName) {
@@ -39,10 +41,16 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
       <Space className="justify-between h-full" direction="vertical">
         <Card.Meta
           description={
-            <RichTextEditorPreviewer
-              className="text-grey-muted max-two-lines"
-              markdown={persona.description ?? ''}
-            />
+            persona.description ? (
+              <RichTextEditorPreviewer
+                className="text-grey-muted max-two-lines"
+                markdown={persona.description ?? ''}
+              />
+            ) : (
+              <Typography.Text className="text-grey-muted">
+                {t('label.no-description')}
+              </Typography.Text>
+            )
           }
           title={getEntityName(persona)}
         />

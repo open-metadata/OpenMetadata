@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Union, cast
+from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, aliased
@@ -117,17 +117,24 @@ class SQASampler(SamplerInterface):
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
-        :return: TableData to be added to the Table Entity
+
+        Args:
+            columns (Optional[List]): List of columns to fetch
+        Retunrs:
+            TableData to be added to the Table Entity
         """
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        if not columns:
+            sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        else:
+            sqa_columns = list(columns)  # copy columns
 
         sqa_sample = (
             self.client.query(*sqa_columns)
