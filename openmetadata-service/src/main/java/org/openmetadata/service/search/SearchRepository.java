@@ -9,7 +9,7 @@ import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFE
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
-import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED__FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
@@ -314,7 +314,7 @@ public class SearchRepository {
                     field.getName()));
             fieldData = JsonUtils.getMap(entityReference);
           } catch (UnhandledServerException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED__FIELD_SCRIPT, field.getName()));
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
       }
