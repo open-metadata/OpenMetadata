@@ -12,6 +12,7 @@
  */
 import { ReactRenderer } from '@tiptap/react';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
+import { isEmpty } from 'lodash';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -101,25 +102,30 @@ export const hashtagSuggestion = () => ({
         if (!props.clientRect) {
           return;
         }
-
-        popup[0].setProps({
-          getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
-        });
+        if (!isEmpty(popup)) {
+          popup[0].setProps({
+            getReferenceClientRect:
+              props.clientRect as Props['getReferenceClientRect'],
+          });
+        }
       },
 
       onKeyDown(props: SuggestionKeyDownProps) {
-        if (props.event.key === 'Escape' && !popup[0].state.isDestroyed) {
+        if (
+          props.event.key === 'Escape' &&
+          !isEmpty(popup) &&
+          !popup[0].state.isDestroyed
+        ) {
           popup[0].hide();
 
           return true;
         }
 
-        return (component.ref as ExtensionRef)?.onKeyDown(props);
+        return (component?.ref as ExtensionRef)?.onKeyDown(props);
       },
 
       onExit() {
-        if (!popup[0].state.isDestroyed) {
+        if (!isEmpty(popup) && !popup[0].state.isDestroyed) {
           popup[0].destroy();
         }
       },
