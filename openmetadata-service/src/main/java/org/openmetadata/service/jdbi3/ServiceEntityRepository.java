@@ -16,6 +16,7 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.UUID;
 import lombok.Getter;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -111,6 +112,7 @@ public abstract class ServiceEntityRepository<
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateConnection();
