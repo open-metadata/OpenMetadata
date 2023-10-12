@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Maven Sonar Tests CI
+name: Maven SonarCloud CI
 
 on:
   workflow_dispatch:
@@ -50,7 +50,7 @@ concurrency:
   group: maven-sonar-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 jobs:
-  maven-mysql-ci:
+  maven-sonarcloud-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
