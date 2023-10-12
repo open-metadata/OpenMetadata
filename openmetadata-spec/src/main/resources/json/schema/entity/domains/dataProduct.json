@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/domains/dataProduct.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataProduct",
-  "description": "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store domain data for analytical or data-intensive use cases made available to data consumers.",
+  "description": "A `Data Product` or `Data as a Product` is a logical unit that contains all components to process and store data for analytical or data-intensive use cases made available to data consumers.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.domains.DataProduct",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
@@ -68,6 +68,6 @@
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
-  "required": ["id", "name", "description", "domain"],
+  "required": ["id", "name", "description"],
   "additionalProperties": false
 }
