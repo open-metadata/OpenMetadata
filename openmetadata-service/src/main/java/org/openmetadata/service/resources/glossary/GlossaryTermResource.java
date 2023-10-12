@@ -13,6 +13,9 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.GLOSSARY;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,6 +25,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -46,6 +51,7 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -55,12 +61,16 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -95,6 +105,37 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
 
   public static class GlossaryTermList extends ResultList<GlossaryTerm> {
     /* Required for serde */
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    super.initialize(config);
+    // Load glossaries provided by OpenMetadata
+    GlossaryRepository glossaryRepository = (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
+    List<LoadGlossary> loadGlossaries =
+        EntityRepository.getEntitiesFromSeedData(
+            GLOSSARY, ".*json/data/glossary/.*Glossary\\.json$", LoadGlossary.class);
+    for (LoadGlossary loadGlossary : loadGlossaries) {
+      Glossary glossary =
+          GlossaryResource.getGlossary(glossaryRepository, loadGlossary.getCreateGlossary(), ADMIN_USER_NAME);
+      glossaryRepository.initializeEntity(glossary);
+
+      List<GlossaryTerm> termsToCreate = new ArrayList<>();
+      for (CreateGlossaryTerm createTerm : loadGlossary.getCreateTerms()) {
+        createTerm.withGlossary(glossary.getName());
+        createTerm.withProvider(glossary.getProvider());
+        GlossaryTerm term = getGlossaryTerm(createTerm, ADMIN_USER_NAME);
+        repository.setFullyQualifiedName(term); // FQN required for ordering tags based on hierarchy
+        termsToCreate.add(term);
+      }
+
+      // Sort tags based on tag hierarchy
+      EntityUtil.sortByFQN(termsToCreate);
+
+      for (GlossaryTerm term : termsToCreate) {
+        repository.initializeEntity(term);
+      }
+    }
   }
 
   @GET
@@ -441,7 +482,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   }
 
   private GlossaryTerm getGlossaryTerm(CreateGlossaryTerm create, String user) {
-    return copy(new GlossaryTerm(), create, user)
+    return repository
+        .copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
         .withStyle(create.getStyle())
         .withGlossary(getEntityReference(Entity.GLOSSARY, create.getGlossary()))

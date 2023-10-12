@@ -463,7 +463,8 @@ public class WebAnalyticEventResource extends EntityResource<WebAnalyticEvent, W
   }
 
   private WebAnalyticEvent getWebAnalyticEvent(CreateWebAnalyticEvent create, String user) {
-    return copy(new WebAnalyticEvent(), create, user)
+    return repository
+        .copy(new WebAnalyticEvent(), create, user)
         .withName(create.getName())
         .withDisplayName(create.getDisplayName())
         .withDescription(create.getDescription())
