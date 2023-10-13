@@ -26,7 +26,6 @@ import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
 interface ContextConfig extends LogoConfiguration {
   routeElements?: ReactNode;
-  sideBarElements?: ReactNode;
   selectedPersona: EntityReference;
   updateSelectedPersona: (personaFqn: EntityReference) => void;
 }
@@ -41,13 +40,11 @@ export const useApplicationConfigContext = () =>
 interface ApplicationConfigProviderProps {
   children: ReactNode;
   routeElements?: ReactNode;
-  sideBarElements?: ReactNode;
 }
 
 const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
   routeElements,
-  sideBarElements,
 }) => {
   const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
     {} as LogoConfiguration
@@ -81,17 +78,10 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     () => ({
       ...applicationConfig,
       routeElements,
-      sideBarElements,
       selectedPersona,
       updateSelectedPersona,
     }),
-    [
-      applicationConfig,
-      routeElements,
-      sideBarElements,
-      selectedPersona,
-      updateSelectedPersona,
-    ]
+    [applicationConfig, routeElements, selectedPersona, updateSelectedPersona]
   );
 
   return (
