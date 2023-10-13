@@ -695,8 +695,9 @@ public class ElasticSearchClient implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD));
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms("columnNames").field("columnNames"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -794,7 +795,8 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("dataModelType").field("dataModelType"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"));
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
+        .aggregation(AggregationBuilders.terms("columnNames").field("columnNames"));
     return addAggregation(searchSourceBuilder);
   }
 
