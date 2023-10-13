@@ -63,7 +63,7 @@ public class TableIndex implements ColumnIndex {
           tagsWithChildren.add(col.getTags());
         }
       }
-      doc.put("columns_name_arr", columnsWithChildrenName);
+      doc.put("columnNames", columnsWithChildrenName);
     }
     parseTableSuggest(suggest);
     serviceSuggest.add(SearchSuggest.builder().input(table.getService().getName()).weight(5).build());

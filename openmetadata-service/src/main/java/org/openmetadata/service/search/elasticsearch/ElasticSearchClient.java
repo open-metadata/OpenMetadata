@@ -528,7 +528,7 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD).field(ES_MESSAGE_SCHEMA_FIELD))
-        .aggregation(AggregationBuilders.terms("fields_name_arr").field("fields_name_arr"));
+        .aggregation(AggregationBuilders.terms("fieldNames").field("fieldNames"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -600,7 +600,7 @@ public class ElasticSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms("columns_name_arr").field("columns_name_arr"))
+        .aggregation(AggregationBuilders.terms("columnNames").field("columnNames"))
         .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
     return addAggregation(searchSourceBuilder);
   }

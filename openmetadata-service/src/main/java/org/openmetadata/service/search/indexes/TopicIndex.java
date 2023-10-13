@@ -63,7 +63,7 @@ public class TopicIndex implements SearchIndex {
           tagsWithChildren.add(field.getTags());
         }
       }
-      doc.put("fields_name_arr", fieldsWithChildrenName);
+      doc.put("fieldNames", fieldsWithChildrenName);
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));

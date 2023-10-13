@@ -148,7 +148,7 @@
           }
         }
       },
-      "columns_name_arr": {
+      "columnNames": {
         "type": "keyword"
       },
       "databaseSchema": {

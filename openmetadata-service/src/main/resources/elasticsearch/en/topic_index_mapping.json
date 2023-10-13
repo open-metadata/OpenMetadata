@@ -284,7 +284,7 @@
           }
         }
       },
-      "fields_name_arr": {
+      "fieldNames": {
         "type": "keyword"
       },
       "cleanupPolicies": {
