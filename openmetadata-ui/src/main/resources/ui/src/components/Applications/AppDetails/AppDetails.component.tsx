@@ -136,8 +136,7 @@ const AppDetails = () => {
           })}
           icon={
             <StopOutlined
-              color={DE_ACTIVE_COLOR}
-              style={{ fontSize: '18px' }}
+              style={{ fontSize: '18px', color: DE_ACTIVE_COLOR }}
             />
           }
           id="disable-button"
@@ -334,7 +333,7 @@ const AppDetails = () => {
               onOpenChange={setShowActions}>
               <Tooltip placement="right">
                 <Button
-                  className="glossary-manage-dropdown-button tw-px-1.5"
+                  className="glossary-manage-dropdown-button p-x-xs"
                   data-testid="manage-button"
                   onClick={() => setShowActions(true)}>
                   <IconDropdown className="anticon self-center manage-dropdown-icon" />
