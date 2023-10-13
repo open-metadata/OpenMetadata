@@ -420,7 +420,6 @@ const DataProductsDetailsPage = ({
                   }
                   rightPanelWidth={400}>
                   <AssetsTabs
-                    assetCount={assetCount}
                     isSummaryPanelOpen={false}
                     permissions={dataProductPermission}
                     ref={assetTabRef}

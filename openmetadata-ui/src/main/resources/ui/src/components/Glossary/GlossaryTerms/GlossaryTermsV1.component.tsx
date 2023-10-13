@@ -167,7 +167,6 @@ const GlossaryTermsV1 = ({
               key: 'assets',
               children: (
                 <AssetsTabs
-                  assetCount={assetCount}
                   isSummaryPanelOpen={isSummaryPanelOpen}
                   permissions={permissions}
                   ref={assetTabRef}

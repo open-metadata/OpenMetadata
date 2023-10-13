@@ -722,7 +722,6 @@ const TeamDetailsV1 = ({
     () => (
       <AssetsTabs
         isSummaryPanelOpen
-        assetCount={assetsCount}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => history.push(ROUTES.EXPLORE)}

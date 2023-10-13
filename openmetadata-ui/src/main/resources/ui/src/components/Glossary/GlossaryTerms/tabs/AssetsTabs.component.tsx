@@ -80,7 +80,6 @@ const AssetsTabs = forwardRef(
       permissions,
       onAssetClick,
       isSummaryPanelOpen,
-      assetCount,
       onAddAsset,
       type = AssetsOfEntity.GLOSSARY,
       viewType = AssetsViewType.PILLS,
@@ -101,6 +100,66 @@ const AssetsTabs = forwardRef(
     const [visible, setVisible] = useState<boolean>(false);
     const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
 
+    const queryParam = useMemo(() => {
+      if (type === AssetsOfEntity.DOMAIN) {
+        return `(domain.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.TEAM) {
+        return `(owner.fullyQualifiedName:"${fqn}")`;
+      } else {
+        return `(tags.tagFQN:"${fqn}")`;
+      }
+    }, [type, fqn]);
+
+    const fetchAssets = useCallback(
+      async ({
+        index = activeFilter,
+        page = 1,
+      }: {
+        index?: SearchIndex[];
+        page?: number;
+      }) => {
+        try {
+          setIsLoading(true);
+          const res = await searchData(
+            '',
+            page,
+            PAGE_SIZE,
+            queryParam,
+            '',
+            '',
+            index
+          );
+
+          // Extract useful details from the Response
+          const totalCount = res?.data?.hits?.total.value ?? 0;
+          const hits = res?.data?.hits?.hits;
+
+          // Find EntityType for selected searchIndex
+          const entityType = AssetsFilterOptions.find((f) =>
+            activeFilter.includes(f.value)
+          )?.label;
+
+          // Update states
+          setTotal(totalCount);
+          entityType &&
+            setItemCount((prevCount) => ({
+              ...prevCount,
+              [entityType]: totalCount,
+            }));
+          setData(hits as SearchedDataProps['data']);
+
+          // Select first card to show summary right panel
+          hits[0] && setSelectedCard(hits[0]._source as SourceType);
+        } catch (_) {
+          // Nothing here
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      [activeFilter, currentPage]
+    );
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
         (key) => openKeys.indexOf(key as EntityType) === -1
@@ -219,18 +278,6 @@ const AssetsTabs = forwardRef(
       }));
     }, [itemCount, getOptions]);
 
-    const queryParam = useMemo(() => {
-      if (type === AssetsOfEntity.DOMAIN) {
-        return `(domain.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.TEAM) {
-        return `(owner.fullyQualifiedName:"${fqn}")`;
-      } else {
-        return `(tags.tagFQN:"${fqn}")`;
-      }
-    }, [type, fqn]);
-
     const searchIndexes = useMemo(() => {
       const indexesToFetch = [...ASSETS_INDEXES];
       if (type !== AssetsOfEntity.GLOSSARY) {
@@ -312,18 +359,22 @@ const AssetsTabs = forwardRef(
 
             setItemCount(counts as Record<EntityType, number>);
 
-            find(counts, (count, key) => {
-              if (count > 0) {
-                const option = AssetsFilterOptions.find((el) => el.key === key);
-                if (option) {
-                  handleActiveFilter(option.value);
+            if (viewType !== AssetsViewType.PILLS) {
+              find(counts, (count, key) => {
+                if (count > 0) {
+                  const option = AssetsFilterOptions.find(
+                    (el) => el.key === key
+                  );
+                  if (option) {
+                    handleActiveFilter(option.value);
+                  }
+
+                  return true;
                 }
 
-                return true;
-              }
-
-              return false;
-            });
+                return false;
+              });
+            }
           }
         )
         .catch((err) => {
@@ -339,55 +390,6 @@ const AssetsTabs = forwardRef(
         onAssetClick && onAssetClick(undefined);
       };
     }, []);
-
-    const fetchAssets = useCallback(
-      async ({
-        index = activeFilter,
-        page = 1,
-      }: {
-        index?: SearchIndex[];
-        page?: number;
-      }) => {
-        try {
-          setIsLoading(true);
-          const res = await searchData(
-            '',
-            page,
-            PAGE_SIZE,
-            queryParam,
-            '',
-            '',
-            index
-          );
-
-          // Extract useful details from the Response
-          const totalCount = res?.data?.hits?.total.value ?? 0;
-          const hits = res?.data?.hits?.hits;
-
-          // Find EntityType for selected searchIndex
-          const entityType = AssetsFilterOptions.find((f) =>
-            activeFilter.includes(f.value)
-          )?.label;
-
-          // Update states
-          setTotal(totalCount);
-          entityType &&
-            setItemCount((prevCount) => ({
-              ...prevCount,
-              [entityType]: totalCount,
-            }));
-          setData(hits as SearchedDataProps['data']);
-
-          // Select first card to show summary right panel
-          hits[0] && setSelectedCard(hits[0]._source as SourceType);
-        } catch (_) {
-          // Nothing here
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [activeFilter, currentPage]
-    );
 
     const assetListing = useMemo(() => {
       if (isLoading) {
@@ -432,7 +434,7 @@ const AssetsTabs = forwardRef(
         </div>
       ) : (
         <div className="m-t-xlg">
-          {assetCount ? (
+          {!isEmpty(activeFilter) ? (
             <ErrorPlaceHolder
               heading={t('label.asset')}
               type={ERROR_PLACEHOLDER_TYPE.FILTER}
@@ -448,15 +450,7 @@ const AssetsTabs = forwardRef(
           )}
         </div>
       );
-    }, [
-      data,
-      assetCount,
-      isLoading,
-      total,
-      currentPage,
-      selectedCard,
-      setSelectedCard,
-    ]);
+    }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
 
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
@@ -548,13 +542,10 @@ const AssetsTabs = forwardRef(
     }, [viewType, assetsHeader, assetListing, selectedCard]);
 
     useEffect(() => {
-      if (!isEmpty(activeFilter)) {
-        fetchAssets({ index: activeFilter, page: currentPage });
-      } else {
-        setData([]);
-        setSelectedCard(undefined);
-        setTotal(0);
-      }
+      fetchAssets({
+        index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+        page: currentPage,
+      });
     }, [activeFilter, currentPage]);
 
     useImperativeHandle(ref, () => ({
