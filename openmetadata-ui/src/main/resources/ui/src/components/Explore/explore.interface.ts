@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { SORT_ORDER } from '../../enums/common.enum';
@@ -69,8 +70,11 @@ export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
   aggregations?: Aggregations;
+  activeTabKey: SearchIndex;
 
   tabCounts?: SearchHitCounts;
+
+  tabItems: ItemType[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 

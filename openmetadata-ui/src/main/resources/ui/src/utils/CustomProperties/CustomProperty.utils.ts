@@ -15,6 +15,7 @@ import {
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -63,3 +64,17 @@ export const getEntityExtentionDetailsFromEntityType = <
       console.error(`Custom properties for Entity: ${type} not supported yet.`);
   }
 };
+
+export const EntitiesSupportedCustomProperties: string[] = [
+  SearchIndex.DATABASE,
+  SearchIndex.DATABASE_SCHEMA,
+  SearchIndex.TABLE,
+  SearchIndex.STORED_PROCEDURE,
+  SearchIndex.DASHBOARD,
+  SearchIndex.PIPELINE,
+  SearchIndex.TOPIC,
+  SearchIndex.CONTAINER,
+  SearchIndex.MLMODEL,
+  SearchIndex.SEARCH_INDEX,
+  SearchIndex.GLOSSARY,
+];
