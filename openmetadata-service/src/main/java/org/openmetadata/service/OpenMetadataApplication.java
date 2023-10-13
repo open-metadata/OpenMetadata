@@ -122,6 +122,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
 
+
+
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException, NoSuchMethodException,
