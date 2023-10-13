@@ -1465,6 +1465,7 @@
     "rename-entity": "Renommer le nom et le nom d'affichage pour {{entity}}.",
     "request-description": "Demander une description",
     "request-update-description": "Mettre à jour la demande de description",
+    "reset-layout-confirmation": "Are you sure you want to apply the \"Default Layout\"?",
     "reset-link-has-been-sent": "Lien de réinitialisation a été envoyé à votre adresse e-mail.",
     "restore-action-description": "Restaurer cette {{entityType}} restaurera les métadonnées dans OpenMetadata.",
     "restore-deleted-team": " Restaurer cette Equipe ajoutera toutes les métadonnées dans OpenMetadata",

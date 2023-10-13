@@ -1465,6 +1465,7 @@
     "rename-entity": "Rename the Name and Display Name for the {{entity}}.",
     "request-description": "Request description",
     "request-update-description": "Request update description",
+    "reset-layout-confirmation": "Are you sure you want to apply the \"Default Layout\"?",
     "reset-link-has-been-sent": "パスワードリセット用のリンクがあなたのメールアドレスに送信されました",
     "restore-action-description": "この{{entityType}}をリストアすると、OpenMetadataのメタデータがリストアされます。",
     "restore-deleted-team": "チームをリストアすると全てのメタデータがOpenMetadataに戻されます。",
