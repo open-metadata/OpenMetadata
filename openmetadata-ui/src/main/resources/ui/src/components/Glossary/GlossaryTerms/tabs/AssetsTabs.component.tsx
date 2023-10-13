@@ -87,6 +87,7 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
+    const popupRef = React.useRef<HTMLElement>(null);
     const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
       {} as Record<EntityType, number>
     );
@@ -471,7 +472,7 @@ const AssetsTabs = forwardRef(
                   openKeys={openKeys}
                   rootClassName="asset-multi-menu-selector"
                   selectedKeys={activeFilter}
-                  style={{ width: 256, height: 300 }}
+                  style={{ width: 256, height: 340 }}
                   onClick={(value) => {
                     setCurrentPage(1);
                     handleActiveFilter(value.key as SearchIndex);
@@ -479,6 +480,9 @@ const AssetsTabs = forwardRef(
                   }}
                   onOpenChange={onOpenChange}
                 />
+              }
+              getPopupContainer={(triggerNode: HTMLElement) =>
+                popupRef.current ?? triggerNode
               }
               key="asset-options-popover"
               open={visible}
@@ -491,6 +495,7 @@ const AssetsTabs = forwardRef(
                 <Button
                   ghost
                   icon={<FilterOutlined />}
+                  ref={popupRef}
                   style={{ background: 'white' }}
                   type="primary">
                   {t('label.filter-plural')}
