@@ -1,9 +1,17 @@
-<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M84.5 92L75 78.5M75 78.5L64.8864 90.3724C64.3363 91.0182 63.2826 90.7288 63.1395 89.8926L57.3399 55.987C57.2005 55.1719 58.0544 54.5495 58.7877 54.9316L90.4334 71.423C91.2127 71.8292 91.1268 72.9708 90.2956 73.2558L75 78.5Z" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M49.4878 92H21C13.8203 92 8 86.1797 8 79V21C8 13.8203 13.8203 8 21 8H79C86.1797 8 92 13.8203 92 21V54.6098" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-<path d="M8 32.5L91.9999 33.0185" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
-<circle cx="28.5" cy="56.5" r="10.5" stroke="currentColor" stroke-width="5"/>
-<circle cx="20.5" cy="20.5" r="2.5" fill="currentColor"/>
-<circle cx="29.5" cy="20.5" r="2.5" fill="currentColor"/>
-<circle cx="38.5" cy="20.5" r="2.5" fill="currentColor"/>
+<svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="1" y="1" width="15" height="14" rx="1" stroke="currentColor" stroke-width="0.8"/>
+<path d="M1 5H16" stroke="currentColor" stroke-width="0.8"/>
+<circle cx="2.5" cy="3.5" r="0.5" fill="currentColor"/>
+<circle cx="2.5" cy="7.5" r="0.5" fill="currentColor"/>
+<circle cx="2.5" cy="9.5" r="0.5" fill="currentColor"/>
+<circle cx="2.5" cy="11.5" r="0.5" fill="currentColor"/>
+<circle cx="4.5" cy="3.5" r="0.5" fill="currentColor"/>
+<circle cx="14.5" cy="3.5" r="0.5" fill="currentColor"/>
+<rect x="6" y="8" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="6" y="11" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="9" y="11" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="12" y="11" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="9" y="8" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="12" y="8" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<path d="M4 5V15" stroke="currentColor" stroke-width="0.8"/>
 </svg>
