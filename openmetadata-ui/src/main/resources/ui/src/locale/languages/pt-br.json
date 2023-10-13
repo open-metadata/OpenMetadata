@@ -970,6 +970,7 @@
     "table-entity-text": "Tabela {{entityText}}",
     "table-lowercase": "tabela",
     "table-lowercase-plural": "tables",
+    "table-partitioned": "Table Partitioned",
     "table-plural": "Tabelas",
     "table-profile": "Table Profile",
     "table-tests-summary": "Resumo dos Testes da Tabela",
