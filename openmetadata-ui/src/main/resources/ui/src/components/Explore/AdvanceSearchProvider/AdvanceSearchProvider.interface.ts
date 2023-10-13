@@ -26,6 +26,8 @@ export interface AdvanceSearchContext {
   config: Config;
   onReset: () => void;
   onResetAllFilters: () => void;
+  onUpdateConfig: (config: Config) => void;
+  searchIndex: string;
 }
 
 export type FilterObject = Record<string, string[]>;
