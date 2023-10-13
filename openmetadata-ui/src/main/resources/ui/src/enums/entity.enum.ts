@@ -58,7 +58,7 @@ export enum EntityType {
   DOC_STORE = 'docStore',
   PAGE = 'Page',
   knowledgePanels = 'KnowLedgePanels',
-  SERVICE = 'service',
+  GOVERN = 'govern',
 }
 
 export enum AssetsType {

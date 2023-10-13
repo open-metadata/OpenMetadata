@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Button,
   Checkbox,
   Col,
@@ -79,6 +80,7 @@ const AssetsTabs = forwardRef(
       permissions,
       onAssetClick,
       isSummaryPanelOpen,
+      assetCount,
       onAddAsset,
       type = AssetsOfEntity.GLOSSARY,
       viewType = AssetsViewType.PILLS,
@@ -114,9 +116,7 @@ const AssetsTabs = forwardRef(
 
     const handleActiveFilter = (key: SearchIndex) => {
       if (activeFilter.includes(key)) {
-        if (activeFilter.length > 1) {
-          setActiveFilter((prev) => prev.filter((item) => item !== key));
-        }
+        setActiveFilter((prev) => prev.filter((item) => item !== key));
       } else {
         setActiveFilter((prev) => [...prev, key]);
       }
@@ -169,33 +169,37 @@ const AssetsTabs = forwardRef(
 
         return {
           label: isChildren ? (
-            <Space className="w-full d-flex justify-between">
-              <div className="d-flex items-center">
-                <span className="m-r-xs w-4 d-flex">
-                  {getEntityIcon(option.key)}
+            <div className="w-full d-flex justify-between">
+              <div className="w-full d-flex items-center justify-between p-r-xss">
+                <span className="d-flex items-center">
+                  <span className="m-r-xs w-4 d-flex">
+                    {getEntityIcon(option.key)}
+                  </span>
+
+                  <Typography.Text
+                    className="asset-sub-menu-title text-color-inherit"
+                    ellipsis={{ tooltip: true }}>
+                    {option.label}
+                  </Typography.Text>
                 </span>
 
-                <Typography.Text
-                  className="w-32 text-color-inherit"
-                  ellipsis={{ tooltip: true }}>
-                  {option.label}
-                </Typography.Text>
-
-                {getCountBadge(assetCount)}
+                <span>
+                  {getCountBadge(assetCount, 'asset-badge-container')}
+                </span>
               </div>
               <Checkbox
                 checked={activeFilter.includes(option.key as SearchIndex)}
+                className="asset-sub-menu-checkbox"
               />
-            </Space>
+            </div>
           ) : (
             <div className="d-flex justify-between">
               <span>{option.label}</span>
-              <span className="p-l-xs">{getCountBadge(assetCount)}</span>
+              <span>{getCountBadge(assetCount, 'asset-badge-container')}</span>
             </div>
           ),
           key: option.key,
           value: option.key,
-          disabled: !assetCount,
         };
       },
       [
@@ -261,6 +265,9 @@ const AssetsTabs = forwardRef(
             pipelineServiceResponse,
             storageServiceResponse,
             searchServiceResponse,
+            domainResponse,
+            dataProductResponse,
+            tagResponse,
             glossaryResponse,
           ]) => {
             const counts = {
@@ -292,7 +299,10 @@ const AssetsTabs = forwardRef(
                 storageServiceResponse.data.hits.total.value,
               [EntityType.SEARCH_SERVICE]:
                 searchServiceResponse.data.hits.total.value,
-
+              [EntityType.DOMAIN]: domainResponse.data.hits.total.value,
+              [EntityType.DATA_PRODUCT]:
+                dataProductResponse.data.hits.total.value,
+              [EntityType.TAG]: tagResponse.data.hits.total.value,
               [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value
@@ -421,26 +431,41 @@ const AssetsTabs = forwardRef(
         </div>
       ) : (
         <div className="m-t-xlg">
-          <ErrorPlaceHolder
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.asset')}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={onAddAsset}
-          />
+          {assetCount ? (
+            <ErrorPlaceHolder
+              heading={t('label.asset')}
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          ) : (
+            <ErrorPlaceHolder
+              doc={GLOSSARIES_DOCS}
+              heading={t('label.asset')}
+              permission={permissions.Create}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={onAddAsset}
+            />
+          )}
         </div>
       );
-    }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
+    }, [
+      data,
+      assetCount,
+      isLoading,
+      total,
+      currentPage,
+      selectedCard,
+      setSelectedCard,
+    ]);
 
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
         return (
           <div className="w-full d-flex justify-end">
             <Popover
+              align={{ targetOffset: [0, 10] }}
               content={
                 <Menu
                   multiple
-                  className="p-t-sm"
                   items={subMenuItems}
                   mode="inline"
                   openKeys={openKeys}
@@ -462,13 +487,15 @@ const AssetsTabs = forwardRef(
               showArrow={false}
               trigger="click"
               onOpenChange={handleAssetButtonVisibleChange}>
-              <Button
-                ghost
-                icon={<FilterOutlined />}
-                style={{ background: 'white' }}
-                type="primary">
-                {t('label.filter-plural')}
-              </Button>
+              <Badge count={activeFilter.length}>
+                <Button
+                  ghost
+                  icon={<FilterOutlined />}
+                  style={{ background: 'white' }}
+                  type="primary">
+                  {t('label.filter-plural')}
+                </Button>
+              </Badge>
             </Popover>
           </div>
         );
@@ -518,6 +545,10 @@ const AssetsTabs = forwardRef(
     useEffect(() => {
       if (!isEmpty(activeFilter)) {
         fetchAssets({ index: activeFilter, page: currentPage });
+      } else {
+        setData([]);
+        setSelectedCard(undefined);
+        setTotal(0);
       }
     }, [activeFilter, currentPage]);
 

@@ -352,8 +352,10 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.STORED_PROCEDURE:
       return <IconStoredProcedure />;
 
+    case SearchIndex.TAG:
     case EntityType.TAG:
       return <ClassificationIcon />;
+    case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
@@ -363,6 +365,12 @@ export const getEntityIcon = (indexType: string) => {
     case SearchIndex.SEARCH_INDEX:
     case SearchIndex.SEARCH_SERVICE:
       return <SearchOutlined className="text-sm" />;
+
+    case EntityType.DOMAIN:
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+    case SearchIndex.DOMAIN:
+      return <DomainIcon />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:

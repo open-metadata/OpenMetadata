@@ -143,58 +143,18 @@ export const ASSET_SUB_MENU_FILTER: Array<{
   }[];
 }> = [
   {
-    label: i18n.t('label.service'),
-    key: EntityType.SERVICE,
+    key: EntityType.DOMAIN,
+    label: i18n.t('label.domain-plural'),
     children: [
       {
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.database'),
-        }),
-        value: EntityType.SEARCH_SERVICE,
-        key: SearchIndex.DATABASE_SERVICE,
+        key: SearchIndex.DOMAIN,
+        label: i18n.t('label.domain-plural'),
+        value: EntityType.DOMAIN,
       },
       {
-        key: SearchIndex.MESSAGING_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.messaging'),
-        }),
-        value: EntityType.MESSAGING_SERVICE,
-      },
-
-      {
-        key: SearchIndex.DASHBOARD_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.dashboard'),
-        }),
-        value: EntityType.DASHBOARD_SERVICE,
-      },
-      {
-        key: SearchIndex.ML_MODEL_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.ml-model'),
-        }),
-        value: EntityType.MLMODEL_SERVICE,
-      },
-      {
-        key: SearchIndex.PIPELINE_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.pipeline'),
-        }),
-        value: EntityType.PIPELINE_SERVICE,
-      },
-      {
-        key: SearchIndex.STORAGE_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.storage'),
-        }),
-        value: EntityType.STORAGE_SERVICE,
-      },
-      {
-        key: SearchIndex.SEARCH_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.search'),
-        }),
-        value: EntityType.SEARCH_SERVICE,
+        key: SearchIndex.DATA_PRODUCT,
+        label: i18n.t('label.data-product-plural'),
+        value: EntityType.DATA_PRODUCT,
       },
     ],
   },
@@ -203,14 +163,11 @@ export const ASSET_SUB_MENU_FILTER: Array<{
     key: EntityType.DATABASE,
     children: [
       {
-        key: SearchIndex.TABLE,
-        label: i18n.t('label.table'),
-        value: EntityType.TABLE,
-      },
-      {
-        key: SearchIndex.STORED_PROCEDURE,
-        label: i18n.t('label.stored-procedure'),
-        value: EntityType.STORED_PROCEDURE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.database'),
+        }),
+        value: EntityType.SEARCH_SERVICE,
+        key: SearchIndex.DATABASE_SERVICE,
       },
       {
         key: SearchIndex.DATABASE,
@@ -222,12 +179,29 @@ export const ASSET_SUB_MENU_FILTER: Array<{
         label: i18n.t('label.database-schema'),
         value: EntityType.DATABASE_SCHEMA,
       },
+      {
+        key: SearchIndex.TABLE,
+        label: i18n.t('label.table'),
+        value: EntityType.TABLE,
+      },
+      {
+        key: SearchIndex.STORED_PROCEDURE,
+        label: i18n.t('label.stored-procedure'),
+        value: EntityType.STORED_PROCEDURE,
+      },
     ],
   },
   {
     key: EntityType.TOPIC,
-    label: i18n.t('label.topic-plural'),
+    label: i18n.t('label.messaging-plural'),
     children: [
+      {
+        key: SearchIndex.MESSAGING_SERVICE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.messaging'),
+        }),
+        value: EntityType.MESSAGING_SERVICE,
+      },
       {
         key: SearchIndex.TOPIC,
         label: i18n.t('label.topic'),
@@ -239,6 +213,13 @@ export const ASSET_SUB_MENU_FILTER: Array<{
     key: EntityType.DASHBOARD,
     label: i18n.t('label.dashboard-plural'),
     children: [
+      {
+        key: SearchIndex.DASHBOARD_SERVICE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.dashboard'),
+        }),
+        value: EntityType.DASHBOARD_SERVICE,
+      },
       {
         key: SearchIndex.DASHBOARD,
         label: i18n.t('label.dashboard'),
@@ -253,8 +234,15 @@ export const ASSET_SUB_MENU_FILTER: Array<{
   },
   {
     key: EntityType.MLMODEL,
-    label: i18n.t('label.ml-model-plural'),
+    label: i18n.t('label.machine-learning'),
     children: [
+      {
+        key: SearchIndex.ML_MODEL_SERVICE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.ml-model'),
+        }),
+        value: EntityType.MLMODEL_SERVICE,
+      },
       {
         key: SearchIndex.MLMODEL,
         label: i18n.t('label.ml-model'),
@@ -264,8 +252,15 @@ export const ASSET_SUB_MENU_FILTER: Array<{
   },
   {
     key: EntityType.PIPELINE,
-    label: i18n.t('label.pipeline'),
+    label: i18n.t('label.pipeline-plural'),
     children: [
+      {
+        key: SearchIndex.PIPELINE_SERVICE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.pipeline'),
+        }),
+        value: EntityType.PIPELINE_SERVICE,
+      },
       {
         key: SearchIndex.PIPELINE,
         label: i18n.t('label.pipeline'),
@@ -278,6 +273,13 @@ export const ASSET_SUB_MENU_FILTER: Array<{
     label: i18n.t('label.storage'),
     children: [
       {
+        key: SearchIndex.STORAGE_SERVICE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.storage'),
+        }),
+        value: EntityType.STORAGE_SERVICE,
+      },
+      {
         key: SearchIndex.CONTAINER,
         label: i18n.t('label.container'),
         value: EntityType.CONTAINER,
@@ -289,9 +291,32 @@ export const ASSET_SUB_MENU_FILTER: Array<{
     label: i18n.t('label.search'),
     children: [
       {
+        key: SearchIndex.SEARCH_SERVICE,
+        label: i18n.t('label.entity-service', {
+          entity: i18n.t('label.search'),
+        }),
+        value: EntityType.SEARCH_SERVICE,
+      },
+      {
         key: SearchIndex.SEARCH_INDEX,
         label: i18n.t('label.search-index'),
         value: EntityType.SEARCH_INDEX,
+      },
+    ],
+  },
+  {
+    key: EntityType.GOVERN,
+    label: i18n.t('label.governance'),
+    children: [
+      {
+        key: SearchIndex.GLOSSARY,
+        label: i18n.t('label.glossary-plural'),
+        value: EntityType.GLOSSARY,
+      },
+      {
+        key: SearchIndex.TAG,
+        label: i18n.t('label.tag-plural'),
+        value: EntityType.TAG,
       },
     ],
   },
@@ -316,14 +341,19 @@ export const ASSETS_INDEXES = [
   SearchIndex.PIPELINE_SERVICE,
   SearchIndex.STORAGE_SERVICE,
   SearchIndex.SEARCH_SERVICE,
+  SearchIndex.DOMAIN,
+  SearchIndex.DATA_PRODUCT,
+  SearchIndex.TAG,
 ];
 
 export const ASSET_MENU_KEYS = [
-  EntityType.SERVICE,
+  EntityType.DOMAIN,
   EntityType.DATABASE,
   EntityType.TOPIC,
   EntityType.PIPELINE,
+  EntityType.DASHBOARD,
   EntityType.MLMODEL,
   EntityType.CONTAINER,
   EntityType.SEARCH_INDEX,
+  EntityType.GOVERN,
 ];
