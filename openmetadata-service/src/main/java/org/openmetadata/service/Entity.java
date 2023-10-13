@@ -261,7 +261,6 @@ public final class Entity {
           } catch (Exception ex) {
             LOG.warn("Exception encountered", ex);
           }
-          LOG.warn("Exception encountered", e);
         }
       }
       initializedRepositories = true;
