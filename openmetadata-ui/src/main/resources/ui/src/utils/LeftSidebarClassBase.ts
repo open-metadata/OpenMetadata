@@ -10,18 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FC } from 'react';
+import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
-import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
+class LeftSidebarClassBase {
+  /**
+   * getSidebarElements
+   */
+  public getSidebarElements(): FC | null {
+    return null;
+  }
 
-export interface AppRunRecordWithId extends AppRunRecord {
-  id: string;
+  /**
+   * getSidebarItems
+   */
+  public getSidebarItems(): typeof SIDEBAR_LIST {
+    return SIDEBAR_LIST;
+  }
 }
 
-export interface AppRunsHistoryRef {
-  refreshAppHistory: () => void;
-}
+const leftSidebarClassBase = new LeftSidebarClassBase();
 
-export interface AppRunsHistoryProps {
-  maxRecords?: number;
-  showPagination?: boolean;
-}
+export default leftSidebarClassBase;
+
+export { LeftSidebarClassBase };

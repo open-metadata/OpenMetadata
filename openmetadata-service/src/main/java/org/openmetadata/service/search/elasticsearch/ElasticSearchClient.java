@@ -111,7 +111,6 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
@@ -984,7 +983,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void updateChildren(
-      String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates) {
+      String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(
@@ -994,7 +993,7 @@ public class ElasticSearchClient implements SearchClient {
               ScriptType.INLINE,
               Script.DEFAULT_SCRIPT_LANG,
               updates.getKey(),
-              JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : JsonUtils.getMap(updates.getValue())));
+              JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
       updateByQueryRequest.setScript(script);
       updateElasticSearchByQuery(updateByQueryRequest);
     }
@@ -1478,9 +1477,6 @@ public class ElasticSearchClient implements SearchClient {
         RestClientBuilder restClientBuilder =
             RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
 
-        RestClient restClient =
-            RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme())).build();
-
         if (StringUtils.isNotEmpty(esConfig.getUsername()) && StringUtils.isNotEmpty(esConfig.getPassword())) {
           CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
           credentialsProvider.setCredentials(
@@ -1505,7 +1501,7 @@ public class ElasticSearchClient implements SearchClient {
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
-        return new RestHighLevelClientBuilder(restClient).setApiCompatibilityMode(true).build();
+        return new RestHighLevelClientBuilder(restClientBuilder.build()).setApiCompatibilityMode(true).build();
       } catch (Exception e) {
         LOG.error("Failed to create elastic search client ", e);
         return null;
