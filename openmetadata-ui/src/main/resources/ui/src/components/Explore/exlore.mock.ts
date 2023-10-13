@@ -266,3 +266,61 @@ export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
     },
   },
 };
+
+export const MOCK_EXPLORE_TAB_ITEMS = [
+  {
+    key: 'table_search_index',
+    label: 'table_search_index',
+    count: 60,
+  },
+  {
+    key: 'stored_procedure_search_index',
+    label: 'stored_procedure_search_index',
+    count: 6,
+  },
+  {
+    key: 'dashboard_search_index',
+    label: 'dashboard_search_index',
+    count: 42,
+  },
+  {
+    key: 'dashboard_data_model_search_index',
+    label: 'dashboard_data_model_search_index',
+    count: 18,
+  },
+  {
+    key: 'pipeline_search_index',
+    label: 'pipeline_search_index',
+    count: 24,
+  },
+  {
+    key: 'topic_search_index',
+    label: 'topic_search_index',
+    count: 30,
+  },
+  {
+    key: 'mlmodel_search_index',
+    label: 'mlmodel_search_index',
+    count: 6,
+  },
+  {
+    key: 'container_search_index',
+    label: 'container_search_index',
+    count: 51,
+  },
+  {
+    key: 'glossary_term_search_index',
+    label: 'glossary_term_search_index',
+    count: 0,
+  },
+  {
+    key: 'tag_search_index',
+    label: 'tag_search_index',
+    count: 40,
+  },
+  {
+    key: 'search_entity_search_index',
+    label: 'search_entity_search_index',
+    count: 3,
+  },
+];

@@ -330,6 +330,12 @@ const getCommonQueryBuilderFields = (
         useAsyncSearch: true,
       },
     },
+    extension: {
+      label: t('label.custom-attribute-plural'),
+      type: '!group',
+      mainWidgetProps,
+      subfields: {},
+    },
   };
 
   return commonQueryBuilderFields;
