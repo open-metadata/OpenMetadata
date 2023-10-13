@@ -120,11 +120,16 @@ function CustomizeMyData({
   }, []);
 
   const handleAddWidget = useCallback(
-    (newWidgetData: Document, placeholderWidgetKey: string) => {
+    (
+      newWidgetData: Document,
+      placeholderWidgetKey: string,
+      widgetSize: number
+    ) => {
       setLayout(
         getAddWidgetHandler(
           newWidgetData,
           placeholderWidgetKey,
+          widgetSize,
           customizePageClassBase.landingPageMaxGridSize
         )
       );
@@ -226,6 +231,7 @@ function CustomizeMyData({
           followedDataCount={followedDataCount}
           handleRemoveWidget={handleRemoveWidget}
           isLoadingOwnedData={isLoadingOwnedData}
+          selectedGridSize={widgetConfig.w}
           widgetKey={widgetConfig.i}
         />
       );

@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Image,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  TabsProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { CheckOutlined } from '@ant-design/icons';
+import { Modal, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -32,11 +21,14 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WidgetWidths } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../rest/DocStoreAPI';
-import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import { AddWidgetModalProps } from './AddWidgetModal.interface';
+import {
+  AddWidgetModalProps,
+  WidgetSizeInfo,
+} from './AddWidgetModal.interface';
 import './AddWidgetModal.less';
+import AddWidgetTabContent from './AddWidgetTabContent';
 
 function AddWidgetModal({
   open,
@@ -62,29 +54,19 @@ function AddWidgetModal({
   }, []);
 
   const getAddWidgetHandler = useCallback(
-    (widget: Document) => () => handleAddWidget(widget, placeholderWidgetKey),
+    (widget: Document, widgetSize: number) => () =>
+      handleAddWidget(widget, placeholderWidgetKey, widgetSize),
     [handleAddWidget, placeholderWidgetKey]
-  );
-
-  const checkAddWidgetValidity = useCallback(
-    (widget: Document) => {
-      const gridSizes = widget.data.gridSizes;
-      const gridSizesInNumbers: Array<number> = gridSizes.map(
-        (size: WidgetWidths) => WidgetWidths[size]
-      );
-
-      return gridSizesInNumbers.every((size) => size <= maxGridSizeSupport);
-    },
-    [widgetsList]
   );
 
   const tabItems: TabsProps['items'] = useMemo(
     () =>
       widgetsList?.map((widget) => {
-        const widgetAddable = checkAddWidgetValidity(widget);
-        const widgetImage = customizePageClassBase.getWidgetImageFromKey(
-          widget.fullyQualifiedName
-        );
+        const widgetSizeOptions: Array<WidgetSizeInfo> =
+          widget.data.gridSizes.map((size: WidgetWidths) => ({
+            label: size,
+            value: WidgetWidths[size],
+          }));
 
         return {
           label: (
@@ -102,36 +84,16 @@ function AddWidgetModal({
           ),
           key: widget.fullyQualifiedName,
           children: (
-            <Row align="middle" className="h-min-480" justify="center">
-              <Col>
-                <Space align="center" direction="vertical">
-                  <Image className="p-y-md" preview={false} src={widgetImage} />
-                  <Typography.Paragraph className="d-block text-center">
-                    {widget.description}
-                  </Typography.Paragraph>
-                  <Tooltip
-                    placement="bottom"
-                    title={
-                      widgetAddable ? '' : t('message.can-not-add-widget')
-                    }>
-                    <Button
-                      ghost
-                      className="p-x-lg m-t-md"
-                      data-testid="add-widget-placeholder-button"
-                      disabled={!widgetAddable}
-                      icon={<PlusOutlined />}
-                      type="primary"
-                      onClick={getAddWidgetHandler(widget)}>
-                      {t('label.add')}
-                    </Button>
-                  </Tooltip>
-                </Space>
-              </Col>
-            </Row>
+            <AddWidgetTabContent
+              getAddWidgetHandler={getAddWidgetHandler}
+              maxGridSizeSupport={maxGridSizeSupport}
+              widget={widget}
+              widgetSizeOptions={widgetSizeOptions}
+            />
           ),
         };
       }),
-    [widgetsList, addedWidgetsList, checkAddWidgetValidity, getAddWidgetHandler]
+    [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
   useEffect(() => {

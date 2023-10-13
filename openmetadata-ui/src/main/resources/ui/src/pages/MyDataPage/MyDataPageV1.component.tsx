@@ -177,6 +177,7 @@ const MyDataPageV1 = () => {
           followedData={followedData ?? []}
           followedDataCount={followedDataCount}
           isLoadingOwnedData={isLoadingOwnedData}
+          selectedGridSize={widgetConfig.w}
           widgetKey={widgetConfig.i}
         />
       );

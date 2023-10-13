@@ -80,11 +80,16 @@ const RightSidebar = ({
   }, []);
 
   const handleAddWidget = useCallback(
-    (newWidgetData: Document, placeholderWidgetKey: string) => {
+    (
+      newWidgetData: Document,
+      placeholderWidgetKey: string,
+      widgetSize: number
+    ) => {
       setLayout(
         getAddWidgetHandler(
           newWidgetData,
           placeholderWidgetKey,
+          widgetSize,
           customizePageClassBase.landingPageRightContainerMaxGridSize
         )
       );
@@ -121,6 +126,7 @@ const RightSidebar = ({
           handleRemoveWidget={handleRemoveWidget}
           isEditView={isEditView}
           isLoadingOwnedData={isLoadingOwnedData}
+          selectedGridSize={widgetConfig.w}
           widgetKey={widgetConfig.i}
         />
       );

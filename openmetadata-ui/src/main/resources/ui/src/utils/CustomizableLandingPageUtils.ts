@@ -33,11 +33,11 @@ export const getAddWidgetHandler =
   (
     newWidgetData: Document,
     placeholderWidgetKey: string,
+    widgetWidth: number,
     maxGridSize: number
   ) =>
   (currentLayout: Array<WidgetConfig>) => {
     const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
-    const widgetWidth = getWidgetWidth(newWidgetData);
     const widgetHeight = customizePageClassBase.getWidgetHeight(
       newWidgetData.name
     );

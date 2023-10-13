@@ -30,7 +30,10 @@ import FollowingWidget, {
 import RecentlyViewed from '../components/recently-viewed/RecentlyViewed';
 import TotalDataAssetsWidget from '../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import FeedsWidget from '../components/Widgets/FeedsWidget/FeedsWidget.component';
-import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
+import {
+  LandingPageWidgetKeys,
+  WidgetWidths,
+} from '../enums/CustomizablePage.enum';
 import {
   WidgetCommonProps,
   WidgetConfig,
@@ -47,12 +50,12 @@ class CustomizePageClassBase {
   landingPageWidgetDefaultHeights: Record<string, number> = {
     activityFeed: 5,
     rightSidebar: 11.5,
-    announcements: 3.9,
+    announcements: 3.1,
     following: 2.4,
     recentlyViewed: 2.1,
-    myData: 2.8,
-    kpi: 2.8,
-    totalDataAssets: 3.42,
+    myData: 3.1,
+    kpi: 3.1,
+    totalAssets: 3.1,
   };
 
   rightPanelDefaultLayout: Array<WidgetConfig> = [
@@ -121,7 +124,7 @@ class CustomizePageClassBase {
       static: false,
     },
     {
-      h: this.landingPageWidgetDefaultHeights.totalDataAssets,
+      h: this.landingPageWidgetDefaultHeights.totalAssets,
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       w: 3,
       x: 0,
@@ -185,7 +188,7 @@ class CustomizePageClassBase {
     return (() => null) as React.FC;
   }
 
-  public getWidgetImageFromKey(widgetKey: string): string {
+  public getWidgetImageFromKey(widgetKey: string, size?: number): string {
     switch (widgetKey) {
       case LandingPageWidgetKeys.ACTIVITY_FEED: {
         return ActivityFeedImg;
@@ -194,9 +197,17 @@ class CustomizePageClassBase {
         return MyDataImg;
       }
       case LandingPageWidgetKeys.KPI: {
+        if (size === WidgetWidths.small) {
+          return '';
+        }
+
         return KPIImg;
       }
       case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
+        if (size === WidgetWidths.medium) {
+          return '';
+        }
+
         return TotalAssetsImg;
       }
       case LandingPageWidgetKeys.ANNOUNCEMENTS: {
@@ -230,8 +241,8 @@ class CustomizePageClassBase {
         return this.landingPageWidgetDefaultHeights.myData;
       case 'KPI':
         return this.landingPageWidgetDefaultHeights.kpi;
-      case 'TotalDataAssets':
-        return this.landingPageWidgetDefaultHeights.totalDataAssets;
+      case 'TotalAssets':
+        return this.landingPageWidgetDefaultHeights.totalAssets;
       default:
         return this.defaultWidgetHeight;
     }

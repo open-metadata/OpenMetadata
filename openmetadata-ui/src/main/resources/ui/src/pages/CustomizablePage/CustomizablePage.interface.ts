@@ -23,6 +23,7 @@ export interface WidgetConfig
 }
 
 export interface WidgetCommonProps {
+  selectedGridSize?: number;
   isEditView?: boolean;
   widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
