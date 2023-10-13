@@ -21,6 +21,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
   initialData,
   onCancel,
   onSubmit,
+  isQuartzCron = false,
 }) => {
   const [repeatFrequency, setRepeatFrequency] = useState<string | undefined>(
     initialData
@@ -36,6 +37,7 @@ const TestSuiteScheduler: React.FC<TestSuiteSchedulerProps> = ({
     <Row gutter={[16, 32]}>
       <Col span={24}>
         <CronEditor
+          isQuartzCron={isQuartzCron}
           value={repeatFrequency}
           onChange={(value: string) => setRepeatFrequency(value)}
         />

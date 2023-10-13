@@ -36,6 +36,7 @@ import java.util.UUID;
 import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -189,7 +190,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
-      entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getGlossary().getName(), entity.getName()));
+      entity.setFullyQualifiedName(
+          FullyQualifiedName.build(entity.getGlossary().getFullyQualifiedName(), entity.getName()));
     } else { // Glossary term that is a child of another glossary term
       EntityReference parent = entity.getParent();
       entity.setFullyQualifiedName(FullyQualifiedName.add(parent.getFullyQualifiedName(), entity.getName()));
@@ -367,6 +369,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       validateParent();

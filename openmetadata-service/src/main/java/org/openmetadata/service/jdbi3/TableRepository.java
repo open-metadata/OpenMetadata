@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTableProfile;
@@ -179,6 +180,7 @@ public class TableRepository extends EntityRepository<Table> {
     ColumnUtil.setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
   }
 
+  @Transaction
   public Table addJoins(UUID tableId, TableJoins joins) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -210,6 +212,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withJoins(getJoins(table));
   }
 
+  @Transaction
   public Table addSampleData(UUID tableId, TableData tableData) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -255,6 +258,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  @Transaction
   public Table deleteSampleData(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -284,6 +288,7 @@ public class TableRepository extends EntityRepository<Table> {
         .orElse(null);
   }
 
+  @Transaction
   public Table addTableProfilerConfig(UUID tableId, TableProfilerConfig tableProfilerConfig) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -313,6 +318,7 @@ public class TableRepository extends EntityRepository<Table> {
     return table.withTableProfilerConfig(tableProfilerConfig);
   }
 
+  @Transaction
   public Table deleteTableProfilerConfig(UUID tableId) {
     // Validate the request content
     Table table = dao.findEntityById(tableId);
@@ -557,6 +563,21 @@ public class TableRepository extends EntityRepository<Table> {
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table = dao.findEntityById(tableId);
+
+    // Update the sql fields only if correct value is present
+    if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
+      if (table.getDataModel() != null
+          && (table.getDataModel().getRawSql() != null && !table.getDataModel().getRawSql().isBlank())) {
+        dataModel.setRawSql(table.getDataModel().getRawSql());
+      }
+    }
+
+    if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
+      if (table.getDataModel() != null
+          && (table.getDataModel().getSql() != null || !table.getDataModel().getSql().isBlank())) {
+        dataModel.setSql(table.getDataModel().getSql());
+      }
+    }
     table.withDataModel(dataModel);
 
     // Carry forward the table owner from the model to table entity, if empty

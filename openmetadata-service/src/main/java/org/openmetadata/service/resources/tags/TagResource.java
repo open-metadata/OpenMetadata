@@ -56,7 +56,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
@@ -70,7 +69,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -173,18 +171,21 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         EntityRepository.getEntitiesFromSeedData(CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
       Classification classification =
-          ClassificationResource.getClassification(loadTags.getCreateClassification(), ADMIN_USER_NAME);
+          ClassificationResource.getClassification(
+              classificationRepository, loadTags.getCreateClassification(), ADMIN_USER_NAME);
       classificationRepository.initializeEntity(classification);
 
       List<Tag> tagsToCreate = new ArrayList<>();
       for (CreateTag createTag : loadTags.getCreateTags()) {
         createTag.withClassification(classification.getName());
         createTag.withProvider(classification.getProvider());
-        tagsToCreate.add(getTag(createTag, ADMIN_USER_NAME));
+        Tag tag = getTag(createTag, ADMIN_USER_NAME);
+        repository.setFullyQualifiedName(tag); // FQN required for ordering tags based on hierarchy
+        tagsToCreate.add(tag);
       }
 
       // Sort tags based on tag hierarchy
-      EntityUtil.sortByTagHierarchy(tagsToCreate);
+      EntityUtil.sortByFQN(tagsToCreate);
 
       for (Tag tag : tagsToCreate) {
         repository.initializeEntity(tag);
@@ -494,14 +495,11 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
   }
 
   private Tag getTag(CreateTag create, String updateBy) {
-    String parentFQN = create.getParent() != null ? create.getParent() : create.getClassification();
-    EntityReference classification = getEntityReference(CLASSIFICATION, create.getClassification());
-    EntityReference parent = create.getParent() == null ? null : getEntityReference(TAG, create.getParent());
-    return copy(new Tag(), create, updateBy)
-        .withFullyQualifiedName(FullyQualifiedName.add(parentFQN, create.getName()))
+    return repository
+        .copy(new Tag(), create, updateBy)
         .withStyle(create.getStyle())
-        .withParent(parent)
-        .withClassification(classification)
+        .withParent(getEntityReference(TAG, create.getParent()))
+        .withClassification(getEntityReference(CLASSIFICATION, create.getClassification()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

@@ -215,8 +215,8 @@ class LookerSource(DashboardServiceSource):
         file_path = f"{self._main_lookml_repo.path}/{path}"
         if not os.path.isfile(file_path):
             return None
-        with open(file_path, "r", encoding="utf-8") as f:
-            manifest = LookMLManifest.parse_obj(lkml.load(f))
+        with open(file_path, "r", encoding="utf-8") as fle:
+            manifest = LookMLManifest.parse_obj(lkml.load(fle))
             if manifest and manifest.remote_dependency:
                 remote_name = manifest.remote_dependency["name"]
                 remote_git_url = manifest.remote_dependency["url"]

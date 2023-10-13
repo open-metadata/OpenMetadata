@@ -45,7 +45,6 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
 import Loader from '../../Loader/Loader';
 import { TaskTab } from '../../Task/TaskTab/TaskTab.component';
 import '../../Widgets/FeedsWidget/feeds-widget.less';
@@ -117,12 +116,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     history.push(
-      getEntityDetailLink(
-        entityType,
-        EntityType.TABLE === entityType ? getEncodedFqn(fqn) : fqn,
-        EntityTabs.ACTIVITY_FEED,
-        subTab
-      )
+      getEntityDetailLink(entityType, fqn, EntityTabs.ACTIVITY_FEED, subTab)
     );
     setActiveThread();
   };
@@ -141,7 +135,7 @@ export const ActivityFeedTab = ({
     if (!isUserEntity) {
       // To get conversation count
       getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
+        getEntityFeedLink(entityType, fqn),
         ThreadType.Conversation
       ).then((res) => {
         if (res) {
@@ -152,16 +146,15 @@ export const ActivityFeedTab = ({
       });
 
       // To get open tasks count
-      getFeedCount(
-        getEntityFeedLink(entityType, encodeURIComponent(fqn)),
-        ThreadType.Task
-      ).then((res) => {
-        if (res) {
-          setTasksCount(res.totalCount);
-        } else {
-          throw t('server.entity-feed-fetch-error');
+      getFeedCount(getEntityFeedLink(entityType, fqn), ThreadType.Task).then(
+        (res) => {
+          if (res) {
+            setTasksCount(res.totalCount);
+          } else {
+            throw t('server.entity-feed-fetch-error');
+          }
         }
-      });
+      );
     } else {
       // count for task on userProfile page
       getAllFeeds(
@@ -204,15 +197,17 @@ export const ActivityFeedTab = ({
   }, [fqn]);
 
   const { feedFilter, threadType } = useMemo(() => {
-    const userFilter =
-      isUserEntity && currentUser?.isAdmin
+    let filter;
+    if (!isUserEntity) {
+      filter = currentUser?.isAdmin
         ? FeedFilter.ALL
         : FeedFilter.OWNER_OR_FOLLOWS;
+    }
 
     return {
       threadType:
         activeTab === 'tasks' ? ThreadType.Task : ThreadType.Conversation,
-      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : userFilter,
+      feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isUserEntity, currentUser]);
 

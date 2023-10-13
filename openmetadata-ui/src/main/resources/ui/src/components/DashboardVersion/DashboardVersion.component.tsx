@@ -40,6 +40,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
 const DashboardVersion: FC<DashboardVersionProp> = ({
@@ -79,7 +80,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     history.push(
       getVersionPathWithTab(
         EntityType.DASHBOARD,
-        currentVersionData.fullyQualifiedName ?? '',
+        getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
         String(version),
         activeKey
       )
@@ -200,7 +201,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityFqn={currentVersionData.fullyQualifiedName}
                     entityType={EntityType.DASHBOARD}
                     key={tagType}
                     permission={false}

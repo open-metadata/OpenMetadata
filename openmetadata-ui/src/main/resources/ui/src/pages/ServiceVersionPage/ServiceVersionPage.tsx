@@ -99,6 +99,11 @@ function ServiceVersionPage() {
     {} as EntityHistory
   );
 
+  const decodedServiceFQN = useMemo(
+    () => getDecodedFqn(serviceFQN),
+    [serviceFQN]
+  );
+
   const [entityType, resourceEntity] = useMemo(
     () => [
       getEntityTypeFromServiceCategory(serviceCategory),
@@ -167,7 +172,7 @@ function ServiceVersionPage() {
   const fetchDatabases = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,tags,usageSummary',
         paging
       );
@@ -175,65 +180,65 @@ function ServiceVersionPage() {
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchTopics = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
-        serviceFQN,
+        decodedServiceFQN,
         'owner,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchDashboards = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,usageSummary,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchPipeLines = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchMlModal = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
-        getDecodedFqn(serviceFQN),
+        decodedServiceFQN,
         'owner,tags',
         paging
       );
       setData(data);
       setPaging(resPaging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchContainers = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
-        service: getDecodedFqn(serviceFQN),
+        service: decodedServiceFQN,
         fields: 'owner,tags',
         paging,
         root: true,
@@ -243,13 +248,13 @@ function ServiceVersionPage() {
       setData(response.data);
       setPaging(response.paging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const fetchSearchIndexes = useCallback(
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
-        service: getDecodedFqn(serviceFQN),
+        service: decodedServiceFQN,
         fields: 'owner,tags',
         paging,
         root: true,
@@ -259,7 +264,7 @@ function ServiceVersionPage() {
       setData(response.data);
       setPaging(response.paging);
     },
-    [serviceFQN]
+    [decodedServiceFQN]
   );
 
   const getOtherDetails = useCallback(

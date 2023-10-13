@@ -19,7 +19,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -289,23 +288,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return repository.importFromCsv(name, csv, dryRun, securityContext.getUserPrincipal().getName());
   }
 
-  public T copy(T entity, CreateEntity request, String updatedBy) {
-    EntityReference owner = repository.validateOwner(request.getOwner());
-    EntityReference domain = repository.validateDomain(request.getDomain());
-    entity.setId(UUID.randomUUID());
-    entity.setName(request.getName());
-    entity.setDisplayName(request.getDisplayName());
-    entity.setDescription(request.getDescription());
-    entity.setOwner(owner);
-    entity.setDomain(domain);
-    entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
-    entity.setLifeCycle(request.getLifeCycle());
-    entity.setExtension(request.getExtension());
-    entity.setUpdatedBy(updatedBy);
-    entity.setUpdatedAt(System.currentTimeMillis());
-    return entity;
-  }
-
   protected ResourceContext<T> getResourceContext() {
     return new ResourceContext<>(entityType);
   }
@@ -340,7 +322,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return EntityUtil.getEntityReference(entityType, fqn);
   }
 
-  protected List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
+  protected static List<EntityReference> getEntityReferences(String entityType, List<String> fqns) {
     if (nullOrEmpty(fqns)) {
       return null;
     }

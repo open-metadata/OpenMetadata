@@ -220,7 +220,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "children": {
         "properties": {
@@ -265,7 +265,7 @@
         "type": "text"
       },
       "numberOfObjects": {
-        "type": "integer"
+        "type": "double"
       },
       "size": {
         "type": "long"

@@ -426,7 +426,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
   }
 
   private Chart getChart(CreateChart create, String user) {
-    return copy(new Chart(), create, user)
+    return repository
+        .copy(new Chart(), create, user)
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withSourceUrl(create.getSourceUrl())

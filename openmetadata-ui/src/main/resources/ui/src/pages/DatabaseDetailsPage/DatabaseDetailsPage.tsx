@@ -145,6 +145,11 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const decodedDatabaseFQN = useMemo(
+    () => getDecodedFqn(databaseFQN),
+    [databaseFQN]
+  );
+
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
@@ -243,7 +248,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+    getFeedCount(getEntityFeedLink(EntityType.DATABASE, decodedDatabaseFQN))
       .then((res) => {
         if (res) {
           setFeedCount(res.totalCount);
@@ -330,7 +335,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(getDecodedFqn(databaseFQN), key),
+        pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
       });
     }
   };
@@ -623,7 +628,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
                     description={description}
-                    entityFqn={databaseFQN}
+                    entityFqn={decodedDatabaseFQN}
                     entityName={databaseName}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
@@ -670,7 +675,7 @@ const DatabaseDetails: FunctionComponent = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={databaseFQN}
+                  entityFqn={decodedDatabaseFQN}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -680,7 +685,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={databaseFQN}
+                  entityFqn={decodedDatabaseFQN}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -743,7 +748,7 @@ const DatabaseDetails: FunctionComponent = () => {
       description,
       databaseName,
       entityFieldThreadCount,
-      databaseFQN,
+      decodedDatabaseFQN,
       activeTab,
       databaseTable,
       databasePermission,
@@ -790,7 +795,7 @@ const DatabaseDetails: FunctionComponent = () => {
       })}>
       {isEmpty(database) ? (
         <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(EntityType.DATABASE, databaseFQN)}
+          {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>

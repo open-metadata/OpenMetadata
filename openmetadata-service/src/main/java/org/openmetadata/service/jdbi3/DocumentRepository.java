@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DOCUMENT;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
@@ -84,6 +85,7 @@ public class DocumentRepository extends EntityRepository<Document> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("data", original.getData(), updated.getData(), true);

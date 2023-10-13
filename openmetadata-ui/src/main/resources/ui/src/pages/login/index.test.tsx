@@ -34,7 +34,7 @@ jest.mock('../../components/authentication/auth-provider/AuthProvider', () => ({
 jest.mock(
   '../../components/ApplicationConfigProvider/ApplicationConfigProvider',
   () => ({
-    useApplicationConfigProvider: jest.fn().mockImplementation(() => ({
+    useApplicationConfigContext: jest.fn().mockImplementation(() => ({
       customLogoUrlPath: 'https://customlink.source',
 
       customMonogramUrlPath: 'https://customlink.source',
