@@ -157,6 +157,9 @@
           }
         }
       },
+      "columnNames": {
+        "type": "keyword"
+      },
       "databaseSchema": {
         "properties": {
           "id": {
