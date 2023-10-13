@@ -33,7 +33,7 @@ function AddWidgetTabContent({
   maxGridSizeSupport,
   widget,
   widgetSizeOptions,
-}: AddWidgetTabContentProps) {
+}: Readonly<AddWidgetTabContentProps>) {
   const { t } = useTranslation();
   const [selectedWidgetSize, setSelectedWidgetSize] = useState<number>(
     widgetSizeOptions[0].value
