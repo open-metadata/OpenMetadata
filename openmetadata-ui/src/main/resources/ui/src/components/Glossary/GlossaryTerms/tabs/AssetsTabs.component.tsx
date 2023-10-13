@@ -81,6 +81,7 @@ const AssetsTabs = forwardRef(
       onAssetClick,
       isSummaryPanelOpen,
       onAddAsset,
+      assetCount,
       type = AssetsOfEntity.GLOSSARY,
       viewType = AssetsViewType.PILLS,
     }: AssetsTabsProps,
@@ -409,6 +410,7 @@ const AssetsTabs = forwardRef(
         <div className="assets-data-container">
           {data.map(({ _source, _id = '' }, index) => (
             <ExploreSearchCard
+              showEntityIcon
               className={classNames(
                 'm-b-sm cursor-pointer',
                 selectedCard?.id === _source.id ? 'highlight-card' : ''
@@ -485,16 +487,18 @@ const AssetsTabs = forwardRef(
               showArrow={false}
               trigger="click"
               onOpenChange={handleAssetButtonVisibleChange}>
-              <Badge count={activeFilter.length}>
-                <Button
-                  ghost
-                  icon={<FilterOutlined />}
-                  ref={popupRef}
-                  style={{ background: 'white' }}
-                  type="primary">
-                  {t('label.filter-plural')}
-                </Button>
-              </Badge>
+              {Boolean(assetCount) && (
+                <Badge count={activeFilter.length}>
+                  <Button
+                    ghost
+                    icon={<FilterOutlined />}
+                    ref={popupRef}
+                    style={{ background: 'white' }}
+                    type="primary">
+                    {t('label.filter-plural')}
+                  </Button>
+                </Badge>
+              )}
             </Popover>
           </div>
         );

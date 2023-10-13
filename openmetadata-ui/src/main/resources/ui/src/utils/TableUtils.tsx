@@ -363,8 +363,14 @@ export const getEntityIcon = (indexType: string) => {
 
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
+    case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
-      return <SearchOutlined className="text-sm" />;
+      return (
+        <SearchOutlined
+          className="text-sm text-inherit"
+          style={{ color: DE_ACTIVE_COLOR }}
+        />
+      );
 
     case EntityType.DOMAIN:
     case EntityType.DATA_PRODUCT:

@@ -31,7 +31,11 @@ import {
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import {
+  getEntityIcon,
+  getServiceIcon,
+  getUsagePercentile,
+} from '../../../utils/TableUtils';
 import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
 import TableDataCardBody from '../../TableDataCardBody/TableDataCardBody';
 import { useTourProvider } from '../../TourProvider/TourProvider';
@@ -48,6 +52,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       className,
       source,
       matches,
+      showEntityIcon,
       handleSummaryPanelDisplay,
       showTags = true,
       openEntityInNewPage,
@@ -138,24 +143,32 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 </Typography.Text>
               </Button>
             ) : (
-              <Link
-                className="no-underline"
-                data-testid="entity-link"
-                target={openEntityInNewPage ? '_blank' : '_self'}
-                to={
-                  source.fullyQualifiedName && source.entityType
-                    ? getEntityLinkFromType(
-                        source.fullyQualifiedName,
-                        source.entityType as EntityType
-                      )
-                    : ''
-                }>
-                <Typography.Text
-                  className="text-lg font-medium text-link-color"
-                  data-testid="entity-header-display-name">
-                  {stringToHTML(getEntityName(source))}
-                </Typography.Text>
-              </Link>
+              <div className="w-full d-flex items-start">
+                {showEntityIcon && (
+                  <span className="w-6 h-6 m-r-xs d-flex text-xl">
+                    {getEntityIcon(source.entityType ?? '')}
+                  </span>
+                )}
+
+                <Link
+                  className="no-underline w-full"
+                  data-testid="entity-link"
+                  target={openEntityInNewPage ? '_blank' : '_self'}
+                  to={
+                    source.fullyQualifiedName && source.entityType
+                      ? getEntityLinkFromType(
+                          source.fullyQualifiedName,
+                          source.entityType as EntityType
+                        )
+                      : ''
+                  }>
+                  <Typography.Text
+                    className="text-lg font-medium text-link-color"
+                    data-testid="entity-header-display-name">
+                    {stringToHTML(getEntityName(source))}
+                  </Typography.Text>
+                </Link>
+              </div>
             )}
           </Col>
         </Row>
