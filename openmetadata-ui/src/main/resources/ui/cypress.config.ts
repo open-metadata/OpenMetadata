@@ -28,6 +28,10 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return plugins(on, config);
     },
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: [
+      'cypress/e2e/Page/*.{js,jsx,ts,tsx}',
+      'cypress/e2eFeaturesjs,jsx,ts,tsx}',
+      'cypress/e2e/Flow/*.{js,jsx,ts,tsx}',
+    ],
   },
 });
