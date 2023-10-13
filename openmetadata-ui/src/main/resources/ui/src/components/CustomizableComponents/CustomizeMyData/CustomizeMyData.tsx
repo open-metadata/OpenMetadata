@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, uniqBy } from 'lodash';
@@ -84,6 +84,7 @@ function CustomizeMyData({
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
@@ -140,6 +141,14 @@ function CustomizeMyData({
     },
     [layout]
   );
+
+  const handleOpenResetModal = useCallback(() => {
+    setIsResetModalOpen(true);
+  }, []);
+
+  const handleCloseResetModal = useCallback(() => {
+    setIsResetModalOpen(false);
+  }, []);
 
   const handleOpenAddWidgetModal = useCallback(() => {
     setIsWidgetModalOpen(true);
@@ -321,6 +330,7 @@ function CustomizeMyData({
       },
     ]);
     setResetRightPanelLayout(true);
+    setIsResetModalOpen(false);
   }, []);
 
   useEffect(() => {
@@ -358,8 +368,8 @@ function CustomizeMyData({
           <Button size="small" onClick={handleCancel}>
             {t('label.cancel')}
           </Button>
-          <Button size="small" onClick={handleReset}>
-            {t('label.reset-default-layout')}
+          <Button size="small" onClick={handleOpenResetModal}>
+            {t('label.reset')}
           </Button>
           <Button size="small" type="primary" onClick={handleSave}>
             {t('label.save')}
@@ -395,6 +405,18 @@ function CustomizeMyData({
               open={isWidgetModalOpen}
               placeholderWidgetKey={placeholderWidgetKey}
             />
+          )}
+          {isResetModalOpen && (
+            <Modal
+              centered
+              cancelText={t('label.no')}
+              okText={t('label.yes')}
+              open={isResetModalOpen}
+              title={t('label.reset-default-layout')}
+              onCancel={handleCloseResetModal}
+              onOk={handleReset}>
+              {t('message.reset-layout-confirmation')}
+            </Modal>
           )}
         </ActivityFeedProvider>
       </Col>
