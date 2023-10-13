@@ -35,6 +35,7 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
@@ -335,6 +336,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
+  @Transaction
   private void createEntity(CSVPrinter resultsPrinter, CSVRecord csvRecord, T entity) throws IOException {
     entity.setId(UUID.randomUUID());
     entity.setUpdatedBy(importedBy);

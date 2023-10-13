@@ -373,7 +373,7 @@ a[href].link-text-grey,
   font-weight: 700;
   font-size: 18px;
   line-height: 22px;
-  color: @text-color !important;
+  color: @text-color;
   text-decoration: none !important;
 }
 
@@ -737,49 +737,4 @@ a[href].link-text-grey,
   background-color: @text-highlighter;
   padding-left: 0.25rem;
   padding-right: 0.25rem;
-}
-
-// ****  Lazy Logs ****
-
-.lazy-log-container {
-  .react-lazylog-searchbar {
-    position: absolute;
-    z-index: 9;
-    top: -45px;
-    background: unset;
-    padding: unset;
-
-    .react-lazylog-searchbar-input {
-      height: 30px;
-      border-radius: 4px;
-      background: unset;
-      color: @text-color;
-    }
-  }
-
-  .react-lazylog-searchbar-filter,
-  .react-lazylog-searchbar-matches {
-    display: none;
-  }
-}
-// ****  Stats  ****
-
-.request-badge {
-  &.success {
-    .ant-badge-count {
-      background-color: @green-3;
-      color: @text-color;
-    }
-  }
-  &.failed {
-    .ant-badge-count {
-      background-color: @red-3;
-      color: @text-color;
-    }
-  }
-  &.running {
-    .ant-badge-count {
-      background-color: @primary-color;
-    }
-  }
 }

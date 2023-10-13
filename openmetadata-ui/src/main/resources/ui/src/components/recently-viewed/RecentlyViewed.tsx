@@ -18,22 +18,18 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import EntityListSkeleton from '../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityReference } from '../../generated/type/entityReference';
+import { WidgetCommonProps } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getRecentlyViewedData, prepareLabel } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
 import './recently-viewed.less';
 
-interface RecentlyViewedProps {
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
-}
-
 const RecentlyViewed = ({
   isEditView,
   handleRemoveWidget,
-}: RecentlyViewedProps) => {
+  widgetKey,
+}: WidgetCommonProps) => {
   const { t } = useTranslation();
 
   const [data, setData] = useState<Array<EntityReference>>([]);
@@ -59,16 +55,15 @@ const RecentlyViewed = ({
   };
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.RECENTLY_VIEWED);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   useEffect(() => {
     prepareData();
   }, []);
 
   return (
-    <div className="p-l-md" data-testid="recently-viewed-container">
+    <div className="bg-white h-full" data-testid="recently-viewed-container">
       <EntityListSkeleton
         dataLength={data.length !== 0 ? data.length : 5}
         loading={Boolean(isLoading)}>

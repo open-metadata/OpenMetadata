@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isNil, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -25,28 +25,28 @@ import { Responsive, WidthProvider } from 'react-grid-layout';
 import { useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { useApplicationConfigContext } from '../../components/ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
-import KPIWidget from '../../components/KPIWidget/KPIWidget.component';
 import Loader from '../../components/Loader/Loader';
-import { MyDataWidget } from '../../components/MyData/MyDataWidget/MyDataWidget.component';
 import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
-import TotalDataAssetsWidget from '../../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
-import FeedsWidget from '../../components/Widgets/FeedsWidget/FeedsWidget.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import {
   LANDING_PAGE_LAYOUT,
   LANDING_PAGE_WIDGET_MARGIN,
-} from '../../constants/CustomisePage.constants';
+} from '../../constants/CustomizePage.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
+import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
+import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
+import { CustomizePageClassBase } from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { WidgetConfig } from '../CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -55,6 +55,7 @@ const MyDataPageV1 = () => {
   const location = useLocation();
   const { isAuthDisabled } = useAuth(location.pathname);
   const { currentUser } = useAuthContext();
+  const { selectedPersona } = useApplicationConfigContext();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -62,6 +63,9 @@ const MyDataPageV1 = () => {
   const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
   const isMounted = useRef(false);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
+  const [isAnnouncementLoading, setIsAnnouncementLoading] =
+    useState<boolean>(true);
+  const [announcements, setAnnouncements] = useState<Thread[]>([]);
   const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
   const loggedInUserName = useMemo(() => {
@@ -74,19 +78,11 @@ const MyDataPageV1 = () => {
       : false;
   }, [storageData, loggedInUserName]);
 
-  const userPersona = useMemo(
-    () =>
-      currentUser?.personas?.find(
-        (persona) => currentUser?.defaultPersona?.id === persona.id
-      ),
-    [currentUser]
-  );
-
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isUndefined(userPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${userPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
+      if (!isEmpty(selectedPersona)) {
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
         const pageData = await getDocumentByFQN(pageFQN);
         setLayout(pageData.data.page.layout);
       } else {
@@ -111,9 +107,12 @@ const MyDataPageV1 = () => {
   };
 
   useEffect(() => {
+    fetchDocument();
+  }, [selectedPersona]);
+
+  useEffect(() => {
     isMounted.current = true;
     updateWelcomeScreen(!usernameExistsInCookie);
-    fetchDocument();
 
     return () => updateWelcomeScreen(false);
   }, []);
@@ -158,53 +157,82 @@ const MyDataPageV1 = () => {
 
   const getWidgetFromKey = useCallback(
     (widgetConfig: WidgetConfig) => {
-      switch (widgetConfig.i) {
-        case LandingPageWidgetKeys.ACTIVITY_FEED:
-          return <FeedsWidget />;
-
-        case LandingPageWidgetKeys.MY_DATA:
-          return <MyDataWidget />;
-
-        case LandingPageWidgetKeys.KPI:
-          return <KPIWidget />;
-
-        case LandingPageWidgetKeys.TOTAL_DATA_ASSETS:
-          return <TotalDataAssetsWidget />;
-
-        case LandingPageWidgetKeys.RIGHT_PANEL:
-          return (
-            <div className="h-full border-left">
-              <RightSidebar
-                followedData={followedData ?? []}
-                followedDataCount={followedDataCount}
-                isLoadingOwnedData={isLoadingOwnedData}
-                layoutConfigData={widgetConfig.data}
-                parentLayoutData={layout}
-              />
-            </div>
-          );
-
-        default:
-          return;
+      if (widgetConfig.i.startsWith(LandingPageWidgetKeys.RIGHT_PANEL)) {
+        return (
+          <div className="h-full border-left p-l-md">
+            <RightSidebar
+              announcements={announcements}
+              followedData={followedData ?? []}
+              followedDataCount={followedDataCount}
+              isAnnouncementLoading={isAnnouncementLoading}
+              isLoadingOwnedData={isLoadingOwnedData}
+              layoutConfigData={widgetConfig.data}
+              parentLayoutData={layout}
+            />
+          </div>
+        );
       }
+
+      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+
+      return (
+        <Widget
+          announcements={announcements}
+          followedData={followedData ?? []}
+          followedDataCount={followedDataCount}
+          isLoadingOwnedData={isLoadingOwnedData}
+          widgetKey={widgetConfig.i}
+        />
+      );
     },
-    [followedData, followedDataCount, isLoadingOwnedData, layout]
+    [
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+      layout,
+      announcements,
+      isAnnouncementLoading,
+    ]
   );
 
   const widgets = useMemo(
     () =>
-      layout.map((widget) => (
-        <div
-          className={classNames({
-            'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
-          })}
-          data-grid={widget}
-          key={widget.i}>
-          {getWidgetFromKey(widget)}
-        </div>
-      )),
+      layout
+        .filter((widget: WidgetConfig) =>
+          !isAnnouncementLoading &&
+          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS)
+            ? !isEmpty(announcements)
+            : true
+        )
+        .map((widget) => (
+          <div
+            className={classNames({
+              'mt--1': widget.i === LandingPageWidgetKeys.RIGHT_PANEL,
+            })}
+            data-grid={widget}
+            key={widget.i}>
+            {getWidgetFromKey(widget)}
+          </div>
+        )),
     [layout, getWidgetFromKey]
   );
+
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      setIsAnnouncementLoading(true);
+      const response = await getActiveAnnouncement();
+
+      setAnnouncements(response.data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
 
   if (showWelcomeScreen) {
     return (

@@ -37,6 +37,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -498,6 +499,7 @@ public class UserRepository extends EntityRepository<User> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateRoles(original, updated);

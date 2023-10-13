@@ -14,38 +14,43 @@ import React, {
   createContext,
   FC,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { LogoConfiguration } from '../../generated/configuration/applicationConfiguration';
+import { EntityReference } from '../../generated/entity/type';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 
 interface ContextConfig extends LogoConfiguration {
   routeElements?: ReactNode;
-  sideBarElements?: ReactNode;
+  selectedPersona: EntityReference;
+  updateSelectedPersona: (personaFqn: EntityReference) => void;
 }
 
 export const ApplicationConfigContext = createContext<ContextConfig>(
   {} as ContextConfig
 );
 
-export const useApplicationConfigProvider = () =>
+export const useApplicationConfigContext = () =>
   useContext(ApplicationConfigContext);
 
 interface ApplicationConfigProviderProps {
   children: ReactNode;
   routeElements?: ReactNode;
-  sideBarElements?: ReactNode;
 }
 
 const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
   children,
   routeElements,
-  sideBarElements,
 }) => {
   const [applicationConfig, setApplicationConfig] = useState<LogoConfiguration>(
     {} as LogoConfiguration
+  );
+  const [selectedPersona, setSelectedPersona] = useState<EntityReference>(
+    {} as EntityReference
   );
 
   const fetchApplicationConfig = async () => {
@@ -61,13 +66,26 @@ const ApplicationConfigProvider: FC<ApplicationConfigProviderProps> = ({
     }
   };
 
+  const updateSelectedPersona = useCallback((persona: EntityReference) => {
+    setSelectedPersona(persona);
+  }, []);
+
   useEffect(() => {
     fetchApplicationConfig();
   }, []);
 
+  const contextValue = useMemo(
+    () => ({
+      ...applicationConfig,
+      routeElements,
+      selectedPersona,
+      updateSelectedPersona,
+    }),
+    [applicationConfig, routeElements, selectedPersona, updateSelectedPersona]
+  );
+
   return (
-    <ApplicationConfigContext.Provider
-      value={{ ...applicationConfig, routeElements, sideBarElements }}>
+    <ApplicationConfigContext.Provider value={contextValue}>
       {children}
     </ApplicationConfigContext.Provider>
   );

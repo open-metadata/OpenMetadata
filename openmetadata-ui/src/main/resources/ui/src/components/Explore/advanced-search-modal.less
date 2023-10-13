@@ -11,7 +11,25 @@
  *  limitations under the License.
  */
 
-export interface FeedsWidgetProps {
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
+.advanced-search-modal {
+  .group.rule_group {
+    border: none !important;
+    padding: 0;
+    .group--children {
+      padding-top: 0;
+      padding-bottom: 0;
+      margin: 0;
+    }
+  }
+
+  .group--field {
+    width: 180px;
+    .ant-select {
+      width: 100% !important;
+    }
+    label {
+      font-weight: normal;
+      margin-bottom: 6px;
+    }
+  }
 }

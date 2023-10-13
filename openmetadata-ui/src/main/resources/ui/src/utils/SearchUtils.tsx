@@ -33,7 +33,7 @@ import {
   FQN_SEPARATOR_CHAR,
   WILD_CARD_CHAR,
 } from '../constants/char.constants';
-import { FqnPart } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import { serviceTypeLogo } from './ServiceUtils';
@@ -229,3 +229,27 @@ export const filterOptionsByIndex = (
     .filter((option) => option._index === searchIndex)
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
+
+export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
+  const commonAssets: Record<string, string> = {
+    [SearchIndex.TABLE]: EntityType.TABLE,
+    [SearchIndex.PIPELINE]: EntityType.PIPELINE,
+    [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
+    [SearchIndex.MLMODEL]: EntityType.MLMODEL,
+    [SearchIndex.TOPIC]: EntityType.TOPIC,
+    [SearchIndex.CONTAINER]: EntityType.CONTAINER,
+    [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
+    [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
+    [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+    [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
+    [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
+    [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
+    [SearchIndex.PIPELINE_SERVICE]: EntityType.PIPELINE_SERVICE,
+    [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
+    [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
+    [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
+    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
+  };
+
+  return commonAssets[searchIndex] || null; // Return null if not found
+};

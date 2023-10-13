@@ -11,13 +11,8 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
-
-export interface WidgetConfig
-  extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
-  data?: {
-    page: {
-      layout: Array<WidgetConfig>;
-    };
-  };
+.customize-landing-page {
+  .ant-card-head {
+    border: none;
+  }
 }

@@ -17,6 +17,8 @@ export const DEFAULT_WIDGET_HEIGHT = 3;
 export const LANDING_PAGE_WIDGET_MARGIN = 16;
 export const LANDING_PAGE_ROW_HEIGHT = 100;
 export const LANDING_PAGE_RIGHT_CONTAINER_EDIT_HEIGHT = 16;
+export const LANDING_PAGE_MAX_GRID_SIZE = 3;
+export const LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE = 1;
 
 export const LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS = {
   activityFeed: 5,
@@ -29,17 +31,31 @@ export const LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS = {
   totalDataAssets: 3.42,
 };
 
-export const LANDING_PAGE_OUTER_WIDGETS = [
-  LandingPageWidgetKeys.ACTIVITY_FEED,
-  LandingPageWidgetKeys.MY_DATA,
-  LandingPageWidgetKeys.KPI,
-  LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-];
-
-export const LANDING_PAGE_RIGHT_PANEL_WIDGETS = [
-  LandingPageWidgetKeys.FOLLOWING,
-  LandingPageWidgetKeys.ANNOUNCEMENTS,
-  LandingPageWidgetKeys.RECENTLY_VIEWED,
+export const RIGHT_PANEL_LAYOUT = [
+  {
+    h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements,
+    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    w: 1,
+    x: 0,
+    y: 0,
+    static: false,
+  },
+  {
+    h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following,
+    i: LandingPageWidgetKeys.FOLLOWING,
+    w: 1,
+    x: 0,
+    y: 1.5,
+    static: false,
+  },
+  {
+    h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.recentlyViewed,
+    i: LandingPageWidgetKeys.RECENTLY_VIEWED,
+    w: 1,
+    x: 0,
+    y: 3,
+    static: false,
+  },
 ];
 
 export const LANDING_PAGE_LAYOUT = [
@@ -59,32 +75,7 @@ export const LANDING_PAGE_LAYOUT = [
     y: 0,
     data: {
       page: {
-        layout: [
-          {
-            h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements,
-            i: LandingPageWidgetKeys.ANNOUNCEMENTS,
-            w: 1,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following,
-            i: LandingPageWidgetKeys.FOLLOWING,
-            w: 1,
-            x: 0,
-            y: 1.5,
-            static: false,
-          },
-          {
-            h: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.recentlyViewed,
-            i: LandingPageWidgetKeys.RECENTLY_VIEWED,
-            w: 1,
-            x: 0,
-            y: 3,
-            static: false,
-          },
-        ],
+        layout: RIGHT_PANEL_LAYOUT,
       },
     },
     static: true,
