@@ -108,6 +108,8 @@ public final class Entity {
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
 
+  public static final String FIELD_DISABLED = "disabled";
+
   //
   // Service entities
   //
@@ -259,7 +261,6 @@ public final class Entity {
           } catch (Exception ex) {
             LOG.warn("Exception encountered", ex);
           }
-          LOG.warn("Exception encountered", e);
         }
       }
       initializedRepositories = true;

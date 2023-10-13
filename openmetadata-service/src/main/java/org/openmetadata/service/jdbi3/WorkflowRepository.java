@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.WORKFLOW;
 
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.service.Entity;
@@ -80,6 +81,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       recordChange("status", original.getStatus(), updated.getStatus());

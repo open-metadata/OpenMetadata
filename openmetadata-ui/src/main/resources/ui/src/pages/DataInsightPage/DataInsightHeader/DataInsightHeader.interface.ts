@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataInsightChartType } from '../../../generated/dataInsight/dataInsightChartResult';
 
-export interface FeedsWidgetProps {
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
+export interface DataInsightHeaderProps {
+  onScrollToChart: (chartType: DataInsightChartType) => void;
 }

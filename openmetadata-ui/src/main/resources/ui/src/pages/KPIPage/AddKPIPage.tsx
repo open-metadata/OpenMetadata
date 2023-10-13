@@ -55,6 +55,7 @@ import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { getListDataInsightCharts } from '../../rest/DataInsightAPI';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
+  getDataInsightPathWithFqn,
   getDisabledDates,
   getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
@@ -67,7 +68,7 @@ const { Option } = Select;
 const breadcrumb = [
   {
     name: t('label.data-insight'),
-    url: ROUTES.DATA_INSIGHT,
+    url: getDataInsightPathWithFqn(),
   },
   {
     name: t('label.kpi-list'),

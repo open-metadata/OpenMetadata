@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { ReactNode } from 'react';
+import { DateRangeObject } from '../../components/ProfilerDashboard/component/TestSummary';
+import {
+  SearchDropdownOption,
+  SearchDropdownProps,
+} from '../../components/SearchDropdown/SearchDropdown.interface';
+import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { Tag } from '../../generated/entity/classification/tag';
+import { ChartFilter } from '../../interface/data-insight.interface';
 
 export type TeamStateType = {
   defaultOptions: SearchDropdownOption[];
@@ -19,3 +27,23 @@ export type TeamStateType = {
   options: SearchDropdownOption[];
 };
 export type TierStateType = Omit<TeamStateType, 'defaultOptions'>;
+
+export interface DataInsightProviderProps {
+  children: ReactNode;
+}
+
+export interface DataInsightContextType {
+  teamFilter: Omit<SearchDropdownProps, 'label' | 'searchKey'>;
+  tierFilter: Omit<SearchDropdownProps, 'label' | 'searchKey'>;
+  selectedDaysFilter: number;
+  chartFilter: ChartFilter;
+  onChartFilterChange: (value: DateRangeObject, days?: number) => void;
+  kpi: {
+    isLoading: boolean;
+    data: Kpi[];
+  };
+  tierTag: {
+    tags: Tag[];
+    isLoading: boolean;
+  };
+}
