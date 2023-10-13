@@ -18,37 +18,38 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import TestSuiteScheduler from '../../../components/AddDataQualityTest/components/TestSuiteScheduler';
-import FormBuilder from '../../../components/common/FormBuilder/FormBuilder';
-import PageLayoutV1 from '../../../components/containers/PageLayoutV1';
-import IngestionStepper from '../../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../../components/Loader/Loader';
-import { STEPS_FOR_APP_INSTALL } from '../../../constants/Applications.constant';
+import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
+import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
+import PageLayoutV1 from '../../components/containers/PageLayoutV1';
+import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
+import Loader from '../../components/Loader/Loader';
+import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
-} from '../../../constants/GlobalSettings.constants';
-import { ServiceCategory } from '../../../enums/service.enum';
+} from '../../constants/GlobalSettings.constants';
+import { ServiceCategory } from '../../enums/service.enum';
 import {
   CreateAppRequest,
   ScheduleTimeline,
-} from '../../../generated/entity/applications/createAppRequest';
-import { AppMarketPlaceDefinition } from '../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { installApplication } from '../../../rest/applicationAPI';
-import { getMarketPlaceApplicationByName } from '../../../rest/applicationMarketPlaceAPI';
+} from '../../generated/entity/applications/createAppRequest';
+import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { installApplication } from '../../rest/applicationAPI';
+import { getMarketPlaceApplicationByName } from '../../rest/applicationMarketPlaceAPI';
 import {
   getEntityMissingError,
   getIngestionFrequency,
-} from '../../../utils/CommonUtils';
-import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
+} from '../../utils/CommonUtils';
+import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
-} from '../../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import AppInstallVerifyCard from '../AppInstallVerifyCard/AppInstallVerifyCard.component';
+} from '../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import './app-install.less';
 
 const AppInstall = () => {
   const { t } = useTranslation();
@@ -66,9 +67,7 @@ const AppInstall = () => {
       const data = await getMarketPlaceApplicationByName(fqn, 'owner');
       setAppData(data);
 
-      const schema = await import(
-        `../../../utils/ApplicationSchemas/${fqn}.json`
-      );
+      const schema = await import(`../../utils/ApplicationSchemas/${fqn}.json`);
       setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -132,7 +131,7 @@ const AppInstall = () => {
         );
       case 2:
         return (
-          <div className="w-500">
+          <div className="w-500 p-md border">
             <FormBuilder
               disableTestConnection
               showFormHeader
@@ -151,7 +150,7 @@ const AppInstall = () => {
         );
       case 3:
         return (
-          <div className="w-500">
+          <div className="w-500 p-md border">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
               isQuartzCron
@@ -183,7 +182,9 @@ const AppInstall = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.application-plural')}>
+    <PageLayoutV1
+      className="app-install-page"
+      pageTitle={t('label.application-plural')}>
       <Row>
         <Col span={24}>
           <IngestionStepper
