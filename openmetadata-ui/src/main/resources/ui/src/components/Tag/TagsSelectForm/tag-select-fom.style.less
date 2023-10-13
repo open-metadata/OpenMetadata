@@ -10,23 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 
-import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
-import { Paging } from '../../../generated/type/paging';
-
-export type TagsSelectFormProps = {
-  placeholder: string;
-  defaultValue: string[];
-  tagData?: SelectOption[];
-  onChange?: (value: string[]) => void;
-  onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
-  onCancel: () => void;
-  fetchApi: (
-    search: string,
-    page: number
-  ) => Promise<{
-    data: SelectOption[];
-    paging: Paging;
-  }>;
-};
+.tag-select-box.ant-select-item-option-selected {
+  background-color: @grey-1;
+  display: flex;
+  align-items: center;
+}
