@@ -11,22 +11,25 @@
  *  limitations under the License.
  */
 
-import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
-import { Paging } from '../../../generated/type/paging';
+.advanced-search-modal {
+  .group.rule_group {
+    border: none !important;
+    padding: 0;
+    .group--children {
+      padding-top: 0;
+      padding-bottom: 0;
+      margin: 0;
+    }
+  }
 
-export type TagsSelectFormProps = {
-  placeholder: string;
-  defaultValue: string[];
-  tagData?: SelectOption[];
-  onChange?: (value: string[]) => void;
-  onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
-  onCancel: () => void;
-  fetchApi: (
-    search: string,
-    page: number
-  ) => Promise<{
-    data: SelectOption[];
-    paging: Paging;
-  }>;
-};
+  .group--field {
+    width: 180px;
+    .ant-select {
+      width: 100% !important;
+    }
+    label {
+      font-weight: normal;
+      margin-bottom: 6px;
+    }
+  }
+}
