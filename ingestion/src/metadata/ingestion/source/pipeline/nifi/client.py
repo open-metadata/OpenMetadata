@@ -162,7 +162,7 @@ class NifiClient:
                 yield self.get_process_group(id_=id_)
             except Exception:
                 logger.debug(traceback.format_exc())
-    
+
     def test_list_process_groups(self):
         """
         test api access for process group
