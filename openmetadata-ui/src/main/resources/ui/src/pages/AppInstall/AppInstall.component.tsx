@@ -131,7 +131,7 @@ const AppInstall = () => {
         );
       case 2:
         return (
-          <div className="w-500 p-md border">
+          <div className="w-500 p-md border rounded-4">
             <FormBuilder
               disableTestConnection
               showFormHeader
@@ -150,7 +150,7 @@ const AppInstall = () => {
         );
       case 3:
         return (
-          <div className="w-500 p-md border">
+          <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <TestSuiteScheduler
               isQuartzCron
