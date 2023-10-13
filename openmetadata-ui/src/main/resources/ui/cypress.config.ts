@@ -29,6 +29,10 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:3000/',
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: [
+      'cypress/e2e/Features/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Flow/*.{js,jsx,ts,tsx}',
+      'cypress/e2e/Pages/*.{js,jsx,ts,tsx}',
+    ],
   },
 });
