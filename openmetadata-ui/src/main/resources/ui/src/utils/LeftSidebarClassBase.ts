@@ -10,8 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FC } from 'react';
+import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
-export interface FeedsWidgetProps {
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
+class LeftSidebarClassBase {
+  /**
+   * getSidebarElements
+   */
+  public getSidebarElements(): FC | null {
+    return null;
+  }
+
+  /**
+   * getSidebarItems
+   */
+  public getSidebarItems(): typeof SIDEBAR_LIST {
+    return SIDEBAR_LIST;
+  }
 }
+
+const leftSidebarClassBase = new LeftSidebarClassBase();
+
+export default leftSidebarClassBase;
+
+export { LeftSidebarClassBase };
