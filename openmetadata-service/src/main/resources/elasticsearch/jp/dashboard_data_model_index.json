@@ -95,6 +95,9 @@
           }
         ]
       },
+      "column_suggest": {
+        "type": "completion"
+      },
       "version": {
         "type": "float"
       },
@@ -272,6 +275,9 @@
             "type": "integer"
           }
         }
+      },
+      "columnNames": {
+        "type": "keyword"
       },
       "project": {
         "type": "text",

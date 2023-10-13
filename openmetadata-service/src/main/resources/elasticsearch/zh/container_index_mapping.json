@@ -434,6 +434,9 @@
           }
         }
       },
+      "columnNames": {
+        "type": "keyword"
+      },
       "serviceType": {
         "type": "keyword"
       },

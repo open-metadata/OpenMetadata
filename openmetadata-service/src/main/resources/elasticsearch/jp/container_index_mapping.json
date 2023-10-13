@@ -437,6 +437,9 @@
       "lifeCycle": {
         "type": "object"
       },
+      "columnNames": {
+        "type": "keyword"
+      },
       "serviceType": {
         "type": "keyword"
       },
