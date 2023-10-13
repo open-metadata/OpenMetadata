@@ -90,6 +90,8 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
+    return false;
   }, []);
 
   const handleDefaultPersonaChange = async (persona: EntityReference) => {
@@ -309,12 +311,14 @@ export const UserProfileIcon = () => {
           ) : (
             <Avatar name={userName} type="circle" width="36" />
           )}
-          <div className="d-flex flex-col">
-            <Typography.Text className="usename">
+          <div className="d-flex flex-col flex-1">
+            <Typography.Text
+              className="usename w-28"
+              ellipsis={{ tooltip: true }}>
               {getEntityName(currentUser)}
             </Typography.Text>
             <Typography.Text
-              className="text-grey-muted text-xs"
+              className="text-grey-muted text-xs w-28"
               ellipsis={{ tooltip: true }}>
               {defaultPersona
                 ? getEntityName(defaultPersona)

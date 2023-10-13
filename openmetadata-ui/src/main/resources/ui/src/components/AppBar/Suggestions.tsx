@@ -31,6 +31,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   DashboardSource,
@@ -184,7 +185,7 @@ const Suggestions = ({
     try {
       setIsLoading(true);
       const res = await searchData(
-        searchText,
+        escapeESReservedCharacters(searchText),
         1,
         PAGE_SIZE_BASE,
         '',

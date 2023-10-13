@@ -29,9 +29,6 @@ export default defineConfig({
       return plugins(on, config);
     },
     baseUrl: 'http://localhost:3000/',
-    specPattern: [
-      'cypress/e2e/Pages/ServiceVersionPage.spec.js',
-      'cypress/e2e/Pages/Service.spec.js',
-    ],
+    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
   },
 });
