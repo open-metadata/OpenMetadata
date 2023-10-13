@@ -15,13 +15,15 @@ Oracle E2E tests
 
 from typing import List
 
-from .base.e2e_types import E2EType
+from metadata.ingestion.api.status import Status
 
+from .base.e2e_types import E2EType
 from .common.test_cli_db import CliCommonDB
 from .common_e2e_sqa_mixins import SQACommonMethods
-from metadata.ingestion.api.status import Status
+
+
 class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-    
+
     create_table_query: str = """
        CREATE TABLE admin.admin_emp (
          empno      NUMBER(5) PRIMARY KEY,
@@ -42,7 +44,7 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_view_query: str = """
         CREATE OR REPLACE VIEW admin.admin_emp_view AS SELECT * FROM admin.admin_emp
     """
-    
+
     insert_data_queries: List[str] = [
         """
         INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status) WITH names AS ( 
@@ -55,7 +57,6 @@ SELECT * from names
 """
     ]
 
-    
     drop_table_query: str = """
         DROP TABLE admin.admin_emp
     """
@@ -69,8 +70,6 @@ SELECT * from names
             SQACommonMethods.create_table_and_view(self)
         except Exception:
             pass
-        
-            
 
     def delete_table_and_view(self) -> None:
         try:
@@ -135,7 +134,6 @@ SELECT * from names
     @staticmethod
     def expected_filtered_mix() -> int:
         return 42
-
 
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
@@ -224,7 +222,7 @@ SELECT * from names
         """
         self.build_config_file(
             E2EType.INGEST_DB_FILTER_SCHEMA,
-             {"includes": self.get_includes_schemas()},
+            {"includes": self.get_includes_schemas()},
         )
         # run ingest with new tables
         result = self.run_command()
@@ -251,7 +249,6 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_excludes(source_status, sink_status)
 
-    
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status
     ) -> None:
