@@ -329,16 +329,16 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.email'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.email',
-          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
-        },
-        {
           label: i18next.t('label.customize-landing-page'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customizeLandingPage',
           icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.email'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.email',
+          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.custom-logo'),

@@ -31,10 +31,6 @@ import Loader from '../../components/Loader/Loader';
 import RightSidebar from '../../components/MyData/RightSidebar/RightSidebar.component';
 import WelcomeScreen from '../../components/WelcomeScreen/WelcomeScreen.component';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import {
-  LANDING_PAGE_LAYOUT,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../../constants/CustomizePage.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { AssetsType, EntityType } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
@@ -44,7 +40,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { getUserById } from '../../rest/userAPI';
-import { CustomizePageClassBase } from '../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -86,10 +82,10 @@ const MyDataPageV1 = () => {
         const pageData = await getDocumentByFQN(pageFQN);
         setLayout(pageData.data.page.layout);
       } else {
-        setLayout(LANDING_PAGE_LAYOUT);
+        setLayout(customizePageClassBase.landingPageDefaultLayout);
       }
     } catch {
-      setLayout(LANDING_PAGE_LAYOUT);
+      setLayout(customizePageClassBase.landingPageDefaultLayout);
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +169,7 @@ const MyDataPageV1 = () => {
         );
       }
 
-      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
       return (
         <Widget
@@ -181,6 +177,7 @@ const MyDataPageV1 = () => {
           followedData={followedData ?? []}
           followedDataCount={followedDataCount}
           isLoadingOwnedData={isLoadingOwnedData}
+          selectedGridSize={widgetConfig.w}
           widgetKey={widgetConfig.i}
         />
       );
@@ -255,7 +252,10 @@ const MyDataPageV1 = () => {
             cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
             draggableHandle=".drag-widget-icon"
             isResizable={false}
-            margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
             rowHeight={100}>
             {widgets}
           </ResponsiveGridLayout>
