@@ -134,7 +134,14 @@ class SQASampler(SamplerInterface):
         if not columns:
             sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
         else:
-            sqa_columns = list(columns)  # copy columns
+            # we can't directly use columns as it is bound to self.table and not the rnd table.
+            # If we use it, it will result in a cross join between self.table and rnd table
+            names = [col.name for col in columns]
+            sqa_columns = [
+                col
+                for col in inspect(rnd).c
+                if col.name != RANDOM_LABEL and col.name in names
+            ]
 
         sqa_sample = (
             self.client.query(*sqa_columns)
