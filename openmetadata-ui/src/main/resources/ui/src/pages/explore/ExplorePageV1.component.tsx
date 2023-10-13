@@ -289,7 +289,7 @@ const ExplorePageV1: FunctionComponent = () => {
     }
   }, [parsedSearch]);
 
-  useEffect(() => {
+  const fetchEntityCount = () => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
     const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -382,6 +382,14 @@ const ExplorePageV1: FunctionComponent = () => {
         showErrorToast(err);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (isTourOpen) {
+      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+    } else {
+      fetchEntityCount();
+    }
   }, [
     parsedSearch.quickFilter,
     queryFilter,
