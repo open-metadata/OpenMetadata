@@ -10,23 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FC } from 'react';
+import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
-import { DefaultOptionType } from 'antd/lib/select';
-import { SelectOption } from '../../../components/AsyncSelectList/AsyncSelectList.interface';
-import { Paging } from '../../../generated/type/paging';
+class LeftSidebarClassBase {
+  /**
+   * getSidebarElements
+   */
+  public getSidebarElements(): FC | null {
+    return null;
+  }
 
-export type TagsSelectFormProps = {
-  placeholder: string;
-  defaultValue: string[];
-  tagData?: SelectOption[];
-  onChange?: (value: string[]) => void;
-  onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
-  onCancel: () => void;
-  fetchApi: (
-    search: string,
-    page: number
-  ) => Promise<{
-    data: SelectOption[];
-    paging: Paging;
-  }>;
-};
+  /**
+   * getSidebarItems
+   */
+  public getSidebarItems(): typeof SIDEBAR_LIST {
+    return SIDEBAR_LIST;
+  }
+}
+
+const leftSidebarClassBase = new LeftSidebarClassBase();
+
+export default leftSidebarClassBase;
+
+export { LeftSidebarClassBase };

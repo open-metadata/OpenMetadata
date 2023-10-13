@@ -36,6 +36,7 @@ const TagsV1 = ({
   className,
   showOnlyName = false,
   isVersionPage = false,
+  tagProps,
 }: TagsV1Props) => {
   const history = useHistory();
   const color = useMemo(
@@ -121,7 +122,8 @@ const TagsV1 = ({
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"
-            data-testid={`tag-${tag.tagFQN}`}>
+            data-testid={`tag-${tag.tagFQN}`}
+            style={{ color: tag.style?.color }}>
             {tagName}
           </Typography.Paragraph>
         </div>
@@ -137,10 +139,11 @@ const TagsV1 = ({
         data-testid="tags"
         style={
           color
-            ? { backgroundColor: reduceColorOpacity(color, 0.1) }
+            ? { backgroundColor: reduceColorOpacity(color, 0.05) }
             : undefined
         }
-        onClick={() => redirectLink()}>
+        onClick={redirectLink}
+        {...tagProps}>
         {tagContent}
       </Tag>
     ),

@@ -970,6 +970,7 @@
     "table-entity-text": "数据表{{entityText}}",
     "table-lowercase": "数据表",
     "table-lowercase-plural": "数据表",
+    "table-partitioned": "Table Partitioned",
     "table-plural": "数据表",
     "table-profile": "数据表分析",
     "table-tests-summary": "数据表测试概要",
