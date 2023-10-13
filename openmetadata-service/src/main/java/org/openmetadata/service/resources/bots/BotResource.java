@@ -378,7 +378,8 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private Bot getBot(CreateBot create, String user) {
-    return copy(new Bot(), create, user)
+    return repository
+        .copy(new Bot(), create, user)
         .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
         .withProvider(create.getProvider())
         .withFullyQualifiedName(create.getName());

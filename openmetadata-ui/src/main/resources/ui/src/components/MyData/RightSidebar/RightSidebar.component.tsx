@@ -10,127 +10,244 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import AppState from '../../../AppState';
-import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
-import FeedCardBodyV1 from '../../../components/ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
-import FeedCardHeaderV1 from '../../../components/ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
-import { EntityListWithV1 } from '../../../components/Entity/EntityList/EntityList';
-import RecentlyViewed from '../../../components/recently-viewed/RecentlyViewed';
-import { getUserPath } from '../../../constants/constants';
-import { Thread } from '../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../generated/entity/type';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Layout, Responsive, WidthProvider } from 'react-grid-layout';
+import {
+  LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE,
+  LANDING_PAGE_ROW_HEIGHT,
+  LANDING_PAGE_WIDGET_MARGIN,
+  RIGHT_PANEL_LAYOUT,
+} from '../../../constants/CustomizePage.constants';
+import { SIZE } from '../../../enums/common.enum';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
+import { Document } from '../../../generated/entity/docStore/document';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import {
+  getAddWidgetHandler,
+  getLayoutUpdateHandler,
+  getRemoveWidgetHandler,
+} from '../../../utils/CustomizableLandingPageUtils';
+import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
+import AddWidgetModal from '../../CustomizableComponents/AddWidgetModal/AddWidgetModal';
+import EmptyWidgetPlaceholder from '../../CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import './right-sidebar.less';
+import { RightSidebarProps } from './RightSidebar.interface';
 
-interface RightSidebarProps {
-  followedDataCount: number;
-  followedData: Array<EntityReference>;
-  isLoadingOwnedData: boolean;
-}
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const RightSidebar = ({
+  announcements,
+  isAnnouncementLoading,
+  parentLayoutData,
+  isEditView = false,
   followedData,
   followedDataCount,
   isLoadingOwnedData,
+  layoutConfigData,
+  updateParentLayout,
+  resetLayout = false,
+  handleResetLayout,
 }: RightSidebarProps) => {
-  const { t } = useTranslation();
-  const currentUserDetails = AppState.getCurrentUserDetails();
-  const [announcements, setAnnouncements] = useState<Thread[]>([]);
+  const [layout, setLayout] = useState<Array<WidgetConfig>>([
+    ...(layoutConfigData?.page?.layout ?? []),
+    ...(isEditView
+      ? [
+          {
+            h: 2.3,
+            i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+            w: 1,
+            x: 0,
+            y: 100,
+            isDraggable: false,
+          },
+        ]
+      : []),
+  ]);
+  const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>(
+    LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+  );
+  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
+
+  const handlePlaceholderWidgetKey = useCallback((value: string) => {
+    setPlaceholderWidgetKey(value);
+  }, []);
+
+  const handleOpenAddWidgetModal = useCallback(() => {
+    setIsWidgetModalOpen(true);
+  }, []);
+
+  const handleCloseAddWidgetModal = useCallback(() => {
+    setIsWidgetModalOpen(false);
+  }, []);
+
+  const handleRemoveWidget = useCallback((widgetKey: string) => {
+    setLayout(getRemoveWidgetHandler(widgetKey, 2.3, 2.5));
+  }, []);
+
+  const handleAddWidget = useCallback(
+    (newWidgetData: Document, placeholderWidgetKey: string) => {
+      setLayout(
+        getAddWidgetHandler(
+          newWidgetData,
+          placeholderWidgetKey,
+          LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE
+        )
+      );
+      setIsWidgetModalOpen(false);
+    },
+    [layout]
+  );
+
+  const getWidgetFromKey = useCallback(
+    (widgetConfig: WidgetConfig) => {
+      if (widgetConfig.i.endsWith('.EmptyWidgetPlaceholder')) {
+        return (
+          <div className="h-full">
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+              handleRemoveWidget={handleRemoveWidget}
+              iconHeight={SIZE.SMALL}
+              iconWidth={SIZE.SMALL}
+              isEditable={widgetConfig.isDraggable}
+              widgetKey={widgetConfig.i}
+            />
+          </div>
+        );
+      }
+
+      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+
+      return (
+        <Widget
+          announcements={announcements}
+          followedData={followedData ?? []}
+          followedDataCount={followedDataCount}
+          handleRemoveWidget={handleRemoveWidget}
+          isEditView={isEditView}
+          isLoadingOwnedData={isLoadingOwnedData}
+          widgetKey={widgetConfig.i}
+        />
+      );
+    },
+    [
+      announcements,
+      followedData,
+      followedDataCount,
+      isLoadingOwnedData,
+      isEditView,
+      handleRemoveWidget,
+      handleOpenAddWidgetModal,
+      handlePlaceholderWidgetKey,
+    ]
+  );
+
+  const widgets = useMemo(
+    () =>
+      layout
+        .filter((widget: WidgetConfig) =>
+          !isAnnouncementLoading &&
+          widget.i.startsWith(LandingPageWidgetKeys.ANNOUNCEMENTS) &&
+          !isEditView
+            ? !isEmpty(announcements)
+            : true
+        )
+        .map((widget: WidgetConfig) => (
+          <div data-grid={widget} key={widget.i}>
+            {getWidgetFromKey(widget)}
+          </div>
+        )),
+    [layout, announcements, getWidgetFromKey, isEditView, isAnnouncementLoading]
+  );
+
+  const handleLayoutUpdate = useCallback(
+    (updatedLayout: Layout[]) => {
+      if (!isEmpty(layout) && !isEmpty(updatedLayout)) {
+        setLayout(getLayoutUpdateHandler(updatedLayout));
+      }
+    },
+    [layout]
+  );
+
+  const addedWidgetsList = useMemo(
+    () =>
+      layout
+        .filter((widget) => widget.i.startsWith('KnowledgePanel'))
+        .map((widget) => widget.i),
+    [layout]
+  );
 
   useEffect(() => {
-    getActiveAnnouncement()
-      .then((res) => {
-        setAnnouncements(res.data);
-      })
-      .catch((err) => {
-        showErrorToast(err);
-      });
-  }, []);
+    if (isEditView && !isUndefined(updateParentLayout)) {
+      updateParentLayout(
+        (parentLayoutData ?? []).map((widget) => {
+          if (widget.i === LandingPageWidgetKeys.RIGHT_PANEL) {
+            return {
+              ...widget,
+              data: {
+                page: {
+                  layout: uniqBy(
+                    layout.filter(
+                      (widget) => !widget.i.endsWith('.EmptyWidgetPlaceholder')
+                    ),
+                    'i'
+                  ),
+                },
+              },
+            };
+          } else {
+            return widget;
+          }
+        })
+      );
+    }
+  }, [layout]);
+
+  useEffect(() => {
+    if (resetLayout && handleResetLayout) {
+      setLayout([
+        ...RIGHT_PANEL_LAYOUT,
+        ...(isEditView
+          ? [
+              {
+                h: 2.3,
+                i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
+                w: 1,
+                x: 0,
+                y: 100,
+                isDraggable: false,
+              },
+            ]
+          : []),
+      ]);
+      handleResetLayout(false);
+    }
+  }, [resetLayout]);
 
   return (
     <>
-      {announcements.length > 0 && (
-        <>
-          <div className="p-md p-b-xss">
-            <Typography.Paragraph className="right-panel-label m-b-sm">
-              {t('label.recent-announcement-plural')}
-            </Typography.Paragraph>
-            <div className="announcement-container-list">
-              {announcements.map((item) => {
-                return (
-                  <Alert
-                    className="m-b-xs right-panel-announcement"
-                    description={
-                      <>
-                        <FeedCardHeaderV1
-                          about={item.about}
-                          className="d-inline"
-                          createdBy={item.createdBy}
-                          showUserAvatar={false}
-                          timeStamp={item.threadTs}
-                        />
-                        <FeedCardBodyV1
-                          isOpenInDrawer
-                          announcement={item.announcement}
-                          className="p-t-xs"
-                          isEditPost={false}
-                          message={item.message}
-                          showSchedule={false}
-                        />
-                      </>
-                    }
-                    key={item.id}
-                    message={
-                      <div className="d-flex announcement-alert-heading">
-                        <AnnouncementIcon width={20} />
-                        <span className="text-sm p-l-xss">
-                          {t('label.announcement')}
-                        </span>
-                      </div>
-                    }
-                    type="info"
-                  />
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="p-md" data-testid="following-data-container">
-        <EntityListWithV1
-          entityList={followedData}
-          headerText={
-            <>
-              {followedData.length ? (
-                <Link
-                  className="view-all-btn text-grey-muted"
-                  data-testid="following-data"
-                  to={getUserPath(currentUserDetails?.name ?? '', 'following')}>
-                  <span className="font-normal text-xs">
-                    {t('label.view-all')}{' '}
-                    <span data-testid="following-data-total-count">
-                      {`(${followedDataCount})`}
-                    </span>
-                  </span>
-                </Link>
-              ) : null}
-            </>
-          }
-          headerTextLabel={t('label.following')}
-          loading={isLoadingOwnedData}
-          noDataPlaceholder={t('message.not-followed-anything')}
-          testIDText="following"
+      <ResponsiveGridLayout
+        breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+        cols={{ lg: 1, md: 1, sm: 1, xs: 1, xxs: 1 }}
+        containerPadding={[0, LANDING_PAGE_WIDGET_MARGIN]}
+        draggableHandle=".drag-widget-icon"
+        isResizable={false}
+        margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
+        rowHeight={LANDING_PAGE_ROW_HEIGHT}
+        onLayoutChange={handleLayoutUpdate}>
+        {widgets}
+      </ResponsiveGridLayout>
+      {isWidgetModalOpen && (
+        <AddWidgetModal
+          addedWidgetsList={addedWidgetsList}
+          handleAddWidget={handleAddWidget}
+          handleCloseAddWidgetModal={handleCloseAddWidgetModal}
+          maxGridSizeSupport={LANDING_PAGE_RIGHT_CONTAINER_MAX_GRID_SIZE}
+          open={isWidgetModalOpen}
+          placeholderWidgetKey={placeholderWidgetKey}
         />
-      </div>
-      <div className="p-md" data-testid="recently-viewed-container">
-        <RecentlyViewed />
-      </div>
+      )}
     </>
   );
 };

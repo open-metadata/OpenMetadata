@@ -152,10 +152,6 @@ export const SelectableList = ({
           newItemsMap?.set(id, item);
         }
 
-        setUniqueOptions((options) =>
-          sortUniqueListFromSelectedList(newItemsMap, options)
-        );
-
         return newItemsMap;
       });
     } else {

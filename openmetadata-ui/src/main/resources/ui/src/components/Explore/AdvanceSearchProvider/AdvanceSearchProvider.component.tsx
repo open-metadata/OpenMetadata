@@ -111,7 +111,9 @@ export const AdvanceSearchProvider = ({
     treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
   );
 
-  useEffect(() => setConfig(getQbConfigs(searchIndex)), [searchIndex]);
+  useEffect(() => {
+    setConfig(getQbConfigs(searchIndex));
+  }, [searchIndex]);
 
   const handleChange = useCallback(
     (nTree, nConfig) => {
@@ -144,6 +146,10 @@ export const AdvanceSearchProvider = ({
     setQueryFilter(undefined);
     setSQLQuery('');
   }, []);
+
+  const handleConfigUpdate = (updatedConfig: Config) => {
+    setConfig(updatedConfig);
+  };
 
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
@@ -195,8 +201,10 @@ export const AdvanceSearchProvider = ({
       toggleModal,
       treeInternal,
       config,
+      searchIndex,
       onReset: handleReset,
       onResetAllFilters: handleResetAllFilters,
+      onUpdateConfig: handleConfigUpdate,
     }),
     [
       queryFilter,
@@ -205,8 +213,10 @@ export const AdvanceSearchProvider = ({
       toggleModal,
       treeInternal,
       config,
+      searchIndex,
       handleReset,
       handleResetAllFilters,
+      handleConfigUpdate,
     ]
   );
 

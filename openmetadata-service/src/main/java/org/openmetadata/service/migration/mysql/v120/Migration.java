@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.mysql.v120;
 
 import static org.openmetadata.service.migration.utils.v120.MigrationUtil.addQueryService;
+import static org.openmetadata.service.migration.utils.v120.MigrationUtil.updateGlossaryAndGlossaryTermRelations;
 
 import java.util.List;
 import lombok.SneakyThrows;
@@ -30,6 +31,7 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     addQueryService(handle, collectionDAO);
+    updateGlossaryAndGlossaryTermRelations(handle, collectionDAO);
   }
 
   @Override

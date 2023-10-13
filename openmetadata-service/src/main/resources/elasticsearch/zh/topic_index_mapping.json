@@ -211,6 +211,9 @@
           }
         }
       },
+      "fieldNames": {
+        "type": "keyword"
+      },
       "cleanupPolicies": {
         "type": "keyword"
       },
