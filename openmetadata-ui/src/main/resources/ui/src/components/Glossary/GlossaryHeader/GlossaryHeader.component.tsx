@@ -492,6 +492,11 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={icon}
             serviceName=""
+            titleColor={
+              isGlossary
+                ? undefined
+                : (selectedData as GlossaryTerm).style?.color
+            }
           />
         </Col>
         <Col flex="360px">

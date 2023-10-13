@@ -33,6 +33,7 @@ interface Props {
   openEntityInNewPage?: boolean;
   gutter?: 'default' | 'large';
   serviceName: string;
+  titleColor?: string;
   badge?: React.ReactNode;
 }
 
@@ -46,6 +47,7 @@ export const EntityHeader = ({
   gutter = 'default',
   serviceName,
   badge,
+  titleColor,
 }: Props) => {
   return (
     <div className="w-full">
@@ -60,6 +62,7 @@ export const EntityHeader = ({
 
       <EntityHeaderTitle
         badge={badge}
+        color={titleColor}
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         icon={icon}

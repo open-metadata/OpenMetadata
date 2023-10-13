@@ -782,14 +782,18 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
 };
 
 /**
- * @param color have color code
+ * @param color hex have color code
  * @param opacity take opacity how much to reduce it
  * @returns hex color string
  */
-export const reduceColorOpacity = (color: string, opacity: number): string => {
-  const _opacity = Math.round(Math.min(Math.max(opacity || 1, 0), 1) * 255);
+export const reduceColorOpacity = (hex: string, opacity: number): string => {
+  hex = hex.replace(/^#/, ''); // Remove the "#" if it's there
+  hex = hex.length === 3 ? hex.replace(/./g, '$&$&') : hex; // Expand short hex to full hex format
+  const [red, green, blue] = [0, 2, 4].map((i) =>
+    parseInt(hex.slice(i, i + 2), 16)
+  ); // Parse hex values
 
-  return color + _opacity.toString(16).toUpperCase();
+  return `rgba(${red}, ${green}, ${blue}, ${opacity})`; // Create RGBA color
 };
 
 export const getEntityDetailLink = (
