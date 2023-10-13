@@ -34,19 +34,16 @@ import i18n from './utils/i18next/LocalUtil';
 
 interface AppProps {
   routeElements?: ReactNode;
-  sideBarElements?: ReactNode;
 }
 
-const App: FC<AppProps> = ({ routeElements, sideBarElements }) => {
+const App: FC<AppProps> = ({ routeElements }) => {
   return (
     <div className="main-container">
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <ApplicationConfigProvider
-                routeElements={routeElements}
-                sideBarElements={sideBarElements}>
+              <ApplicationConfigProvider routeElements={routeElements}>
                 <AuthProvider childComponentType={AppRouter}>
                   <TourProvider>
                     <HelmetProvider>
