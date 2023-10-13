@@ -44,6 +44,7 @@ public class TopicIndex implements SearchIndex {
     List<SearchSuggest> fieldSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
+    List<String> fieldsWithChildrenName = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(topic.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(topic.getName()).weight(10).build());
     serviceSuggest.add(SearchSuggest.builder().input(topic.getService().getName()).weight(5).build());
@@ -57,11 +58,12 @@ public class TopicIndex implements SearchIndex {
 
       for (FlattenSchemaField field : flattenFields) {
         fieldSuggest.add(SearchSuggest.builder().input(field.getName()).weight(5).build());
+        fieldsWithChildrenName.add(field.getName());
         if (field.getTags() != null) {
           tagsWithChildren.add(field.getTags());
         }
       }
-      doc.put("fields_arr", flattenFields);
+      doc.put("fields_name_arr", fieldsWithChildrenName);
     }
 
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TOPIC, topic));

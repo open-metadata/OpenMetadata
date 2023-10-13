@@ -50,6 +50,7 @@ public class TableIndex implements ColumnIndex {
     List<SearchSuggest> databaseSuggest = new ArrayList<>();
     List<SearchSuggest> serviceSuggest = new ArrayList<>();
     Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
+    List<String> columnsWithChildrenName = new ArrayList<>();
     SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
     if (table.getColumns() != null) {
       List<FlattenColumn> cols = new ArrayList<>();
@@ -57,11 +58,12 @@ public class TableIndex implements ColumnIndex {
 
       for (FlattenColumn col : cols) {
         columnSuggest.add(SearchSuggest.builder().input(col.getName()).weight(5).build());
+        columnsWithChildrenName.add(col.getName());
         if (col.getTags() != null) {
           tagsWithChildren.add(col.getTags());
         }
       }
-      doc.put("columns_arr", cols);
+      doc.put("columns_name_arr", columnsWithChildrenName);
     }
     parseTableSuggest(suggest);
     serviceSuggest.add(SearchSuggest.builder().input(table.getService().getName()).weight(5).build());

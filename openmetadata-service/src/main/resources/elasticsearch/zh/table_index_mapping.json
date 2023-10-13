@@ -131,43 +131,8 @@
           }
         }
       },
-      "columns_arr": {
-        "properties": {
-          "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "description": {
-            "type": "text",
-            "analyzer": "ik_max_word",
-            "search_analyzer": "ik_smart"
-          },
-          "tags": {
-            "properties": {
-              "tagFQN": {
-                "type": "keyword"
-              },
-              "labelType": {
-                "type": "keyword"
-              },
-              "description": {
-                "type": "text"
-              },
-              "source": {
-                "type": "keyword"
-              },
-              "state": {
-                "type": "keyword"
-              }
-            }
-          }
-        }
+      "columns_name_arr": {
+        "type": "keyword"
       },
       "databaseSchema": {
         "properties": {
