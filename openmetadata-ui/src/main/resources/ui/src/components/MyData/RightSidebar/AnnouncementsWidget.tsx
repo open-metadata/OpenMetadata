@@ -38,7 +38,7 @@ function AnnouncementsWidget({
   }, [widgetKey]);
 
   return (
-    <div className="bg-white h-full">
+    <div className="bg-white h-max-full overflow-y-scroll">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="right-panel-label m-b-sm">

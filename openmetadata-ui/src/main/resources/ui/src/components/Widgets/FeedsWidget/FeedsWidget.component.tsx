@@ -16,7 +16,6 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import AppState from '../../../AppState';
 import ActivityFeedListV1 from '../../../components/ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -32,6 +31,7 @@ import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizableP
 import { getFeedsWithFilter } from '../../../rest/feedsAPI';
 import { getCountBadge, getEntityDetailLink } from '../../../utils/CommonUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import FeedsFilterPopover from '../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
 
@@ -43,18 +43,16 @@ const FeedsWidget = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
+  const { currentUser } = useAuthContext();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
     ActivityFeedTabs.ALL
   );
   const { loading, entityThread, entityPaging, getFeedData } =
     useActivityFeedProvider();
   const [taskCount, setTaskCount] = useState(0);
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+
   const [defaultFilter, setDefaultFilter] = useState<FeedFilter>(
-    FeedFilter.OWNER_OR_FOLLOWS
+    currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
   );
 
   useEffect(() => {

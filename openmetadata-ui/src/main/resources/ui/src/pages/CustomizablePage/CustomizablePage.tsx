@@ -16,7 +16,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
-import { LANDING_PAGE_LAYOUT } from '../../constants/CustomizePage.constants';
 import { ClientErrors } from '../../enums/axios.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
@@ -27,6 +26,7 @@ import {
   updateDocument,
 } from '../../rest/DocStoreAPI';
 import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
+import customizePageClassBase from '../../utils/CustomizePageClassBase';
 
 export const CustomizablePage = () => {
   const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
@@ -57,7 +57,7 @@ export const CustomizablePage = () => {
               entityType: EntityType.PAGE,
               data: {
                 page: {
-                  layout: LANDING_PAGE_LAYOUT,
+                  layout: customizePageClassBase.landingPageDefaultLayout,
                 },
               },
             },

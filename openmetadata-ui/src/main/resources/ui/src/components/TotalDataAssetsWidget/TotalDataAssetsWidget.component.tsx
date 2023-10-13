@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import { CHART_WIDGET_DAYS_DURATION } from '../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
+import { WidgetWidths } from '../../enums/CustomizablePage.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -57,6 +58,7 @@ const TotalDataAssetsWidget = ({
   selectedDays = CHART_WIDGET_DAYS_DURATION,
   handleRemoveWidget,
   widgetKey,
+  selectedGridSize,
 }: TotalDataAssetsWidgetProps) => {
   const [totalEntitiesByType, setTotalEntitiesByType] =
     useState<DataInsightChartResult>();
@@ -96,6 +98,11 @@ const TotalDataAssetsWidget = ({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  const isWidgetSizeLarge = useMemo(
+    () => selectedGridSize === WidgetWidths.large,
+    [selectedGridSize]
+  );
+
   useEffect(() => {
     fetchTotalEntitiesByType();
   }, [selectedDays]);
@@ -121,18 +128,18 @@ const TotalDataAssetsWidget = ({
       )}
       {data.length ? (
         <Row>
-          <Col span={14}>
+          <Col span={isWidgetSizeLarge ? 14 : 24}>
             <Typography.Text className="font-medium">
               {t('label.data-insight-total-entity-summary')}
             </Typography.Text>
-            <div className="p-t-lg">
+            <div className="p-t-md">
               <ResponsiveContainer height={250} width="100%">
                 <AreaChart
                   data={data}
                   margin={{
                     top: 10,
-                    right: 50,
-                    left: -20,
+                    right: isWidgetSizeLarge ? 50 : 20,
+                    left: -30,
                     bottom: 0,
                   }}
                   syncId="anyId">
@@ -152,15 +159,17 @@ const TotalDataAssetsWidget = ({
               </ResponsiveContainer>
             </div>
           </Col>
-          <Col span={10}>
-            <TotalEntityInsightSummary
-              entities={entities}
-              latestData={latestData}
-              relativePercentage={relativePercentage}
-              selectedDays={selectedDays}
-              total={total}
-            />
-          </Col>
+          {isWidgetSizeLarge && (
+            <Col span={10}>
+              <TotalEntityInsightSummary
+                entities={entities}
+                latestData={latestData}
+                relativePercentage={relativePercentage}
+                selectedDays={selectedDays}
+                total={total}
+              />
+            </Col>
+          )}
         </Row>
       ) : (
         <Row>
