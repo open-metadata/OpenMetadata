@@ -13,7 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize } from 'lodash';
+import { capitalize, isNull } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -75,6 +75,14 @@ const AppRunsHistory = forwardRef(
       [expandedRowKeys]
     );
 
+    const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
+      if (record.status === Status.Success && isNull(record?.successContext)) {
+        return true;
+      }
+
+      return record.status === Status.Running;
+    }, []);
+
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
       () => [
         {
@@ -114,6 +122,7 @@ const AppRunsHistory = forwardRef(
             <Button
               className="p-0"
               data-testid="logs"
+              disabled={showLogAction(record)}
               size="small"
               type="link"
               onClick={() => handleRowExpandable(record.id)}>
@@ -122,7 +131,12 @@ const AppRunsHistory = forwardRef(
           ),
         },
       ],
-      [formatDateTime, handleRowExpandable, getStatusTypeForApplication]
+      [
+        formatDateTime,
+        handleRowExpandable,
+        getStatusTypeForApplication,
+        showLogAction,
+      ]
     );
 
     const fetchAppHistory = useCallback(
@@ -180,6 +194,7 @@ const AppRunsHistory = forwardRef(
             expandable={{
               expandedRowRender: (record) => <AppLogsViewer data={record} />,
               showExpandColumn: false,
+              rowExpandable: (record) => !showLogAction(record),
               expandedRowKeys,
             }}
             loading={isLoading}
