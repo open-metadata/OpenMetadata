@@ -30,6 +30,7 @@ import {
   getEntityLinkFromType,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import TitleBreadcrumb from '../../common/title-breadcrumb/title-breadcrumb.component';
@@ -80,6 +81,18 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           profileName,
         },
       ];
+
+      if (source?.domain) {
+        const domain = getEntityName(source.domain);
+        const domainLink = getDomainPath(source.domain.fullyQualifiedName);
+        _otherDetails.push({
+          key: 'Domain',
+          value: domainLink,
+          placeholderText: domain,
+          isLink: true,
+          openInNewTab: false,
+        });
+      }
 
       if (
         source.entityType !== EntityType.GLOSSARY_TERM &&
