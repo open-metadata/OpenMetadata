@@ -12,5 +12,62 @@
  */
 @import url('../../../../styles/variables.less');
 
-.assets-tab-container {
+.ant-popover-asset {
+  .ant-popover-inner-content {
+    padding: 0;
+    overflow-y: scroll;
+  }
+}
+
+.asset-multi-menu-selector.ant-menu:not(.ant-menu-horizontal)
+  .ant-menu-item-selected {
+  background-color: transparent;
+  color: initial;
+}
+
+.asset-multi-menu-selector {
+  .ant-menu-submenu-open {
+    background: @user-profile-background;
+  }
+  .ant-menu-inline {
+    .asset-sub-menu-title {
+      width: 150px;
+    }
+    .asset-sub-menu-checkbox {
+      padding-right: 2px;
+    }
+    .ant-menu-item::after {
+      border: none;
+    }
+  }
+
+  .ant-menu-submenu-inline {
+    .ant-menu-submenu-title {
+      padding-left: 14px !important;
+    }
+    .ant-menu-sub {
+      background: @user-profile-background;
+
+      .ant-menu-item-only-child {
+        padding-left: 22px !important;
+        padding-right: 14px;
+        color: initial;
+      }
+    }
+  }
+
+  .ant-menu-submenu-selected {
+    .ant-menu-submenu-title {
+      .asset-badge-container {
+        background: @primary-color;
+        color: @white;
+      }
+    }
+  }
+
+  .asset-badge-container {
+    background: rgba(41, 41, 41, 0.1);
+    border: none;
+    padding: 2px 6px;
+  }
 }

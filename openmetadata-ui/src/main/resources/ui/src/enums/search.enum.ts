@@ -12,6 +12,7 @@
  */
 
 export enum SearchIndex {
+  ALL = 'all',
   TABLE = 'table_search_index',
   TOPIC = 'topic_search_index',
   DASHBOARD = 'dashboard_search_index',

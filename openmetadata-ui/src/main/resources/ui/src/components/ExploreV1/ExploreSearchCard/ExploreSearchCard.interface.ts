@@ -25,6 +25,7 @@ export interface ExploreSearchCardProps {
     details: SearchedDataProps['data'][number]['_source'],
     entityType: string
   ) => void;
+  showEntityIcon?: boolean;
   checked?: boolean;
   showCheckboxes?: boolean;
   showTags?: boolean;
