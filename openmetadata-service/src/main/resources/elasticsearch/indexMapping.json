@@ -43,7 +43,7 @@
   },
   "pipeline": {
     "indexName": "pipeline_search_index",
-    "indexMappingFile": "/elasticsearch/%s/dashboard_data_model_index_mapping.json",
+    "indexMappingFile": "/elasticsearch/%s/pipeline_index_mapping.json",
     "alias": "pipeline",
     "parentAliases": ["pipelineService", "all"]
   },
