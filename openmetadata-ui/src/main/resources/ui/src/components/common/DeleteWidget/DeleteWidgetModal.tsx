@@ -54,6 +54,8 @@ const DeleteWidgetModal = ({
   prepareType = true,
   isRecursiveDelete,
   afterDeleteAction,
+  successMessage,
+  deleteOptions,
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [entityDeleteState, setEntityDeleteState] =
@@ -123,9 +125,10 @@ const DeleteWidgetModal = ({
 
       if (response.status === 200) {
         showSuccessToast(
-          t('server.entity-deleted-successfully', {
-            entity: startCase(entityType),
-          })
+          successMessage ??
+            t('server.entity-deleted-successfully', {
+              entity: startCase(entityType),
+            })
         );
         if (afterDeleteAction) {
           afterDeleteAction(entityDeleteState.softDelete);
@@ -217,7 +220,7 @@ const DeleteWidgetModal = ({
       title={`${t('label.delete')} ${entityName}`}
       onCancel={handleOnEntityDeleteCancel}>
       <Radio.Group value={value} onChange={onChange}>
-        {DELETE_OPTION.map(
+        {(deleteOptions ?? DELETE_OPTION).map(
           (option) =>
             option.isAllowed && (
               <Radio

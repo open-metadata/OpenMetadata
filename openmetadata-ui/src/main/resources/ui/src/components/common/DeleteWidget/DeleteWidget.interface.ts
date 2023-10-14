@@ -11,6 +11,13 @@
  *  limitations under the License.
  */
 
+export interface DeleteOption {
+  title: string;
+  description: string;
+  type: DeleteType;
+  isAllowed: boolean;
+}
+
 export interface DeleteWidgetModalProps {
   visible: boolean;
   onCancel: () => void;
@@ -24,6 +31,8 @@ export interface DeleteWidgetModalProps {
   entityId?: string;
   prepareType?: boolean;
   isRecursiveDelete?: boolean;
+  successMessage?: string;
+  deleteOptions?: DeleteOption[];
   afterDeleteAction?: (isSoftDelete?: boolean) => void;
 }
 
