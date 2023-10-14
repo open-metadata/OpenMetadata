@@ -3,12 +3,12 @@ source:
   serviceName: e2e_oracle
   serviceConnection:
     config:
-      hostPort: $ORACLE_HOST_PORT
-      username: $ORACLE_USERNAME
-      password: $ORACLE_PASSWORD
+      hostPort: $E2E_ORACLE_HOST_PORT
+      username: $E2E_ORACLE_USERNAME
+      password: $E2E_ORACLE_PASSWORD
       type: Oracle
       oracleConnectionType:
-        oracleServiceName: $ORACLE_SERVICE_NAME
+        oracleServiceName: $E2E_ORACLE_SERVICE_NAME
   sourceConfig:
     config:
       markDeletedTables: true
