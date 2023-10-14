@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-
 import { Space, Typography } from 'antd';
 import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
@@ -25,6 +23,7 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   ExploreProps,
   ExploreSearchIndex,
@@ -49,6 +48,7 @@ import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -303,7 +303,7 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: searchQueryParam,
+        query: escapeESReservedCharacters(searchQueryParam),
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: newSortValue,
@@ -332,7 +332,7 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
-            query: searchQueryParam,
+            query: escapeESReservedCharacters(searchQueryParam),
             pageNumber: 0,
             pageSize: 0,
             queryFilter: combinedQueryFilter,
