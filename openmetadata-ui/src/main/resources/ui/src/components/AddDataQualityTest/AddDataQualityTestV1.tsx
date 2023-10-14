@@ -293,7 +293,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         flex: 0.4,
         overlay: {
           displayThreshold: 200,
-          header: t('label.setup-guide'),
+          header: t('label.data-profiler-metrics'),
           rotation: 'counter-clockwise',
         },
       }}
