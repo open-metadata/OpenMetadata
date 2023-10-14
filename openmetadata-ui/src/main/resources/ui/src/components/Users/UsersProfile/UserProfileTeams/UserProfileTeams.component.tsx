@@ -23,6 +23,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../constants/constants';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../utils/CommonUtils';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
@@ -35,11 +36,11 @@ const UserProfileTeams = ({
   const { isAdminUser } = useAuth();
 
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
 
   const handleTeamsSave = () => {
     updateUserDetails({
-      teams: selectedTeams.map((teamId) => ({ id: teamId, type: 'team' })),
+      teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
     });
 
     setIsTeamsEdit(false);
@@ -49,7 +50,7 @@ const UserProfileTeams = ({
     () => (
       <Chip
         data={getNonDeletedTeams(teams ?? [])}
-        icon={<IconTeamsGrey height={20} width={20} />}
+        icon={<IconTeamsGrey height={20} />}
         noDataPlaceholder={t('message.no-team-found')}
       />
     ),
@@ -57,7 +58,7 @@ const UserProfileTeams = ({
   );
 
   useEffect(() => {
-    setSelectedTeams(getNonDeletedTeams(teams ?? []).map((team) => team.id));
+    setSelectedTeams(getNonDeletedTeams(teams ?? []));
   }, [teams]);
 
   return (
@@ -72,7 +73,7 @@ const UserProfileTeams = ({
 
           {!isTeamsEdit && isAdminUser && (
             <EditIcon
-              className="cursor-pointer"
+              className="cursor-pointer align-middle"
               color={DE_ACTIVE_COLOR}
               data-testid="edit-teams"
               {...ICON_DIMENSION}

@@ -38,6 +38,7 @@ export const SelectableList = ({
   searchPlaceholder,
   customTagRenderer,
   searchBarDataTestId,
+  removeIconTooltipLabel,
 }: SelectableListProps) => {
   const [uniqueOptions, setUniqueOptions] = useState<EntityReference[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -152,10 +153,6 @@ export const SelectableList = ({
           newItemsMap?.set(id, item);
         }
 
-        setUniqueOptions((options) =>
-          sortUniqueListFromSelectedList(newItemsMap, options)
-        );
-
         return newItemsMap;
       });
     } else {
@@ -234,7 +231,10 @@ export const SelectableList = ({
                 <Checkbox checked={selectedItemsInternal.has(item.id)} />
               ) : (
                 selectedItemsInternal.has(item.id) && (
-                  <RemoveIcon removeOwner={handleRemoveClick} />
+                  <RemoveIcon
+                    removeIconTooltipLabel={removeIconTooltipLabel}
+                    removeOwner={handleRemoveClick}
+                  />
                 )
               )
             }
@@ -253,14 +253,23 @@ export const SelectableList = ({
   );
 };
 
-const RemoveIcon = ({ removeOwner }: { removeOwner?: () => void }) => {
+const RemoveIcon = ({
+  removeOwner,
+  removeIconTooltipLabel,
+}: {
+  removeOwner?: () => void;
+  removeIconTooltipLabel?: string;
+}) => {
   const { t } = useTranslation();
 
   return (
     <Tooltip
-      title={t('label.remove-entity', {
-        entity: t('label.owner-lowercase'),
-      })}>
+      title={
+        removeIconTooltipLabel ??
+        t('label.remove-entity', {
+          entity: t('label.owner-lowercase'),
+        })
+      }>
       <SVGIcons
         data-testid="remove-owner"
         icon={Icons.ICON_REMOVE_COLORED}

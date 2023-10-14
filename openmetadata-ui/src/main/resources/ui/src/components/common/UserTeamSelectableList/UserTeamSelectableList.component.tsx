@@ -15,7 +15,6 @@ import { isEmpty, noop, toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
@@ -138,7 +137,7 @@ export const UserTeamSelectableList = ({
     } else {
       try {
         const { data } = await searchData(
-          WILD_CARD_CHAR,
+          '',
           afterPage,
           PAGE_SIZE_MEDIUM,
           'teamType:Group',
@@ -295,18 +294,17 @@ export const UserTeamSelectableList = ({
       showArrow={false}
       trigger="click"
       onOpenChange={setPopupVisible}>
-      {children
-        ? children
-        : hasPermission && (
-            <Button
-              className="flex-center p-0"
-              data-testid="edit-owner"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => setPopupVisible(true)}
-            />
-          )}
+      {children ??
+        (hasPermission && (
+          <Button
+            className="flex-center p-0"
+            data-testid="edit-owner"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            size="small"
+            type="text"
+            onClick={() => setPopupVisible(true)}
+          />
+        ))}
     </Popover>
   );
 };

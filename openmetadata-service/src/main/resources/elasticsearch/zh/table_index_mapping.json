@@ -131,6 +131,9 @@
           }
         }
       },
+      "columnNames": {
+        "type": "keyword"
+      },
       "databaseSchema": {
         "properties": {
           "id": {
@@ -333,7 +336,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "dataProducts": {
         "properties": {

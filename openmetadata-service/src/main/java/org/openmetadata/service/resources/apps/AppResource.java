@@ -58,7 +58,6 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -89,7 +88,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         PipelineServiceClientFactory.createPipelineServiceClient(config.getPipelineServiceClientConfiguration());
 
     // Create an On Demand DAO
-    CollectionDAO dao = JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class);
+    CollectionDAO dao = Entity.getCollectionDAO();
     searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 
     try {
@@ -119,10 +118,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
           // Schedule
           if (app != null && app.getScheduleType().equals(ScheduleType.Scheduled)) {
-            ApplicationHandler.scheduleApplication(
-                app,
-                JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-                searchRepository);
+            ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
           }
 
         } catch (Exception ex) {
@@ -223,6 +219,26 @@ public class AppResource extends EntityResource<App, AppRepository> {
           int offset) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
     return repository.listAppRuns(installation.getId(), limitParam, offset);
+  }
+
+  @GET
+  @Path("/name/{name}/runs/latest")
+  @Operation(
+      operationId = "latestAppRunRecord",
+      summary = "Get Latest App Run Record",
+      description = "Get a latest applications Run Record.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
+      })
+  public AppRunRecord listLatestAppRun(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
+    return repository.getLatestAppRuns(installation.getId());
   }
 
   @GET
@@ -353,10 +369,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 uriInfo, create.getName(), new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return create(uriInfo, securityContext, app);
   }
@@ -407,10 +420,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
     return createOrUpdate(uriInfo, securityContext, app);
   }
@@ -493,10 +503,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
       Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -522,10 +529,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,%s", FIELD_OWNER, "bot"));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.triggerApplicationOnDemand(
-          app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-          searchRepository);
+      ApplicationHandler.triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);
       return Response.status(Response.Status.OK).entity("Application Triggered").build();
     } else {
       app.setOpenMetadataServerConnection(

@@ -18,6 +18,9 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { TeamType } from '../../generated/entity/teams/team';
+import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
+import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
+import { PersonaPage } from '../../pages/Persona/PersonaListPage/PersonaPage';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import {
   getSettingCategoryPath,
@@ -80,6 +83,14 @@ const CustomPropertiesPageV1 = withSuspenseFallback(
     () => import('../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1')
   )
 );
+
+const AppDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../components/Applications/AppDetails/AppDetails.component')
+  )
+);
+
 const RolesListPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/RolesPage/RolesListPage/RolesListPage'))
 );
@@ -105,15 +116,6 @@ const UserListPageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/UserListPage/UserListPageV1'))
 );
 
-const DataInsightsSettingsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/DataInsightsSettingsPage/DataInsightsSettingsPage.component'
-      )
-  )
-);
-
 const EmailConfigSettingsPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -129,6 +131,10 @@ const CustomLogoConfigSettingsPage = withSuspenseFallback(
         '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage'
       )
   )
+);
+
+const ApplicationPageV1 = withSuspenseFallback(
+  React.lazy(() => import('../../pages/Application/ApplicationPage'))
 );
 
 const GlobalSettingRouter = () => {
@@ -173,6 +179,23 @@ const GlobalSettingRouter = () => {
         )}>
         <Redirect to={getTeamsWithFqnPath(TeamType.Organization)} />
       </Route>
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={PersonaDetailsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA,
+          true
+        )}
+      />
       {/* Roles route start
        * Do not change the order of these route
        */}
@@ -237,16 +260,6 @@ const GlobalSettingRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={DataInsightsSettingsPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
-          GlobalSettingOptions.DATA_INSIGHT
-        )}
-      />
-
-      <AdminProtectedRoute
-        exact
         component={EmailConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
@@ -261,6 +274,14 @@ const GlobalSettingRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.OPEN_METADATA,
           GlobalSettingOptions.CUSTOM_LOGO
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={CustomPageSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
         )}
       />
 
@@ -356,6 +377,24 @@ const GlobalSettingRouter = () => {
         hasPermission={false}
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_ATTRIBUTES
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ApplicationPageV1}
+        hasPermission={false}
+        path={getSettingCategoryPath(GlobalSettingsMenuCategory.INTEGRATIONS)}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AppDetailsPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.INTEGRATIONS,
+          GlobalSettingOptions.APPLICATIONS,
+          true
         )}
       />
     </Switch>

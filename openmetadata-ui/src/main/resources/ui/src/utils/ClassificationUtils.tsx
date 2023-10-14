@@ -56,8 +56,15 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     key: 'name',
     width: 200,
     render: (_, record) => (
-      <Space>
-        <Typography.Text>{record.name}</Typography.Text>
+      <Space align="center">
+        {record.style?.iconURL && (
+          <img data-testid="tag-icon" src={record.style.iconURL} width={16} />
+        )}
+        <Typography.Text
+          className="m-b-0"
+          style={{ color: record.style?.color }}>
+          {record.name}
+        </Typography.Text>
         {record.disabled ? (
           <Badge
             className="m-l-xs badge-grey"

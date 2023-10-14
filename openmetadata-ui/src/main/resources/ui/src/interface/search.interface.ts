@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Container } from '../generated/entity/data/container';
@@ -39,6 +40,7 @@ import { User } from '../generated/entity/teams/user';
 import { TestCase } from '../generated/tests/testCase';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
 
 /**
  * The `keyof` operator, when applied to a union type, expands to the keys are common for
@@ -170,6 +172,7 @@ export type ExploreSearchSource =
   | SearchIndexSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
+  [SearchIndex.ALL]: TableSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
@@ -252,7 +255,7 @@ export type SuggestRequest<
     }
 );
 
-export interface SearchHitBody<SI extends SearchIndex, T> {
+export interface SearchHitBody<SI extends SearchIndex | DataInsightIndex, T> {
   _index: SI;
   _type?: string;
   _id?: string;
@@ -295,6 +298,22 @@ export interface SearchResponse<
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;
+
+export type DataInsightSearchResponse = {
+  took?: number;
+  timed_out?: boolean;
+  hits: {
+    total: {
+      value: number;
+      relation?: string;
+    };
+    hits: SearchHitBody<
+      DataInsightIndex,
+      AggregatedCostAnalysisReportDataSearchSource
+    >[];
+  };
+  aggregations: Aggregations;
+};
 
 /**
  * Because we are using an older version of typescript-eslint, defining

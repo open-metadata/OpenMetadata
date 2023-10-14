@@ -11,28 +11,20 @@
  *  limitations under the License.
  */
 
+import { PagingResponse } from 'Models';
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingResponse } from 'Models';
 import { QueryVote } from '../components/TableQueries/TableQueries.interface';
 import { CreateQuery } from '../generated/api/data/createQuery';
 import { Query } from '../generated/entity/data/query';
-import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
-type Params = {
-  fields?: string;
-  limit?: number;
-  before?: string;
-  after?: string;
-  include?: Include;
-};
-
-export type ListQueriesParams = Params & {
+export type ListQueriesParams = ListParams & {
   entityId?: string;
 };
 
-export type QueryByIdParams = Pick<Params, 'fields' | 'include'>;
+export type QueryByIdParams = Pick<ListParams, 'fields' | 'include'>;
 
 const BASE_URL = '/queries';
 

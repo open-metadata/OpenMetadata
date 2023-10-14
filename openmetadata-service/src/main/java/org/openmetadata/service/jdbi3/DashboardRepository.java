@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -205,6 +206,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       update(Entity.CHART, "charts", listOrEmpty(updated.getCharts()), listOrEmpty(original.getCharts()));
