@@ -42,7 +42,10 @@ import {
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
-import { mockSearchData } from '../../constants/mockTourData.constants';
+import {
+  mockSearchData,
+  MOCK_EXPLORE_PAGE_COUNT,
+} from '../../constants/mockTourData.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
@@ -286,7 +289,7 @@ const ExplorePageV1: FunctionComponent = () => {
     }
   }, [parsedSearch]);
 
-  useEffect(() => {
+  const fetchEntityCount = () => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
     const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -379,6 +382,14 @@ const ExplorePageV1: FunctionComponent = () => {
         showErrorToast(err);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (isTourOpen) {
+      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+    } else {
+      fetchEntityCount();
+    }
   }, [
     parsedSearch.quickFilter,
     queryFilter,
@@ -419,7 +430,7 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={searchHitCounts}
+      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
