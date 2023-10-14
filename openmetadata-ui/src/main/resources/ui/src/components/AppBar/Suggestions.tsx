@@ -44,6 +44,7 @@ import {
   TagSource,
   TopicSource,
 } from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../TourProvider/TourProvider';
 
 type SuggestionProp = {
   searchText: string;
@@ -58,6 +59,7 @@ const Suggestions = ({
   searchCriteria,
 }: SuggestionProp) => {
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
@@ -210,8 +212,10 @@ const Suggestions = ({
   }, [searchText, searchCriteria]);
 
   useEffect(() => {
-    if (!isMounting.current && searchText) {
+    if (!isMounting.current && searchText && !isTourOpen) {
       fetchSearchData();
+    } else {
+      setIsLoading(false);
     }
   }, [searchText, searchCriteria]);
 
@@ -224,7 +228,7 @@ const Suggestions = ({
     return <Loader />;
   }
 
-  if (options.length === 0) {
+  if (options.length === 0 && !isTourOpen) {
     return (
       <Typography.Text>
         <Transi18next
