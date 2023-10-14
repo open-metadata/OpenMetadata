@@ -690,3 +690,78 @@ class ProfilerWorkflowTest(TestCase):
         assert sorted([c.__root__ for c in sample_data.sampleData.columns]) == sorted(
             ["id", "age"]
         )
+
+    def test_sample_data_ingestion(self):
+        """test the rows of the sample data are what we expect"""
+        workflow_config = deepcopy(ingestion_config)
+        workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "Profiler",
+                "tableFilterPattern": {"includes": ["users"]},
+            }
+        )
+        workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "profiler": {
+                    "name": "my_profiler",
+                    "timeout_seconds": 60,
+                    "metrics": ["row_count", "min", "max", "COUNT", "null_count"],
+                },
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": "test_sqlite.main.main.users",
+                    }
+                ],
+            },
+        }
+
+        profiler_workflow = ProfilerWorkflow.create(workflow_config)
+        profiler_workflow.execute()
+        status = profiler_workflow.result_status()
+        profiler_workflow.stop()
+
+        assert status == 0
+
+        table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.main.main.users",
+        )
+
+        # Test we are getting the expected sample data
+        expected_sample_data = [
+            [
+                1,
+                "John",
+                "John Doe",
+                "johnny b goode",
+                30,
+            ],
+            [
+                2,
+                "Jane",
+                "Jone Doe",
+                None,
+                31,
+            ],
+            [
+                3,
+                "Joh",
+                "Joh Doe",
+                None,
+                37,
+            ],
+            [
+                4,
+                "Jae",
+                "Jae Doe",
+                None,
+                38,
+            ],
+        ]
+        sample_data = self.metadata.get_sample_data(table).sampleData.rows
+        sample_data = [data[:-1] for data in sample_data]  # remove timestamp as dynamic
+        self.assertListEqual(
+            sorted(sample_data),
+            sorted(expected_sample_data),
+        )

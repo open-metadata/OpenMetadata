@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.postgres.v120;
 
 import static org.openmetadata.service.migration.utils.v120.MigrationUtil.addQueryService;
+import static org.openmetadata.service.migration.utils.v120.MigrationUtil.updateGlossaryAndGlossaryTermRelations;
 
 import lombok.SneakyThrows;
 import org.jdbi.v3.core.Handle;
@@ -28,5 +29,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     addQueryService(handle, collectionDAO);
+    updateGlossaryAndGlossaryTermRelations(handle, collectionDAO);
   }
 }

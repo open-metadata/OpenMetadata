@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isNil, uniqBy } from 'lodash';
@@ -21,12 +21,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../../AppState';
 import gridBgImg from '../../../assets/img/grid-bg-img.png';
-import {
-  LANDING_PAGE_LAYOUT,
-  LANDING_PAGE_MAX_GRID_SIZE,
-  LANDING_PAGE_ROW_HEIGHT,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../../../constants/CustomizePage.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -48,7 +42,7 @@ import {
   getLayoutUpdateHandler,
   getRemoveWidgetHandler,
 } from '../../../utils/CustomizableLandingPageUtils';
-import { CustomizePageClassBase } from '../../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../../utils/CustomizePageClassBase';
 import {
   getPersonaDetailsPath,
   getSettingPath,
@@ -75,7 +69,8 @@ function CustomizeMyData({
   const [resetRightPanelLayout, setResetRightPanelLayout] =
     useState<boolean>(false);
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
-    ...(initialPageData.data?.page?.layout ?? LANDING_PAGE_LAYOUT),
+    ...(initialPageData.data?.page?.layout ??
+      customizePageClassBase.landingPageDefaultLayout),
     {
       h: 2,
       i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
@@ -89,6 +84,7 @@ function CustomizeMyData({
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
   const { isAuthDisabled } = useAuth(location.pathname);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
@@ -124,12 +120,17 @@ function CustomizeMyData({
   }, []);
 
   const handleAddWidget = useCallback(
-    (newWidgetData: Document, placeholderWidgetKey: string) => {
+    (
+      newWidgetData: Document,
+      placeholderWidgetKey: string,
+      widgetSize: number
+    ) => {
       setLayout(
         getAddWidgetHandler(
           newWidgetData,
           placeholderWidgetKey,
-          LANDING_PAGE_MAX_GRID_SIZE
+          widgetSize,
+          customizePageClassBase.landingPageMaxGridSize
         )
       );
       setIsWidgetModalOpen(false);
@@ -145,6 +146,14 @@ function CustomizeMyData({
     },
     [layout]
   );
+
+  const handleOpenResetModal = useCallback(() => {
+    setIsResetModalOpen(true);
+  }, []);
+
+  const handleCloseResetModal = useCallback(() => {
+    setIsResetModalOpen(false);
+  }, []);
 
   const handleOpenAddWidgetModal = useCallback(() => {
     setIsWidgetModalOpen(true);
@@ -212,7 +221,7 @@ function CustomizeMyData({
         );
       }
 
-      const Widget = CustomizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+      const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
 
       return (
         <Widget
@@ -222,6 +231,7 @@ function CustomizeMyData({
           followedDataCount={followedDataCount}
           handleRemoveWidget={handleRemoveWidget}
           isLoadingOwnedData={isLoadingOwnedData}
+          selectedGridSize={widgetConfig.w}
           widgetKey={widgetConfig.i}
         />
       );
@@ -315,7 +325,7 @@ function CustomizeMyData({
 
   const handleReset = useCallback(() => {
     setLayout([
-      ...LANDING_PAGE_LAYOUT,
+      ...customizePageClassBase.landingPageDefaultLayout,
       {
         h: 2,
         i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
@@ -326,6 +336,7 @@ function CustomizeMyData({
       },
     ]);
     setResetRightPanelLayout(true);
+    setIsResetModalOpen(false);
   }, []);
 
   useEffect(() => {
@@ -363,8 +374,8 @@ function CustomizeMyData({
           <Button size="small" onClick={handleCancel}>
             {t('label.cancel')}
           </Button>
-          <Button size="small" onClick={handleReset}>
-            {t('label.reset-default-layout')}
+          <Button size="small" onClick={handleOpenResetModal}>
+            {t('label.reset')}
           </Button>
           <Button size="small" type="primary" onClick={handleSave}>
             {t('label.save')}
@@ -380,8 +391,11 @@ function CustomizeMyData({
             cols={{ lg: 4, md: 4, sm: 4, xs: 4, xxs: 4 }}
             draggableHandle=".drag-widget-icon"
             isResizable={false}
-            margin={[LANDING_PAGE_WIDGET_MARGIN, LANDING_PAGE_WIDGET_MARGIN]}
-            rowHeight={LANDING_PAGE_ROW_HEIGHT}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={customizePageClassBase.landingPageRowHeight}
             style={{
               backgroundImage: `url(${gridBgImg})`,
             }}
@@ -393,10 +407,22 @@ function CustomizeMyData({
               addedWidgetsList={addedWidgetsList}
               handleAddWidget={handleAddWidget}
               handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-              maxGridSizeSupport={LANDING_PAGE_MAX_GRID_SIZE}
+              maxGridSizeSupport={customizePageClassBase.landingPageMaxGridSize}
               open={isWidgetModalOpen}
               placeholderWidgetKey={placeholderWidgetKey}
             />
+          )}
+          {isResetModalOpen && (
+            <Modal
+              centered
+              cancelText={t('label.no')}
+              okText={t('label.yes')}
+              open={isResetModalOpen}
+              title={t('label.reset-default-layout')}
+              onCancel={handleCloseResetModal}
+              onOk={handleReset}>
+              {t('message.reset-layout-confirmation')}
+            </Modal>
           )}
         </ActivityFeedProvider>
       </Col>
