@@ -379,7 +379,7 @@
     <dependency>
       <groupId>io.socket</groupId>
       <artifactId>socket.io-server</artifactId>
-      <version>4.0.1</version>
+      <version>4.1.0</version>
     </dependency>
     <dependency>
       <groupId>io.socket</groupId>
