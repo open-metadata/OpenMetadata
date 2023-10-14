@@ -12,17 +12,20 @@
  */
 
 import { Card, Space, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
+import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import Loader from '../../../components/Loader/Loader';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 const ErrorPlaceHolderIngestion = () => {
-  const { platform, isFetchingStatus } = useAirflowStatus();
+  const { platform, isFetchingStatus, isAirflowAvailable, reason } =
+    useAirflowStatus();
 
   const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
 
@@ -30,7 +33,16 @@ const ErrorPlaceHolderIngestion = () => {
     return (
       <div className="mb-5" data-testid="error-steps">
         <Card className="d-flex flex-col justify-between w-4/5 mx-auto">
-          <AirflowMessageBanner className="m-b-xs" />
+          {isAirflowAvailable || isFetchingStatus || isEmpty(reason) ? null : (
+            <Space
+              align="center"
+              className={classNames('airflow-message-banner w-full m-b-xs')}
+              data-testid="no-airflow-placeholder"
+              size={16}>
+              <IconRetry height={24} width={24} />
+              <Typography.Text>{reason}</Typography.Text>
+            </Space>
+          )}
           {isAirflowPlatform ? (
             <>
               <div>

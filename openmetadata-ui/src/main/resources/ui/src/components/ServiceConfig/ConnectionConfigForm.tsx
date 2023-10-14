@@ -13,10 +13,12 @@
 
 import { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
-import { cloneDeep, isNil } from 'lodash';
+import { Space, Typography } from 'antd';
+import classNames from 'classnames';
+import { cloneDeep, isEmpty, isNil } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { Fragment, FunctionComponent } from 'react';
-import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
+import { ReactComponent as IconRetry } from '../../assets/svg/ic-retry-icon.svg';
 import { ServiceCategory } from '../../enums/service.enum';
 import { MetadataServiceType } from '../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../generated/api/services/createMlModelService';
@@ -26,6 +28,7 @@ import { DatabaseServiceType } from '../../generated/entity/services/databaseSer
 import { MessagingServiceType } from '../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../generated/entity/services/searchService';
+import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getDashboardConfig } from '../../utils/DashboardServiceUtils';
 import { getDatabaseConfig } from '../../utils/DatabaseServiceUtils';
@@ -37,6 +40,7 @@ import { getPipelineConfig } from '../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import FormBuilder from '../common/FormBuilder/FormBuilder';
+import './connection-config-form.less';
 
 interface Props {
   data?: ServicesType;
@@ -66,6 +70,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   const config = !isNil(data)
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
+  const { reason, isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
   const handleSave = async (data: IChangeEvent<ConfigData>) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
@@ -137,6 +142,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         cancelText={cancelText}
         disableTestConnection={disableTestConnection}
         formData={validConfig}
+        isAirflowAvailable={isAirflowAvailable}
         okText={okText}
         schema={connSch.schema}
         serviceCategory={serviceCategory}
@@ -154,7 +160,16 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
   return (
     <Fragment>
-      <AirflowMessageBanner />
+      {isAirflowAvailable || isFetchingStatus || isEmpty(reason) ? null : (
+        <Space
+          align="center"
+          className={classNames('airflow-message-banner w-full')}
+          data-testid="no-airflow-placeholder"
+          size={16}>
+          <IconRetry height={24} width={24} />
+          <Typography.Text>{reason}</Typography.Text>
+        </Space>
+      )}
       {getConfigFields()}
     </Fragment>
   );

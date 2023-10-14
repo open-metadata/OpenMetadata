@@ -12,17 +12,18 @@
  */
 
 import { Button, Card, Space, Typography } from 'antd';
-import { isUndefined } from 'lodash';
+import classNames from 'classnames';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
+import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import Loader from '../../../components/Loader/Loader';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 
 export type SuccessScreenProps = {
   name: string;
@@ -49,7 +50,8 @@ const SuccessScreen = ({
   viewServiceText,
 }: SuccessScreenProps) => {
   const { t } = useTranslation();
-  const { isAirflowAvailable, platform, isFetchingStatus } = useAirflowStatus();
+  const { isAirflowAvailable, platform, isFetchingStatus, reason } =
+    useAirflowStatus();
 
   const isAirflowPlatform = useMemo(
     () => platform === PIPELINE_SERVICE_PLATFORM,
@@ -126,7 +128,16 @@ const SuccessScreen = ({
           <>
             {!isAirflowAvailable && (
               <>
-                <AirflowMessageBanner />
+                {isFetchingStatus || isEmpty(reason) ? null : (
+                  <Space
+                    align="center"
+                    className={classNames('airflow-message-banner w-full')}
+                    data-testid="no-airflow-placeholder"
+                    size={16}>
+                    <IconRetry height={24} width={24} />
+                    <Typography.Text>{reason}</Typography.Text>
+                  </Space>
+                )}
                 <Card className="m-t-sm">{messageElement}</Card>
               </>
             )}

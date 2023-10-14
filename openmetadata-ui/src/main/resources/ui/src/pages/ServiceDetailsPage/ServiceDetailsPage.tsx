@@ -23,6 +23,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
 import {
@@ -40,7 +41,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
-import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
+import { ReactComponent as IconRetry } from '../../assets/svg/ic-retry-icon.svg';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/next-previous/NextPrevious.interface';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
@@ -133,7 +134,7 @@ export type ServicePageData =
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { isAirflowAvailable } = useAirflowStatus();
+
   const {
     fqn: serviceFQN,
     serviceCategory,
@@ -197,6 +198,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const { reason, isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
   const handleShowDeleted = useCallback((value: boolean) => {
     setShowDeleted(value);
@@ -881,7 +884,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <Col className="p-x-lg" span={24}>
           <Row className="my-4">
             <Col span={12}>
-              <AirflowMessageBanner />
+              {isAirflowAvailable ||
+              isFetchingStatus ||
+              isEmpty(reason) ? null : (
+                <Space
+                  align="center"
+                  className={classNames('airflow-message-banner w-full')}
+                  data-testid="no-airflow-placeholder"
+                  size={16}>
+                  <IconRetry height={24} width={24} />
+                  <Typography.Text>{reason}</Typography.Text>
+                </Space>
+              )}
             </Col>
             <Col span={12}>
               <Space className="w-full justify-end">

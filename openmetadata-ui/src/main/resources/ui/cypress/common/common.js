@@ -14,6 +14,7 @@
 // eslint-disable-next-line spaced-comment
 /// <reference types="cypress" />
 
+import { lowerCase } from 'lodash';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -255,37 +256,30 @@ export const testServiceCreationAndIngestion = ({
 }) => {
   // Storing the created service name and the type of service
   // Select Service in step 1
-  cy.get(`[data-testid="${serviceType}"]`).should('exist').click();
-  cy.get('[data-testid="next-button"]').should('exist').click();
+  cy.get(`[data-testid="${serviceType}"]`).click();
+  cy.get('[data-testid="next-button"]').click();
 
   // Enter service name in step 2
 
   // validation should work
-  cy.get('[data-testid="next-button"]').should('exist').click();
+  cy.get('[data-testid="next-button"]').click();
 
   cy.get('#name_help').should('be.visible').contains('Name is required');
 
   // invalid name validation should work
-  cy.get('[data-testid="service-name"]').should('exist').type('!@#$%^&*()');
+  cy.get('[data-testid="service-name"]').type('!@#$%^&*()');
   cy.get('#name_help').should('be.visible').contains(NAME_VALIDATION_ERROR);
 
-  cy.get('[data-testid="service-name"]')
-    .should('exist')
-    .clear()
-    .type(serviceName);
+  cy.get('[data-testid="service-name"]').clear().type(serviceName);
   interceptURL('GET', '/api/v1/services/ingestionPipelines/ip', 'ipApi');
   interceptURL(
     'GET',
     'api/v1/services/ingestionPipelines/*',
     'ingestionPipelineStatus'
   );
-  // intercept the service requirement md file fetch request
-  interceptURL(
-    'GET',
-    `en-US/${serviceCategory}/${serviceType}.md`,
-    'getServiceRequirements'
-  );
-  cy.get('[data-testid="next-button"]').should('exist').click();
+
+  cy.get('[data-testid="next-button"]').click();
+
   verifyResponseStatusCode('@ingestionPipelineStatus', 200);
   verifyResponseStatusCode('@ipApi', 204);
 
@@ -300,7 +294,8 @@ export const testServiceCreationAndIngestion = ({
 
   // Requirement panel should be visible and fetch the requirements md file
   cy.get('[data-testid="service-requirements"]').should('be.visible');
-  verifyResponseStatusCode('@getServiceRequirements', [200, 304], {}, true);
+  // Check setup guide should be exists on right side panel
+  cy.get(`#${lowerCase(serviceType)}`).should('exist');
 
   connectionInput();
 

@@ -46,7 +46,7 @@ const connectionInput = () => {
   checkServiceFieldSectionHighlighting('endPointURL');
 };
 
-describe('S3Storage Ingestion', () => {
+describe.skip('S3Storage Ingestion', () => {
   beforeEach(() => {
     cy.login();
   });

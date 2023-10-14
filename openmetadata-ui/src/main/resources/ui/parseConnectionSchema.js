@@ -43,8 +43,8 @@ async function parseSchema(filePath, destPath) {
     const fileName = path.basename(filePath);
     process.chdir(fileDir);
     const parsedSchema = await parser.parse(fileName);
-    const schema = await parser.dereference(parsedSchema);
-    const api = await parser.bundle(schema);
+    // const schema = await parser.dereference(parsedSchema);
+    const api = await parser.bundle(parsedSchema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
     if (!fs.existsSync(dirname)) {
       try {

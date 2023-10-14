@@ -20,7 +20,6 @@ import { isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { ConfigData } from '../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../rest/ingestionPipelineAPI';
 import { transformErrors } from '../../../utils/formUtils';
@@ -29,10 +28,10 @@ import { ArrayFieldTemplate } from '../../JSONSchemaTemplate/ArrayFieldTemplate'
 import DescriptionFieldTemplate from '../../JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../../JSONSchemaTemplate/ObjectFieldTemplate';
+import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 import PasswordWidget from '../../JsonSchemaWidgets/PasswordWidget';
 import Loader from '../../Loader/Loader';
 import TestConnection from '../TestConnection/TestConnection';
-import MultiSelectWidget from '../../JsonSchemaWidgets/MultiSelectWidget';
 
 interface Props extends FormProps {
   okText: string;
@@ -46,6 +45,7 @@ interface Props extends FormProps {
   onCancel?: () => void;
   showTestConnection?: boolean;
   useSelectWidget?: boolean;
+  isAirflowAvailable?: boolean;
 }
 
 const FormBuilder: FunctionComponent<Props> = ({
@@ -65,10 +65,9 @@ const FormBuilder: FunctionComponent<Props> = ({
   serviceName,
   showTestConnection = true,
   useSelectWidget = false,
+  isAirflowAvailable = false,
   ...props
 }: Props) => {
-  const { isAirflowAvailable } = useAirflowStatus();
-
   const formRef = useRef<Form<ConfigData>>(null);
   const [localFormData, setLocalFormData] = useState<ConfigData | undefined>(
     formatFormDataForRender(formData ?? {})
