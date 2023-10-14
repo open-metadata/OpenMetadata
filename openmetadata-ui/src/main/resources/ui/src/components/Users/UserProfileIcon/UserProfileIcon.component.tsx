@@ -291,10 +291,9 @@ export const UserProfileIcon = () => {
           {isImgUrlValid ? (
             <img
               alt="user"
-              className="profile-image circle"
+              className="app-bar-user-avatar"
               referrerPolicy="no-referrer"
               src={profilePicture ?? ''}
-              width={36}
               onError={handleOnImageError}
             />
           ) : (
