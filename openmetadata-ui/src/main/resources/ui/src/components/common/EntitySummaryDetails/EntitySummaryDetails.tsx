@@ -20,6 +20,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -186,6 +187,20 @@ const EntitySummaryDetails = ({
 
       break;
 
+    case 'Domain':
+      {
+        retVal = (
+          <DomainIcon
+            className="d-flex"
+            color={DE_ACTIVE_COLOR}
+            height={16}
+            name="folder"
+            width={16}
+          />
+        );
+      }
+
+      break;
     default:
       {
         retVal = (

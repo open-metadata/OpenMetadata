@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -834,4 +835,8 @@ export const ERROR_MESSAGE = {
 export const ICON_DIMENSION = {
   with: 14,
   height: 14,
+};
+
+export const COMMON_ICON_STYLES: CSSProperties = {
+  verticalAlign: 'middle',
 };

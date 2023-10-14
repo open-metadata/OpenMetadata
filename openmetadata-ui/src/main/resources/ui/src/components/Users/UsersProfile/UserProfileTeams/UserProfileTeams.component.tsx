@@ -23,6 +23,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
 } from '../../../../constants/constants';
+import { EntityReference } from '../../../../generated/entity/type';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../utils/CommonUtils';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
@@ -35,11 +36,11 @@ const UserProfileTeams = ({
   const { isAdminUser } = useAuth();
 
   const [isTeamsEdit, setIsTeamsEdit] = useState(false);
-  const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
+  const [selectedTeams, setSelectedTeams] = useState<EntityReference[]>([]);
 
   const handleTeamsSave = () => {
     updateUserDetails({
-      teams: selectedTeams.map((teamId) => ({ id: teamId, type: 'team' })),
+      teams: selectedTeams.map((teamId) => ({ id: teamId.id, type: 'team' })),
     });
 
     setIsTeamsEdit(false);
@@ -57,7 +58,7 @@ const UserProfileTeams = ({
   );
 
   useEffect(() => {
-    setSelectedTeams(getNonDeletedTeams(teams ?? []).map((team) => team.id));
+    setSelectedTeams(getNonDeletedTeams(teams ?? []));
   }, [teams]);
 
   return (

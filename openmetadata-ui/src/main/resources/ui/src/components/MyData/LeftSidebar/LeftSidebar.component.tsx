@@ -49,7 +49,7 @@ const LeftSidebar = () => {
         label: (
           <Tooltip
             overlayClassName="left-panel-tooltip"
-            placement="right"
+            placement="topLeft"
             title={
               <Typography.Text className="left-panel-label">
                 {t('label.govern')}

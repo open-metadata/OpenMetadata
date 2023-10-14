@@ -146,10 +146,12 @@ const MyDataWidgetInternal = ({
                 );
               })
             ) : (
-              <Transi18next
-                i18nKey="message.no-owned-data"
-                renderElement={<Link to={ROUTES.EXPLORE} />}
-              />
+              <span className="text-sm">
+                <Transi18next
+                  i18nKey="message.no-owned-data"
+                  renderElement={<Link to={ROUTES.EXPLORE} />}
+                />
+              </span>
             )}
           </div>
         </>

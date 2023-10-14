@@ -29,7 +29,10 @@ import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
+import {
+  COMMON_ICON_STYLES,
+  ICON_DIMENSION,
+} from '../../../constants/constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -298,7 +301,10 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <AllActivityIcon {...ICON_DIMENSION} />
+                  <AllActivityIcon
+                    style={COMMON_ICON_STYLES}
+                    {...ICON_DIMENSION}
+                  />
                   <span>{t('label.all')}</span>
                 </Space>
 
@@ -316,7 +322,7 @@ export const ActivityFeedTab = ({
           {
             label: (
               <Space align="center" size="small">
-                <MentionIcon {...ICON_DIMENSION} />
+                <MentionIcon style={COMMON_ICON_STYLES} {...ICON_DIMENSION} />
                 <span>{t('label.mention-plural')}</span>
               </Space>
             ),
@@ -326,7 +332,10 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <TaskListIcon {...ICON_DIMENSION} />
+                  <TaskListIcon
+                    style={COMMON_ICON_STYLES}
+                    {...ICON_DIMENSION}
+                  />
                   <span>{t('label.task-plural')}</span>
                 </Space>
                 <span>{getCountBadge(tasksCount, '', isTaskActiveTab)}</span>

@@ -1,3 +1,5 @@
+import { EntityReference } from '../../generated/entity/type';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +14,9 @@
  */
 export interface TeamsSelectableProps {
   showTeamsAlert?: boolean;
-  onSelectionChange?: (teams: string[]) => void;
+  onSelectionChange?: (teams: EntityReference[]) => void;
   filterJoinable?: boolean;
   placeholder?: string;
-  selectedTeams?: string[];
+  selectedTeams?: EntityReference[];
   maxValueCount?: number;
 }

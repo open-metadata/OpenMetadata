@@ -181,15 +181,6 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.metadata'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.METADATA_SERVICE,
-            permissions
-          ),
-          key: 'services.metadata',
-          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
-        },
-        {
           label: i18next.t('label.storage-plural'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.STORAGE_SERVICE,
@@ -206,6 +197,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.search',
           icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
+        {
+          label: i18next.t('label.metadata'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.METADATA_SERVICE,
+            permissions
+          ),
+          key: 'services.metadata',
+          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
         },
       ],
     },

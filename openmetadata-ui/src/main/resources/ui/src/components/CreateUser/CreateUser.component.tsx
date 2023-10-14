@@ -22,7 +22,7 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, map, trim } from 'lodash';
+import { compact, isEmpty, map, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
@@ -33,6 +33,7 @@ import {
   CreatePasswordType,
   CreateUser as CreateUserSchema,
 } from '../../generated/api/teams/createUser';
+import { EntityReference } from '../../generated/entity/type';
 import { AuthProvider } from '../../generated/settings/settings';
 import { checkEmailInUse, generateRandomPwd } from '../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../utils/BotsUtils';
@@ -60,9 +61,9 @@ const CreateUser = ({
   const { authConfig } = useAuthContext();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBot, setIsBot] = useState(forceBot);
-  const [selectedTeams, setSelectedTeams] = useState<Array<string | undefined>>(
-    []
-  );
+  const [selectedTeams, setSelectedTeams] = useState<
+    Array<EntityReference | undefined>
+  >([]);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
 
   const isAuthProviderBasic = useMemo(
@@ -105,9 +106,7 @@ const CreateUser = ({
   const handleSave: FormProps['onFinish'] = (values) => {
     const isPasswordGenerated =
       passwordGenerator === CreatePasswordGenerator.AutomaticGenerate;
-    const validTeam = selectedTeams.filter(
-      (id) => !isUndefined(id)
-    ) as string[];
+    const validTeam = compact(selectedTeams).map((team) => team.id);
 
     const { email, displayName, tokenExpiry, confirmPassword, description } =
       values;

@@ -113,6 +113,9 @@ const DomainSelectableList = ({
           customTagRenderer={DomainListItemRenderer}
           fetchOptions={fetchOptions}
           multiSelect={false}
+          removeIconTooltipLabel={t('label.remove-entity', {
+            entity: t('label.domain-lowercase'),
+          })}
           searchPlaceholder={t('label.search-for-type', {
             type: t('label.domain'),
           })}
