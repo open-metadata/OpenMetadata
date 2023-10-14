@@ -181,15 +181,6 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.metadata'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.METADATA_SERVICE,
-            permissions
-          ),
-          key: 'services.metadata',
-          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
-        },
-        {
           label: i18next.t('label.storage-plural'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.STORAGE_SERVICE,
@@ -206,6 +197,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.search',
           icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
+        {
+          label: i18next.t('label.metadata'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.METADATA_SERVICE,
+            permissions
+          ),
+          key: 'services.metadata',
+          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
         },
       ],
     },
@@ -329,16 +329,16 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.email'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.email',
-          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
-        },
-        {
           label: i18next.t('label.customize-landing-page'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customizeLandingPage',
           icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.email'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.email',
+          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.custom-logo'),

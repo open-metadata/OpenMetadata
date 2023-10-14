@@ -10,21 +10,4 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Layout } from 'react-grid-layout';
-
-export interface WidgetConfig
-  extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
-  data?: {
-    page: {
-      layout: Array<WidgetConfig>;
-    };
-  };
-}
-
-export interface WidgetCommonProps {
-  selectedGridSize?: number;
-  isEditView?: boolean;
-  widgetKey: string;
-  handleRemoveWidget?: (widgetKey: string) => void;
-}
+export const GLOSSARY_IMPORT_STATUS = ['Entity created', 'Entity updated'];

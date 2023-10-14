@@ -37,6 +37,7 @@ const MyDataWidgetInternal = ({
   const currentUserDetails = AppState.getCurrentUserDetails();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<EntityReference[]>([]);
+  const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);
 
   const fetchMyDataAssets = async () => {
     if (!currentUserDetails || !currentUserDetails.id) {
@@ -54,7 +55,8 @@ const MyDataWidgetInternal = ({
           includeData.includes(data.type as AssetsType)
         );
 
-        setData(includedOwnsData.slice(0, 8));
+        setData(includedOwnsData.slice(0, 9));
+        setTotalOwnedAssetsCount(includedOwnsData.length);
       }
     } catch (err) {
       setData([]);
@@ -87,7 +89,7 @@ const MyDataWidgetInternal = ({
                   <span className="text-grey-muted font-normal text-xs">
                     {t('label.view-all')}{' '}
                     <span data-testid="my-data-total-count">
-                      {`(${data.length})`}
+                      {`(${totalOwnedAssetsCount})`}
                     </span>
                   </span>
                 </Link>
@@ -144,10 +146,12 @@ const MyDataWidgetInternal = ({
                 );
               })
             ) : (
-              <Transi18next
-                i18nKey="message.no-owned-data"
-                renderElement={<Link to={ROUTES.EXPLORE} />}
-              />
+              <span className="text-sm">
+                <Transi18next
+                  i18nKey="message.no-owned-data"
+                  renderElement={<Link to={ROUTES.EXPLORE} />}
+                />
+              </span>
             )}
           </div>
         </>
