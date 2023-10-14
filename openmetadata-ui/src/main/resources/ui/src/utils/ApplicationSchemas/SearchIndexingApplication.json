@@ -1,0 +1,103 @@
+{
+  "$id": "SearchReindexAppSchema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Search Indexing Application",
+  "description": "This schema defines configuration for Search Reindexing Application.",
+  "properties": {
+    "batchSize": {
+      "title": "Batch Size",
+      "description": "Maximum number of events entities in a batch (Default 1000).",
+      "type": "integer",
+      "default": 100
+    },
+    "entities": {
+      "title": "Entities",
+      "description": "List of entities that you need to reindex",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "table",
+          "dashboard",
+          "topic",
+          "pipeline",
+          "searchIndex",
+          "user",
+          "team",
+          "glossaryTerm",
+          "mlmodel",
+          "tag",
+          "classification",
+          "query",
+          "container",
+          "database",
+          "databaseSchema",
+          "testCase",
+          "testSuite",
+          "chart",
+          "dashboardDataModel",
+          "databaseService",
+          "messagingService",
+          "dashboardService",
+          "pipelineService",
+          "mlmodelService",
+          "searchService",
+          "entityReportData",
+          "webAnalyticEntityViewReportData",
+          "webAnalyticUserActivityReportData",
+          "domain",
+          "storedProcedure",
+          "dataProduct"
+        ]
+      },
+      "default": [
+        "table",
+        "dashboard",
+        "topic",
+        "pipeline",
+        "searchIndex",
+        "user",
+        "team",
+        "glossaryTerm",
+        "mlmodel",
+        "tag",
+        "classification",
+        "query",
+        "container",
+        "database",
+        "databaseSchema",
+        "testCase",
+        "testSuite",
+        "chart",
+        "dashboardDataModel",
+        "databaseService",
+        "messagingService",
+        "dashboardService",
+        "pipelineService",
+        "mlmodelService",
+        "searchService",
+        "entityReportData",
+        "webAnalyticEntityViewReportData",
+        "webAnalyticUserActivityReportData",
+        "domain",
+        "storedProcedure",
+        "dataProduct"
+      ],
+      "uniqueItems": true
+    },
+    "recreateIndex": {
+      "title": "Recreate Indexes",
+      "type": "boolean",
+      "default": true
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "title": "Search Index Language",
+      "javaType": "org.openmetadata.schema.type.IndexMappingLanguage",
+      "type": "string",
+      "enum": ["EN", "JP", "ZH"],
+      "default": "EN"
+    }
+  },
+  "additionalProperties": false
+}

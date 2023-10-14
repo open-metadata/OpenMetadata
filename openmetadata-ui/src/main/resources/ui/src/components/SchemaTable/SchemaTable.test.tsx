@@ -221,7 +221,7 @@ describe('Test EntityTable Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const columnNames = await screen.findAllByTestId('column-display-name');
+    const columnNames = await screen.findAllByTestId('column-name');
 
     expect(columnNames).toHaveLength(3);
 
@@ -244,12 +244,12 @@ describe('Test EntityTable Component', () => {
     const columnDisplayName = await screen.findAllByTestId(
       'column-display-name'
     );
-    const columnName = await screen.findByTestId('column-name');
+    const columnName = await screen.findAllByTestId('column-name');
 
     expect(columnDisplayName[0]).toBeInTheDocument();
-    expect(columnName).toBeInTheDocument();
+    expect(columnName[0]).toBeInTheDocument();
 
     expect(columnDisplayName[0].textContent).toBe('Comments');
-    expect(columnName.textContent).toBe('comments');
+    expect(columnName[0].textContent).toBe('comments');
   });
 });

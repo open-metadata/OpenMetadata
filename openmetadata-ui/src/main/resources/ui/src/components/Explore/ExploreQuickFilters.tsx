@@ -34,6 +34,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { ExploreSearchIndex } from './explore.interface';
 import { ExploreQuickFiltersProps } from './ExploreQuickFilters.interface';
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
@@ -196,6 +197,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           <SearchDropdown
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
+            index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
             label={field.label}

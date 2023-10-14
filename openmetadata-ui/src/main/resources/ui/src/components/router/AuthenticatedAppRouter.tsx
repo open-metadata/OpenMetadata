@@ -18,9 +18,10 @@ import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
 import DomainPage from '../../components/Domain/DomainPage.component';
 import { ROUTES } from '../../constants/constants';
 import { Operation } from '../../generated/entity/policies/policy';
+import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
-import { useApplicationConfigProvider } from '../ApplicationConfigProvider/ApplicationConfigProvider';
+import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
 import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import AdminProtectedRoute from './AdminProtectedRoute';
@@ -57,6 +58,10 @@ const AddCustomProperty = withSuspenseFallback(
   React.lazy(
     () => import('../CustomEntityDetail/AddCustomProperty/AddCustomProperty')
   )
+);
+
+const MarketPlacePage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
 const PipelineDetailsPage = withSuspenseFallback(
@@ -125,6 +130,23 @@ const AddServicePage = withSuspenseFallback(
     () => import('../../pages/AddServicePage/AddServicePage.component')
   )
 );
+
+const MarketPlaceAppDetails = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+      )
+  )
+);
+
+const AppInstallPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../../components/Applications/AppInstall/AppInstall.component')
+  )
+);
+
 const EditConnectionFormPage = withSuspenseFallback(
   React.lazy(
     () =>
@@ -319,7 +341,7 @@ const PageNotFound = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const { routeElements } = useApplicationConfigProvider();
+  const { routeElements } = useApplicationConfigContext();
 
   const glossaryPermission = useMemo(
     () =>
@@ -394,6 +416,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           permissions
         )}
         path={ROUTES.EDIT_INGESTION}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MarketPlacePage}
+        path={ROUTES.MARKETPLACE}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={MarketPlaceAppDetails}
+        path={ROUTES.MARKETPLACE_APP_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AppInstallPage}
+        path={ROUTES.MARKETPLACE_APP_INSTALL}
       />
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
@@ -843,6 +883,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact path={ROUTES.HOME}>
         <Redirect to={ROUTES.MY_DATA} />
       </Route>
+
+      <AdminProtectedRoute
+        exact
+        component={CustomizablePage}
+        path={ROUTES.CUSTOMIZE_PAGE}
+      />
       {routeElements}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Redirect to={ROUTES.NOT_FOUND} />

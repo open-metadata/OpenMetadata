@@ -14,7 +14,7 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { getCustomLogoConfig } from '../../rest/settingConfigAPI';
 import ApplicationConfigProvider, {
-  useApplicationConfigProvider,
+  useApplicationConfigContext,
 } from './ApplicationConfigProvider';
 
 const mockApplicationConfig = {
@@ -47,7 +47,7 @@ describe('ApplicationConfigProvider', () => {
 
   it('fetch the application config on mount and set in the context', async () => {
     function TestComponent() {
-      const { customLogoUrlPath } = useApplicationConfigProvider();
+      const { customLogoUrlPath } = useApplicationConfigContext();
 
       return <div>{customLogoUrlPath}</div>;
     }

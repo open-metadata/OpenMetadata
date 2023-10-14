@@ -92,6 +92,9 @@
           }
         ]
       },
+      "column_suggest": {
+        "type": "completion"
+      },
       "owner": {
         "properties": {
           "id": {
@@ -257,6 +260,9 @@
             "type": "integer"
           }
         }
+      },
+      "columnNames": {
+        "type": "keyword"
       },
       "project": {
         "type": "text",

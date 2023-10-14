@@ -25,7 +25,6 @@ import {
 } from '../../common/common';
 import { DELETE_TERM } from '../../constants/constants';
 import {
-  COMMON_UPDATED_DESCRIPTION,
   DOMAIN_CREATION_DETAILS,
   OWNER,
   SERVICE_DETAILS_FOR_VERSION_TEST,
@@ -135,13 +134,13 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
           verifyResponseStatusCode('@getVersionsList', 200);
           verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-          cy.get(
-            `[data-testid="domain-link"] [data-testid="diff-added-${DOMAIN_CREATION_DETAILS.name}"]`
-          )
+          cy.get(`[data-testid="domain-link"]`)
+            .within(($this) => $this.find(`[data-testid="diff-added"]`))
             .scrollIntoView()
             .should('be.visible');
 
-          cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
+          cy.get('[data-testid="viewer-container"]')
+            .within(($this) => $this.find('[data-testid="diff-added"]'))
             .scrollIntoView()
             .should('be.visible');
 
@@ -227,7 +226,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-added-${OWNER}"]`)
+        cy.get(`[data-testid="diff-added"]`)
           .scrollIntoView()
           .should('be.visible');
 
@@ -247,7 +246,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-removed-${OWNER}"]`)
+        cy.get(`[data-testid="diff-removed"]`)
           .scrollIntoView()
           .should('be.visible');
       });
@@ -287,7 +286,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-added-${TIER}"]`)
+        cy.get(`[data-testid="diff-added"]`)
           .scrollIntoView()
           .should('be.visible');
 
@@ -307,7 +306,7 @@ Object.entries(SERVICE_DETAILS_FOR_VERSION_TEST).map(
         verifyResponseStatusCode('@getVersionsList', 200);
         verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-        cy.get(`[data-testid="diff-removed-${TIER}"]`)
+        cy.get(`[data-testid="diff-removed"]`)
           .scrollIntoView()
           .should('be.visible');
       });

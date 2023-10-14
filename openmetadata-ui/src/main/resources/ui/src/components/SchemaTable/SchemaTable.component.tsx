@@ -315,22 +315,22 @@ const SchemaTable = ({
                   tableConstraints,
                 })}
                 {/* If we do not have displayName name only be shown in the bold from the below code */}
-                {!isEmpty(displayName) ? (
-                  <Typography.Text
-                    className="m-b-0 d-block text-grey-muted"
-                    data-testid="column-name">
-                    {name}
-                  </Typography.Text>
-                ) : null}
 
-                {/* It will render displayName fallback to name */}
+                <Typography.Text
+                  className="m-b-0 d-block text-grey-muted"
+                  data-testid="column-name">
+                  {name}
+                </Typography.Text>
+              </div>
+              {!isEmpty(displayName) ? (
+                // It will render displayName fallback to name
                 <Typography.Text
                   className="m-b-0 d-block"
                   data-testid="column-display-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(record)}
                 </Typography.Text>
-              </div>
+              ) : null}
               <Icon
                 className="hover-cell-icon text-left m-t-xss"
                 component={IconEdit}

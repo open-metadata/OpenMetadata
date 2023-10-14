@@ -11,11 +11,13 @@ import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_C
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_MESSAGE_SCHEMA_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
+import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 
@@ -42,12 +44,10 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRequest;
-import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
@@ -80,72 +80,72 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
-import org.opensearch.action.ActionListener;
-import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
-import org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.opensearch.action.bulk.BulkItemResponse;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.action.delete.DeleteRequest;
-import org.opensearch.action.delete.DeleteResponse;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.action.support.WriteRequest;
-import org.opensearch.action.support.master.AcknowledgedResponse;
-import org.opensearch.action.update.UpdateRequest;
-import org.opensearch.action.update.UpdateResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestClient;
-import org.opensearch.client.RestClientBuilder;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.CreateIndexResponse;
-import org.opensearch.client.indices.GetIndexRequest;
-import org.opensearch.client.indices.PutMappingRequest;
-import org.opensearch.common.lucene.search.function.CombineFunction;
-import org.opensearch.common.settings.Settings;
-import org.opensearch.common.unit.Fuzziness;
-import org.opensearch.common.unit.TimeValue;
-import org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import org.opensearch.common.xcontent.NamedXContentRegistry;
-import org.opensearch.common.xcontent.XContentParser;
-import org.opensearch.common.xcontent.XContentType;
-import org.opensearch.index.query.BoolQueryBuilder;
-import org.opensearch.index.query.MatchQueryBuilder;
-import org.opensearch.index.query.MultiMatchQueryBuilder;
-import org.opensearch.index.query.Operator;
-import org.opensearch.index.query.QueryBuilder;
-import org.opensearch.index.query.QueryBuilders;
-import org.opensearch.index.query.QueryStringQueryBuilder;
-import org.opensearch.index.query.RangeQueryBuilder;
-import org.opensearch.index.query.ScriptQueryBuilder;
-import org.opensearch.index.query.TermQueryBuilder;
-import org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
-import org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.opensearch.index.reindex.BulkByScrollResponse;
-import org.opensearch.index.reindex.DeleteByQueryRequest;
-import org.opensearch.index.reindex.UpdateByQueryRequest;
-import org.opensearch.script.Script;
-import org.opensearch.script.ScriptType;
-import org.opensearch.search.SearchModule;
-import org.opensearch.search.aggregations.AggregationBuilder;
-import org.opensearch.search.aggregations.AggregationBuilders;
-import org.opensearch.search.aggregations.BucketOrder;
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-import org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
-import org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
-import org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
-import org.opensearch.search.builder.SearchSourceBuilder;
-import org.opensearch.search.fetch.subphase.FetchSourceContext;
-import org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
-import org.opensearch.search.sort.SortOrder;
-import org.opensearch.search.suggest.Suggest;
-import org.opensearch.search.suggest.SuggestBuilder;
-import org.opensearch.search.suggest.SuggestBuilders;
-import org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
-import org.opensearch.search.suggest.completion.context.CategoryQueryContext;
+import os.org.opensearch.action.ActionListener;
+import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
+import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
+import os.org.opensearch.action.bulk.BulkItemResponse;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.action.delete.DeleteRequest;
+import os.org.opensearch.action.delete.DeleteResponse;
+import os.org.opensearch.action.search.SearchResponse;
+import os.org.opensearch.action.support.WriteRequest;
+import os.org.opensearch.action.support.master.AcknowledgedResponse;
+import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.action.update.UpdateResponse;
+import os.org.opensearch.client.RequestOptions;
+import os.org.opensearch.client.RestClient;
+import os.org.opensearch.client.RestClientBuilder;
+import os.org.opensearch.client.RestHighLevelClient;
+import os.org.opensearch.client.indices.CreateIndexRequest;
+import os.org.opensearch.client.indices.CreateIndexResponse;
+import os.org.opensearch.client.indices.GetIndexRequest;
+import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.common.lucene.search.function.CombineFunction;
+import os.org.opensearch.common.settings.Settings;
+import os.org.opensearch.common.unit.Fuzziness;
+import os.org.opensearch.common.unit.TimeValue;
+import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
+import os.org.opensearch.common.xcontent.NamedXContentRegistry;
+import os.org.opensearch.common.xcontent.XContentParser;
+import os.org.opensearch.common.xcontent.XContentType;
+import os.org.opensearch.index.query.BoolQueryBuilder;
+import os.org.opensearch.index.query.MatchQueryBuilder;
+import os.org.opensearch.index.query.MultiMatchQueryBuilder;
+import os.org.opensearch.index.query.Operator;
+import os.org.opensearch.index.query.QueryBuilder;
+import os.org.opensearch.index.query.QueryBuilders;
+import os.org.opensearch.index.query.QueryStringQueryBuilder;
+import os.org.opensearch.index.query.RangeQueryBuilder;
+import os.org.opensearch.index.query.ScriptQueryBuilder;
+import os.org.opensearch.index.query.TermQueryBuilder;
+import os.org.opensearch.index.query.functionscore.FieldValueFactorFunctionBuilder;
+import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
+import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
+import os.org.opensearch.index.reindex.BulkByScrollResponse;
+import os.org.opensearch.index.reindex.DeleteByQueryRequest;
+import os.org.opensearch.index.reindex.UpdateByQueryRequest;
+import os.org.opensearch.script.Script;
+import os.org.opensearch.script.ScriptType;
+import os.org.opensearch.search.SearchModule;
+import os.org.opensearch.search.aggregations.AggregationBuilder;
+import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.BucketOrder;
+import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
+import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
+import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
+import os.org.opensearch.search.builder.SearchSourceBuilder;
+import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
+import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
+import os.org.opensearch.search.sort.SortOrder;
+import os.org.opensearch.search.suggest.Suggest;
+import os.org.opensearch.search.suggest.SuggestBuilder;
+import os.org.opensearch.search.suggest.SuggestBuilders;
+import os.org.opensearch.search.suggest.completion.CompletionSuggestionBuilder;
+import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -155,7 +155,7 @@ public class OpenSearchClient implements SearchClient {
   private final boolean isClientAvailable;
 
   static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
+    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
     X_CONTENT_REGISTRY = new NamedXContentRegistry(searchModule.getNamedXContents());
   }
 
@@ -192,13 +192,13 @@ public class OpenSearchClient implements SearchClient {
         // creating alias for indexes
         createAliases(indexMapping);
       } catch (Exception e) {
-        LOG.error("Failed to create Elastic Search indexes due to", e);
+        LOG.error("Failed to create Open Search indexes due to", e);
         return false;
       }
       return true;
     } else {
       LOG.error(
-          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
+          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
       return false;
     }
   }
@@ -206,27 +206,15 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      ActionListener<AcknowledgedResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(AcknowledgedResponse acknowledgedResponse) {
-              LOG.debug("Created successfully: " + acknowledgedResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
       List<String> aliases = indexMapping.getParentAliases();
       aliases.add(indexMapping.getAlias());
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexMappingFile())
+              .index(indexMapping.getIndexName())
               .aliases(aliases.toArray(new String[0]));
       IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
       aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliasesAsync(aliasesRequest, RequestOptions.DEFAULT, listener);
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
     } catch (Exception e) {
       LOG.error(String.format("Failed to create alias for %s due to", indexMapping.getIndexName()), e);
     }
@@ -240,7 +228,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse putMappingResponse = client.indices().putMapping(request, RequestOptions.DEFAULT);
       LOG.debug("{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
     } catch (Exception e) {
-      LOG.error(String.format("Failed to Update Elastic Search index %s due to", indexMapping.getIndexName()), e);
+      LOG.error(String.format("Failed to Update Open Search index %s due to", indexMapping.getIndexName()), e);
     }
   }
 
@@ -251,7 +239,7 @@ public class OpenSearchClient implements SearchClient {
       AcknowledgedResponse deleteIndexResponse = client.indices().delete(request, RequestOptions.DEFAULT);
       LOG.debug("{} Deleted {}", indexMapping.getIndexName(), deleteIndexResponse.isAcknowledged());
     } catch (IOException e) {
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
+      LOG.error("Failed to delete Open Search indexes due to", e);
     }
   }
 
@@ -359,11 +347,15 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+    }
+
+    /* for performance reasons OpenSearch doesn't provide accurate hits
     if we enable trackTotalHits parameter it will try to match every result, count and return hits
     however in most cases for search results an approximate value is good enough.
     we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
+    https://github.com/Open/Opensearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
             request.fetchSource(), request.getIncludeSourceFields().toArray(String[]::new), new String[] {}));
@@ -378,7 +370,7 @@ public class OpenSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
+                new os.org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
@@ -387,8 +379,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     QueryBuilder wildcardQuery = QueryBuilders.queryStringQuery(sourceUrl).field("sourceUrl").escape(true);
-    org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(wildcardQuery);
     searchRequest.source(searchSourceBuilder);
@@ -398,7 +390,8 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchByField(String fieldName, String fieldValue, String index) throws IOException {
-    org.opensearch.action.search.SearchRequest searchRequest = new org.opensearch.action.search.SearchRequest(index);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(index);
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(QueryBuilders.wildcardQuery(fieldName, fieldValue));
     searchRequest.source(searchSourceBuilder);
@@ -426,7 +419,7 @@ public class OpenSearchClient implements SearchClient {
     String response =
         client
             .search(
-                new org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+                new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
                 RequestOptions.DEFAULT)
             .toString();
     return Response.status(OK).entity(response).build();
@@ -441,12 +434,12 @@ public class OpenSearchClient implements SearchClient {
           new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
+              LOG.debug("Entity Updated successfully: " + updateResponse.toString());
             }
 
             @Override
             public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
+              LOG.error("Entity Update failed: " + e.getMessage());
             }
           };
       client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
@@ -476,8 +469,8 @@ public class OpenSearchClient implements SearchClient {
         .fetchSource(
             new FetchSourceContext(
                 request.fetchSource(), request.getIncludeSourceFields().toArray(String[]::new), new String[] {}));
-    org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(request.getIndex()).source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     Suggest suggest = searchResponse.getSuggest();
     return Response.status(OK).entity(suggest.toString()).build();
@@ -547,7 +540,9 @@ public class OpenSearchClient implements SearchClient {
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.description").highlighterType(UNIFIED));
     hb.field(new HighlightBuilder.Field("messageSchema.schemaFields.children.name").highlighterType(UNIFIED));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
-    searchSourceBuilder.aggregation(AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD).field(ES_MESSAGE_SCHEMA_FIELD));
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms(ES_MESSAGE_SCHEMA_FIELD).field(ES_MESSAGE_SCHEMA_FIELD))
+        .aggregation(AggregationBuilders.terms(SCHEMA_FIELD_NAMES).field(SCHEMA_FIELD_NAMES));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -619,6 +614,7 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("databaseSchema.name.keyword").field("databaseSchema.name.keyword"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES))
         .aggregation(AggregationBuilders.terms("tableType").field("tableType"));
     return addAggregation(searchSourceBuilder);
   }
@@ -713,8 +709,9 @@ public class OpenSearchClient implements SearchClient {
     hb.postTags(POST_TAG);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
-    searchSourceBuilder.aggregation(
-        AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD));
+    searchSourceBuilder
+        .aggregation(AggregationBuilders.terms(DATA_MODEL_COLUMNS_NAME_KEYWORD).field(DATA_MODEL_COLUMNS_NAME_KEYWORD))
+        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -812,7 +809,8 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder
         .aggregation(AggregationBuilders.terms("dataModelType").field("dataModelType"))
         .aggregation(AggregationBuilders.terms(COLUMNS_NAME_KEYWORD).field(COLUMNS_NAME_KEYWORD))
-        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"));
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
+        .aggregation(AggregationBuilders.terms(FIELD_COLUMN_NAMES).field(FIELD_COLUMN_NAMES));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -932,7 +930,7 @@ public class OpenSearchClient implements SearchClient {
       ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
       DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
       deleteByQueryRequest.setQuery(scriptQuery);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
     }
   }
 
@@ -940,7 +938,7 @@ public class OpenSearchClient implements SearchClient {
   public void deleteEntity(String indexName, String docId) {
     if (isClientAvailable) {
       DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
-      deleteEntityFromElasticSearch(deleteRequest);
+      deleteEntityFromOpenSearch(deleteRequest);
     }
   }
 
@@ -953,7 +951,7 @@ public class OpenSearchClient implements SearchClient {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
       deleteByQueryRequest.setQuery(queryBuilder);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
+      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
     }
   }
 
@@ -979,7 +977,7 @@ public class OpenSearchClient implements SearchClient {
       updateByQueryRequest.setQuery(queryBuilder);
       Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
       updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
+      updateOpenSearchByQuery(updateByQueryRequest);
     }
   }
 
@@ -996,7 +994,7 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public void updateChildren(
-      String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates) {
+      String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
       updateByQueryRequest.setQuery(new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue()));
@@ -1005,13 +1003,13 @@ public class OpenSearchClient implements SearchClient {
               ScriptType.INLINE,
               Script.DEFAULT_SCRIPT_LANG,
               updates.getKey(),
-              JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+              updates.getValue() == null ? new HashMap<>() : updates.getValue());
       updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
+      updateOpenSearchByQuery(updateByQueryRequest);
     }
   }
 
-  private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
+  private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
@@ -1034,26 +1032,26 @@ public class OpenSearchClient implements SearchClient {
   public void updateOpenSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       ActionListener<UpdateResponse> listener =
           new ActionListener<>() {
             @Override
             public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
+              LOG.debug("Entity Updated successfully: " + updateResponse.toString());
             }
 
             @Override
             public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
+              LOG.error("Entity Update failed: " + e.getMessage());
             }
           };
       client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
     }
   }
 
-  private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
+  private void deleteEntityFromOpenSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       ActionListener<DeleteResponse> listener =
           new ActionListener<>() {
             @Override
@@ -1071,7 +1069,7 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
+  private void deleteEntityFromOpenSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefresh(true);
       ActionListener<BulkByScrollResponse> listener =
@@ -1124,7 +1122,7 @@ public class OpenSearchClient implements SearchClient {
       DataInsightChartResult.DataInsightChartType chartType,
       String indexName)
       throws IOException, ParseException {
-    org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
+    os.org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
         buildSearchRequest(scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
     SearchResponse searchResponseTotalAssets = client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
     DataInsightChartResult processedDataTotalAssets =
@@ -1155,7 +1153,7 @@ public class OpenSearchClient implements SearchClient {
       String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException {
-    org.opensearch.action.search.SearchRequest searchRequest =
+    os.org.opensearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     return Response.status(OK).entity(processDataInsightChartResult(searchResponse, dataInsightChartName)).build();
@@ -1208,7 +1206,7 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private static org.opensearch.action.search.SearchRequest buildSearchRequest(
+  private static os.org.opensearch.action.search.SearchRequest buildSearchRequest(
       Long startTs,
       Long endTs,
       String tier,
@@ -1233,8 +1231,8 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
     }
 
-    org.opensearch.action.search.SearchRequest searchRequest =
-        new org.opensearch.action.search.SearchRequest(dataReportIndex);
+    os.org.opensearch.action.search.SearchRequest searchRequest =
+        new os.org.opensearch.action.search.SearchRequest(dataReportIndex);
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }

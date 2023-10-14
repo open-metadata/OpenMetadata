@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -260,6 +261,14 @@ export const ROUTES = {
   ADD_WEBHOOK_WITH_TYPE: `/add-webhook/${PLACEHOLDER_WEBHOOK_TYPE}`,
   EDIT_WEBHOOK: `/webhook/${PLACEHOLDER_WEBHOOK_NAME}`,
 
+  ADD_APPLICATION: '/add-application',
+  MARKETPLACE: '/marketplace',
+  MARKETPLACE_APP_DETAILS: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}`,
+  MARKETPLACE_APP_INSTALL: `/marketplace/apps/${PLACEHOLDER_ROUTE_FQN}/install`,
+
+  APP_DETAILS: `/apps/${PLACEHOLDER_ROUTE_FQN}`,
+  APP_DETAILS_WITH_TAB: `/apps/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+
   DOMAIN: '/domain',
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -326,6 +335,8 @@ export const ROUTES = {
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${KPI_NAME}`,
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
+
+  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };
 
 export const SOCKET_EVENTS = {
@@ -342,16 +353,6 @@ export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
 export const getTableDetailsPath = (tableFQN: string, columnName?: string) => {
   let path = ROUTES.TABLE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tableFQN));
-
-  return `${path}${columnName ? `.${columnName}` : ''}`;
-};
-
-export const getStoredProcedureDetailsPath = (
-  storedProcedureFQN: string,
-  columnName?: string
-) => {
-  let path = ROUTES.STORED_PROCEDURE_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(storedProcedureFQN));
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
@@ -834,4 +835,8 @@ export const ERROR_MESSAGE = {
 export const ICON_DIMENSION = {
   with: 14,
   height: 14,
+};
+
+export const COMMON_ICON_STYLES: CSSProperties = {
+  verticalAlign: 'middle',
 };

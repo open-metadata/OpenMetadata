@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -87,6 +88,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ingestionPipeline.setService(entityReference);
   }
 
+  @Transaction
   public IngestionPipeline deletePipelineStatus(UUID ingestionPipelineId) {
     // Validate the request content
     IngestionPipeline ingestionPipeline = dao.findEntityById(ingestionPipelineId);
@@ -247,6 +249,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       super(buildIngestionPipelineDecrypted(original), updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateSourceConfig();

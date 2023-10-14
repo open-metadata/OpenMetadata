@@ -18,7 +18,11 @@ import { isEmpty } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pluralize } from '../../../utils/CommonUtils';
-import { getCron, getStateValue } from '../../../utils/CronUtils';
+import {
+  getCron,
+  getQuartzCronExpression,
+  getStateValue,
+} from '../../../utils/CronUtils';
 import {
   getDayOptions,
   getHourOptions,
@@ -70,7 +74,10 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const { onChange } = props;
 
     setCronValue(getCron(state) ?? value);
-    onChange(getCron(state) ?? value);
+    const cronExp = props.isQuartzCron
+      ? getQuartzCronExpression(state)
+      : getCron(state);
+    onChange(cronExp ?? value);
   };
 
   const onPeriodSelect = (value: string) => {

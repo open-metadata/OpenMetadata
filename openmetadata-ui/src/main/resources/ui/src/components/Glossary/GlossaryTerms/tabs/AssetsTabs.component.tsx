@@ -11,11 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, Row, Skeleton, Space } from 'antd';
-import type { ButtonType } from 'antd/lib/button';
+import {
+  Badge,
+  Button,
+  Checkbox,
+  Col,
+  Menu,
+  MenuProps,
+  Popover,
+  Row,
+  Skeleton,
+  Space,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { find, startCase } from 'lodash';
+import { find, isEmpty } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -28,6 +39,8 @@ import { useParams } from 'react-router-dom';
 import {
   AssetsFilterOptions,
   ASSETS_INDEXES,
+  ASSET_MENU_KEYS,
+  ASSET_SUB_MENU_FILTER,
 } from '../../../../constants/Assets.constants';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
@@ -46,6 +59,9 @@ import {
   SearchedDataProps,
   SourceType,
 } from '../../../searched-data/SearchedData.interface';
+
+import { FilterOutlined } from '@ant-design/icons';
+import { getEntityIcon } from '../../../../utils/TableUtils';
 import './assets-tabs.less';
 import {
   AssetsOfEntity,
@@ -65,29 +81,107 @@ const AssetsTabs = forwardRef(
       onAssetClick,
       isSummaryPanelOpen,
       onAddAsset,
+      assetCount,
       type = AssetsOfEntity.GLOSSARY,
       viewType = AssetsViewType.PILLS,
     }: AssetsTabsProps,
     ref
   ) => {
-    const [itemCount, setItemCount] = useState<Record<EntityType, number>>({
-      table: 0,
-      pipeline: 0,
-      mlmodel: 0,
-      container: 0,
-      topic: 0,
-      dashboard: 0,
-      glossaryTerm: 0,
-    } as Record<EntityType, number>);
-    const [activeFilter, setActiveFilter] = useState<SearchIndex>(
-      SearchIndex.TABLE
+    const popupRef = React.useRef<HTMLElement>(null);
+    const [itemCount, setItemCount] = useState<Record<EntityType, number>>(
+      {} as Record<EntityType, number>
     );
+    const [activeFilter, setActiveFilter] = useState<SearchIndex[]>([]);
     const { fqn } = useParams<{ fqn: string }>();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [total, setTotal] = useState<number>(0);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [selectedCard, setSelectedCard] = useState<SourceType>();
+    const [visible, setVisible] = useState<boolean>(false);
+    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
+
+    const queryParam = useMemo(() => {
+      if (type === AssetsOfEntity.DOMAIN) {
+        return `(domain.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
+        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
+      } else if (type === AssetsOfEntity.TEAM) {
+        return `(owner.fullyQualifiedName:"${fqn}")`;
+      } else {
+        return `(tags.tagFQN:"${fqn}")`;
+      }
+    }, [type, fqn]);
+
+    const fetchAssets = useCallback(
+      async ({
+        index = activeFilter,
+        page = 1,
+      }: {
+        index?: SearchIndex[];
+        page?: number;
+      }) => {
+        try {
+          setIsLoading(true);
+          const res = await searchData(
+            '',
+            page,
+            PAGE_SIZE,
+            queryParam,
+            '',
+            '',
+            index
+          );
+
+          // Extract useful details from the Response
+          const totalCount = res?.data?.hits?.total.value ?? 0;
+          const hits = res?.data?.hits?.hits;
+
+          // Find EntityType for selected searchIndex
+          const entityType = AssetsFilterOptions.find((f) =>
+            activeFilter.includes(f.value)
+          )?.label;
+
+          // Update states
+          setTotal(totalCount);
+          entityType &&
+            setItemCount((prevCount) => ({
+              ...prevCount,
+              [entityType]: totalCount,
+            }));
+          setData(hits as SearchedDataProps['data']);
+
+          // Select first card to show summary right panel
+          hits[0] && setSelectedCard(hits[0]._source as SourceType);
+        } catch (_) {
+          // Nothing here
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      [activeFilter, currentPage]
+    );
+    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
+      const latestOpenKey = keys.find(
+        (key) => openKeys.indexOf(key as EntityType) === -1
+      );
+      if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
+        setOpenKeys(keys as EntityType[]);
+      } else {
+        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
+      }
+    };
+
+    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
+      setVisible(newVisible);
+
+    const handleActiveFilter = (key: SearchIndex) => {
+      if (activeFilter.includes(key)) {
+        setActiveFilter((prev) => prev.filter((item) => item !== key));
+      } else {
+        setActiveFilter((prev) => [...prev, key]);
+      }
+    };
 
     const tabs = useMemo(() => {
       return AssetsFilterOptions.map((option) => {
@@ -102,7 +196,7 @@ const AssetsTabs = forwardRef(
                 {getCountBadge(
                   itemCount[option.key],
                   '',
-                  activeFilter === option.value
+                  activeFilter.includes(option.value)
                 )}
               </span>
             </div>
@@ -111,19 +205,79 @@ const AssetsTabs = forwardRef(
           value: option.value,
         };
       });
-    }, [itemCount]);
+    }, [activeFilter, itemCount]);
 
-    const queryParam = useMemo(() => {
-      if (type === AssetsOfEntity.DOMAIN) {
-        return `(domain.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.DATA_PRODUCT) {
-        return `(dataProducts.fullyQualifiedName:"${fqn}")`;
-      } else if (type === AssetsOfEntity.TEAM) {
-        return `(owner.fullyQualifiedName:"${fqn}")`;
-      } else {
-        return `(tags.tagFQN:"${fqn}")`;
-      }
-    }, [type, fqn]);
+    const getAssetMenuCount = useCallback(
+      (key: EntityType) =>
+        ASSET_SUB_MENU_FILTER.find((item) => item.key === key)
+          ?.children.map((item) => itemCount[item.value] ?? 0)
+          ?.reduce((acc, cv) => acc + cv, 0),
+      [itemCount]
+    );
+
+    const getOptions = useCallback(
+      (
+        option: {
+          label: string;
+          key: EntityType | SearchIndex;
+          value?: EntityType;
+        },
+        isChildren?: boolean
+      ) => {
+        const assetCount = isChildren
+          ? itemCount[option.value as EntityType]
+          : getAssetMenuCount(option.key as EntityType);
+
+        return {
+          label: isChildren ? (
+            <div className="w-full d-flex justify-between">
+              <div className="w-full d-flex items-center justify-between p-r-xss">
+                <span className="d-flex items-center">
+                  <span className="m-r-xs w-4 d-flex">
+                    {getEntityIcon(option.key)}
+                  </span>
+
+                  <Typography.Text
+                    className="asset-sub-menu-title text-color-inherit"
+                    ellipsis={{ tooltip: true }}>
+                    {option.label}
+                  </Typography.Text>
+                </span>
+
+                <span>
+                  {getCountBadge(assetCount, 'asset-badge-container')}
+                </span>
+              </div>
+              <Checkbox
+                checked={activeFilter.includes(option.key as SearchIndex)}
+                className="asset-sub-menu-checkbox"
+              />
+            </div>
+          ) : (
+            <div className="d-flex justify-between">
+              <span>{option.label}</span>
+              <span>{getCountBadge(assetCount, 'asset-badge-container')}</span>
+            </div>
+          ),
+          key: option.key,
+          value: option.key,
+        };
+      },
+      [
+        getEntityIcon,
+        setCurrentPage,
+        handleActiveFilter,
+        setSelectedCard,
+        activeFilter,
+      ]
+    );
+
+    const subMenuItems = useMemo(() => {
+      return ASSET_SUB_MENU_FILTER.map((option) => ({
+        ...getOptions(option),
+        children: option.children.map((item) => getOptions(item, true)),
+      }));
+    }, [itemCount, getOptions]);
 
     const searchIndexes = useMemo(() => {
       const indexesToFetch = [...ASSETS_INDEXES];
@@ -160,6 +314,9 @@ const AssetsTabs = forwardRef(
             pipelineServiceResponse,
             storageServiceResponse,
             searchServiceResponse,
+            domainResponse,
+            dataProductResponse,
+            tagResponse,
             glossaryResponse,
           ]) => {
             const counts = {
@@ -191,7 +348,10 @@ const AssetsTabs = forwardRef(
                 storageServiceResponse.data.hits.total.value,
               [EntityType.SEARCH_SERVICE]:
                 searchServiceResponse.data.hits.total.value,
-
+              [EntityType.DOMAIN]: domainResponse.data.hits.total.value,
+              [EntityType.DATA_PRODUCT]:
+                dataProductResponse.data.hits.total.value,
+              [EntityType.TAG]: tagResponse.data.hits.total.value,
               [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY
                   ? glossaryResponse.data.hits.total.value
@@ -200,18 +360,22 @@ const AssetsTabs = forwardRef(
 
             setItemCount(counts as Record<EntityType, number>);
 
-            find(counts, (count, key) => {
-              if (count > 0) {
-                const option = AssetsFilterOptions.find((el) => el.key === key);
-                if (option) {
-                  setActiveFilter(option.value);
+            if (viewType !== AssetsViewType.PILLS) {
+              find(counts, (count, key) => {
+                if (count > 0) {
+                  const option = AssetsFilterOptions.find(
+                    (el) => el.key === key
+                  );
+                  if (option) {
+                    handleActiveFilter(option.value);
+                  }
+
+                  return true;
                 }
 
-                return true;
-              }
-
-              return false;
-            });
+                return false;
+              });
+            }
           }
         )
         .catch((err) => {
@@ -227,55 +391,6 @@ const AssetsTabs = forwardRef(
         onAssetClick && onAssetClick(undefined);
       };
     }, []);
-
-    const fetchAssets = useCallback(
-      async ({
-        index = activeFilter,
-        page = 1,
-      }: {
-        index?: SearchIndex;
-        page?: number;
-      }) => {
-        try {
-          setIsLoading(true);
-          const res = await searchData(
-            '',
-            page,
-            PAGE_SIZE,
-            queryParam,
-            '',
-            '',
-            index
-          );
-
-          // Extract useful details from the Response
-          const totalCount = res?.data?.hits?.total.value ?? 0;
-          const hits = res?.data?.hits?.hits;
-
-          // Find EntityType for selected searchIndex
-          const entityType = AssetsFilterOptions.find(
-            (f) => f.value === activeFilter
-          )?.label;
-
-          // Update states
-          setTotal(totalCount);
-          entityType &&
-            setItemCount((prevCount) => ({
-              ...prevCount,
-              [entityType]: totalCount,
-            }));
-          setData(hits as SearchedDataProps['data']);
-
-          // Select first card to show summary right panel
-          hits[0] && setSelectedCard(hits[0]._source as SourceType);
-        } catch (_) {
-          // Nothing here
-        } finally {
-          setIsLoading(false);
-        }
-      },
-      [activeFilter, currentPage]
-    );
 
     const assetListing = useMemo(() => {
       if (isLoading) {
@@ -295,6 +410,7 @@ const AssetsTabs = forwardRef(
         <div className="assets-data-container">
           {data.map(({ _source, _id = '' }, index) => (
             <ExploreSearchCard
+              showEntityIcon
               className={classNames(
                 'm-b-sm cursor-pointer',
                 selectedCard?.id === _source.id ? 'highlight-card' : ''
@@ -320,64 +436,97 @@ const AssetsTabs = forwardRef(
         </div>
       ) : (
         <div className="m-t-xlg">
-          <ErrorPlaceHolder
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.asset')}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={onAddAsset}
-          />
+          {!isEmpty(activeFilter) ? (
+            <ErrorPlaceHolder
+              heading={t('label.asset')}
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          ) : (
+            <ErrorPlaceHolder
+              doc={GLOSSARIES_DOCS}
+              heading={t('label.asset')}
+              permission={permissions.Create}
+              type={ERROR_PLACEHOLDER_TYPE.CREATE}
+              onClick={onAddAsset}
+            />
+          )}
         </div>
       );
     }, [data, isLoading, total, currentPage, selectedCard, setSelectedCard]);
 
     const assetsHeader = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
-        return AssetsFilterOptions.map((option) => {
-          const buttonStyle =
-            activeFilter === option.value
-              ? {
-                  ghost: true,
-                  type: 'primary' as ButtonType,
-                  style: { background: 'white' },
-                }
-              : {};
-
-          return itemCount[option.key] > 0 ? (
-            <Button
-              {...buttonStyle}
-              className="m-r-sm m-b-sm"
-              key={option.value}
-              onClick={() => {
-                setCurrentPage(1);
-                setActiveFilter(option.value);
-              }}>
-              {startCase(option.label)}{' '}
-              <span className="p-l-xs">
-                {getCountBadge(
-                  itemCount[option.key],
-                  '',
-                  activeFilter === option.value
-                )}
-              </span>
-            </Button>
-          ) : null;
-        });
+        return (
+          <div className="w-full d-flex justify-end">
+            <Popover
+              align={{ targetOffset: [0, 10] }}
+              content={
+                <Menu
+                  multiple
+                  items={subMenuItems}
+                  mode="inline"
+                  openKeys={openKeys}
+                  rootClassName="asset-multi-menu-selector"
+                  selectedKeys={activeFilter}
+                  style={{ width: 256, height: 340 }}
+                  onClick={(value) => {
+                    setCurrentPage(1);
+                    handleActiveFilter(value.key as SearchIndex);
+                    setSelectedCard(undefined);
+                  }}
+                  onOpenChange={onOpenChange}
+                />
+              }
+              getPopupContainer={(triggerNode: HTMLElement) =>
+                popupRef.current ?? triggerNode
+              }
+              key="asset-options-popover"
+              open={visible}
+              overlayClassName="ant-popover-asset"
+              placement="bottomRight"
+              showArrow={false}
+              trigger="click"
+              onOpenChange={handleAssetButtonVisibleChange}>
+              {Boolean(assetCount) && (
+                <Badge count={activeFilter.length}>
+                  <Button
+                    ghost
+                    icon={<FilterOutlined />}
+                    ref={popupRef}
+                    style={{ background: 'white' }}
+                    type="primary">
+                    {t('label.filter-plural')}
+                  </Button>
+                </Badge>
+              )}
+            </Popover>
+          </div>
+        );
       } else {
         return (
           <Menu
             className="p-t-sm"
             items={tabs}
-            selectedKeys={[activeFilter]}
+            selectedKeys={activeFilter}
             onClick={(value) => {
               setCurrentPage(1);
-              setActiveFilter(value.key as SearchIndex);
+              setActiveFilter([value.key as SearchIndex]);
               setSelectedCard(undefined);
             }}
           />
         );
       }
-    }, [viewType, activeFilter, currentPage, tabs, itemCount]);
+    }, [
+      viewType,
+      activeFilter,
+      openKeys,
+      visible,
+      currentPage,
+      tabs,
+      itemCount,
+      onOpenChange,
+      handleAssetButtonVisibleChange,
+    ]);
 
     const layout = useMemo(() => {
       if (viewType === AssetsViewType.PILLS) {
@@ -397,7 +546,10 @@ const AssetsTabs = forwardRef(
     }, [viewType, assetsHeader, assetListing, selectedCard]);
 
     useEffect(() => {
-      fetchAssets({ index: activeFilter, page: currentPage });
+      fetchAssets({
+        index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+        page: currentPage,
+      });
     }, [activeFilter, currentPage]);
 
     useImperativeHandle(ref, () => ({

@@ -102,7 +102,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
-import { customServiceComparator } from '../utils/StringsUtils';
 import {
   addDBTIngestionGuide,
   addLineageIngestionGuide,
@@ -195,35 +194,6 @@ export const excludedService = [
   SearchServiceType.OpenSearch,
 ];
 
-export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
-
-export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: (Object.values(DatabaseServiceType) as string[])
-    .filter((key: string) => !IGNORED_DB_SERVICES.includes(key))
-    .sort(customServiceComparator),
-  messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  storageServices: (Object.values(StorageServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  searchServices: (Object.values(SearchServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-};
-
 export const arrServiceTypes: Array<ServiceTypes> = [
   'databaseServices',
   'messagingServices',
@@ -242,17 +212,6 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
-};
-
-export const SERVICE_CATEGORY_TYPE = {
-  databaseServices: 'databases',
-  messagingServices: 'messaging',
-  dashboardServices: 'dashboards',
-  pipelineServices: 'pipelines',
-  mlmodelServices: 'mlModels',
-  metadataServices: 'metadata',
-  storageServices: 'storages',
-  searchServices: 'search',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {

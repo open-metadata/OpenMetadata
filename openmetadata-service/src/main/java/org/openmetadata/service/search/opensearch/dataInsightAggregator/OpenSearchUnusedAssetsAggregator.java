@@ -1,9 +1,9 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
-import org.apache.lucene.search.TotalHits;
 import org.openmetadata.service.dataInsight.UnusedAssetsAggregator;
-import org.opensearch.search.SearchHit;
-import org.opensearch.search.SearchHits;
+import os.org.apache.lucene.search.TotalHits;
+import os.org.opensearch.search.SearchHit;
+import os.org.opensearch.search.SearchHits;
 
 public class OpenSearchUnusedAssetsAggregator extends UnusedAssetsAggregator<SearchHits, SearchHit, TotalHits> {
   public OpenSearchUnusedAssetsAggregator(SearchHits hits) {

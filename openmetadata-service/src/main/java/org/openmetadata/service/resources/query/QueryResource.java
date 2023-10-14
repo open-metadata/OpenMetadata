@@ -509,7 +509,8 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
   }
 
   private Query getQuery(CreateQuery create, String user) {
-    return copy(new Query(), create, user)
+    return repository
+        .copy(new Query(), create, user)
         .withTags(create.getTags())
         .withQuery(create.getQuery())
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))

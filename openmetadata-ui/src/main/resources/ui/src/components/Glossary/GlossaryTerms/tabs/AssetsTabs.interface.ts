@@ -29,6 +29,7 @@ export enum AssetsViewType {
 export interface AssetsTabsProps {
   onAddAsset: () => void;
   permissions: OperationPermission;
+  assetCount: number;
   onAssetClick?: (asset?: EntityDetailsObjectInterface) => void;
   isSummaryPanelOpen: boolean;
   type?: AssetsOfEntity;

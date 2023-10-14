@@ -3,12 +3,12 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import es.org.elasticsearch.action.bulk.BulkRequest;
+import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.xcontent.XContentType;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.update.UpdateRequest;
-import org.elasticsearch.xcontent.XContentType;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.StepStats;

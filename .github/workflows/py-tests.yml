@@ -11,6 +11,7 @@
 
 name: py-tests
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -37,7 +38,16 @@ jobs:
       matrix:
         py-version: ['3.8', '3.9', '3.10']
     steps:
-
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
     - name: Wait for the labeler
       uses: lewagon/wait-on-check-action@0179dfc359f90a703c41240506f998ee1603f9ea  #v1.0.0
       if: ${{ github.event_name == 'pull_request_target' }}
@@ -95,7 +105,7 @@ jobs:
       env:
         INGESTION_DEPENDENCY: "mysql,elasticsearch"
       with:
-        timeout_minutes: 30
+        timeout_minutes: 60
         max_attempts: 2
         retry_on: error
         command: ./docker/run_local_docker.sh -m no-ui

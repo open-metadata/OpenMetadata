@@ -1,0 +1,17 @@
+<svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="1" y="1" width="15" height="14" rx="1" stroke="currentColor" stroke-width="0.8"/>
+<path d="M1 5H16" stroke="currentColor" stroke-width="0.8"/>
+<circle cx="2.5" cy="3.5" r="0.5" fill="currentColor"/>
+<circle cx="2.5" cy="7.5" r="0.5" fill="currentColor"/>
+<circle cx="2.5" cy="9.5" r="0.5" fill="currentColor"/>
+<circle cx="2.5" cy="11.5" r="0.5" fill="currentColor"/>
+<circle cx="4.5" cy="3.5" r="0.5" fill="currentColor"/>
+<circle cx="14.5" cy="3.5" r="0.5" fill="currentColor"/>
+<rect x="6" y="8" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="6" y="11" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="9" y="11" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="12" y="11" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="9" y="8" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<rect x="12" y="8" width="2" height="2" rx="0.2" stroke="currentColor" stroke-width="0.5"/>
+<path d="M4 5V15" stroke="currentColor" stroke-width="0.8"/>
+</svg>
