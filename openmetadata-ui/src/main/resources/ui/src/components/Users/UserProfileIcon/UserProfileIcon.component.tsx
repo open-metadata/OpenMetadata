@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Typography } from 'antd';
+import { Dropdown, Tag, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import React, {
@@ -301,9 +301,11 @@ export const UserProfileIcon = () => {
             <Avatar name={userName} type="circle" width="36" />
           )}
           <div className="d-flex flex-col">
-            <Typography.Text className="usename">
-              {getEntityName(currentUser)}
-            </Typography.Text>
+            <Tooltip title={getEntityName(currentUser)}>
+              <Typography.Text className="username truncate w-max-112">
+                {getEntityName(currentUser)}
+              </Typography.Text>
+            </Tooltip>
             <Typography.Text
               className="text-grey-muted text-xs"
               ellipsis={{ tooltip: true }}>
