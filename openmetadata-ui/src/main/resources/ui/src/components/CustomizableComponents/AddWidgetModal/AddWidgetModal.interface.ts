@@ -19,5 +19,21 @@ export interface AddWidgetModalProps {
   placeholderWidgetKey: string;
   addedWidgetsList: Array<string>;
   handleCloseAddWidgetModal: () => void;
-  handleAddWidget: (widget: Document, widgetKey: string) => void;
+  handleAddWidget: (
+    widget: Document,
+    widgetKey: string,
+    widgetSize: number
+  ) => void;
+}
+
+export interface AddWidgetTabContentProps {
+  widget: Document;
+  maxGridSizeSupport: number;
+  getAddWidgetHandler: (widget: Document, widgetSize: number) => () => void;
+  widgetSizeOptions: Array<WidgetSizeInfo>;
+}
+
+export interface WidgetSizeInfo {
+  label: string;
+  value: number;
 }

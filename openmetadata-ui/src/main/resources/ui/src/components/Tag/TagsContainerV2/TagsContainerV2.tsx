@@ -40,6 +40,7 @@ import {
   getRequestTagsPath,
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
+import { SelectOption } from '../../AsyncSelectList/AsyncSelectList.interface';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
@@ -74,11 +75,17 @@ const TagsContainerV2 = ({
     showAddTagButton,
     selectedTagsInternal,
     isHoriZontalLayout,
+    initialOptions,
   } = useMemo(
     () => ({
       isGlossaryType: tagType === TagSource.Glossary,
       showAddTagButton: permission && isEmpty(tags?.[tagType]),
       selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
+      initialOptions: tags?.[tagType].map((data) => ({
+        label: data.tagFQN,
+        value: data.tagFQN,
+        data,
+      })) as SelectOption[],
       isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
     }),
     [tagType, permission, tags?.[tagType], tags, layoutType]
@@ -207,6 +214,7 @@ const TagsContainerV2 = ({
         defaultValue={selectedTagsInternal ?? []}
         fetchApi={fetchAPI}
         placeholder={getTagPlaceholder(isGlossaryType)}
+        tagData={initialOptions}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
@@ -218,6 +226,7 @@ const TagsContainerV2 = ({
     fetchAPI,
     handleCancel,
     handleSave,
+    initialOptions,
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {
