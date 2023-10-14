@@ -1363,6 +1363,7 @@
     "no-data": "No hay datos",
     "no-data-available": "No hay datos disponibles.",
     "no-data-available-for-selected-filter": "No se encontraron datos. Intenta cambiar los filtros.",
+    "no-domain-assigned-to-entity": "No Domains are Assigned to {{entity}}",
     "no-entity-activity-message": "No hay actividad en {{entity}} todavía. Comienza una conversación haciendo clic en",
     "no-entity-available-with-name": "No hay {{entity}} disponible con el nombre",
     "no-entity-data-available": "No hay datos disponibles de {{entity}}.",

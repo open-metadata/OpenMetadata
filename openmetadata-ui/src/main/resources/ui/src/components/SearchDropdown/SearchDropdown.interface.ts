@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
+import { ExploreSearchIndex } from '../Explore/explore.interface';
+
 export interface SearchDropdownProps {
+  index: ExploreSearchIndex;
   label: string;
   isSuggestionsLoading?: boolean;
   options: SearchDropdownOption[];

@@ -36,6 +36,7 @@ const mockProps: SearchDropdownProps = {
   selectedKeys: [{ key: 'User 1', label: 'User 1' }],
   onChange: mockOnChange,
   onSearch: mockOnSearch,
+  index: 'table_search_index' as SearchDropdownProps['index'],
 };
 
 jest.mock('lodash', () => ({

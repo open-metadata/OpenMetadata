@@ -1363,6 +1363,7 @@
     "no-data": "没有数据",
     "no-data-available": "没有可用的数据",
     "no-data-available-for-selected-filter": "未找到数据，请尝试更改筛选条件",
+    "no-domain-assigned-to-entity": "No Domains are Assigned to {{entity}}",
     "no-entity-activity-message": "{{entity}}上还没有任何活动，单击开始对话",
     "no-entity-available-with-name": "名称为{{entity}}不可用",
     "no-entity-data-available": "没有可用的{{entity}}数据。",
