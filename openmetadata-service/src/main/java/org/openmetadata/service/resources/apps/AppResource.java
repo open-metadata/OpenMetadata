@@ -503,10 +503,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app = repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
-      ApplicationHandler.scheduleApplication(
-          app,
-          JdbiUnitOfWorkProvider.getInstance().getHandle().getJdbi().onDemand(CollectionDAO.class),
-          searchRepository);
+      ApplicationHandler.scheduleApplication(app, repository.getDaoCollection(), searchRepository);
       if (app.getAppType().equals(AppType.Internal)) {
         Response.status(Response.Status.OK).entity("App Scheduled to Scheduler successfully.");
       } else {
@@ -566,6 +563,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             .withPermission(marketPlaceDefinition.getPermission())
             .withAppSchedule(createAppRequest.getAppSchedule())
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
+            .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures());
 
     // validate Bot if provided
