@@ -28,7 +28,7 @@ const addTags = (tag) => {
   cy.get('[data-testid="tag-selector"]').click().type(tagName);
 
   cy.get(`.ant-select-dropdown [data-testid='tag-${tag}']`).click();
-  cy.get('[data-testid="tag-selector"] > .ant-select-selector').contains(tag);
+  cy.get(`[data-testid="selected-tag-${tag}"]`).should('exist');
 };
 const verifyTagFilter = ({ entity, tag }) => {
   if (!['mlmodels', 'dashboardDataModel'].includes(entity)) {
@@ -60,13 +60,15 @@ const checkTags = (tag, checkForParentEntity) => {
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
-      .contains(tag);
+      .find(`[data-testid="tag-${tag}"]`)
+      .should('exist');
   } else {
     cy.get(
       '[data-testid="classification-tags-0"]  [data-testid="tags-container"] [data-testid="entity-tags"] '
     )
       .scrollIntoView()
-      .contains(tag);
+      .find(`[data-testid="tag-${tag}"]`)
+      .should('exist');
   }
 };
 

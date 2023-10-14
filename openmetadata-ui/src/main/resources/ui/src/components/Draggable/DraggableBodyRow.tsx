@@ -71,7 +71,7 @@ const DraggableBodyRow = <T extends DraggableUnion>({
 
   return (
     <tr
-      className={classNames(isOver ? dropClassName : '')}
+      className={classNames(isOver ? dropClassName : '', className)}
       ref={ref}
       style={{
         cursor: 'move',

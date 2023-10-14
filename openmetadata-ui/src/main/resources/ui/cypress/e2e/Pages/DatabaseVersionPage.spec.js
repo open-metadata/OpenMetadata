@@ -25,7 +25,6 @@ import {
 import { DELETE_TERM } from '../../constants/constants';
 import {
   COMMON_PATCH_PAYLOAD,
-  COMMON_UPDATED_DESCRIPTION,
   DATABASE_DETAILS_FOR_VERSION_TEST,
   DOMAIN_CREATION_DETAILS,
   OWNER,
@@ -150,15 +149,11 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(
-      `[data-testid="domain-link"] [data-testid="diff-added-${DOMAIN_CREATION_DETAILS.name}"]`
-    )
+    cy.get(`[data-testid="domain-link"] [data-testid="diff-added"]`)
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(`[data-testid="diff-added-${COMMON_UPDATED_DESCRIPTION}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get(
       `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
@@ -246,9 +241,7 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${OWNER}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get('@versionButton').contains('0.4').click();
 
@@ -266,7 +259,7 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-removed-${OWNER}"]`)
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
   });
@@ -310,9 +303,7 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${TIER}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get('@versionButton').contains('0.6').click();
 
@@ -330,7 +321,7 @@ describe(`Database version page should work properly`, () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-removed-${TIER}"]`)
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
   });

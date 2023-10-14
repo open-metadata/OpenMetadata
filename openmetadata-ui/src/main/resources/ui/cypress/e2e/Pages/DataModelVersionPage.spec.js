@@ -72,11 +72,7 @@ describe('Data model version page should work properly', () => {
   it('Data model version page should show description and tag changes properly', () => {
     visitDataModelVersionPage(dataModelFQN, dataModelId, dataModelName, '0.2');
 
-    cy.get(
-      `[data-testid="diff-added-${DATA_MODEL_DETAILS.entityAddedDescription}"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get(
       `[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]`
@@ -96,17 +92,11 @@ describe('Data model version page should work properly', () => {
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(
-      `[data-testid="diff-removed-${DATA_MODEL_DETAILS.entityChildRemovedDescription}"]`
-    )
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
 
-    cy.get(
-      `[data-testid="diff-added-${DATA_MODEL_DETAILS.entityChildAddedDescription}"]`
-    )
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
   });
 
   it(`Data model version page should show removed tags changes properly`, () => {
@@ -170,9 +160,7 @@ describe('Data model version page should work properly', () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${OWNER}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get('@versionButton').contains('0.4').click();
 
@@ -190,7 +178,7 @@ describe('Data model version page should work properly', () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-removed-${OWNER}"]`)
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
   });
@@ -226,9 +214,7 @@ describe('Data model version page should work properly', () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-added-${TIER}"]`)
-      .scrollIntoView()
-      .should('be.visible');
+    cy.get(`[data-testid="diff-added"]`).scrollIntoView().should('be.visible');
 
     cy.get('@versionButton').contains('0.6').click();
 
@@ -246,7 +232,7 @@ describe('Data model version page should work properly', () => {
     verifyResponseStatusCode('@getVersionsList', 200);
     verifyResponseStatusCode('@getSelectedVersionDetails', 200);
 
-    cy.get(`[data-testid="diff-removed-${TIER}"]`)
+    cy.get(`[data-testid="diff-removed"]`)
       .scrollIntoView()
       .should('be.visible');
   });

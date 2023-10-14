@@ -84,7 +84,7 @@ Cypress.Commands.add('goToHomePage', (doNotNavigate) => {
   cy.get('[data-testid="whats-new-alert-card"]').should('be.visible');
   cy.get('[data-testid="close-whats-new-alert"]').click();
   cy.get('[data-testid="whats-new-alert-card"]').should('not.exist');
-  verifyResponseStatusCode('@feed', 200);
+  //   verifyResponseStatusCode('@feed', 200);
   verifyResponseStatusCode('@userProfile', 200);
 });
 

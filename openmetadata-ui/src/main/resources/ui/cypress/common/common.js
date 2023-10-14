@@ -537,7 +537,7 @@ export const visitEntityDetailsPage = (
     `/api/v1/search/query?q=*&index=${SEARCH_INDEX[entity]}&from=*&size=**`,
     'explorePageTabSearch'
   );
-  interceptURL('GET', `/api/v1/search/*`, 'explorePageSearch');
+  interceptURL('GET', `/api/v1/search/**`, 'explorePageSearch');
   const id = dataTestId ?? `${serviceName}-${term}`;
 
   if (entityType) {
@@ -573,7 +573,9 @@ export const visitEntityDetailsPage = (
         cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible');
         verifyResponseStatusCode('@explorePageTabSearch', 200);
 
-        cy.get(`[data-testid="${id}"]`).scrollIntoView().click();
+        cy.get(`[data-testid="${id}"] [data-testid="entity-link"]`)
+          .scrollIntoView()
+          .click();
       }
     });
 
