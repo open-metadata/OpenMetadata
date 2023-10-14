@@ -172,7 +172,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 
   const getDropdownBody = useCallback(
     (menuNode: ReactNode) => {
-      const entityLabel = tabsInfo[index]?.label;
+      const entityLabel = index && tabsInfo[index]?.label;
       const isDomainKey = searchKey.startsWith('domain');
       if (isSuggestionsLoading) {
         return (
@@ -190,7 +190,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         <Row align="middle" className="m-y-sm" justify="center">
           <Col>
             <Typography.Text className="m-x-sm">
-              {isDomainKey
+              {isDomainKey && entityLabel
                 ? t('message.no-domain-assigned-to-entity', {
                     entity: entityLabel,
                   })

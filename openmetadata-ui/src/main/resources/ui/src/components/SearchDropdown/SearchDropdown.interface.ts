@@ -14,7 +14,6 @@
 import { ExploreSearchIndex } from '../Explore/explore.interface';
 
 export interface SearchDropdownProps {
-  index: ExploreSearchIndex;
   label: string;
   isSuggestionsLoading?: boolean;
   options: SearchDropdownOption[];
@@ -23,6 +22,7 @@ export interface SearchDropdownProps {
   highlight?: boolean;
   showProfilePicture?: boolean;
   fixedOrderOptions?: boolean;
+  index?: ExploreSearchIndex;
   onChange: (values: SearchDropdownOption[], searchKey: string) => void;
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
