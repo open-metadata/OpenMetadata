@@ -10,25 +10,4 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { SearchedDataProps } from '../../searched-data/SearchedData.interface';
-
-export interface ExploreSearchCardProps {
-  id: string;
-  className?: string;
-  source: SearchedDataProps['data'][number]['_source'];
-  matches?: {
-    key: string;
-    value: number;
-  }[];
-  handleSummaryPanelDisplay?: (
-    details: SearchedDataProps['data'][number]['_source'],
-    entityType: string
-  ) => void;
-  showEntityIcon?: boolean;
-  checked?: boolean;
-  showCheckboxes?: boolean;
-  showTags?: boolean;
-  openEntityInNewPage?: boolean;
-  hideBreadcrumbs?: boolean;
-}
+export const GLOSSARY_IMPORT_STATUS = ['Entity created', 'Entity updated'];

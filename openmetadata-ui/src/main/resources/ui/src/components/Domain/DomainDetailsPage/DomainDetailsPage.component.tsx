@@ -481,6 +481,7 @@ const DomainDetailsPage = ({
                   }
                   rightPanelWidth={400}>
                   <AssetsTabs
+                    assetCount={assetCount}
                     isSummaryPanelOpen={false}
                     permissions={domainPermission}
                     ref={assetTabRef}

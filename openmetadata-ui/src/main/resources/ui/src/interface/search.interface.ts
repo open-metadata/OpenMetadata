@@ -172,6 +172,7 @@ export type ExploreSearchSource =
   | SearchIndexSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
+  [SearchIndex.ALL]: TableSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;

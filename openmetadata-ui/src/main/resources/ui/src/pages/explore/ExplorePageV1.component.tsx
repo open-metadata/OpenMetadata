@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-
 import { Space, Typography } from 'antd';
 import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
@@ -25,6 +23,7 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   ExploreProps,
   ExploreSearchIndex,
@@ -42,13 +41,17 @@ import {
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
-import { mockSearchData } from '../../constants/mockTourData.constants';
+import {
+  mockSearchData,
+  MOCK_EXPLORE_PAGE_COUNT,
+} from '../../constants/mockTourData.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -286,7 +289,7 @@ const ExplorePageV1: FunctionComponent = () => {
     }
   }, [parsedSearch]);
 
-  useEffect(() => {
+  const fetchEntityCount = () => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
     const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -303,7 +306,7 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: searchQueryParam,
+        query: escapeESReservedCharacters(searchQueryParam),
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: newSortValue,
@@ -332,7 +335,7 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
-            query: searchQueryParam,
+            query: escapeESReservedCharacters(searchQueryParam),
             pageNumber: 0,
             pageSize: 0,
             queryFilter: combinedQueryFilter,
@@ -379,6 +382,14 @@ const ExplorePageV1: FunctionComponent = () => {
         showErrorToast(err);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (isTourOpen) {
+      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+    } else {
+      fetchEntityCount();
+    }
   }, [
     parsedSearch.quickFilter,
     queryFilter,
@@ -419,7 +430,7 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={searchHitCounts}
+      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
