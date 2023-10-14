@@ -122,7 +122,7 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
     return (
       <span
         className={diffChangeText}
-        data-testid={diffChangeText}
+        data-testid={`${diffChangeText}`}
         key={part.value}>
         {part.value}
       </span>

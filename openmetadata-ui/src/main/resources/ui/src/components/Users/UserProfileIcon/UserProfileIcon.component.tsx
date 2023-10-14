@@ -91,6 +91,8 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
+    return false;
   }, []);
 
   const handleSelectedPersonaChange = async (persona: EntityReference) => {
@@ -306,7 +308,7 @@ export const UserProfileIcon = () => {
               </Typography.Text>
             </Tooltip>
             <Typography.Text
-              className="text-grey-muted text-xs"
+              className="text-grey-muted text-xs w-28"
               ellipsis={{ tooltip: true }}>
               {isEmpty(selectedPersona)
                 ? t('label.default')
