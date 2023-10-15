@@ -13,7 +13,10 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../components/Explore/exlore.mock';
+import {
+  MOCK_EXPLORE_SEARCH_RESULTS,
+  MOCK_EXPLORE_TAB_ITEMS,
+} from '../../components/Explore/exlore.mock';
 import { ExploreSearchIndex } from '../../components/Explore/explore.interface';
 import { SearchIndex } from '../../enums/search.enum';
 import ExploreV1 from './ExploreV1.component';
@@ -61,6 +64,8 @@ const onChangePage = jest.fn();
 const props = {
   aggregations: {},
   searchResults: MOCK_EXPLORE_SEARCH_RESULTS,
+  tabItems: MOCK_EXPLORE_TAB_ITEMS,
+  activeTabKey: SearchIndex.TABLE,
   tabCounts: {
     table_search_index: 20,
     topic_search_index: 10,

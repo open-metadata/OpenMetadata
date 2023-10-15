@@ -19,6 +19,7 @@ import i18next from 'i18next';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin.svg';
 import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
+import { ReactComponent as AppIcon } from '../assets/svg/application.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
@@ -217,7 +218,7 @@ export const getGlobalSettingsMenuWithPermission = (
           label: i18next.t('label.application-plural'),
           isProtected: Boolean(isAdminUser),
           key: 'integrations.apps',
-          icon: <TableIcon className="side-panel-icons" />,
+          icon: <AppIcon className="side-panel-icons" />,
         },
         {
           label: i18next.t('label.bot-plural'),
@@ -328,16 +329,16 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.email'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.email',
-          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
-        },
-        {
           label: i18next.t('label.customize-landing-page'),
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customizeLandingPage',
           icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.email'),
+          isProtected: Boolean(isAdminUser),
+          key: 'openMetadata.email',
+          icon: <EmailSettingsIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.custom-logo'),
