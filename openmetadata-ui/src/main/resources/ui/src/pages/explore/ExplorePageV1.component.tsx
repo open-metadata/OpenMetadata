@@ -322,6 +322,7 @@ const ExplorePageV1: FunctionComponent = () => {
         }),
       Promise.all(
         [
+          SearchIndex.DATA_PRODUCT,
           SearchIndex.TABLE,
           SearchIndex.TOPIC,
           SearchIndex.DASHBOARD,
@@ -348,6 +349,7 @@ const ExplorePageV1: FunctionComponent = () => {
         )
       ).then(
         ([
+          dataProductResponse,
           tableResponse,
           topicResponse,
           dashboardResponse,
@@ -361,6 +363,7 @@ const ExplorePageV1: FunctionComponent = () => {
           searchIndexResponse,
         ]) => {
           setSearchHitCounts({
+            [SearchIndex.DATA_PRODUCT]: dataProductResponse.hits.total.value,
             [SearchIndex.TABLE]: tableResponse.hits.total.value,
             [SearchIndex.TOPIC]: topicResponse.hits.total.value,
             [SearchIndex.DASHBOARD]: dashboardResponse.hits.total.value,
