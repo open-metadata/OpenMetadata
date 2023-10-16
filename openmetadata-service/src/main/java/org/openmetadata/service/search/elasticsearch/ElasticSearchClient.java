@@ -351,12 +351,15 @@ public class ElasticSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery("deleted", request.deleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam())) {
-      searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
+    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+      searchSourceBuilder.query(
+          QueryBuilders.boolQuery()
+              .must(searchSourceBuilder.query())
+              .must(QueryBuilders.matchQuery("status", "Approved")));
     }
 
-    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("status", "Approved")));
+    if (!nullOrEmpty(request.getSortFieldParam())) {
+      searchSourceBuilder.sort(request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
