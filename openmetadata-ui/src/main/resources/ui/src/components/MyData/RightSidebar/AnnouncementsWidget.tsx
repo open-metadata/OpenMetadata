@@ -16,31 +16,29 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
 import FeedCardHeaderV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeaderV1';
 
-interface AnnouncementsWidgetProps {
+export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   announcements: Thread[];
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
 }
 
 function AnnouncementsWidget({
   announcements,
   isEditView,
   handleRemoveWidget,
+  widgetKey,
 }: Readonly<AnnouncementsWidgetProps>) {
   const { t } = useTranslation();
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.ANNOUNCEMENTS);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   return (
-    <div className="p-l-md">
+    <div className="bg-white h-max-full overflow-y-scroll">
       <Row justify="space-between">
         <Col>
           <Typography.Paragraph className="right-panel-label m-b-sm">

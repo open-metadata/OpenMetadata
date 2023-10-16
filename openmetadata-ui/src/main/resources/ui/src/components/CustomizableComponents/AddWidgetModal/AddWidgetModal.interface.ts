@@ -15,8 +15,25 @@ import { Document } from '../../../generated/entity/docStore/document';
 
 export interface AddWidgetModalProps {
   open: boolean;
+  maxGridSizeSupport: number;
+  placeholderWidgetKey: string;
   addedWidgetsList: Array<string>;
-  widgetsToShow: Array<string>;
   handleCloseAddWidgetModal: () => void;
-  handleAddWidget: (widget: Document) => void;
+  handleAddWidget: (
+    widget: Document,
+    widgetKey: string,
+    widgetSize: number
+  ) => void;
+}
+
+export interface AddWidgetTabContentProps {
+  widget: Document;
+  maxGridSizeSupport: number;
+  getAddWidgetHandler: (widget: Document, widgetSize: number) => () => void;
+  widgetSizeOptions: Array<WidgetSizeInfo>;
+}
+
+export interface WidgetSizeInfo {
+  label: string;
+  value: number;
 }

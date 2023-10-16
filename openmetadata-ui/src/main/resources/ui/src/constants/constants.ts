@@ -14,18 +14,19 @@
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
+import { CSSProperties } from 'react';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
+import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
 import { getEncodedFqn } from '../utils/StringsUtils';
-import i18n from '../utils/i18next/LocalUtil';
+import { FQN_SEPARATOR_CHAR } from './char.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
-import { FQN_SEPARATOR_CHAR } from './char.constants';
 
 export const PRIMERY_COLOR = '#0968da';
 export const SECONDARY_COLOR = '#B02AAC';
@@ -335,7 +336,7 @@ export const ROUTES = {
 
   SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
 
-  CUSTOMISE_PAGE: `/customise-page/:fqn/:pageFqn`,
+  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
 };
 
 export const SOCKET_EVENTS = {
@@ -834,4 +835,8 @@ export const ERROR_MESSAGE = {
 export const ICON_DIMENSION = {
   with: 14,
   height: 14,
+};
+
+export const COMMON_ICON_STYLES: CSSProperties = {
+  verticalAlign: 'middle',
 };

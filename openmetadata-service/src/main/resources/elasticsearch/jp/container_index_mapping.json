@@ -264,7 +264,7 @@
         "type": "text"
       },
       "numberOfObjects": {
-        "type": "integer"
+        "type": "double"
       },
       "size": {
         "type": "integer"
@@ -436,6 +436,9 @@
       },
       "lifeCycle": {
         "type": "object"
+      },
+      "columnNames": {
+        "type": "keyword"
       },
       "serviceType": {
         "type": "keyword"

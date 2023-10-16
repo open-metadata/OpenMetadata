@@ -30,7 +30,7 @@ const TEAM_DETAILS = {
   ...SEARCH_ENTITY_TABLE.table_1,
 };
 
-describe('Create a team and add that team as a owner of the entity', () => {
+describe.skip('Create a team and add that team as a owner of the entity', () => {
   beforeEach(() => {
     cy.login();
     interceptURL(

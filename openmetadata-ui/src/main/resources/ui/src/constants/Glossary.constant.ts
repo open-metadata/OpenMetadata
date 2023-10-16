@@ -10,8 +10,4 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-export interface FeedsWidgetProps {
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
-}
+export const GLOSSARY_IMPORT_STATUS = ['Entity created', 'Entity updated'];

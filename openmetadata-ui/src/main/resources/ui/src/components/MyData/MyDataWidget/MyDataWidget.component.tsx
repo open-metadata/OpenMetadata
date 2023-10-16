@@ -19,24 +19,25 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import AppState from '../../../AppState';
 import { getUserPath, ROUTES } from '../../../constants/constants';
-import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { AssetsType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getUserById } from '../../../rest/userAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import EntityListSkeleton from '../../Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
-import { MyDataWidgetProps } from './MyDataWidget.interface';
 
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
-}: MyDataWidgetProps) => {
+  widgetKey,
+}: WidgetCommonProps) => {
   const { t } = useTranslation();
   const currentUserDetails = AppState.getCurrentUserDetails();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<EntityReference[]>([]);
+  const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);
 
   const fetchMyDataAssets = async () => {
     if (!currentUserDetails || !currentUserDetails.id) {
@@ -54,7 +55,8 @@ const MyDataWidgetInternal = ({
           includeData.includes(data.type as AssetsType)
         );
 
-        setData(includedOwnsData.slice(0, 8));
+        setData(includedOwnsData.slice(0, 9));
+        setTotalOwnedAssetsCount(includedOwnsData.length);
       }
     } catch (err) {
       setData([]);
@@ -64,9 +66,8 @@ const MyDataWidgetInternal = ({
   };
 
   const handleCloseClick = useCallback(() => {
-    !isUndefined(handleRemoveWidget) &&
-      handleRemoveWidget(LandingPageWidgetKeys.MY_DATA);
-  }, []);
+    !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
+  }, [widgetKey]);
 
   useEffect(() => {
     fetchMyDataAssets();
@@ -88,7 +89,7 @@ const MyDataWidgetInternal = ({
                   <span className="text-grey-muted font-normal text-xs">
                     {t('label.view-all')}{' '}
                     <span data-testid="my-data-total-count">
-                      {`(${data.length})`}
+                      {`(${totalOwnedAssetsCount})`}
                     </span>
                   </span>
                 </Link>
@@ -145,10 +146,12 @@ const MyDataWidgetInternal = ({
                 );
               })
             ) : (
-              <Transi18next
-                i18nKey="message.no-owned-data"
-                renderElement={<Link to={ROUTES.EXPLORE} />}
-              />
+              <span className="text-sm">
+                <Transi18next
+                  i18nKey="message.no-owned-data"
+                  renderElement={<Link to={ROUTES.EXPLORE} />}
+                />
+              </span>
             )}
           </div>
         </>

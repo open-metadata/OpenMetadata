@@ -11,45 +11,45 @@
  *  limitations under the License.
  */
 
-import { floor, isEmpty, isUndefined, max, maxBy, round } from 'lodash';
-import { Layout } from 'react-grid-layout';
 import {
-  DEFAULT_WIDGET_HEIGHT,
-  LANDING_PAGE_RIGHT_CONTAINER_EDIT_HEIGHT,
-  LANDING_PAGE_ROW_HEIGHT,
-  LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS,
-  LANDING_PAGE_WIDGET_MARGIN,
-} from '../constants/CustomisePage.constants';
+  floor,
+  isEmpty,
+  isUndefined,
+  max,
+  maxBy,
+  round,
+  uniqueId,
+} from 'lodash';
+import { Layout } from 'react-grid-layout';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
 } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { WidgetConfig } from '../pages/CustomisablePages/CustomisablePage.interface';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import customizePageClassBase from './CustomizePageClassBase';
 
 export const getAddWidgetHandler =
-  (newWidgetData: Document) => (currentLayout: Array<WidgetConfig>) => {
-    const widgetFQN = newWidgetData.fullyQualifiedName;
-    const widgetWidth = getWidgetWidth(newWidgetData);
-    const widgetHeight = getWidgetHeight(newWidgetData.name);
-
-    const isEmptyPlaceholderPresent = currentLayout.find(
-      (widget: WidgetConfig) =>
-        widget.i === `${widgetFQN}.EmptyWidgetPlaceholder`
+  (
+    newWidgetData: Document,
+    placeholderWidgetKey: string,
+    widgetWidth: number,
+    maxGridSize: number
+  ) =>
+  (currentLayout: Array<WidgetConfig>) => {
+    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
+    const widgetHeight = customizePageClassBase.getWidgetHeight(
+      newWidgetData.name
     );
 
-    if (isEmptyPlaceholderPresent) {
-      return currentLayout.map((widget: WidgetConfig) =>
-        widget.i === `${widgetFQN}.EmptyWidgetPlaceholder`
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-            }
-          : widget
-      );
-    } else {
+    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
+    // and is not meant to be replaced hence
+    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
+    // append the new widget in the array
+    // else replace the new widget with other placeholder widgets
+    if (
+      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    ) {
       return [
         ...currentLayout,
         {
@@ -61,6 +61,23 @@ export const getAddWidgetHandler =
           static: false,
         },
       ];
+    } else {
+      return currentLayout.map((widget: WidgetConfig) => {
+        const widgetX =
+          widget.x + widgetWidth <= maxGridSize
+            ? widget.x
+            : maxGridSize - widgetWidth;
+
+        return widget.i === placeholderWidgetKey
+          ? {
+              ...widget,
+              i: widgetFQN,
+              h: widgetHeight,
+              w: widgetWidth,
+              x: widgetX,
+            }
+          : widget;
+      });
     }
   };
 
@@ -121,29 +138,6 @@ export const getWidgetWidth = (widget: Document) => {
   return widgetSize as number;
 };
 
-export const getWidgetHeight = (widgetName: string) => {
-  switch (widgetName) {
-    case 'ActivityFeed':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.activityFeed;
-    case 'RightSidebar':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.rightSidebar;
-    case 'Announcements':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements;
-    case 'Following':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following;
-    case 'RecentlyViewed':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.recentlyViewed;
-    case 'MyData':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.myData;
-    case 'KPI':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.kpi;
-    case 'TotalDataAssets':
-      return LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.totalDataAssets;
-    default:
-      return DEFAULT_WIDGET_HEIGHT;
-  }
-};
-
 const getAllWidgetsArray = (layout: WidgetConfig[]) => {
   const widgetsArray: WidgetConfig[] = [];
 
@@ -170,13 +164,15 @@ const getLayoutWithCalculatedRightPanelHeight = (
     const floorHeightAndPosValue = floor(widgetHeightAndPos);
 
     const heightOfWidget =
-      widgetHeightAndPos * LANDING_PAGE_ROW_HEIGHT +
-      (floorHeightAndPosValue + 1) * LANDING_PAGE_WIDGET_MARGIN;
+      widgetHeightAndPos * customizePageClassBase.landingPageRowHeight +
+      (floorHeightAndPosValue + 1) *
+        customizePageClassBase.landingPageWidgetMargin;
 
     return {
       h: round(
-        (heightOfWidget + LANDING_PAGE_WIDGET_MARGIN) /
-          (LANDING_PAGE_ROW_HEIGHT + LANDING_PAGE_WIDGET_MARGIN),
+        (heightOfWidget + customizePageClassBase.landingPageWidgetMargin) /
+          (customizePageClassBase.landingPageRowHeight +
+            customizePageClassBase.landingPageWidgetMargin),
         2
       ),
       height: heightOfWidget,
@@ -190,7 +186,7 @@ const getLayoutWithCalculatedRightPanelHeight = (
       ? {
           ...widget,
           h: increaseHeight
-            ? LANDING_PAGE_RIGHT_CONTAINER_EDIT_HEIGHT
+            ? customizePageClassBase.landingPageRightContainerEditHeight
             : maxHeight?.h ?? widget.h,
         }
       : widget

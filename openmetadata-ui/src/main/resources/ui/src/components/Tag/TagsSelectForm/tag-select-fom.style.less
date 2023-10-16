@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 
-export interface MyDataWidgetProps {
-  isEditView?: boolean;
-  handleRemoveWidget?: (widgetKey: string) => void;
+.tag-select-box.ant-select-item-option-selected {
+  background-color: @grey-1;
+  display: flex;
+  align-items: center;
 }

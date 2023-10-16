@@ -11,37 +11,32 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Modal,
-  Row,
-  Space,
-  Tabs,
-  TabsProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { CheckOutlined } from '@ant-design/icons';
+import { Modal, Space, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { WidgetWidths } from '../../../enums/CustomizablePage.enum';
 import { Document } from '../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../rest/DocStoreAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/error-with-placeholder/ErrorPlaceHolder';
-import { AddWidgetModalProps } from './AddWidgetModal.interface';
+import {
+  AddWidgetModalProps,
+  WidgetSizeInfo,
+} from './AddWidgetModal.interface';
 import './AddWidgetModal.less';
+import AddWidgetTabContent from './AddWidgetTabContent';
 
 function AddWidgetModal({
   open,
   addedWidgetsList,
   handleCloseAddWidgetModal,
   handleAddWidget,
-  widgetsToShow,
+  maxGridSizeSupport,
+  placeholderWidgetKey,
 }: Readonly<AddWidgetModalProps>) {
   const { t } = useTranslation();
   const [widgetsList, setWidgetsList] = useState<Array<Document>>();
@@ -52,59 +47,53 @@ function AddWidgetModal({
         fqnPrefix: 'KnowledgePanel',
       });
 
-      setWidgetsList(
-        response.data.filter((widget) =>
-          widgetsToShow.includes(widget.fullyQualifiedName)
-        )
-      );
+      setWidgetsList(response.data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [widgetsToShow]);
+  }, []);
 
   const getAddWidgetHandler = useCallback(
-    (widget: Document) => () => handleAddWidget(widget),
-    []
+    (widget: Document, widgetSize: number) => () =>
+      handleAddWidget(widget, placeholderWidgetKey, widgetSize),
+    [handleAddWidget, placeholderWidgetKey]
   );
 
   const tabItems: TabsProps['items'] = useMemo(
     () =>
-      widgetsList?.map((widget) => ({
-        label: getEntityName(widget),
-        key: widget.fullyQualifiedName,
-        disabled: addedWidgetsList.includes(widget.fullyQualifiedName),
-        children: (
-          <Row align="middle" className="h-min-400" justify="center">
-            <Col>
-              <Space align="center" direction="vertical">
-                <Typography.Text>{getEntityName(widget)}</Typography.Text>
-                <Tooltip
-                  title={
-                    addedWidgetsList.includes(widget.fullyQualifiedName)
-                      ? t('message.entity-already-exists', {
-                          entity: t('label.widget-lowercase'),
-                        })
-                      : ''
-                  }>
-                  <Button
-                    ghost
-                    className="p-x-lg m-t-md"
-                    data-testid="add-widget-placeholder-button"
-                    disabled={addedWidgetsList.includes(
-                      widget.fullyQualifiedName
-                    )}
-                    icon={<PlusOutlined />}
-                    type="primary"
-                    onClick={getAddWidgetHandler(widget)}>
-                    {t('label.add')}
-                  </Button>
-                </Tooltip>
-              </Space>
-            </Col>
-          </Row>
-        ),
-      })),
-    [widgetsList, addedWidgetsList]
+      widgetsList?.map((widget) => {
+        const widgetSizeOptions: Array<WidgetSizeInfo> =
+          widget.data.gridSizes.map((size: WidgetWidths) => ({
+            label: size,
+            value: WidgetWidths[size],
+          }));
+
+        return {
+          label: (
+            <Space>
+              <span>{widget.name}</span>
+              {addedWidgetsList.some((w) =>
+                w.startsWith(widget.fullyQualifiedName)
+              ) && (
+                <CheckOutlined
+                  className="m-l-xs"
+                  style={{ color: '#4CAF50' }}
+                />
+              )}
+            </Space>
+          ),
+          key: widget.fullyQualifiedName,
+          children: (
+            <AddWidgetTabContent
+              getAddWidgetHandler={getAddWidgetHandler}
+              maxGridSizeSupport={maxGridSizeSupport}
+              widget={widget}
+              widgetSizeOptions={widgetSizeOptions}
+            />
+          ),
+        };
+      }),
+    [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
   useEffect(() => {
@@ -122,7 +111,7 @@ function AddWidgetModal({
       onCancel={handleCloseAddWidgetModal}>
       {isEmpty(widgetsList) ? (
         <ErrorPlaceHolder
-          className="h-min-400"
+          className="h-min-480"
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           {t('message.no-widgets-to-add')}
         </ErrorPlaceHolder>

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-
-import { get, isEmpty, isString } from 'lodash';
+import { Space, Typography } from 'antd';
+import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -24,13 +23,16 @@ import React, {
 } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   ExploreProps,
   ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/explore.interface';
+import { findActiveSearchIndex } from '../../components/Explore/Explore.utils';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
 import { withAdvanceSearch } from '../../components/router/withAdvanceSearch';
 import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
@@ -39,12 +41,17 @@ import {
   INITIAL_SORT_FIELD,
   tabsInfo,
 } from '../../constants/explore.constants';
-import { mockSearchData } from '../../constants/mockTourData.constants';
+import {
+  mockSearchData,
+  MOCK_EXPLORE_PAGE_COUNT,
+} from '../../constants/mockTourData.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
+import { getCountBadge } from '../../utils/CommonUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
@@ -58,6 +65,8 @@ const ExplorePageV1: FunctionComponent = () => {
   const { isTourOpen } = useTourProvider();
 
   const { tab } = useParams<UrlParams>();
+
+  const { searchCriteria } = useGlobalSearchProvider();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
@@ -177,12 +186,59 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    const tabInfo = Object.entries(tabsInfo).find(
-      ([, tabInfo]) => tabInfo.path === tab
+    if (searchHitCounts) {
+      const tabInfo = Object.entries(tabsInfo).find(
+        ([, tabInfo]) => tabInfo.path === tab
+      );
+      if (isNil(tabInfo)) {
+        const activeKey = findActiveSearchIndex(searchHitCounts);
+
+        return activeKey ? activeKey : SearchIndex.TABLE;
+      }
+
+      return tabInfo[0] as ExploreSearchIndex;
+    }
+
+    return SearchIndex.TABLE;
+  }, [tab, searchHitCounts]);
+
+  const tabItems = useMemo(() => {
+    const items = Object.entries(tabsInfo).map(
+      ([tabSearchIndex, tabDetail]) => ({
+        key: tabSearchIndex,
+        label: (
+          <div data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+            <Space className="w-full justify-between">
+              <Typography.Text
+                className={
+                  tabSearchIndex === searchIndex ? 'text-primary' : ''
+                }>
+                {tabDetail.label}
+              </Typography.Text>
+              <span>
+                {!isNil(searchHitCounts)
+                  ? getCountBadge(
+                      searchHitCounts[tabSearchIndex as ExploreSearchIndex],
+                      '',
+                      tabSearchIndex === searchIndex
+                    )
+                  : getCountBadge()}
+              </span>
+            </Space>
+          </div>
+        ),
+        count: searchHitCounts
+          ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
+          : 0,
+      })
     );
 
-    return (tabInfo?.[0] as ExploreSearchIndex) ?? SearchIndex.TABLE;
-  }, [tab]);
+    return searchQueryParam
+      ? items.filter((tabItem) => {
+          return tabItem.count > 0 || tabItem.key === searchCriteria;
+        })
+      : items;
+  }, [tabsInfo, searchHitCounts, searchIndex]);
 
   const page = useMemo(() => {
     const pageParam = parsedSearch.page;
@@ -233,7 +289,7 @@ const ExplorePageV1: FunctionComponent = () => {
     }
   }, [parsedSearch]);
 
-  useEffect(() => {
+  const fetchEntityCount = () => {
     const updatedQuickFilters = getAdvancedSearchQuickFilters();
 
     const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -250,7 +306,7 @@ const ExplorePageV1: FunctionComponent = () => {
     setIsLoading(true);
     Promise.all([
       searchQuery({
-        query: searchQueryParam,
+        query: escapeESReservedCharacters(searchQueryParam),
         searchIndex,
         queryFilter: combinedQueryFilter,
         sortField: newSortValue,
@@ -279,7 +335,7 @@ const ExplorePageV1: FunctionComponent = () => {
           SearchIndex.SEARCH_INDEX,
         ].map((index) =>
           searchQuery({
-            query: searchQueryParam,
+            query: escapeESReservedCharacters(searchQueryParam),
             pageNumber: 0,
             pageSize: 0,
             queryFilter: combinedQueryFilter,
@@ -326,6 +382,14 @@ const ExplorePageV1: FunctionComponent = () => {
         showErrorToast(err);
       })
       .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    if (isTourOpen) {
+      setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
+    } else {
+      fetchEntityCount();
+    }
   }, [
     parsedSearch.quickFilter,
     queryFilter,
@@ -353,6 +417,7 @@ const ExplorePageV1: FunctionComponent = () => {
 
   return (
     <ExploreV1
+      activeTabKey={searchIndex}
       aggregations={updatedAggregations}
       loading={isLoading && !isTourOpen}
       quickFilters={advancesSearchQuickFilters}
@@ -365,7 +430,8 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={searchHitCounts}
+      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
+      tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
       onChangeSearchIndex={handleSearchIndexChange}

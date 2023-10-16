@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Tag, Typography } from 'antd';
+import { Dropdown, Tag, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, {
   ReactNode,
@@ -33,9 +32,9 @@ import {
   TERM_USER,
 } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
-import { updateUserDetail } from '../../../rest/userAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { useAuthContext } from '../../authentication/auth-provider/AuthProvider';
 import Avatar from '../../common/avatar/Avatar';
 
@@ -80,7 +79,9 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, onLogoutHandler, updateCurrentUser } = useAuthContext();
+  const { currentUser, onLogoutHandler } = useAuthContext();
+  const { selectedPersona, updateSelectedPersona } =
+    useApplicationConfigContext();
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = useMemo(
@@ -90,23 +91,15 @@ export const UserProfileIcon = () => {
 
   const handleOnImageError = useCallback(() => {
     setIsImgUrlValid(false);
+
+    return false;
   }, []);
 
-  const handleDefaultPersonaChange = async (persona: EntityReference) => {
+  const handleSelectedPersonaChange = async (persona: EntityReference) => {
     if (!currentUser) {
       return;
     }
-    const operations = compare(currentUser, {
-      ...currentUser,
-      defaultPersona: { id: persona.id, type: 'persona' },
-    });
-
-    try {
-      const updatedUser = await updateUserDetail(currentUser.id, operations);
-      updateCurrentUser(updatedUser);
-    } catch (error) {
-      // Error
-    }
+    updateSelectedPersona(persona);
   };
 
   useEffect(() => {
@@ -115,28 +108,22 @@ export const UserProfileIcon = () => {
     }
   }, [profilePicture]);
 
-  const { userName, defaultPersona, teams, roles, inheritedRoles, personas } =
-    useMemo(() => {
-      const userName =
-        currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
-      const defaultPersona = currentUser?.personas?.find(
-        (persona) => persona.id === currentUser.defaultPersona?.id
-      );
+  const { userName, teams, roles, inheritedRoles, personas } = useMemo(() => {
+    const userName = currentUser?.displayName ?? currentUser?.name ?? TERM_USER;
 
-      return {
-        userName,
-        defaultPersona,
-        roles: currentUser?.isAdmin
-          ? [
-              ...(currentUser?.roles ?? []),
-              { name: TERM_ADMIN, type: 'role' } as EntityReference,
-            ]
-          : currentUser?.roles,
-        teams: currentUser?.teams,
-        inheritedRoles: currentUser?.inheritedRoles,
-        personas: currentUser?.personas,
-      };
-    }, [currentUser]);
+    return {
+      userName,
+      roles: currentUser?.isAdmin
+        ? [
+            ...(currentUser?.roles ?? []),
+            { name: TERM_ADMIN, type: 'role' } as EntityReference,
+          ]
+        : currentUser?.roles,
+      teams: currentUser?.teams,
+      inheritedRoles: currentUser?.inheritedRoles,
+      personas: currentUser?.personas,
+    };
+  }, [currentUser]);
 
   const readMoreTag = (count: number) => (
     <Tag>
@@ -146,14 +133,14 @@ export const UserProfileIcon = () => {
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
-      <span onClick={() => handleDefaultPersonaChange(item)}>
+      <span onClick={() => handleSelectedPersonaChange(item)}>
         {getEntityName(item)}{' '}
-        {defaultPersona?.id === item.id && (
+        {selectedPersona?.id === item.id && (
           <CheckOutlined className="m-l-xs" style={{ color: '#4CAF50' }} />
         )}
       </span>
     ),
-    [handleDefaultPersonaChange, defaultPersona]
+    [handleSelectedPersonaChange, selectedPersona]
   );
 
   const teamLabelRenderer = useCallback(
@@ -285,8 +272,14 @@ export const UserProfileIcon = () => {
         type: 'group',
       },
     ],
-    [currentUser, userName, defaultPersona, teams, roles, personas]
+    [currentUser, userName, selectedPersona, teams, roles, personas]
   );
+
+  useEffect(() => {
+    updateSelectedPersona(
+      currentUser?.defaultPersona ?? ({} as EntityReference)
+    );
+  }, [currentUser?.defaultPersona]);
 
   return (
     <Dropdown
@@ -300,25 +293,26 @@ export const UserProfileIcon = () => {
           {isImgUrlValid ? (
             <img
               alt="user"
-              className="profile-image circle"
+              className="app-bar-user-avatar"
               referrerPolicy="no-referrer"
               src={profilePicture ?? ''}
-              width={36}
               onError={handleOnImageError}
             />
           ) : (
             <Avatar name={userName} type="circle" width="36" />
           )}
           <div className="d-flex flex-col">
-            <Typography.Text className="usename">
-              {getEntityName(currentUser)}
-            </Typography.Text>
+            <Tooltip title={getEntityName(currentUser)}>
+              <Typography.Text className="username truncate w-max-112">
+                {getEntityName(currentUser)}
+              </Typography.Text>
+            </Tooltip>
             <Typography.Text
-              className="text-grey-muted text-xs"
+              className="text-grey-muted text-xs w-28"
               ellipsis={{ tooltip: true }}>
-              {defaultPersona
-                ? getEntityName(defaultPersona)
-                : t('label.default')}
+              {isEmpty(selectedPersona)
+                ? t('label.default')
+                : getEntityName(selectedPersona)}
             </Typography.Text>
           </div>
         </div>
