@@ -925,6 +925,7 @@
     "source-column": "カラムのソース",
     "source-match": "イベントソースによるマッチング",
     "source-plural": "ソース",
+    "source-url": "Source Url",
     "specific-data-asset-plural": "Specific Data Assets",
     "sql-uppercase": "SQL",
     "sql-uppercase-query": "SQL Query",
