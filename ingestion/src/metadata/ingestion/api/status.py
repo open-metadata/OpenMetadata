@@ -27,8 +27,8 @@ class Status(BaseModel):
     """
     Class to handle status
     """
-    source_start_time: Any
 
+    source_start_time: Any
 
     records: List[Any] = Field(default_factory=list)
     warnings: List[Any] = Field(default_factory=list)
