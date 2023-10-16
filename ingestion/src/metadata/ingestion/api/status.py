@@ -27,13 +27,17 @@ class Status(BaseModel):
     """
     Class to handle status
     """
+    source_start_time: Any
 
-    source_start_time = time.time()
 
     records: List[Any] = Field(default_factory=list)
     warnings: List[Any] = Field(default_factory=list)
     filtered: List[Dict[str, str]] = Field(default_factory=list)
     failures: List[StackTraceError] = Field(default_factory=list)
+
+    def __init__(self):
+        super().__init__()
+        self.source_start_time = time.time()
 
     def scanned(self, record: Any) -> None:
         """
