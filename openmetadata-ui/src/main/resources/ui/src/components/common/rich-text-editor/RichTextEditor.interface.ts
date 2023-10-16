@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TooltipPlacement } from 'antd/lib/tooltip';
 import { HTMLAttributes, ReactNode } from 'react';
 
 export type editorRef = ReactNode | HTMLElement | string;
@@ -36,6 +37,7 @@ export interface PreviewerProp {
   enableSeeMoreVariant?: boolean;
   showReadMoreBtn?: boolean;
   textVariant?: TextVariant;
+  tooltip?: TooltipProps;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
@@ -61,3 +63,8 @@ export interface EditorContentRef {
   getEditorContent: () => string;
   clearEditorContent: () => void;
 }
+export interface TooltipProperties {
+  placement: TooltipPlacement;
+}
+
+export type TooltipProps = boolean | TooltipProperties;

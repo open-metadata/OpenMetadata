@@ -30,6 +30,7 @@ import {
   TASK_ENTITIES,
 } from '../../../utils/TasksUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { TooltipProps } from '../rich-text-editor/RichTextEditor.interface';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 const { Text } = Typography;
 
@@ -53,6 +54,7 @@ interface Props {
   isVersionView?: boolean;
   showCommentsIcon?: boolean;
   reduceDescription?: boolean;
+  tooltip?: TooltipProps;
 }
 const DescriptionV1 = ({
   hasEditAccess,
@@ -71,6 +73,7 @@ const DescriptionV1 = ({
   isVersionView,
   showCommentsIcon = true,
   reduceDescription,
+  tooltip,
 }: Props) => {
   const history = useHistory();
 
@@ -169,6 +172,7 @@ const DescriptionV1 = ({
               className={reduceDescription ? 'max-two-lines' : ''}
               enableSeeMoreVariant={!removeBlur}
               markdown={description}
+              tooltip={tooltip}
             />
           ) : (
             <span>{t('label.no-description')}</span>

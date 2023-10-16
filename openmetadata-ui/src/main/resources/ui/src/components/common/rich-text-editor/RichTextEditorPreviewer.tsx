@@ -12,7 +12,7 @@
  */
 
 import { Viewer } from '@toast-ui/react-editor';
-import { Button } from 'antd';
+import { Button, Popover } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
 import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
-import { PreviewerProp } from './RichTextEditor.interface';
+import { PreviewerProp, TooltipProperties } from './RichTextEditor.interface';
 import './RichTextEditorPreviewer.less';
 
 const RichTextEditorPreviewer = ({
@@ -30,6 +30,7 @@ const RichTextEditorPreviewer = ({
   textVariant = 'black',
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
+  tooltip,
 }: PreviewerProp) => {
   const { t } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -95,17 +96,35 @@ const RichTextEditorPreviewer = ({
     <div
       className={classNames('rich-text-editor-container', className)}
       data-testid="viewer-container">
-      <div
-        className={classNames('markdown-parser', textVariant)}
-        data-testid="markdown-parser">
-        <Viewer
-          extendedAutolinks
-          customHTMLRenderer={customHTMLRenderer}
-          initialValue={viewerValue}
-          key={uniqueId()}
-          linkAttributes={{ target: '_blank' }}
-        />
-      </div>
+      <Popover
+        arrowPointAtCenter
+        destroyTooltipOnHide
+        content={
+          tooltip && (
+            <Viewer
+              extendedAutolinks
+              customHTMLRenderer={customHTMLRenderer}
+              initialValue={content}
+              key={uniqueId()}
+              linkAttributes={{ target: '_blank' }}
+            />
+          )
+        }
+        overlayClassName="rich-text-editor-card-popover"
+        placement={(tooltip as TooltipProperties)?.placement}>
+        <div
+          className={classNames('markdown-parser', textVariant)}
+          data-testid="markdown-parser">
+          <Viewer
+            extendedAutolinks
+            customHTMLRenderer={customHTMLRenderer}
+            initialValue={viewerValue}
+            key={uniqueId()}
+            linkAttributes={{ target: '_blank' }}
+          />
+        </div>
+      </Popover>
+
       {hasReadMore && showReadMoreBtn && (
         <Button
           className="text-xs text-right"

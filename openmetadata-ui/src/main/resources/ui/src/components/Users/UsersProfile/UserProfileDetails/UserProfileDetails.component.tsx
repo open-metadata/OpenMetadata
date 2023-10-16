@@ -153,6 +153,9 @@ const UserProfileDetails = ({
           hasEditAccess={isAdminUser}
           isEdit={isDescriptionEdit}
           showCommentsIcon={false}
+          tooltip={{
+            placement: 'right',
+          }}
           onCancel={() => setIsDescriptionEdit(false)}
           onDescriptionEdit={() => setIsDescriptionEdit(true)}
           onDescriptionUpdate={handleDescriptionChange}
