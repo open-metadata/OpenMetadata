@@ -80,6 +80,25 @@
         "analyzer": "om_analyzer",
         "index_options": "freqs"
       },
+      "tier": {
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
+          }
+        }
+      },
       "fields": {
         "properties": {
           "name": {
