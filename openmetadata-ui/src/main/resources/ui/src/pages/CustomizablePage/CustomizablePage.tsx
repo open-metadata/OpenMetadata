@@ -12,7 +12,8 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import CustomizeMyData from '../../components/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import Loader from '../../components/Loader/Loader';
@@ -27,22 +28,37 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getFinalLandingPage } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
+import { getDecodedFqn } from '../../utils/StringsUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 export const CustomizablePage = () => {
-  const { fqn, pageFqn } = useParams<{ fqn: string; pageFqn: PageType }>();
+  const { fqn: personaFQN, pageFqn } =
+    useParams<{ fqn: string; pageFqn: PageType }>();
+  const { t } = useTranslation();
   const [page, setPage] = useState<Document>({} as Document);
   const [editedPage, setEditedPage] = useState<Document>({} as Document);
   const [isLoading, setIsLoading] = useState(true);
+  const [saveCurrentPageLayout, setSaveCurrentPageLayout] = useState(false);
+
+  const decodedPersonaFQN = useMemo(
+    () => getDecodedFqn(personaFQN),
+    [personaFQN]
+  );
+  const decodedPageFQN = useMemo(() => getDecodedFqn(pageFqn), [pageFqn]);
 
   const handlePageDataChange = useCallback((newPageData: Document) => {
     setEditedPage(newPageData);
   }, []);
 
+  const handleSaveCurrentPageLayout = useCallback((value: boolean) => {
+    setSaveCurrentPageLayout(value);
+  }, []);
+
   const fetchDocument = async () => {
-    const pageFQN = `${EntityType.PERSONA}.${fqn}.${EntityType.PAGE}.${pageFqn}`;
+    const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}.${EntityType.PAGE}.${pageFqn}`;
     try {
       setIsLoading(true);
-      const pageData = await getDocumentByFQN(pageFQN);
+      const pageData = await getDocumentByFQN(pageLayoutFQN);
       const finalPageData = getFinalLandingPage(pageData, true);
 
       setPage(finalPageData);
@@ -52,8 +68,8 @@ export const CustomizablePage = () => {
         setPage(
           getFinalLandingPage(
             {
-              name: `${fqn}${pageFqn}`,
-              fullyQualifiedName: pageFQN,
+              name: `${decodedPersonaFQN}${decodedPageFQN}`,
+              fullyQualifiedName: getDecodedFqn(pageLayoutFQN),
               entityType: EntityType.PAGE,
               data: {
                 page: {
@@ -73,22 +89,46 @@ export const CustomizablePage = () => {
   const handleSave = async () => {
     try {
       const finalPage = getFinalLandingPage(editedPage);
+      let response: Document = {} as Document;
 
       if (page.id) {
         const jsonPatch = compare(page, finalPage);
 
-        await updateDocument(page?.id ?? '', jsonPatch);
+        response = await updateDocument(page.id ?? '', jsonPatch);
       } else {
-        await createDocument(finalPage);
+        response = await createDocument(finalPage);
       }
+      setPage(response);
+      setEditedPage(response);
+      showSuccessToast(
+        t('server.page-layout-operation-success', {
+          operation: page.id
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        })
+      );
     } catch {
       // Error
+      showErrorToast(
+        t('server.page-layout-operation-error', {
+          operation: page.id
+            ? t('label.updating-lowercase')
+            : t('label.creating-lowercase'),
+        })
+      );
     }
   };
 
   useEffect(() => {
+    if (saveCurrentPageLayout) {
+      handleSave();
+      setSaveCurrentPageLayout(false);
+    }
+  }, [saveCurrentPageLayout]);
+
+  useEffect(() => {
     fetchDocument();
-  }, [fqn, pageFqn]);
+  }, [personaFQN, pageFqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -98,6 +138,7 @@ export const CustomizablePage = () => {
     return (
       <CustomizeMyData
         handlePageDataChange={handlePageDataChange}
+        handleSaveCurrentPageLayout={handleSaveCurrentPageLayout}
         initialPageData={page}
         onSaveLayout={handleSave}
       />
