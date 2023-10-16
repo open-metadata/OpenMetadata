@@ -72,7 +72,7 @@ async function parseSchema(filePath, destPath) {
         console.log(err);
       }
     }
-    fs.writeFileSync(`${cwd}/${destPath}`, JSON.stringify(api_removed_id, null, 2));
+    fs.writeFileSync(`${cwd}/${destPath}`, JSON.stringify(updatedAPIWithoutID, null, 2));
   } catch (err) {
     console.log(err);
   } finally {
