@@ -50,13 +50,16 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
+import static org.openmetadata.service.util.EntityUtil.getId;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
+import static org.openmetadata.service.util.EntityUtil.previousVersion;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -1661,7 +1664,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public void updateOwner(T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
-    // TODO inefficient use replace instead of delete and add and check for orig and new owners being the same
+    if (Objects.equals(getId(originalOwner), getId(newOwner))) {
+      return;
+    }
     validateOwner(newOwner);
     removeOwner(ownedEntity, originalOwner);
     storeOwner(ownedEntity, newOwner);
@@ -1803,10 +1808,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
-    protected final T original;
-    protected final T updated;
-    protected final Operation operation;
-    protected final ChangeDescription changeDescription = new ChangeDescription();
+    public static volatile long sessionTimeoutMillis = 10 * 60 * 1000; // 10 minutes
+    protected T original;
+    protected T updated;
+    protected Operation operation;
+    protected ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
     protected final User updatingUser;
     private boolean entityChanged = false;
@@ -1824,7 +1830,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     public final void update() {
-      if (operation.isDelete()) { // DELETE Operation
+      boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      // Revert the changes previously made by the user with in a session and consolidate all the changes
+      if (consolidateChanges) {
+        Operation operationOld = operation;
+        T updatedOld = updated;
+        T previous = getPreviousVersion(original);
+
+        // Update the entity from original > previous, to revert the previous in session change
+        updated = previous;
+        System.out.format(
+            "XXX reverting to the previous version %s owner %s%n", previous.getVersion(), previous.getOwner());
+        System.out.format(
+            "XXX reverting from current version %s owner %s%n", original.getVersion(), original.getOwner());
+        operation = Operation.PATCH;
+        updateInternal();
+        System.out.println("XXX reverting the previous change done");
+        changeDescription = new ChangeDescription();
+        original = previous;
+        updated = updatedOld;
+        operation = operationOld;
+      }
+      // Now updated from previous/original to updated one
+      updateInternal();
+
+      // Store the updated entity
+      storeUpdate();
+      postUpdate(original, updated);
+    }
+
+    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    @Transaction
+    private void updateInternal() {
+      if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
         updated.setId(original.getId());
@@ -1842,10 +1880,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateLifeCycle();
         entitySpecificUpdate();
       }
-
-      // Store the updated entity
-      storeUpdate();
-      postUpdate(original, updated);
     }
 
     public void entitySpecificUpdate() {
@@ -1897,7 +1931,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityRepository.this.updateOwner(original, origOwner, updatedOwner);
         updated.setOwner(updatedOwner);
       } else {
-        updated.setOwner(origOwner);
+        updated.setOwner(origOwner); // Restore original owner
       }
     }
 
@@ -1927,20 +1961,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateExtension() {
-      if (original.getExtension() == updated.getExtension()) {
-        return;
-      }
-
+      Object origExtension = original.getExtension();
+      Object updatedExtension = updated.getExtension();
       if (updatedByBot() && operation == Operation.PUT) {
         // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting custom extension
-        updated.setExtension(original.getExtension());
+        updated.setExtension(origExtension);
         return;
       }
 
       List<JsonNode> added = new ArrayList<>();
       List<JsonNode> deleted = new ArrayList<>();
-      JsonNode origFields = JsonUtils.valueToTree(original.getExtension());
-      JsonNode updatedFields = JsonUtils.valueToTree(updated.getExtension());
+      JsonNode origFields = JsonUtils.valueToTree(origExtension);
+      JsonNode updatedFields = JsonUtils.valueToTree(updatedExtension);
 
       // Check for updated and deleted fields
       for (Iterator<Entry<String, JsonNode>> it = origFields.fields(); it.hasNext(); ) {
@@ -2066,8 +2098,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!supportsStyle) {
         return;
       }
-      if (original.getStyle() == updated.getStyle()) return;
-
       recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
     }
 
@@ -2075,35 +2105,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (!supportsLifeCycle) {
         return;
       }
+      LifeCycle origLifeCycle = original.getLifeCycle();
+      LifeCycle updatedLifeCycle = updated.getLifeCycle();
 
-      if (original.getLifeCycle() == updated.getLifeCycle() || updated.getLifeCycle() == null) return;
+      if (origLifeCycle == updatedLifeCycle || updatedLifeCycle == null) return;
 
-      if (original.getLifeCycle() == null) {
-        original.setLifeCycle(new LifeCycle());
+      if (origLifeCycle == null) {
+        origLifeCycle = new LifeCycle();
       }
 
-      if (original.getLifeCycle().getCreated() != null
-          && (updated.getLifeCycle().getCreated() == null
-              || updated.getLifeCycle().getCreated().getTimestamp()
-                  < original.getLifeCycle().getCreated().getTimestamp())) {
-        updated.getLifeCycle().setCreated(original.getLifeCycle().getCreated());
+      if (origLifeCycle.getCreated() != null
+          && (updatedLifeCycle.getCreated() == null
+              || updatedLifeCycle.getCreated().getTimestamp() < origLifeCycle.getCreated().getTimestamp())) {
+        updatedLifeCycle.setCreated(origLifeCycle.getCreated());
       }
 
-      if (original.getLifeCycle().getAccessed() != null
-          && (updated.getLifeCycle().getAccessed() == null
-              || updated.getLifeCycle().getAccessed().getTimestamp()
-                  < original.getLifeCycle().getAccessed().getTimestamp())) {
-        updated.getLifeCycle().setAccessed(original.getLifeCycle().getAccessed());
+      if (origLifeCycle.getAccessed() != null
+          && (updatedLifeCycle.getAccessed() == null
+              || updatedLifeCycle.getAccessed().getTimestamp() < origLifeCycle.getAccessed().getTimestamp())) {
+        updatedLifeCycle.setAccessed(origLifeCycle.getAccessed());
       }
 
-      if (original.getLifeCycle().getUpdated() != null
-          && (updated.getLifeCycle().getUpdated() == null
-              || updated.getLifeCycle().getUpdated().getTimestamp()
-                  < original.getLifeCycle().getUpdated().getTimestamp())) {
-        updated.getLifeCycle().setUpdated(original.getLifeCycle().getUpdated());
+      if (origLifeCycle.getUpdated() != null
+          && (updatedLifeCycle.getUpdated() == null
+              || updatedLifeCycle.getUpdated().getTimestamp() < origLifeCycle.getUpdated().getTimestamp())) {
+        updatedLifeCycle.setUpdated(origLifeCycle.getUpdated());
       }
 
-      recordChange(FIELD_STYLE, original.getLifeCycle(), updated.getLifeCycle(), true);
+      recordChange(FIELD_STYLE, origLifeCycle, updatedLifeCycle, true);
     }
 
     public final boolean updateVersion(Double oldVersion) {
@@ -2347,6 +2376,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     public final boolean updatedByBot() {
       return Boolean.TRUE.equals(updatingUser.getIsBot());
+    }
+
+    @VisibleForTesting
+    public static void setSessionTimeout(long timeout) {
+      sessionTimeoutMillis = timeout;
+    }
+
+    private boolean consolidateChanges(T original, T updated, Operation operation) {
+      // If user is the same and the new update is with in the user session timeout
+      return original.getVersion() > 0.1 // First update on an entity that
+          && operation == Operation.PATCH
+          && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
+          && !operation.isDelete() // Operation must be an update
+          && original.getUpdatedBy().equals(updated.getUpdatedBy()) // Must be updated by the same user
+          && updated.getUpdatedAt() - original.getUpdatedAt() <= sessionTimeoutMillis; // With in session timeout
+    }
+
+    private T getPreviousVersion(T original) {
+      String extensionName = EntityUtil.getVersionExtension(entityType, previousVersion(original.getVersion()));
+      String json = daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
+      return JsonUtils.readValue(json, entityClass);
     }
   }
 

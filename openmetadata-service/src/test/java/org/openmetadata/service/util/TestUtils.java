@@ -468,9 +468,10 @@ public final class TestUtils {
     }
   }
 
-  public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
+  public static void existsInEntityReferenceList(
+      List<EntityReference> ownsList, UUID id, boolean expectedExistsInList) {
     EntityReference ref = null;
-    for (EntityReference r : list) {
+    for (EntityReference r : ownsList) {
       validateEntityReference(r);
       if (r.getId().equals(id)) {
         ref = r;

@@ -48,7 +48,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
@@ -375,15 +374,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateRelatedTerms(original, updated);
       updateName(original, updated);
       updateParent(original, updated);
-    }
-
-    @Override
-    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      super.updateTags(fqn, fieldName, origTags, updatedTags);
-      List<String> targetFQNList = daoCollection.tagUsageDAO().getTargetFQNs(TagSource.CLASSIFICATION.ordinal(), fqn);
-      for (String targetFQN : targetFQNList) {
-        applyTags(updatedTags, targetFQN);
-      }
     }
 
     private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {

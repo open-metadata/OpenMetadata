@@ -1063,25 +1063,27 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create an entity without owner
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    Double version = entity.getVersion();
 
     // Set TEAM_OWNER1 as owner using PUT request
     request.withOwner(TEAM11_REF);
-    ChangeDescription change = getChangeDescription(entity.getVersion());
+    ChangeDescription change = getChangeDescription(version);
     fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request.withOwner(USER1_REF);
-    change = getChangeDescription(entity.getVersion());
-    fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
+    version = entity.getVersion(); // PUT operation bumps up the version
+    change = getChangeDescription(version);
+    fieldAdded(change, FIELD_OWNER, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
 
     // Set the owner to the existing owner. No ownership change must be recorded.
     request.withOwner(null);
-    change = getChangeDescription(entity.getVersion());
+    change = getChangeDescription(version);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
 
@@ -1126,11 +1128,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create an entity without owner
     K request = createRequest(getEntityName(test), "description", "displayName", null);
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    Double previousVersion = entity.getVersion();
 
     // Set TEAM_OWNER1 as owner from no owner using PATCH request
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwner(TEAM11_REF);
-    ChangeDescription change = getChangeDescription(entity.getVersion());
+    ChangeDescription change = getChangeDescription(previousVersion);
     fieldAdded(change, FIELD_OWNER, TEAM11_REF);
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
@@ -1138,8 +1141,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PATCH request
     json = JsonUtils.pojoToJson(entity);
     entity.setOwner(USER1_REF);
-    change = getChangeDescription(entity.getVersion());
-    fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
+    change = getChangeDescription(previousVersion);
+    fieldAdded(change, FIELD_OWNER, USER1_REF);
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
@@ -1150,12 +1153,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
 
-    // Remove ownership (from USER_OWNER1) using PATCH request. Owner is expected to remain the same and not removed.
+    // Remove ownership (from USER_OWNER1) using PATCH request. We are back to original state of no owner and no change.
     json = JsonUtils.pojoToJson(entity);
     entity.setOwner(null);
-    change = getChangeDescription(entity.getVersion());
-    fieldDeleted(change, FIELD_OWNER, USER1_REF);
-    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
     checkOwnerOwns(USER1_REF, entity.getId(), false);
 
     // set random type as entity. Check if the ownership validate.
@@ -1340,8 +1341,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Admins, Owner or a User with policy can update the entity without owner
     entity = patchEntityAndCheckAuthorization(entity, ADMIN_USER_NAME, false);
     entity = patchEntityAndCheckAuthorization(entity, DATA_STEWARD.getName(), false);
-    entity = patchEntityAndCheckAuthorization(entity, DATA_CONSUMER.getName(), false);
     entity = patchEntityAndCheckAuthorization(entity, USER1.getName(), false);
+    entity = patchEntityAndCheckAuthorization(entity, DATA_CONSUMER.getName(), false);
 
     if (!supportsOwner) {
       return;
@@ -1375,21 +1376,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!Entity.getEntityTypeFromObject(entity).equals(Entity.USER)) {
       assertListNull(entity.getOwner());
     }
-
     entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    Double previousVersion = entity.getVersion();
 
     //
     // Add displayName, description, owner, and tags when previously they were null
     //
     String origJson = JsonUtils.pojoToJson(entity);
-
-    // Update entity
     entity.setDescription("description");
     entity.setDisplayName("displayName");
-
-    // Field changes
-    ChangeDescription change = getChangeDescription(entity.getVersion());
+    ChangeDescription change = getChangeDescription(previousVersion);
     fieldUpdated(change, "description", "", "description");
+    fieldAdded(change, "displayName", "displayName");
     if (supportsOwner) {
       entity.setOwner(TEAM11_REF);
       fieldAdded(change, FIELD_OWNER, TEAM11_REF);
@@ -1402,7 +1400,6 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       entity.getTags().add(GLOSSARY2_TERM1_LABEL); // Add duplicated tags and make sure only one tag is added
       fieldAdded(change, FIELD_TAGS, List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
     }
-    fieldAdded(change, "displayName", "displayName");
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -1410,23 +1407,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Replace description, add tags tier, owner
     //
     origJson = JsonUtils.pojoToJson(entity);
-
-    // Change entity
     entity.setDescription("description1");
     entity.setDisplayName("displayName1");
-
-    // Field changes
-    change = getChangeDescription(entity.getVersion());
-    fieldUpdated(change, "description", "description", "description1");
-    fieldUpdated(change, "displayName", "displayName", "displayName1");
+    change = getChangeDescription(previousVersion);
+    fieldUpdated(change, "description", "", "description1");
+    fieldAdded(change, "displayName", "displayName1");
     if (supportsOwner) {
       entity.setOwner(USER1_REF);
-      fieldUpdated(change, FIELD_OWNER, TEAM11_REF, USER1_REF);
+      fieldAdded(change, FIELD_OWNER, USER1_REF);
     }
 
     if (supportsTags) {
       entity.getTags().add(TIER1_TAG_LABEL);
-      fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+      fieldAdded(change, FIELD_TAGS, List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL, TIER1_TAG_LABEL));
     }
 
     entity = patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1435,23 +1428,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Remove description, tier, owner
     //
     origJson = JsonUtils.pojoToJson(entity);
-    List<TagLabel> removedTags = entity.getTags();
-
-    entity.setDescription(null);
+    entity.setDescription("");
     entity.setOwner(null);
     entity.setTags(null);
-
-    // Field changes
-    change = getChangeDescription(entity.getVersion());
-    fieldDeleted(change, "description", "description1");
-    if (supportsOwner) {
-      fieldDeleted(change, FIELD_OWNER, USER1_REF);
-    }
-    if (supportsTags) {
-      fieldDeleted(change, FIELD_TAGS, removedTags);
-    }
-
-    patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    patchEntityAndCheck(entity, origJson, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
   }
 
   @Test
@@ -1468,6 +1448,44 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         () -> patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         readOnlyAttribute(entityType, FIELD_DELETED));
+  }
+
+  @Test
+  void patch_entityUpdatesInASession(TestInfo test) throws IOException {
+    K create = createRequest(getEntityName(test), "description", null, null);
+    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+    Double previousVersion = entity.getVersion();
+
+    // Update description with a new description and the version changes
+    String json = JsonUtils.pojoToJson(entity);
+    entity.setDescription("description1");
+    ChangeDescription change = getChangeDescription(previousVersion);
+    fieldUpdated(change, "description", "description", "description1");
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Update description with a new description and the version changes
+    json = JsonUtils.pojoToJson(entity);
+    entity.setDescription("description2");
+    change = getChangeDescription(previousVersion); // New version remains the same
+    fieldUpdated(change, "description", "description", "description2");
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Update null displayName with a new displayName - version remains the same.
+    // ChangeDescription includes all the changes so far.
+    json = JsonUtils.pojoToJson(entity);
+    entity.setDisplayName("displayName");
+    change = getChangeDescription(previousVersion); // New version remains the same
+    fieldUpdated(change, "description", "description", "description2");
+    fieldAdded(change, "displayName", "displayName");
+    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Delete the displayName - version remains the same.
+    // ChangeDescription includes all the changes so far.
+    json = JsonUtils.pojoToJson(entity);
+    entity.setDisplayName(null);
+    change = getChangeDescription(previousVersion); // New version remains the same
+    fieldUpdated(change, "description", "description", "description2");
+    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
