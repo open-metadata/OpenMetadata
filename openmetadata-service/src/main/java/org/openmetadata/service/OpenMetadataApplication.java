@@ -13,7 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider.getWrappedInstanceForDaoClass;
 import static org.openmetadata.service.util.MicrometerBundleSingleton.webAnalyticEvents;
 
 import io.dropwizard.Application;
@@ -41,7 +40,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
 import javax.servlet.DispatcherType;
@@ -68,6 +66,7 @@ import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -83,9 +82,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiTransactionManager;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkApplicationEventListener;
-import org.openmetadata.service.jdbi3.unitofwork.JdbiUnitOfWorkProvider;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
@@ -118,7 +114,6 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
-import org.openmetadata.service.workflows.searchIndex.SearchIndexEvent;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -126,8 +121,6 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
-
-  private static SearchRepository searchRepository;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -141,15 +134,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     ChangeEventConfig.initialize(catalogConfig);
     final Jdbi jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    JdbiUnitOfWorkProvider jdbiUnitOfWorkProvider = JdbiUnitOfWorkProvider.withDefault(jdbi);
-    JdbiTransactionManager.initialize(jdbiUnitOfWorkProvider.getHandleManager());
-    CollectionDAO collectionDAO = (CollectionDAO) getWrappedInstanceForDaoClass(CollectionDAO.class);
+    CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setCollectionDAO(collectionDAO);
-    environment.jersey().register(new JdbiUnitOfWorkApplicationEventListener(new HashSet<>()));
 
     // initialize Search Repository, all repositories use SearchRepository this line should always before initializing
     // repository
-    searchRepository = new SearchRepository(catalogConfig.getElasticSearchConfiguration());
+    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
     // as first step register all the repositories
     Entity.initializeRepositories(jdbi);
 
@@ -345,7 +335,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Validating native migrations");
     ConnectionType connectionType = ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
     MigrationWorkflow migrationWorkflow =
-        new MigrationWorkflow(jdbi, conf.getMigrationConfiguration().getNativePath(), connectionType, false);
+        new MigrationWorkflow(
+            jdbi,
+            conf.getMigrationConfiguration().getNativePath(),
+            connectionType,
+            conf.getMigrationConfiguration().getExtensionPath(),
+            false);
+    migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();
   }
 
@@ -408,8 +404,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig);
       environment.jersey().register(eventFilter);
-      ContainerResponseFilter reindexingJobs = new SearchIndexEvent();
-      environment.jersey().register(reindexingJobs);
     }
   }
 
@@ -487,6 +481,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
       EventPubSub.shutdown();
       ReportsHandler.shutDown();
+      AppScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }

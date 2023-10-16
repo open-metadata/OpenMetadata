@@ -83,7 +83,7 @@ class FirstQuartile(StaticMetric, PercentilMixin):
             # the entire set. Median of Medians could be used
             # though it would required set to be sorted before hand
             try:
-                df = pd.concat(dfs)
+                df = pd.concat([df[self.col.name] for df in dfs])
             except MemoryError:
                 logger.error(
                     f"Unable to compute Median for {self.col.name} due to memory constraints."
@@ -91,7 +91,7 @@ class FirstQuartile(StaticMetric, PercentilMixin):
                 )
                 return None
             # check if nan
-            first_quartile = df[self.col.name].quantile(0.25, interpolation="midpoint")
+            first_quartile = df.quantile(0.25, interpolation="midpoint")
             return None if pd.isnull(first_quartile) else first_quartile
         logger.debug(
             f"Don't know how to process type {self.col.type} when computing First Quartile"

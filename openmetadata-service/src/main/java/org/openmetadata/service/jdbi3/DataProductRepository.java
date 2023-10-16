@@ -21,6 +21,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
@@ -28,7 +29,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -91,17 +91,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     updated.withDomain(original.getDomain()); // Domain can't be changed
   }
 
-  @Override
-  public void setFullyQualifiedName(DataProduct entity) {
-    EntityReference domain = entity.getDomain();
-    entity.setFullyQualifiedName(FullyQualifiedName.add(domain.getFullyQualifiedName(), entity.getName()));
-  }
-
   public class DataProductUpdater extends EntityUpdater {
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       updateAssets();

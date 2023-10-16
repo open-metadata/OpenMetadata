@@ -131,6 +131,8 @@ migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
 
+  extensionPath: ${MIGRATION_EXTENSION_PATH:-""}
+
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -242,6 +244,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.WebAnalyticEventHandler"
 
 pipelineServiceClientConfiguration:
+  enabled: ${PIPELINE_SERVICE_CLIENT_ENABLED:-true}
   # If we don't need this, set "org.openmetadata.service.clients.pipeline.noop.NoopClient"
   className: ${PIPELINE_SERVICE_CLIENT_CLASS_NAME:-"org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"}
   apiEndpoint: ${PIPELINE_SERVICE_CLIENT_ENDPOINT:-http://localhost:8080}

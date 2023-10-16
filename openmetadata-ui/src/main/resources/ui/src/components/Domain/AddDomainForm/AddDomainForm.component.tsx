@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Space } from 'antd';
+import { Button, Form, FormProps, Space } from 'antd';
+import { omit } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import {
+  ENTITY_NAME_REGEX,
+  HEX_COLOR_CODE_REGEX,
+} from '../../../constants/regex.constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import {
   CreateDomain,
@@ -26,7 +30,11 @@ import {
 } from '../../../generated/api/domains/createDomain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -98,6 +106,30 @@ const AddDomainForm = ({
         height: 'auto',
       },
     },
+    {
+      name: 'iconURL',
+      id: 'root/iconURL',
+      label: t('label.icon-url'),
+      required: false,
+      placeholder: t('label.icon-url'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'icon-url',
+      },
+    },
+    {
+      name: 'color',
+      id: 'root/color',
+      label: t('label.color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+    },
   ];
 
   if (type === DomainFormType.DOMAIN) {
@@ -133,7 +165,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -158,7 +190,7 @@ const AddDomainForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
@@ -179,12 +211,19 @@ const AddDomainForm = ({
 
   const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
 
-  const handleFormSubmit = (formData: CreateDomain | CreateDataProduct) => {
-    const data = {
-      ...formData,
-      experts: expertsList.map((item) => item.name),
+  const handleFormSubmit: FormProps['onFinish'] = (formData) => {
+    const updatedData = omit(formData, 'color', 'iconURL');
+    const style = {
+      color: formData.color,
+      iconURL: formData.iconURL,
     };
-    onSubmit(data as CreateDomain | CreateDataProduct);
+    const data = {
+      ...updatedData,
+      style,
+      experts: expertsList.map((item) => item.name ?? ''),
+    } as CreateDomain | CreateDataProduct;
+
+    onSubmit(data);
   };
 
   return (

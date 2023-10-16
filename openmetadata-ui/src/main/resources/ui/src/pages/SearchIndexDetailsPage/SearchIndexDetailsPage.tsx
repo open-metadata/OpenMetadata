@@ -52,7 +52,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
-import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -73,8 +73,9 @@ import {
   defaultFields,
   getSearchIndexTabPath,
 } from '../../utils/SearchIndexUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 
@@ -102,8 +103,8 @@ function SearchIndexDetailsPage() {
     [searchIndexPermissions]
   );
 
-  const entityFQN = useMemo(
-    () => encodeURIComponent(decodeURIComponent(searchIndexFQN)),
+  const decodedSearchIndexFQN = useMemo(
+    () => getDecodedFqn(searchIndexFQN),
     [searchIndexFQN]
   );
 
@@ -111,7 +112,7 @@ function SearchIndexDetailsPage() {
     setLoading(true);
     try {
       const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(entityFQN, fields);
+      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, fields);
 
       setSearchIndexDetails(details);
       addToRecentViewed({
@@ -180,13 +181,12 @@ function SearchIndexDetailsPage() {
     [getEntityPermissionByFqn]
   );
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.SEARCH_INDEX, entityFQN, setFeedCount);
-  };
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.SEARCH_INDEX, decodedSearchIndexFQN, setFeedCount);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getSearchIndexTabPath(entityFQN, activeKey));
+      history.push(getSearchIndexTabPath(searchIndexFQN, activeKey));
     }
   };
 
@@ -308,14 +308,7 @@ function SearchIndexDetailsPage() {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 
@@ -337,7 +330,7 @@ function SearchIndexDetailsPage() {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={searchIndexDetails?.description}
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               entityName={entityName}
               entityType={EntityType.SEARCH_INDEX}
               hasEditAccess={
@@ -353,7 +346,7 @@ function SearchIndexDetailsPage() {
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <SearchIndexFieldsTab
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               fields={searchIndexDetails?.fields ?? []}
               hasDescriptionEditAccess={
                 searchIndexPermissions.EditAll ||
@@ -376,7 +369,7 @@ function SearchIndexDetailsPage() {
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               entityType={EntityType.SEARCH_INDEX}
               permission={
                 (searchIndexPermissions.EditAll ||
@@ -391,7 +384,7 @@ function SearchIndexDetailsPage() {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={searchIndexFQN}
+              entityFqn={decodedSearchIndexFQN}
               entityType={EntityType.SEARCH_INDEX}
               permission={
                 (searchIndexPermissions.EditAll ||
@@ -664,10 +657,10 @@ function SearchIndexDetailsPage() {
   }, []);
 
   useEffect(() => {
-    if (entityFQN) {
-      fetchResourcePermission(entityFQN);
+    if (searchIndexFQN) {
+      fetchResourcePermission(searchIndexFQN);
     }
-  }, [entityFQN]);
+  }, [searchIndexFQN]);
 
   useEffect(() => {
     if (viewPermission) {

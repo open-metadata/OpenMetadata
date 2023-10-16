@@ -21,8 +21,8 @@ import { useAuthContext } from '../../../components/authentication/auth-provider
 import {
   SETTING_ITEM,
   SIDEBAR_GOVERN_LIST,
-  SIDEBAR_LIST,
 } from '../../../constants/LeftSidebar.constants';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import './left-sidebar.less';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
@@ -49,7 +49,7 @@ const LeftSidebar = () => {
         label: (
           <Tooltip
             overlayClassName="left-panel-tooltip"
-            placement="right"
+            placement="topLeft"
             title={
               <Typography.Text className="left-panel-label">
                 {t('label.govern')}
@@ -90,6 +90,9 @@ const LeftSidebar = () => {
     ];
   }, []);
 
+  const sideBarItems = leftSidebarClassBase.getSidebarItems();
+  const SideBarElements = leftSidebarClassBase.getSidebarElements();
+
   const handleLogoutClick = () => {
     setShowConfirmLogoutModal(true);
   };
@@ -101,7 +104,7 @@ const LeftSidebar = () => {
   return (
     <div className="d-flex flex-col justify-between h-full">
       <Row className="p-y-sm">
-        {SIDEBAR_LIST.map((item) => (
+        {sideBarItems.map((item) => (
           <Col key={item.key} span={24}>
             <LeftSidebarItem data={item} />
           </Col>
@@ -113,6 +116,7 @@ const LeftSidebar = () => {
           selectedKeys={subMenuItemSelected}
           triggerSubMenuAction="click"
         />
+        {SideBarElements && <SideBarElements />}
       </Row>
       <Row className="p-y-sm">
         <Col span={24}>

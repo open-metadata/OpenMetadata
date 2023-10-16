@@ -130,7 +130,7 @@
         }
       },
       "extension": {
-        "type": "keyword"
+        "type": "object"
       },
       "dataProducts": {
         "properties": {
@@ -283,6 +283,9 @@
             }
           }
         }
+      },
+      "fieldNames": {
+        "type": "keyword"
       },
       "cleanupPolicies": {
         "type": "keyword"

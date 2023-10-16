@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from sqlalchemy import Column
 from typing_extensions import Self
@@ -32,7 +32,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
-from metadata.ingestion.api.processor import ProfilerProcessorStatus
+from metadata.ingestion.api.models import StackTraceError
+from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.api.models import ProfileSampleConfig, TableConfig
@@ -40,6 +41,24 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.partition import get_partition_details
+
+
+class ProfilerProcessorStatus(Status):
+    """Keep track of the entity being processed"""
+
+    entity: Optional[str] = None
+
+    def scanned(self, record: Any) -> None:
+        self.records.append(record)
+
+    def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
+        self.failed(
+            StackTraceError(
+                name=self.entity if self.entity else "",
+                error=error,
+                stack_trace=stack_trace,
+            )
+        )
 
 
 class ProfilerInterface(ABC):
@@ -306,11 +325,16 @@ class ProfilerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns: List[Column]) -> TableData:
         """run profiler metrics"""
         raise NotImplementedError
 
     @abstractmethod
     def close(self):
         """Clean up profiler interface"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_columns(self):
+        """get columns"""
         raise NotImplementedError

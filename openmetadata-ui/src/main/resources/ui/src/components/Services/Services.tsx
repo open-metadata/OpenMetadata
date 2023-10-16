@@ -93,7 +93,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       case ServiceCategory.DATABASE_SERVICES:
         return SearchIndex.DATABASE_SERVICE;
       case ServiceCategory.DASHBOARD_SERVICES:
-        return SearchIndex.DASHBOARD_SERCVICE;
+        return SearchIndex.DASHBOARD_SERVICE;
       case ServiceCategory.MESSAGING_SERVICES:
         return SearchIndex.MESSAGING_SERVICE;
       case ServiceCategory.PIPELINE_SERVICES:
@@ -339,7 +339,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                     serviceName
                   )}>
                   <Typography.Text
-                    className="text-base text-grey-body font-medium truncate w-48"
+                    className="text-base text-grey-body font-medium truncate w-48 d-inline-block"
                     data-testid={`service-name-${service.name}`}
                     title={getEntityName(service)}>
                     {getEntityName(service)}

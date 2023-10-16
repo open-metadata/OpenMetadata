@@ -59,6 +59,7 @@ VERSIONS = {
     "redshift": "sqlalchemy-redshift==0.8.12",
     "snowflake": "snowflake-sqlalchemy~=1.4",
     "elasticsearch8": "elasticsearch8~=8.9.0",
+    "giturlparse": "giturlparse",
 }
 
 COMMONS = {
@@ -100,7 +101,6 @@ base_requirements = {
     "chardet==4.0.0",
     "croniter~=1.3.0",
     "cryptography",
-    "commonregex",
     "email-validator>=1.0.3",
     VERSIONS["google"],
     "google-auth>=1.33.0",
@@ -133,7 +133,7 @@ base_requirements = {
 plugins: Dict[str, Set[str]] = {
     "airflow": {VERSIONS["airflow"]},  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
-    "athena": {"pyathena==2.25.2"},
+    "athena": {"pyathena==3.0.8"},
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
@@ -209,7 +209,12 @@ plugins: Dict[str, Set[str]] = {
     "kafka": {*COMMONS["kafka"]},
     "kinesis": {VERSIONS["boto3"]},
     "ldap-users": {"ldap3==2.9.1"},
-    "looker": {VERSIONS["looker-sdk"], VERSIONS["lkml"]},
+    "looker": {
+        VERSIONS["looker-sdk"],
+        VERSIONS["lkml"],
+        "gitpython~=3.1.34",
+        VERSIONS["giturlparse"],
+    },
     "mlflow": {"mlflow-skinny>=2.3.0", "alembic~=1.10.2"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
     "couchbase": {"couchbase~=4.1"},
@@ -230,7 +235,7 @@ plugins: Dict[str, Set[str]] = {
     "powerbi": {VERSIONS["msal"]},
     "qliksense": {"websocket-client~=1.6.1"},
     "presto": {*COMMONS["hive"]},
-    "pymssql": {"pymssql==2.2.5"},
+    "pymssql": {"pymssql~=2.2.0"},
     "quicksight": {VERSIONS["boto3"]},
     "redash": {VERSIONS["packaging"]},
     "redpanda": {*COMMONS["kafka"]},
@@ -292,6 +297,7 @@ test = {
     VERSIONS["redshift"],
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],
+    VERSIONS["giturlparse"],
 }
 
 e2e_test = {
@@ -341,13 +347,7 @@ setup(
                 *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    if plugin
-                    not in {
-                        "airflow",
-                        "db2",
-                        "great-expectations",
-                        "pymssql",  # pymssql build is failing ref issue: https://github.com/pymssql/pymssql/issues/826
-                    }
+                    if plugin not in {"airflow", "db2", "great-expectations"}
                 ]
             )
         ),

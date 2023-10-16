@@ -64,6 +64,8 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -148,6 +150,9 @@ public interface CollectionDAO {
   EntityExtensionDAO entityExtensionDAO();
 
   @CreateSqlObject
+  AppExtensionTimeSeries appExtensionTimeSeriesDao();
+
+  @CreateSqlObject
   EntityExtensionTimeSeriesDAO entityExtensionTimeSeriesDao();
 
   @CreateSqlObject
@@ -194,6 +199,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   ChartDAO chartDAO();
+
+  @CreateSqlObject
+  ApplicationDAO applicationDAO();
+
+  @CreateSqlObject
+  ApplicationMarketPlaceDAO applicationMarketPlaceDAO();
 
   @CreateSqlObject
   PipelineDAO pipelineDAO();
@@ -621,6 +632,10 @@ public interface CollectionDAO {
             + "LIKE CONCAT (:extensionPrefix, '.%') "
             + "ORDER BY extension")
     List<ExtensionRecord> getExtensions(@BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension " + "ORDER BY extension")
+    List<String> getExtensionJsons(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
@@ -1513,6 +1528,30 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+  }
+
+  interface ApplicationDAO extends EntityDAO<App> {
+    @Override
+    default String getTableName() {
+      return "installed_apps";
+    }
+
+    @Override
+    default Class<App> getEntityClass() {
+      return App.class;
+    }
+  }
+
+  interface ApplicationMarketPlaceDAO extends EntityDAO<AppMarketPlaceDefinition> {
+    @Override
+    default String getTableName() {
+      return "apps_marketplace";
+    }
+
+    @Override
+    default Class<AppMarketPlaceDefinition> getEntityClass() {
+      return AppMarketPlaceDefinition.class;
     }
   }
 
@@ -3294,6 +3333,40 @@ public interface CollectionDAO {
     }
   }
 
+  interface AppExtensionTimeSeries {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO apps_extension_time_series(json) " + "VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO apps_extension_time_series(json) " + "VALUES ((:json :: jsonb))",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE apps_extension_time_series set json = :json where appId=:appId and timestamp=:timestamp",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series set json = (:json :: jsonb) where appId=:appId and timestamp=:timestamp",
+        connectionType = POSTGRES)
+    void update(@Bind("appId") String appId, @Bind("json") String json, @Bind("timestamp") Long timestamp);
+
+    @SqlQuery("SELECT count(*) FROM apps_extension_time_series where appId = :appId")
+    int listAppRunRecordCount(@Bind("appId") String appId);
+
+    @SqlQuery(
+        "SELECT json FROM apps_extension_time_series where appId = :appId ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+    List<String> listAppRunRecord(@Bind("appId") String appId, @Bind("limit") int limit, @Bind("offset") int offset);
+
+    default String getLatestAppRun(UUID appId) {
+      List<String> result = listAppRunRecord(appId.toString(), 1, 0);
+      if (result != null && !result.isEmpty()) {
+        return result.get(0);
+      }
+      throw new RuntimeException("No Available Application Run Records.");
+    }
+  }
+
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {
     @Override
     default String getTimeSeriesTableName() {
@@ -3308,6 +3381,9 @@ public interface CollectionDAO {
             "DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType and DATE(TO_TIMESTAMP((json ->> 'timestamp')::bigint/1000)) = DATE(:date)",
         connectionType = POSTGRES)
     void deleteReportDataTypeAtDate(@BindFQN("reportDataType") String reportDataType, @Bind("date") String date);
+
+    @SqlUpdate("DELETE FROM report_data_time_series WHERE entityFQNHash = :reportDataType")
+    void deletePreviousReportData(@BindFQN("reportDataType") String reportDataType);
   }
 
   interface ProfilerDataTimeSeriesDAO extends EntityTimeSeriesDAO {

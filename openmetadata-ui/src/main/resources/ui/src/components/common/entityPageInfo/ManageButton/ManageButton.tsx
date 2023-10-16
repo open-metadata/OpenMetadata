@@ -29,6 +29,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 import './ManageButton.less';
 
@@ -53,6 +54,10 @@ interface Props {
   editDisplayNamePermission?: boolean;
   onEditDisplayName?: (data: EntityName) => Promise<void>;
   allowRename?: boolean;
+  prepareType?: boolean;
+  successMessage?: string;
+  deleteButtonDescription?: string;
+  deleteOptions?: DeleteOption[];
 }
 
 const ManageButton: FC<Props> = ({
@@ -75,6 +80,10 @@ const ManageButton: FC<Props> = ({
   editDisplayNamePermission,
   onEditDisplayName,
   allowRename,
+  prepareType = true,
+  successMessage,
+  deleteButtonDescription,
+  deleteOptions,
 }) => {
   const { t } = useTranslation();
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -197,12 +206,12 @@ const ManageButton: FC<Props> = ({
           {
             label: (
               <ManageButtonItemLabel
-                description={t(
-                  'message.delete-entity-type-action-description',
-                  {
+                description={
+                  deleteButtonDescription ??
+                  t('message.delete-entity-type-action-description', {
                     entityType,
-                  }
-                )}
+                  })
+                }
                 icon={
                   <IconDelete
                     className="m-t-xss"
@@ -252,17 +261,20 @@ const ManageButton: FC<Props> = ({
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deleteMessage={deleteMessage}
+          deleteOptions={deleteOptions}
           entityId={entityId || ''}
           entityName={entityName || ''}
           entityType={entityType || ''}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
           isRecursiveDelete={isRecursiveDelete}
+          prepareType={prepareType}
           softDeleteMessagePostFix={softDeleteMessagePostFix}
+          successMessage={successMessage}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
         />
       )}
-      {onEditDisplayName && (
+      {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
           entity={{

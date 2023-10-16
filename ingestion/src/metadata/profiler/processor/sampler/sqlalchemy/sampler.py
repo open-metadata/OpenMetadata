@@ -12,7 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Union, cast
+from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, aliased
@@ -63,13 +63,17 @@ class SQASampler(SamplerInterface):
     run the query in the whole table.
     """
 
+    def _base_sample_query(self, label=None):
+        if label is not None:
+            return self.client.query(self.table, label)
+        return self.client.query(self.table)
+
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = (
-                self.client.query(
-                    self.table,
+                self._base_sample_query(
                     (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .suffix_with(
@@ -79,17 +83,16 @@ class SQASampler(SamplerInterface):
                 .cte(f"{self.table.__tablename__}_rnd")
             )
             session_query = self.client.query(rnd)
-
             return session_query.where(rnd.c.random <= self.profile_sample).cte(
                 f"{self.table.__tablename__}_sample"
             )
+
         table_query = self.client.query(self.table)
+        session_query = self._base_sample_query(
+            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+        )
         return (
-            self.client.query(
-                self.table,
-                (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
-            )
-            .order_by(RANDOM_LABEL)
+            session_query.order_by(RANDOM_LABEL)
             .limit(self.profile_sample)
             .cte(f"{self.table.__tablename__}_rnd")
         )
@@ -114,17 +117,31 @@ class SQASampler(SamplerInterface):
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
-        :return: TableData to be added to the Table Entity
+
+        Args:
+            columns (Optional[List]): List of columns to fetch
+        Retunrs:
+            TableData to be added to the Table Entity
         """
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
         rnd = self.get_sample_query()
-        sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        if not columns:
+            sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+        else:
+            # we can't directly use columns as it is bound to self.table and not the rnd table.
+            # If we use it, it will result in a cross join between self.table and rnd table
+            names = [col.name for col in columns]
+            sqa_columns = [
+                col
+                for col in inspect(rnd).c
+                if col.name != RANDOM_LABEL and col.name in names
+            ]
 
         sqa_sample = (
             self.client.query(*sqa_columns)

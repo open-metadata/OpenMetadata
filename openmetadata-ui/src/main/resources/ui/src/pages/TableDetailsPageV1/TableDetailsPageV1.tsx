@@ -63,12 +63,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { JoinedWith, Table } from '../../generated/entity/data/table';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { ThreadType } from '../../generated/entity/feed/thread';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -93,10 +88,12 @@ import {
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
@@ -136,6 +133,11 @@ const TableDetailsPageV1 = () => {
           FQN_SEPARATOR_CHAR
         )
       ),
+    [datasetFQN]
+  );
+
+  const decodedTableFQN = useMemo(
+    () => getDecodedFqn(datasetFQN),
     [datasetFQN]
   );
 
@@ -287,7 +289,7 @@ const TableDetailsPageV1 = () => {
   }, [tableFqn]);
 
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, tableFqn, setFeedCount);
+    getFeedCounts(EntityType.TABLE, decodedTableFQN, setFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
@@ -411,14 +413,7 @@ const TableDetailsPageV1 = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     await handleTagsUpdate(updatedTags);
   };
 
@@ -456,7 +451,7 @@ const TableDetailsPageV1 = () => {
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={tableDetails?.description}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               entityName={entityName}
               entityType={EntityType.TABLE}
               hasEditAccess={
@@ -477,7 +472,7 @@ const TableDetailsPageV1 = () => {
                 FQN_SEPARATOR_CHAR
               )}
               columns={tableDetails?.columns ?? []}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               hasDescriptionEditAccess={
                 tablePermissions.EditAll || tablePermissions.EditDescription
               }
@@ -510,7 +505,7 @@ const TableDetailsPageV1 = () => {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               entityType={EntityType.TABLE}
               permission={
                 (tablePermissions.EditAll || tablePermissions.EditTags) &&
@@ -524,7 +519,7 @@ const TableDetailsPageV1 = () => {
 
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={tableFqn}
+              entityFqn={decodedTableFQN}
               entityType={EntityType.TABLE}
               permission={
                 (tablePermissions.EditAll || tablePermissions.EditTags) &&
@@ -536,6 +531,9 @@ const TableDetailsPageV1 = () => {
               onThreadLinkSelect={onThreadLinkSelect}
             />
             <TableConstraints constraints={tableDetails?.tableConstraints} />
+            {tableDetails?.tablePartition ? (
+              <PartitionedKeys tablePartition={tableDetails.tablePartition} />
+            ) : null}
           </Space>
         </Col>
       </Row>

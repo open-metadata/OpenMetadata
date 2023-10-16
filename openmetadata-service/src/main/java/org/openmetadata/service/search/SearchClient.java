@@ -13,13 +13,12 @@ import javax.ws.rs.core.Response;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.SSLUtil;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.RequestOptions;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
+import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient {
 
@@ -29,14 +28,16 @@ public interface SearchClient {
 
   String DELETE = "delete";
   String GLOBAL_SEARCH_ALIAS = "AllEntities";
-
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
-  String CLASSIFICATION_DISABLE_SCRIPT = "ctx._source.disabled=%s";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
-  String PROPAGATE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
-  String REMOVE_PROPAGATED_FIELD_SCRIPT =
+  String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT = "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
+
+  String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
+
+  String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
-  String UPDATE_PROPAGATED_FIELD_SCRIPT =
+  String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
+  String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
@@ -84,7 +85,7 @@ public interface SearchClient {
 
   void softDeleteOrRestoreChildren(String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 
-  void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, EntityReference> updates);
+  void updateChildren(String indexName, Pair<String, String> fieldAndValue, Pair<String, Map<String, Object>> updates);
 
   TreeMap<Long, List<Object>> getSortedDate(
       String team,
@@ -110,8 +111,8 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default org.elasticsearch.action.bulk.BulkResponse bulk(
-      org.elasticsearch.action.bulk.BulkRequest data, org.elasticsearch.client.RequestOptions options)
+  default es.org.elasticsearch.action.bulk.BulkResponse bulk(
+      es.org.elasticsearch.action.bulk.BulkRequest data, es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
@@ -120,7 +121,7 @@ public interface SearchClient {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 
-  default int getSuccessFromBulkResponse(org.elasticsearch.action.bulk.BulkResponse response) {
+  default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
   }
 

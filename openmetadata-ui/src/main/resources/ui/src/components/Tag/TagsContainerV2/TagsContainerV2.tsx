@@ -12,7 +12,9 @@
  */
 
 import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty } from 'lodash';
+import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -23,11 +25,11 @@ import { TableTagsProps } from '../../../components/TableTags/TableTags.interfac
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Paging } from '../../../generated/type/paging';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getGlossaryTerms } from '../../../rest/glossaryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
@@ -38,6 +40,7 @@ import {
   getRequestTagsPath,
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
+import { SelectOption } from '../../AsyncSelectList/AsyncSelectList.interface';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
@@ -72,11 +75,17 @@ const TagsContainerV2 = ({
     showAddTagButton,
     selectedTagsInternal,
     isHoriZontalLayout,
+    initialOptions,
   } = useMemo(
     () => ({
       isGlossaryType: tagType === TagSource.Glossary,
       showAddTagButton: permission && isEmpty(tags?.[tagType]),
       selectedTagsInternal: tags?.[tagType].map(({ tagFQN }) => tagFQN),
+      initialOptions: tags?.[tagType].map((data) => ({
+        label: data.tagFQN,
+        value: data.tagFQN,
+        data,
+      })) as SelectOption[],
       isHoriZontalLayout: layoutType === LayoutType.HORIZONTAL,
     }),
     [tagType, permission, tags?.[tagType], tags, layoutType]
@@ -90,6 +99,7 @@ const TagsContainerV2 = ({
       data: {
         label: string;
         value: string;
+        data: GlossaryTerm;
       }[];
       paging: Paging;
     }> => {
@@ -101,19 +111,20 @@ const TagsContainerV2 = ({
         searchIndex: SearchIndex.GLOSSARY,
       });
 
+      const hits = glossaryResponse.hits.hits;
+
       return {
-        data: formatSearchGlossaryTermResponse(
-          glossaryResponse.hits.hits ?? []
-        ).map((item) => ({
-          label: item.fullyQualifiedName ?? '',
-          value: item.fullyQualifiedName ?? '',
+        data: hits.map(({ _source }) => ({
+          label: _source.fullyQualifiedName ?? '',
+          value: _source.fullyQualifiedName ?? '',
+          data: _source,
         })),
         paging: {
           total: glossaryResponse.hits.total.value,
         },
       };
     },
-    [searchQuery, getGlossaryTerms, formatSearchGlossaryTermResponse]
+    [searchQuery, getGlossaryTerms]
   );
 
   const fetchAPI = useCallback(
@@ -132,11 +143,25 @@ const TagsContainerV2 = ({
     [showAddTagButton, tags?.[tagType]]
   );
 
-  const handleSave = async (data: string[]) => {
-    const updatedTags = data.map((t) => ({
-      tagFQN: t,
-      source: tagType,
-    }));
+  const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
+    const updatedTags = (data as DefaultOptionType[]).map((tag) => {
+      let tagData: EntityTags = {
+        tagFQN: tag.value,
+        source: tagType,
+      };
+
+      if (tag.data) {
+        tagData = {
+          ...tagData,
+          name: tag.data?.name,
+          displayName: tag.data?.displayName,
+          description: tag.data?.description,
+          style: tag.data?.style,
+        };
+      }
+
+      return tagData;
+    });
 
     if (onSelectionChange) {
       await onSelectionChange([
@@ -175,7 +200,6 @@ const TagsContainerV2 = ({
       <Col span={24}>
         <TagsViewer
           displayType={displayType}
-          layoutType={layoutType}
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={tags?.[tagType] ?? []}
         />
@@ -190,6 +214,7 @@ const TagsContainerV2 = ({
         defaultValue={selectedTagsInternal ?? []}
         fetchApi={fetchAPI}
         placeholder={getTagPlaceholder(isGlossaryType)}
+        tagData={initialOptions}
         onCancel={handleCancel}
         onSubmit={handleSave}
       />
@@ -201,6 +226,7 @@ const TagsContainerV2 = ({
     fetchAPI,
     handleCancel,
     handleSave,
+    initialOptions,
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {
@@ -332,7 +358,6 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
-          layoutType={layoutType}
           showNoDataPlaceholder={showNoDataPlaceholder}
           tags={tags?.[tagType] ?? []}
         />
@@ -349,6 +374,30 @@ const TagsContainerV2 = ({
     handleAddClick,
   ]);
 
+  const tagBody = useMemo(() => {
+    if (isEditTags) {
+      return tagsSelectContainer;
+    } else {
+      return isHoriZontalLayout ? (
+        horizontalLayout
+      ) : (
+        <Row data-testid="entity-tags">
+          {addTagButton}
+          {renderTags}
+          {showInlineEditButton && <Col>{editTagButton}</Col>}
+        </Row>
+      );
+    }
+  }, [
+    isEditTags,
+    tagsSelectContainer,
+    addTagButton,
+    isHoriZontalLayout,
+    horizontalLayout,
+    renderTags,
+    editTagButton,
+  ]);
+
   useEffect(() => {
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
@@ -358,18 +407,7 @@ const TagsContainerV2 = ({
       className="w-full"
       data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
       {header}
-
-      {!isEditTags &&
-        (isHoriZontalLayout ? (
-          horizontalLayout
-        ) : (
-          <Row data-testid="entity-tags">
-            {addTagButton}
-            {renderTags}
-            {showInlineEditButton && <Col>{editTagButton}</Col>}
-          </Row>
-        ))}
-      {isEditTags && tagsSelectContainer}
+      {tagBody}
 
       <Space align="baseline" className="m-t-xs w-full" size="middle">
         {showBottomEditButton && !showInlineEditButton && editTagButton}

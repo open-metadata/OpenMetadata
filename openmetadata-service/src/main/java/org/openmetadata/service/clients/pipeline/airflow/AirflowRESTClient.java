@@ -31,6 +31,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -232,7 +234,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   }
 
   @Override
-  public List<PipelineStatus> getQueuedPipelineStatus(IngestionPipeline ingestionPipeline) {
+  public List<PipelineStatus> getQueuedPipelineStatusInternal(IngestionPipeline ingestionPipeline) {
     HttpResponse<String> response;
     try {
       String statusEndPoint = "%s/%s/status?dag_id=%s&only_queued=true";
@@ -256,7 +258,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
    * Auth failed when accessing Airflow APIs 3. Different versions between server and client
    */
   @Override
-  public PipelineServiceClientResponse getServiceStatus() {
+  public PipelineServiceClientResponse getServiceStatusInternal() {
     HttpResponse<String> response;
     try {
       response = getRequestAuthenticatedForJsonContent("%s/%s/health-auth", serviceURL, API_ENDPOINT);
@@ -313,6 +315,38 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String.format(
             "%s Failed to trigger workflow due to airflow API returned %s and response %s",
             workflow.getName(), Response.Status.fromStatusCode(response.statusCode()), response.body()));
+  }
+
+  @Override
+  public PipelineServiceClientResponse runApplicationFlow(App application) {
+    return sendPost(APP_TRIGGER, application);
+  }
+
+  @Override
+  public PipelineServiceClientResponse validateAppRegistration(AppMarketPlaceDefinition appMarketPlaceDefinition) {
+    return sendPost(APP_VALIDATE, appMarketPlaceDefinition);
+  }
+
+  private PipelineServiceClientResponse sendPost(String endpoint, Object request) {
+    HttpResponse<String> response;
+    String workflowPayload = JsonUtils.pojoToJson(request);
+    try {
+      String automationsEndpoint = "%s/%s/%s";
+      String automationsUrl = String.format(automationsEndpoint, serviceURL, API_ENDPOINT, endpoint);
+      response = post(automationsUrl, workflowPayload);
+      if (response.statusCode() == 200) {
+        return new PipelineServiceClientResponse()
+            .withCode(200)
+            .withReason(response.body())
+            .withPlatform(this.getPlatform());
+      }
+    } catch (Exception e) {
+      throw IngestionPipelineDeploymentException.byMessage(workflowPayload, e.getMessage());
+    }
+    throw new PipelineServiceClientException(
+        String.format(
+            "%s Failed to trigger flow due to airflow API returned %s and response %s",
+            workflowPayload, Response.Status.fromStatusCode(response.statusCode()), response.body()));
   }
 
   @Override

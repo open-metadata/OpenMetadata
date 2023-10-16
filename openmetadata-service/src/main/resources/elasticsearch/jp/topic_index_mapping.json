@@ -237,6 +237,9 @@
           }
         }
       },
+      "fieldNames": {
+        "type": "keyword"
+      },
       "cleanupPolicies": {
         "type": "keyword"
       },
@@ -285,6 +288,9 @@
             "type": "text"
           }
         }
+      },
+      "extension": {
+        "type": "object"
       },
       "dataProducts": {
         "properties": {

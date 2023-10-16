@@ -14,6 +14,7 @@
 import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedT
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -74,6 +76,11 @@ const RequestTag = () => {
     field !== EntityField.COLUMNS ? getEntityName(entityData) : ''
   }`;
 
+  const decodedEntityFQN = useMemo(
+    () => getDecodedFqn(entityFQN),
+    [entityType]
+  );
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -98,7 +105,7 @@ const RequestTag = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || message,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -120,9 +127,7 @@ const RequestTag = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            entityType === EntityType.TABLE
-              ? entityFQN
-              : getDecodedFqn(entityFQN),
+            decodedEntityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -154,6 +159,10 @@ const RequestTag = () => {
       assignees: defaultAssignee,
     });
   }, [entityData]);
+
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels

@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { StepperStepType } from 'Models';
+import { DateFilterType, StepperStepType } from 'Models';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -71,7 +71,7 @@ export const PROFILER_METRIC = [
   'customMetricsProfile',
 ];
 
-export const PROFILER_FILTER_RANGE = {
+export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,
     title: t('label.yesterday'),

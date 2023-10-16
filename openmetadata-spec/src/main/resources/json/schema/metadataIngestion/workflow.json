@@ -53,6 +53,9 @@
             },
             {
               "$ref": "dbtPipeline.json"
+            },
+            {
+              "$ref": "applicationPipeline.json"
             }
           ]
         }

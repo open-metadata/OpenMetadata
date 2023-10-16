@@ -55,6 +55,12 @@ def _(element, compiler, **kw):
     return "AVG(%s * %s) - AVG(%s) * AVG(%s)" % ((proc,) * 4)
 
 
+@compiles(StdDevFn, Dialects.Trino)
+def _(element, compiler, **kw):
+    proc = compiler.process(element.clauses, **kw)
+    return f"IF(is_nan(STDDEV_POP({proc})), NULL, STDDEV_POP({proc}))"
+
+
 @compiles(StdDevFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
     """Returns stdv for clickhouse database and handle empty tables.
@@ -100,10 +106,13 @@ class StdDev(StaticMetric):
 
         if is_quantifiable(self.col.type):
             try:
-                return pd.concat(df[self.col.name] for df in dfs).std()
+                df = pd.to_numeric(pd.concat(df[self.col.name] for df in dfs))
+                if not df.empty:
+                    return df.std()
+                return None
             except MemoryError:
                 logger.error(
-                    f"Unable to compute distinctCount for {self.col.name} due to memory constraints."
+                    f"Unable to compute Standard Deviation for {self.col.name} due to memory constraints."
                     f"We recommend using a smaller sample size or partitionning."
                 )
                 return None

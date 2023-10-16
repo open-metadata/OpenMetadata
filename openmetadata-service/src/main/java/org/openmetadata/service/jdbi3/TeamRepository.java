@@ -53,6 +53,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
@@ -297,7 +298,7 @@ public class TeamRepository extends EntityRepository<Team> {
         allTeams.stream()
             .filter(Boolean.TRUE.equals(isJoinable) ? Team::getIsJoinable : t -> true)
             .filter(t -> !t.getName().equals(ORGANIZATION_NAME))
-            .collect(Collectors.toList());
+            .toList();
     // build hierarchy of joinable teams
     joinableTeams.forEach(
         team -> {
@@ -517,7 +518,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
-  public void initOrganization() throws IOException {
+  public void initOrganization() {
     String json = dao.findJsonByFqn(ORGANIZATION_NAME, Include.ALL);
     if (json == null) {
       LOG.debug("Organization {} is not initialized", ORGANIZATION_NAME);
@@ -664,6 +665,7 @@ public class TeamRepository extends EntityRepository<Team> {
       super(original, updated, operation);
     }
 
+    @Transaction
     @Override
     public void entitySpecificUpdate() {
       if (original.getTeamType() != updated.getTeamType()) {

@@ -13,15 +13,22 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { t } from 'i18next';
-import { includes } from 'lodash';
+import { includes, isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { PAGE_SIZE } from '../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import {
+  ENTITY_NAME_REGEX,
+  HEX_COLOR_CODE_REGEX,
+} from '../../../constants/regex.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../interface/FormUtils.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { formatSearchGlossaryTermResponse } from '../../../utils/APIUtils';
 import { getCurrentUserId } from '../../../utils/CommonUtils';
@@ -99,11 +106,18 @@ const AddGlossaryTermForm = ({
       mutuallyExclusive = false,
       references = [],
       relatedTerms,
+      color,
+      iconURL,
     } = formObj;
 
     const selectedOwner = owner || {
       id: getCurrentUserId(),
       type: 'user',
+    };
+
+    const style = {
+      color,
+      iconURL,
     };
 
     const data = {
@@ -121,7 +135,9 @@ const AddGlossaryTermForm = ({
       mutuallyExclusive,
       tags: tags,
       owner: selectedOwner,
+      style: isEmpty(style) ? undefined : style,
     };
+
     onSave(data);
   };
 
@@ -141,6 +157,7 @@ const AddGlossaryTermForm = ({
         reviewers,
         owner,
         relatedTerms,
+        style,
       } = glossaryTerm;
 
       form.setFieldsValue({
@@ -156,6 +173,12 @@ const AddGlossaryTermForm = ({
 
       if (reviewers) {
         form.setFieldValue('reviewers', reviewers);
+      }
+      if (style?.color) {
+        form.setFieldValue('color', style.color);
+      }
+      if (style?.iconURL) {
+        form.setFieldValue('iconURL', style.iconURL);
       }
 
       if (owner) {
@@ -258,6 +281,30 @@ const AddGlossaryTermForm = ({
       },
     },
     {
+      name: 'iconURL',
+      id: 'root/iconURL',
+      label: t('label.icon-url'),
+      required: false,
+      placeholder: t('label.icon-url'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'icon-url',
+      },
+    },
+    {
+      name: 'color',
+      id: 'root/color',
+      label: t('label.color'),
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+    },
+    {
       name: 'mutuallyExclusive',
       label: t('label.mutually-exclusive'),
       type: FieldTypes.SWITCH,
@@ -266,7 +313,7 @@ const AddGlossaryTermForm = ({
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: 'horizontal',
+      formItemLayout: FormItemLayout.HORIZONATAL,
     },
   ];
 
@@ -287,7 +334,7 @@ const AddGlossaryTermForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'owner',
       trigger: 'onUpdate',
@@ -312,7 +359,7 @@ const AddGlossaryTermForm = ({
         />
       ),
     },
-    formItemLayout: 'horizontal',
+    formItemLayout: FormItemLayout.HORIZONATAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',

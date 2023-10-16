@@ -69,10 +69,9 @@ import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { LabelType } from '../../generated/entity/data/table';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
-import { State, TagSource } from '../../generated/type/tagLabel';
+import { TagSource } from '../../generated/type/tagLabel';
 import { EntityFieldThreadCount } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
@@ -89,7 +88,7 @@ import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -145,6 +144,11 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const decodedDatabaseFQN = useMemo(
+    () => getDecodedFqn(databaseFQN),
+    [databaseFQN]
+  );
 
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -244,7 +248,7 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, databaseFQN))
+    getFeedCount(getEntityFeedLink(EntityType.DATABASE, decodedDatabaseFQN))
       .then((res) => {
         if (res) {
           setFeedCount(res.totalCount);
@@ -331,7 +335,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(getDecodedFqn(databaseFQN), key),
+        pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
       });
     }
   };
@@ -485,18 +489,13 @@ const DatabaseDetails: FunctionComponent = () => {
             .map((selTag) => selTag.tagFQN)
             .includes(tag?.tagFQN as string)
         ) || [];
-      const newTags = selectedTags
-        .filter((tag) => {
+      const newTags = createTagObject(
+        selectedTags.filter((tag) => {
           return !prevTags
             ?.map((prevTag) => prevTag.tagFQN)
             .includes(tag.tagFQN);
         })
-        .map((tag) => ({
-          labelType: LabelType.Manual,
-          state: State.Confirmed,
-          source: tag.source,
-          tagFQN: tag.tagFQN,
-        }));
+      );
       await onTagUpdate([...prevTags, ...newTags]);
     }
   };
@@ -629,7 +628,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 <Col data-testid="description-container" span={24}>
                   <DescriptionV1
                     description={description}
-                    entityFqn={databaseFQN}
+                    entityFqn={decodedDatabaseFQN}
                     entityName={databaseName}
                     entityType={EntityType.DATABASE}
                     hasEditAccess={editDescriptionPermission}
@@ -676,7 +675,7 @@ const DatabaseDetails: FunctionComponent = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={databaseFQN}
+                  entityFqn={decodedDatabaseFQN}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -686,7 +685,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={databaseFQN}
+                  entityFqn={decodedDatabaseFQN}
                   entityType={EntityType.DATABASE}
                   permission={editTagsPermission}
                   selectedTags={tags}
@@ -749,7 +748,7 @@ const DatabaseDetails: FunctionComponent = () => {
       description,
       databaseName,
       entityFieldThreadCount,
-      databaseFQN,
+      decodedDatabaseFQN,
       activeTab,
       databaseTable,
       databasePermission,
@@ -796,7 +795,7 @@ const DatabaseDetails: FunctionComponent = () => {
       })}>
       {isEmpty(database) ? (
         <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(EntityType.DATABASE, databaseFQN)}
+          {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>

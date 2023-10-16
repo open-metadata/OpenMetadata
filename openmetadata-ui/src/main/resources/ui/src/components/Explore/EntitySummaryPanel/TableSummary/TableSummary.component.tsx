@@ -38,6 +38,7 @@ import {
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { getEncodedFqn } from '../../../../utils/StringsUtils';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { usePermissionProvider } from '../../../PermissionProvider/PermissionProvider';
 import {
@@ -77,7 +78,7 @@ function TableSummary({
   const fetchAllTests = async () => {
     try {
       const res = await getTableDetailsByFQN(
-        entityDetails.fullyQualifiedName ?? '',
+        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
         'testSuite'
       );
 
@@ -234,7 +235,7 @@ function TableSummary({
 
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={tags ?? []}
+          tags={tags ?? entityDetails.tags ?? []}
         />
         <Divider className="m-y-xs" />
 

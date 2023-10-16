@@ -56,12 +56,7 @@ import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../generated/entity/data/storedProcedure';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addStoredProceduresFollower,
@@ -80,8 +75,9 @@ import {
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
+import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
@@ -105,6 +101,11 @@ const StoredProcedurePage = () => {
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
+  );
+
+  const decodedStoredProcedureFQN = useMemo(
+    () => getDecodedFqn(storedProcedureFQN),
+    [storedProcedureFQN]
   );
 
   const {
@@ -160,7 +161,7 @@ const StoredProcedurePage = () => {
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.STORED_PROCEDURE,
-      storedProcedureFQN,
+      decodedStoredProcedureFQN,
       setFeedCount
     );
   };
@@ -391,7 +392,9 @@ const StoredProcedurePage = () => {
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
-      history.push(getStoredProcedureDetailPath(storedProcedureFQN, activeKey));
+      history.push(
+        getStoredProcedureDetailPath(decodedStoredProcedureFQN, activeKey)
+      );
     }
   };
 
@@ -428,12 +431,7 @@ const StoredProcedurePage = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && storedProcedure) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -490,7 +488,7 @@ const StoredProcedurePage = () => {
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
-                  entityFqn={storedProcedureFQN}
+                  entityFqn={decodedStoredProcedureFQN}
                   entityName={entityName}
                   entityType={EntityType.STORED_PROCEDURE}
                   hasEditAccess={
@@ -526,7 +524,7 @@ const StoredProcedurePage = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={storedProcedureFQN}
+                  entityFqn={decodedStoredProcedureFQN}
                   entityType={EntityType.STORED_PROCEDURE}
                   permission={
                     (storedProcedurePermissions.EditAll ||
@@ -541,7 +539,7 @@ const StoredProcedurePage = () => {
 
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={storedProcedureFQN}
+                  entityFqn={decodedStoredProcedureFQN}
                   entityType={EntityType.STORED_PROCEDURE}
                   permission={
                     (storedProcedurePermissions.EditAll ||
@@ -624,7 +622,7 @@ const StoredProcedurePage = () => {
       entityName,
       description,
       storedProcedure,
-      storedProcedureFQN,
+      decodedStoredProcedureFQN,
       storedProcedurePermissions,
     ]
   );

@@ -41,7 +41,6 @@ from metadata.generated.schema.entity.data import (
     topic,
 )
 from metadata.generated.schema.entity.teams.user import User
-from metadata.ingestion.api.processor import ProcessorStatus
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import get_entity_tier_from_tags
@@ -73,7 +72,7 @@ END_TS = str(get_end_of_day_timestamp_mill(days=1))
 class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = ReportDataType.WebAnalyticEntityViewReportData.value
+    _data_processor_type = ReportDataType.webAnalyticEntityViewReportData.value
 
     def __init__(self, metadata: OpenMetadata):
         super().__init__(metadata)
@@ -195,7 +194,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
         for data in self._refined_data:
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.WebAnalyticEntityViewReportData.value,
+                reportDataType=ReportDataType.webAnalyticEntityViewReportData.value,
                 data=WebAnalyticEntityViewReportData.parse_obj(
                     self._refined_data[data]
                 ),
@@ -227,7 +226,7 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
 class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
     """Data processor for user scoped web analytic events"""
 
-    _data_processor_type = ReportDataType.WebAnalyticUserActivityReportData.value
+    _data_processor_type = ReportDataType.webAnalyticUserActivityReportData.value
 
     def __init__(self, metadata: OpenMetadata):
         super().__init__(metadata)
@@ -360,7 +359,7 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         for user_id in self._refined_data:
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.WebAnalyticUserActivityReportData.value,
+                reportDataType=ReportDataType.webAnalyticUserActivityReportData.value,
                 data=WebAnalyticUserActivityReportData.parse_obj(
                     self._refined_data[user_id]
                 ),
@@ -370,5 +369,5 @@ class WebAnalyticUserActivityReportDataProcessor(DataProcessor):
         """Refine data"""
         self._refined_data = self.refine_user_event.send(entity)
 
-    def get_status(self) -> ProcessorStatus:
+    def get_status(self) -> Status:
         return self.processor_status

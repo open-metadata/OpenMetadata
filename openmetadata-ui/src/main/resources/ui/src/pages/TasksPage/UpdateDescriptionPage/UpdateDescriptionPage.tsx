@@ -23,6 +23,7 @@ import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedT
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/title-breadcrumb/title-breadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/searched-data/SearchedData.interface';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -73,6 +74,8 @@ const UpdateDescription = () => {
 
   const getSanitizeValue = value?.replaceAll(/^"|"$/g, '') || '';
 
+  const decodedEntityFQN = useMemo(() => getDecodedFqn(entityFQN), [entityFQN]);
+
   // get current user details
   const currentUser = useMemo(
     () => AppState.getCurrentUserDetails(),
@@ -119,7 +122,7 @@ const UpdateDescription = () => {
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || message,
-      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -141,9 +144,7 @@ const UpdateDescription = () => {
         history.push(
           getEntityDetailLink(
             entityType,
-            entityType === EntityType.TABLE
-              ? entityFQN
-              : getDecodedFqn(entityFQN),
+            decodedEntityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
@@ -180,6 +181,10 @@ const UpdateDescription = () => {
   useEffect(() => {
     setCurrentDescription(getDescription());
   }, [entityData, columnObject]);
+
+  if (isEmpty(entityData)) {
+    return <Loader />;
+  }
 
   return (
     <ResizablePanels

@@ -54,12 +54,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addContainerFollower,
@@ -81,7 +76,7 @@ import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const ContainerPage = () => {
@@ -110,6 +105,11 @@ const ContainerPage = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
+  );
+
+  const decodedContainerName = useMemo(
+    () => getDecodedFqn(containerName),
+    [containerName]
   );
 
   const fetchContainerDetail = async (containerFQN: string) => {
@@ -233,17 +233,13 @@ const ContainerPage = () => {
     [containerData]
   );
 
-  const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.CONTAINER, containerName, setFeedCount);
-  };
+  const getEntityFeedCount = () =>
+    getFeedCounts(EntityType.CONTAINER, decodedContainerName, setFeedCount);
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getContainerDetailPath(
-          getDecodedFqn(containerName),
-          tabValue
-        ),
+        pathname: getContainerDetailPath(decodedContainerName, tabValue),
       });
     }
   };
@@ -446,11 +442,10 @@ const ContainerPage = () => {
     }
   };
 
-  const versionHandler = () => {
+  const versionHandler = () =>
     history.push(
       getVersionPath(EntityType.CONTAINER, containerName, toString(version))
     );
-  };
 
   const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
     setThreadLink(link);
@@ -478,14 +473,7 @@ const ContainerPage = () => {
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => {
-      return {
-        source: tag.source,
-        tagFQN: tag.tagFQN,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-    });
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && containerData) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
@@ -510,7 +498,7 @@ const ContainerPage = () => {
               <div className="d-flex flex-col gap-4">
                 <DescriptionV1
                   description={description}
-                  entityFqn={containerName}
+                  entityFqn={decodedContainerName}
                   entityName={entityName}
                   entityType={EntityType.CONTAINER}
                   hasEditAccess={hasEditDescriptionPermission}
@@ -532,7 +520,7 @@ const ContainerPage = () => {
                 ) : (
                   <ContainerDataModel
                     dataModel={containerData?.dataModel}
-                    entityFqn={containerName}
+                    entityFqn={decodedContainerName}
                     hasDescriptionEditAccess={hasEditDescriptionPermission}
                     hasTagEditAccess={hasEditTagsPermission}
                     isReadOnly={Boolean(deleted)}
@@ -549,7 +537,7 @@ const ContainerPage = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={containerName}
+                  entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
                     hasEditDescriptionPermission && !containerData?.deleted
@@ -561,7 +549,7 @@ const ContainerPage = () => {
                 />
                 <TagsContainerV2
                   displayType={DisplayType.READ_MORE}
-                  entityFqn={containerName}
+                  entityFqn={decodedContainerName}
                   entityType={EntityType.CONTAINER}
                   permission={
                     hasEditDescriptionPermission && !containerData?.deleted
@@ -614,7 +602,7 @@ const ContainerPage = () => {
         children: (
           <ActivityFeedTab
             entityType={EntityType.CONTAINER}
-            fqn={getDecodedFqn(containerName)}
+            fqn={decodedContainerName}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={() => fetchContainerDetail(containerName)}
           />
@@ -654,6 +642,7 @@ const ContainerPage = () => {
       containerData,
       description,
       containerName,
+      decodedContainerName,
       entityName,
       hasEditDescriptionPermission,
       hasEditTagsPermission,

@@ -12,8 +12,9 @@
  */
 
 import { Button, Tooltip, Typography } from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEmpty, uniqWith } from 'lodash';
+import { cloneDeep, includes, isArray, isEmpty, uniqWith } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
@@ -71,12 +72,17 @@ const RelatedTerms = ({
   };
 
   const handleRelatedTermsSave = async (
-    selectedData: string[]
+    selectedData: DefaultOptionType | DefaultOptionType[]
   ): Promise<void> => {
+    if (!isArray(selectedData)) {
+      return;
+    }
     const newOptions = uniqWith(
       options,
       (arrVal, othVal) => arrVal.id === othVal.id
-    ).filter((item) => includes(selectedData, item.fullyQualifiedName));
+    ).filter((item) =>
+      selectedData.find((data) => data.value === item.fullyQualifiedName)
+    );
 
     let updatedGlossaryTerm = cloneDeep(glossaryTerm);
     const oldTerms = newOptions.filter((d) =>

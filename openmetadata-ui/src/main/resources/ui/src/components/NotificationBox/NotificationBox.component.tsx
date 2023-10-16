@@ -168,7 +168,7 @@ const NotificationBox = ({
         </div>
       ) : (
         <List
-          className="h-min-64"
+          className="notification-content-container"
           dataSource={notificationDropDownList}
           footer={
             <Button block href={viewAllPath} type="link">

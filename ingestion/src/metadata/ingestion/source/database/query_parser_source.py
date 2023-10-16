@@ -15,9 +15,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Iterator
 
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -49,13 +46,12 @@ class QueryParserSource(Source, ABC):
     def __init__(
         self,
         config: WorkflowSource,
-        metadata_config: OpenMetadataConnection,
+        metadata: OpenMetadata,
         get_engine: bool = True,
     ):
         super().__init__()
         self.config = config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)

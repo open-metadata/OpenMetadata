@@ -89,7 +89,6 @@ export const containerVersionMockProps: ContainerVersionProp = {
   domain: mockDomain,
   tier: mockTier,
   breadCrumbList: [],
-  containerFQN: 'sample_data.ecommerce_db.shopify.raw_product_catalog',
   versionList: mockVersionList,
   deleted: false,
   backHandler: mockBackHandler,

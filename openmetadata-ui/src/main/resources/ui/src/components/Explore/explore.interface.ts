@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { SearchedDataProps } from '../../components/searched-data/SearchedData.interface';
 import { SORT_ORDER } from '../../enums/common.enum';
@@ -28,6 +29,13 @@ import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/se
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
+import { DashboardService } from '../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { MessagingService } from '../../generated/entity/services/messagingService';
+import { MlmodelService } from '../../generated/entity/services/mlmodelService';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { SearchService } from '../../generated/entity/services/searchService';
+import { StorageService } from '../../generated/entity/services/storageService';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { QueryFilterInterface } from '../../pages/explore/ExplorePage.interface';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -62,8 +70,11 @@ export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
 export interface ExploreProps {
   aggregations?: Aggregations;
+  activeTabKey: SearchIndex;
 
   tabCounts?: SearchHitCounts;
+
+  tabItems: ItemType[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
 
@@ -127,7 +138,14 @@ export type EntityUnion =
   | Tag
   | DashboardDataModel
   | StoredProcedure
-  | SearchIndexEntity;
+  | SearchIndexEntity
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService
+  | SearchService;
 
 export type EntityWithServices =
   | Topic
@@ -139,6 +157,15 @@ export type EntityWithServices =
   | Database
   | DatabaseSchema
   | SearchIndexEntity;
+
+export type EntityServiceUnion =
+  | DatabaseService
+  | MessagingService
+  | DashboardService
+  | PipelineService
+  | MlmodelService
+  | StorageService
+  | SearchService;
 
 export interface EntityDetailsObjectInterface {
   details: SearchedDataProps['data'][number]['_source'];

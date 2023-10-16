@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.UUID;
 import lombok.Getter;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
@@ -15,7 +16,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   @Getter protected final String entityType;
   @Getter protected final Class<T> entityClass;
 
-  protected boolean supportsSearchIndex = true;
+  protected final boolean supportsSearchIndex = true;
 
   protected EntityTimeSeriesRepository(
       String collectionPath, EntityTimeSeriesDAO timeSeriesDao, Class<T> entityClass, String entityType) {
@@ -27,6 +28,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     Entity.registerEntity(entityClass, entityType, this);
   }
 
+  @Transaction
   public T createNewRecord(T record, String extension, String recordFQN) {
     record.setId(UUID.randomUUID());
     timeSeriesDao.insert(recordFQN, extension, entityType, JsonUtils.pojoToJson(record));

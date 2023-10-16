@@ -22,7 +22,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from sqlalchemy import Column
+from sqlalchemy import Column, inspect
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import scoped_session
 
@@ -218,16 +218,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             return dict(row)
         except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
-                )
-                return self._compute_static_metrics_wo_sum(
-                    metrics, runner, session, column
-                )
-
+            return self._programming_error_static_metric(
+                runner, column, exc, session, metrics
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -296,14 +289,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 *[metric(column).fn() for metric in metrics],
             )
         except ProgrammingError as exc:
-            if exc.orig and exc.orig.errno in OVERFLOW_ERROR_CODES.get(
-                session.bind.dialect.name
-            ):
-                logger.info(
-                    f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
-                )
-                return None
-
+            logger.info(
+                f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
+            )
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
@@ -466,7 +454,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table) -> TableData:
+    def fetch_sample_data(self, table, columns) -> TableData:
         """Fetch sample data from database
 
         Args:
@@ -479,7 +467,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             table=table,
         )
 
-        return sampler.fetch_sample_data()
+        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -522,6 +510,18 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
             return None
+
+    def _programming_error_static_metric(self, runner, column, exc, _, __):
+        """
+        Override Programming Error for Static Metrics
+        """
+        logger.error(
+            f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
+        )
+
+    def get_columns(self):
+        """get columns from entity"""
+        return list(inspect(self.table).c)
 
     def close(self):
         """Clean up session"""

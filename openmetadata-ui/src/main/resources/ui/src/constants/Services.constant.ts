@@ -35,6 +35,7 @@ import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
+import greenplum from '../assets/img/service-icon-greenplum.png';
 import hive from '../assets/img/service-icon-hive.png';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.png';
 import impala from '../assets/img/service-icon-impala.png';
@@ -101,7 +102,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
-import { customServiceComparator } from '../utils/StringsUtils';
 import {
   addDBTIngestionGuide,
   addLineageIngestionGuide,
@@ -181,6 +181,7 @@ export const MONGODB = mongodb;
 export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
 export const COUCHBASE = couchbase;
+export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
 
@@ -192,35 +193,6 @@ export const excludedService = [
   MetadataServiceType.OpenMetadata,
   SearchServiceType.OpenSearch,
 ];
-
-export const IGNORED_DB_SERVICES: Array<string> = ['QueryLog', 'Dbt'];
-
-export const serviceTypes: Record<ServiceTypes, Array<string>> = {
-  databaseServices: (Object.values(DatabaseServiceType) as string[])
-    .filter((key: string) => !IGNORED_DB_SERVICES.includes(key))
-    .sort(customServiceComparator),
-  messagingServices: (Object.values(MessagingServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  dashboardServices: (Object.values(DashboardServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  pipelineServices: (Object.values(PipelineServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  mlmodelServices: (Object.values(MlModelServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  metadataServices: (Object.values(MetadataServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  storageServices: (Object.values(StorageServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-  searchServices: (Object.values(SearchServiceType) as string[]).sort(
-    customServiceComparator
-  ),
-};
 
 export const arrServiceTypes: Array<ServiceTypes> = [
   'databaseServices',
@@ -240,17 +212,6 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
-};
-
-export const SERVICE_CATEGORY_TYPE = {
-  databaseServices: 'databases',
-  messagingServices: 'messaging',
-  dashboardServices: 'dashboards',
-  pipelineServices: 'pipelines',
-  mlmodelServices: 'mlModels',
-  metadataServices: 'metadata',
-  storageServices: 'storages',
-  searchServices: 'search',
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -414,6 +375,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.QlikSense,
   DatabaseServiceType.Couchbase,
   SearchServiceType.ElasticSearch,
+  DatabaseServiceType.Greenplum,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

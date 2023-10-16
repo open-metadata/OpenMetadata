@@ -217,7 +217,7 @@ class DataInsightWorkflowTests(unittest.TestCase):
             DataInsightWorkflow.create(insight)
 
     def test_execute_method(self):
-        """test method excution"""
+        """test method execution"""
         workflow: DataInsightWorkflow = DataInsightWorkflow.create(data_insight_config)
         workflow.execute()
 
@@ -253,21 +253,21 @@ class DataInsightWorkflowTests(unittest.TestCase):
         report_data = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
-            ReportDataType.EntityReportData.value,
+            ReportDataType.entityReportData.value,
         )
         assert report_data.get("data")
 
         web_entity_analytics = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
-            ReportDataType.WebAnalyticEntityViewReportData.value,
+            ReportDataType.webAnalyticEntityViewReportData.value,
         )
         assert web_entity_analytics.get("data")
 
         web_user_analytics = self.metadata.get_data_insight_report_data(
             self.start_ts,
             self.end_ts,
-            ReportDataType.WebAnalyticUserActivityReportData.value,
+            ReportDataType.webAnalyticUserActivityReportData.value,
         )
         assert web_user_analytics.get("data")
 

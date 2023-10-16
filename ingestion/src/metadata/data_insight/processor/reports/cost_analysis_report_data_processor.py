@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import traceback
 from collections import defaultdict
-from typing import Iterable
+from copy import deepcopy
+from typing import Iterable, Optional
 
 from metadata.data_insight.processor.reports.data_processor import DataProcessor
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
@@ -38,7 +39,10 @@ logger = data_insight_logger()
 
 UNUSED_DATA_ASSETS = "unusedDataAssets"
 FREQUENTLY_USED_DATA_ASSETS = "frequentlyUsedDataAssets"
+COUNT = "count"
+SIZE = "size"
 TOTAL_SIZE = "totalSize"
+TOTAL_COUNT = "totalCount"
 
 THREE_DAYS = "threeDays"
 SEVEN_DAYS = "sevenDays"
@@ -54,18 +58,43 @@ DAYS = [
     (60, SIXTY_DAYS),
 ]
 
+DAYS_WISE_METRIC_DICT = {
+    THREE_DAYS: 0,
+    SEVEN_DAYS: 0,
+    FOURTEEN_DAYS: 0,
+    THIRTY_DAYS: 0,
+    SIXTY_DAYS: 0,
+}
+
+ASSET_METRIC_DICT = {
+    COUNT: deepcopy(DAYS_WISE_METRIC_DICT),
+    SIZE: deepcopy(DAYS_WISE_METRIC_DICT),
+    TOTAL_SIZE: 0,
+    TOTAL_COUNT: 0,
+}
+
 
 class RawCostAnalysisReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = ReportDataType.RawCostAnalysisReportData.value
+    _data_processor_type = ReportDataType.rawCostAnalysisReportData.value
+
+    def __init__(self, metadata: OpenMetadata):
+        super().__init__(metadata)
+        self.pre_hook = self._pre_hook_fn
+
+    def _pre_hook_fn(self):
+        """
+        Method to delete the previous rows of the RawCostAnalysisReportData type report
+        """
+        self.metadata.delete_report_data(ReportDataType.rawCostAnalysisReportData)
 
     def yield_refined_data(self) -> Iterable[ReportData]:
         """yield refined data"""
         for _, value in self._refined_data.items():
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.RawCostAnalysisReportData.value,
+                reportDataType=ReportDataType.rawCostAnalysisReportData.value,
                 data=value,
             )  # type: ignore
 
@@ -107,7 +136,7 @@ class RawCostAnalysisReportDataProcessor(DataProcessor):
 class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
     """Processor class used as a bridge to refine the data"""
 
-    _data_processor_type = ReportDataType.AggregatedCostAnalysisReportData.value
+    _data_processor_type = ReportDataType.aggregatedCostAnalysisReportData.value
 
     def __init__(self, metadata: OpenMetadata):
         super().__init__(metadata)
@@ -119,7 +148,7 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
         for data in self._refined_data:
             yield ReportData(
                 timestamp=self.timestamp,
-                reportDataType=ReportDataType.AggregatedCostAnalysisReportData.value,
+                reportDataType=ReportDataType.aggregatedCostAnalysisReportData.value,
                 data=data,
             )  # type: ignore
 
@@ -148,29 +177,22 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
                     service_name
                 ):
                     self._refined_data[entity_type][service_type][service_name] = {
-                        TOTAL_SIZE: size or 0,
-                        UNUSED_DATA_ASSETS: {
-                            THREE_DAYS: 0,
-                            SEVEN_DAYS: 0,
-                            FOURTEEN_DAYS: 0,
-                            THIRTY_DAYS: 0,
-                            SIXTY_DAYS: 0,
-                        },
-                        FREQUENTLY_USED_DATA_ASSETS: {
-                            THREE_DAYS: 0,
-                            SEVEN_DAYS: 0,
-                            FOURTEEN_DAYS: 0,
-                            THIRTY_DAYS: 0,
-                            SIXTY_DAYS: 0,
-                        },
+                        TOTAL_SIZE: 0,
+                        TOTAL_COUNT: 0,
+                        UNUSED_DATA_ASSETS: deepcopy(ASSET_METRIC_DICT),
+                        FREQUENTLY_USED_DATA_ASSETS: deepcopy(ASSET_METRIC_DICT),
                     }
                 else:
                     self._refined_data[entity_type][service_type][service_name][
                         TOTAL_SIZE
                     ] += (size or 0)
+                    self._refined_data[entity_type][service_type][service_name][
+                        TOTAL_COUNT
+                    ] += 1
 
                 self._get_data_assets_dict(
                     life_cycle=life_cycle,
+                    size=size,
                     data=self._refined_data[entity_type][service_type][service_name],
                 )
 
@@ -194,6 +216,18 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
                             serviceName=str(service_name),
                             **service_data,
                         )
+                        aggregated_data.unusedDataAssets.totalCount = (
+                            aggregated_data.unusedDataAssets.count.threeDays
+                        )
+                        aggregated_data.unusedDataAssets.totalSize = (
+                            aggregated_data.unusedDataAssets.size.threeDays
+                        )
+                        aggregated_data.frequentlyUsedDataAssets.totalCount = (
+                            aggregated_data.frequentlyUsedDataAssets.count.threeDays
+                        )
+                        aggregated_data.frequentlyUsedDataAssets.totalSize = (
+                            aggregated_data.frequentlyUsedDataAssets.size.threeDays
+                        )
                         flattened_results.append(aggregated_data)
                     except Exception as err:
                         logger.debug(traceback.format_exc())
@@ -202,7 +236,7 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
         self._refined_data = flattened_results
 
     @staticmethod
-    def _get_data_assets_dict(life_cycle: LifeCycle, data: dict):
+    def _get_data_assets_dict(life_cycle: LifeCycle, size: Optional[float], data: dict):
         """
         Helper method to calculate number of data assets within time period
         """
@@ -214,9 +248,11 @@ class AggregatedCostAnalysisReportDataProcessor(DataProcessor):
             for days, key in DAYS:
                 days_before_timestamp = get_end_of_day_timestamp_mill(days=days)
                 if life_cycle.accessed.timestamp.__root__ <= days_before_timestamp:
-                    data[UNUSED_DATA_ASSETS][key] += 1
+                    data[UNUSED_DATA_ASSETS][COUNT][key] += 1
+                    data[UNUSED_DATA_ASSETS][SIZE][key] += size or 0
                 else:
-                    data[FREQUENTLY_USED_DATA_ASSETS][key] += 1
+                    data[FREQUENTLY_USED_DATA_ASSETS][COUNT][key] += 1
+                    data[FREQUENTLY_USED_DATA_ASSETS][SIZE][key] += size or 0
 
         except Exception as err:
             logger.debug(traceback.format_exc())

@@ -444,7 +444,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   private Workflow getWorkflow(CreateWorkflow create, String user) {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    return copy(new Workflow(), create, user)
+    return repository
+        .copy(new Workflow(), create, user)
         .withDescription(create.getDescription())
         .withRequest(create.getRequest())
         .withWorkflowType(create.getWorkflowType())

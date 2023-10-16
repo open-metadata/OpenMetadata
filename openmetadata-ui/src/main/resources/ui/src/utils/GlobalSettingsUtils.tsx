@@ -19,16 +19,17 @@ import i18next from 'i18next';
 import React, { ReactNode } from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin.svg';
 import { ReactComponent as AllActivityIcon } from '../assets/svg/all-activity.svg';
+import { ReactComponent as AppIcon } from '../assets/svg/application.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-profile.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as DataInsightIcon } from '../assets/svg/data-insight.svg';
-import { ReactComponent as ElasticSearchIcon } from '../assets/svg/elasticsearch.svg';
 import { ReactComponent as EmailSettingsIcon } from '../assets/svg/email-settings.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as BellIcon } from '../assets/svg/ic-alert-bell.svg';
+import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/ic-custom-dashboard-logo.svg';
 import { ReactComponent as CustomLogoIcon } from '../assets/svg/ic-custom-logo.svg';
 import { ReactComponent as DataInsightReportIcon } from '../assets/svg/ic-data-insight-report.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as PersonasIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/ic-stored-procedure.svg';
@@ -45,9 +46,11 @@ import {
   ResourceEntity,
   UIPermission,
 } from '../components/PermissionProvider/PermissionProvider.interface';
+import { PLACEHOLDER_ROUTE_FQN, ROUTES } from '../constants/constants';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
 import { userPermissions } from '../utils/PermissionsUtils';
+import { getEncodedFqn } from './StringsUtils';
 
 export interface MenuListItem {
   label: string;
@@ -97,6 +100,16 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'members.admins',
           icon: <AdminIcon className="side-panel-icons" />,
+        },
+
+        {
+          label: i18next.t('label.persona-plural'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.USER,
+            permissions
+          ),
+          key: 'members.persona',
+          icon: <PersonasIcon className="side-panel-icons" />,
         },
       ],
     },
@@ -168,15 +181,6 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: <MlModelIcon className="side-panel-icons" />,
         },
         {
-          label: i18next.t('label.metadata'),
-          isProtected: userPermissions.hasViewPermissions(
-            ResourceEntity.METADATA_SERVICE,
-            permissions
-          ),
-          key: 'services.metadata',
-          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
-        },
-        {
           label: i18next.t('label.storage-plural'),
           isProtected: userPermissions.hasViewPermissions(
             ResourceEntity.STORAGE_SERVICE,
@@ -193,6 +197,34 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: 'services.search',
           icon: <SearchOutlined className="side-panel-icons w-4 h-4" />,
+        },
+        {
+          label: i18next.t('label.metadata'),
+          isProtected: userPermissions.hasViewPermissions(
+            ResourceEntity.METADATA_SERVICE,
+            permissions
+          ),
+          key: 'services.metadata',
+          icon: <OMLogo className="side-panel-icons w-4 h-4" />,
+        },
+      ],
+    },
+
+    {
+      category: i18next.t('label.integration-plural'),
+      key: 'integrations',
+      items: [
+        {
+          label: i18next.t('label.application-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'integrations.apps',
+          icon: <AppIcon className="side-panel-icons" />,
+        },
+        {
+          label: i18next.t('label.bot-plural'),
+          isProtected: Boolean(isAdminUser),
+          key: 'integrations.bots',
+          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -297,16 +329,10 @@ export const getGlobalSettingsMenuWithPermission = (
       key: 'openMetadata',
       items: [
         {
-          label: i18next.t('label.search'),
+          label: i18next.t('label.customize-landing-page'),
           isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.search',
-          icon: <ElasticSearchIcon className="w-4 side-panel-icons" />,
-        },
-        {
-          label: i18next.t('label.data-insight'),
-          isProtected: Boolean(isAdminUser),
-          key: 'openMetadata.dataInsight',
-          icon: <DataInsightIcon className="w-4 side-panel-icons" />,
+          key: 'openMetadata.customizeLandingPage',
+          icon: <CustomDashboardLogoIcon className="w-4 side-panel-icons" />,
         },
         {
           label: i18next.t('label.email'),
@@ -319,18 +345,6 @@ export const getGlobalSettingsMenuWithPermission = (
           isProtected: Boolean(isAdminUser),
           key: 'openMetadata.customLogo',
           icon: <CustomLogoIcon className="w-4 side-panel-icons" />,
-        },
-      ],
-    },
-    {
-      category: i18next.t('label.integration-plural'),
-      key: 'integrations',
-      items: [
-        {
-          label: i18next.t('label.bot-plural'),
-          isProtected: Boolean(isAdminUser),
-          key: 'integrations.bots',
-          icon: <BotIcon className="w-4 side-panel-icons" />,
         },
       ],
     },
@@ -420,4 +434,12 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
     default:
       return GlobalSettingOptions.TABLES;
   }
+};
+
+export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMIZE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
+    .replace(':pageFqn', pageFqn);
 };

@@ -191,10 +191,7 @@ export const DataAssetsHeader = ({
   const fetchActiveAnnouncement = async () => {
     try {
       const announcements = await getActiveAnnouncement(
-        getEntityFeedLink(
-          entityType,
-          encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-        )
+        getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
       if (!isEmpty(announcements.data)) {
@@ -208,10 +205,7 @@ export const DataAssetsHeader = ({
   const fetchTaskCount = () => {
     // To get open tasks count
     getFeedCount(
-      getEntityFeedLink(
-        entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName ?? '')
-      ),
+      getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? ''),
       ThreadType.Task,
       ThreadTaskStatus.Open
     )
@@ -254,9 +248,11 @@ export const DataAssetsHeader = ({
   };
 
   useEffect(() => {
-    if (dataAsset.fullyQualifiedName && !isTourPage && !excludeEntityService) {
+    if (dataAsset.fullyQualifiedName && !isTourPage) {
       fetchActiveAnnouncement();
-      fetchTaskCount();
+      if (!excludeEntityService) {
+        fetchTaskCount();
+      }
     }
     if (entityType === EntityType.CONTAINER) {
       const asset = dataAsset as Container;
@@ -283,7 +279,7 @@ export const DataAssetsHeader = ({
     history.push(
       getEntityDetailLink(
         entityType,
-        encodeURIComponent(dataAsset.fullyQualifiedName),
+        dataAsset.fullyQualifiedName,
         EntityTabs.ACTIVITY_FEED,
         ActivityFeedTabs.TASKS
       )

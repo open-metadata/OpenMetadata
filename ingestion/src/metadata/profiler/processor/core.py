@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type
+from typing import Any, Dict, Generic, List, Optional, Set, Tuple, Type, cast
 
 from pydantic import ValidationError
 from sqlalchemy import Column
@@ -238,21 +238,35 @@ class Profiler(Generic[TMetric]):
         if (
             self.profiler_interface.table_entity.tableProfilerConfig
             and self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
-        ):
+        ) or (self.include_columns):
+            # include_columns is set from the `tableConfig` of the `ProfilerProcessorConfig` in the CLI config
+            # while `self.profiler_interface.table_entity.tableProfilerConfig.includeColumns` is set from the entity
+            # definition in the metadata service. This gets set either from the UI or the profiler entity page. Config
+            # ran from the CLI takes precedence over the entity definition.
+            columns = (
+                self.include_columns
+                if self.include_columns
+                else self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+            )
+            columns = cast(List[ColumnProfilerConfig], columns)
             metric_names = next(
                 (
                     include_columns.metrics
-                    for include_columns in self.profiler_interface.table_entity.tableProfilerConfig.includeColumns
+                    for include_columns in columns
                     if include_columns.columnName == column.name
                 ),
                 None,
             )
 
             if metric_names:
+                metric_names = {
+                    mtrc.lower() for mtrc in metric_names
+                }  # case insensitice
                 metrics = [
                     Metric.value
                     for Metric in Metrics
-                    if Metric.value.name() in metric_names and Metric.value in metrics
+                    if Metric.value.name().lower() in metric_names
+                    and Metric.value in metrics
                 ]
 
         return [metric for metric in metrics if metric.is_col_metric()]
@@ -480,7 +494,7 @@ class Profiler(Generic[TMetric]):
                 "Fetching sample data for "
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.__root__}..."  # type: ignore
             )
-            return self.profiler_interface.fetch_sample_data(self.table)
+            return self.profiler_interface.fetch_sample_data(self.table, self.columns)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")

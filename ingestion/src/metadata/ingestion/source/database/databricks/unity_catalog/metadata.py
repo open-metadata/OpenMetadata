@@ -41,9 +41,6 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -76,11 +73,13 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-# pylint: disable=invalid-name,not-callable
+# pylint: disable=not-callable
 @classmethod
-def from_dict(cls, d: Dict[str, any]) -> "TableConstraintList":
+def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
     return cls(
-        table_constraints=[DBTableConstraint.from_dict(constraint) for constraint in d]
+        table_constraints=[
+            DBTableConstraint.from_dict(constraint) for constraint in dct
+        ]
     )
 
 
@@ -94,15 +93,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
     the unity catalog source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
         self.context.table_views = []
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection: DatabricksConnection = (
             self.config.serviceConnection.__root__.config
         )
@@ -112,14 +110,14 @@ class DatabricksUnityCatalogSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: DatabricksConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, DatabricksConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def get_database_names(self) -> Iterable[str]:
         """

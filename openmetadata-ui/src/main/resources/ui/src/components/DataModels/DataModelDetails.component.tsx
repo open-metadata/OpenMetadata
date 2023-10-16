@@ -38,18 +38,14 @@ import {
 } from '../../constants/constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import { restoreDataModel } from '../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
+import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
 import ModelTab from './ModelTab/ModelTab.component';
@@ -79,6 +75,11 @@ const DataModelDetails = ({
   const [isEditDescription, setIsEditDescription] = useState<boolean>(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [feedCount, setFeedCount] = useState<number>(0);
+
+  const decodedDataModelFQN = useMemo(
+    () => getDecodedFqn(dashboardDataModelFQN),
+    [dashboardDataModelFQN]
+  );
 
   const {
     hasEditDescriptionPermission,
@@ -110,7 +111,7 @@ const DataModelDetails = ({
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.DASHBOARD_DATA_MODEL,
-      dashboardDataModelFQN,
+      decodedDataModelFQN,
       setFeedCount
     );
   };
@@ -162,12 +163,7 @@ const DataModelDetails = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
     handleUpdateTags(updatedTags);
   };
 
@@ -204,7 +200,7 @@ const DataModelDetails = ({
           <div className="d-flex flex-col gap-4">
             <DescriptionV1
               description={description}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityName={entityName}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               hasEditAccess={hasEditDescriptionPermission}
@@ -218,7 +214,7 @@ const DataModelDetails = ({
             />
             <ModelTab
               data={dataModelData?.columns || []}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               hasEditDescriptionPermission={hasEditDescriptionPermission}
               hasEditTagsPermission={hasEditTagsPermission}
               isReadOnly={Boolean(deleted)}
@@ -234,7 +230,7 @@ const DataModelDetails = ({
           <Space className="w-full" direction="vertical" size="large">
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
@@ -244,7 +240,7 @@ const DataModelDetails = ({
             />
             <TagsContainerV2
               displayType={DisplayType.READ_MORE}
-              entityFqn={dashboardDataModelFQN}
+              entityFqn={decodedDataModelFQN}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               permission={hasEditTagsPermission && !dataModelData.deleted}
               selectedTags={tags}
@@ -257,6 +253,7 @@ const DataModelDetails = ({
       </Row>
     );
   }, [
+    decodedDataModelFQN,
     dataModelData,
     description,
     dashboardDataModelFQN,

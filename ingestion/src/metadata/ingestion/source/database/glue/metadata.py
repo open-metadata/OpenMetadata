@@ -30,9 +30,6 @@ from metadata.generated.schema.entity.data.table import Column, Table, TableType
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -69,14 +66,13 @@ class GlueSource(DatabaseServiceSource):
     Database metadata from Glue Source
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.service_connection = self.config.serviceConnection.__root__.config
         self.glue = get_connection(self.service_connection)
 
@@ -84,14 +80,14 @@ class GlueSource(DatabaseServiceSource):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
         connection: GlueConnection = config.serviceConnection.__root__.config
         if not isinstance(connection, GlueConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
             )
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def _get_glue_database_and_schemas(self):
         paginator = self.glue.get_paginator("get_databases")

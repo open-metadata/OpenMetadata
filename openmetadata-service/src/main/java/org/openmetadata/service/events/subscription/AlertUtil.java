@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
@@ -132,17 +131,16 @@ public final class AlertUtil {
           func.setParamAdditionalContext(paramAdditionalContext.withData(getEntitiesIndex(Entity.getEntityList())));
           break;
         case matchAnyEventType:
-          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).collect(Collectors.toList());
+          List<String> eventTypes = Stream.of(EventType.values()).map(EventType::value).toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(eventTypes)));
           break;
         case matchIngestionPipelineState:
           List<String> ingestionPipelineState =
-              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).collect(Collectors.toList());
+              Stream.of(PipelineStatusType.values()).map(PipelineStatusType::value).toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(ingestionPipelineState)));
           break;
         case matchTestResult:
-          List<String> testResultStatus =
-              Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).collect(Collectors.toList());
+          List<String> testResultStatus = Stream.of(TestCaseStatus.values()).map(TestCaseStatus::value).toList();
           func.setParamAdditionalContext(paramAdditionalContext.withData(new HashSet<>(testResultStatus)));
           break;
         default:

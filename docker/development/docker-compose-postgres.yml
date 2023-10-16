@@ -24,7 +24,7 @@ services:
     restart: always
     command: "--work_mem=10MB"
     depends_on:
-      - elasticsearch
+      - opensearch
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -42,12 +42,13 @@ services:
       timeout: 10s
       retries: 10
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.3
-    container_name: openmetadata_elasticsearch
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: openmetadata_opensearch
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      - plugins.security.disabled=true
     networks:
       - local_app_net
     expose:
@@ -57,7 +58,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - es-data:/usr/share/opensearch/data
 
   execute-migrate-all:
     build:
@@ -113,12 +114,12 @@ services:
       DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # ElasticSearch Configurations
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-opensearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
       ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
-      SEARCH_TYPE: ${SEARCH_TYPE:- "elasticsearch"}
+      SEARCH_TYPE: ${SEARCH_TYPE:- "opensearch"}
       ELASTICSEARCH_TRUST_STORE_PATH: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
       ELASTICSEARCH_TRUST_STORE_PASSWORD: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
       ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
@@ -211,7 +212,7 @@ services:
       WEB_CONF_PERMISSION_POLICY_ENABLED: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
       WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
@@ -267,12 +268,12 @@ services:
       DB_PORT: ${DB_PORT:-5432}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
       # ElasticSearch Configurations
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-opensearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
       ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-http}
       ELASTICSEARCH_USER: ${ELASTICSEARCH_USER:-""}
       ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-""}
-      SEARCH_TYPE: ${SEARCH_TYPE:- "elasticsearch"}
+      SEARCH_TYPE: ${SEARCH_TYPE:- "opensearch"}
       ELASTICSEARCH_TRUST_STORE_PATH: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
       ELASTICSEARCH_TRUST_STORE_PASSWORD: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
       ELASTICSEARCH_CONNECTION_TIMEOUT_SECS: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
@@ -344,7 +345,7 @@ services:
       - "8586:8586"
       - "5005:5005"
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy
@@ -376,7 +377,7 @@ services:
     command:
       - "/opt/airflow/ingestion_dependency.sh"
     depends_on:
-      elasticsearch:
+      opensearch:
         condition: service_started
       postgresql:
         condition: service_healthy

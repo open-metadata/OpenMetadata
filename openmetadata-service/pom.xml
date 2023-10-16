@@ -40,6 +40,16 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>elasticsearch-deps</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>opensearch-deps</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.antlr</groupId>
       <artifactId>antlr4-runtime</artifactId>
     </dependency>
@@ -128,57 +138,6 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.elasticsearch.client</groupId>
-      <artifactId>elasticsearch-rest-high-level-client</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-analyzers-common</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-backward-codecs</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-grouping</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-memory</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-spatial</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-spatial-extras</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-spatial3d</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.lucene</groupId>
-          <artifactId>lucene-suggest</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>com.fasterxml.jackson.dataformat</groupId>
-          <artifactId>jackson-dataformat-cbor</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.yaml</groupId>
-          <artifactId>snakeyaml</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.opensearch.client</groupId>
-      <artifactId>opensearch-rest-high-level-client</artifactId>
-      <version>${opensearch.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>

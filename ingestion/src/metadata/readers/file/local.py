@@ -11,6 +11,7 @@
 """
 Local Reader
 """
+import os
 import traceback
 from pathlib import Path
 from typing import List, Optional, Union
@@ -60,3 +61,20 @@ class LocalReader(Reader):
             str(path).replace(str(self.base_path) + "/", "")
             for path in Path(self.base_path).rglob("*")
         ]
+
+    def get_local_files(
+        self, search_key: str, excluded_files: Optional[List[str]] = None
+    ) -> List[str]:
+        """Scan through local path recursively
+        and retuns file path based on `search_key`"""
+
+        if excluded_files is None:
+            excluded_files = []
+
+        file_paths = []
+        for root, _, file in os.walk(self.base_path):
+            for fle in file:
+                if search_key in fle and fle not in excluded_files:
+                    file_paths.append(f"{root}/{fle}")
+
+        return file_paths

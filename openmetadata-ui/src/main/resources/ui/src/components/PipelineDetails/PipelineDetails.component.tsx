@@ -16,8 +16,8 @@ import { Card, Col, Radio, Row, Space, Tabs, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { groupBy, isEmpty, isUndefined, map, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions, TagOption } from 'Models';
+import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
@@ -56,20 +56,18 @@ import {
 } from '../../generated/entity/data/pipeline';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TagSource } from '../../generated/type/schema';
-import { LabelType, State } from '../../generated/type/tagLabel';
 import { postThread } from '../../rest/feedsAPI';
 import { restorePipeline } from '../../rest/pipelineAPI';
 import { getCurrentUserId, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getEntityFieldThreadCounts } from '../../utils/FeedUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
 } from '../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -162,9 +160,8 @@ const PipelineDetails = ({
     [pipelinePermissions]
   );
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = () =>
     getFeedCounts(EntityType.PIPELINE, pipelineFQN, setFeedCount);
-  };
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -307,26 +304,16 @@ const PipelineDetails = ({
     selectedTags: EntityTags[],
     editColumnTag: Task
   ) => {
-    const newSelectedTags: TagOption[] = map(selectedTags, (tag) => ({
-      fqn: tag.tagFQN,
-      source: tag.source,
-    }));
-
     const prevTags = editColumnTag.tags?.filter((tag) =>
-      newSelectedTags.some((selectedTag) => selectedTag.fqn === tag.tagFQN)
+      selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
     );
 
-    const newTags = newSelectedTags
-      .filter(
+    const newTags = createTagObject(
+      selectedTags.filter(
         (selectedTag) =>
-          !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.fqn)
+          !editColumnTag.tags?.some((tag) => tag.tagFQN === selectedTag.tagFQN)
       )
-      .map((tag) => ({
-        labelType: 'Manual',
-        state: 'Confirmed',
-        source: tag.source,
-        tagFQN: tag.fqn,
-      }));
+    );
 
     const updatedTask = {
       ...editColumnTag,
@@ -480,7 +467,7 @@ const PipelineDetails = ({
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
       history.push({
-        pathname: getPipelineDetailsPath(getDecodedFqn(pipelineFQN), tabValue),
+        pathname: getPipelineDetailsPath(pipelineFQN, tabValue),
       });
     }
   };
@@ -500,12 +487,7 @@ const PipelineDetails = ({
   };
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    const updatedTags: TagLabel[] | undefined = selectedTags?.map((tag) => ({
-      source: tag.source,
-      tagFQN: tag.tagFQN,
-      labelType: LabelType.Manual,
-      state: State.Confirmed,
-    }));
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
     if (updatedTags && pipelineDetails) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];

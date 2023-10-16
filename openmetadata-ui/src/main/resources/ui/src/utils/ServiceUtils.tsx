@@ -43,6 +43,7 @@ import {
   ELASTIC_SEARCH,
   FIVETRAN,
   GLUE,
+  GREENPLUM,
   HIVE,
   IBMDB2,
   IMPALA,
@@ -76,7 +77,6 @@ import {
   SALESFORCE,
   SAP_HANA,
   SCIKIT,
-  serviceTypes,
   SERVICE_TYPES_ENUM,
   SERVICE_TYPE_MAP,
   SINGLESTORE,
@@ -122,11 +122,13 @@ import {
 } from './CommonUtils';
 import { getDashboardURL } from './DashboardServiceUtils';
 import { getBrokers } from './MessagingServiceUtils';
+import ServiceUtilClassBase from './ServiceUtilClassBase';
 import { getEncodedFqn } from './StringsUtils';
 import { getEntityLink } from './TableUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const serviceTypeLogo = (type: string) => {
+  const serviceTypes = ServiceUtilClassBase.getSupportedServiceFromList();
   switch (type) {
     case DatabaseServiceType.Mysql:
       return MYSQL;
@@ -220,6 +222,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.Couchbase:
       return COUCHBASE;
+
+    case DatabaseServiceType.Greenplum:
+      return GREENPLUM;
 
     case MessagingServiceType.Kafka:
       return KAFKA;

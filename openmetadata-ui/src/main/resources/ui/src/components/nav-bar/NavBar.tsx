@@ -13,7 +13,6 @@
 
 import {
   Badge,
-  Button,
   Col,
   Dropdown,
   Input,
@@ -73,10 +72,10 @@ import {
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
-import Avatar from '../common/avatar/Avatar';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
+import { UserProfileIcon } from '../Users/UserProfileIcon/UserProfileIcon.component';
 import { useWebSocketConnector } from '../web-scoket/web-scoket.provider';
 import './nav-bar.less';
 import { NavBarProps } from './NavBar.interface';
@@ -85,12 +84,10 @@ const cookieStorage = new CookieStorage();
 
 const NavBar = ({
   supportDropdown,
-  profileDropdown,
   searchValue,
   isFeatureModalOpen,
   isTourRoute = false,
   pathname,
-  username,
   isSearchBoxOpen,
   handleSearchBoxOpen,
   handleFeatureModal,
@@ -101,11 +98,7 @@ const NavBar = ({
 }: NavBarProps) => {
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  // get current user details
-  const currentUser = useMemo(
-    () => AppState.getCurrentUserDetails(),
-    [AppState.userDetails, AppState.nonSecureUserDetails]
-  );
+
   const history = useHistory();
   const { domainOptions, activeDomain, updateActiveDomain } =
     useDomainProvider();
@@ -122,7 +115,6 @@ const NavBar = ({
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
 
   const entitiesSelect = useMemo(
     () => (
@@ -145,11 +137,6 @@ const NavBar = ({
       </Select>
     ),
     [searchCriteria, globalSearchOptions]
-  );
-
-  const profilePicture = useMemo(
-    () => currentUser?.profile?.images?.image512,
-    [currentUser]
   );
 
   const language = useMemo(
@@ -310,12 +297,6 @@ const NavBar = ({
     return () => targetNode.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  useEffect(() => {
-    if (profilePicture) {
-      setIsImgUrlValid(true);
-    }
-  }, [profilePicture]);
-
   const handleDomainChange = useCallback(({ key }) => {
     updateActiveDomain(key);
     refreshPage();
@@ -327,10 +308,6 @@ const NavBar = ({
   }, []);
 
   const handleModalCancel = useCallback(() => handleFeatureModal(false), []);
-
-  const handleOnImageError = useCallback(() => {
-    setIsImgUrlValid(false);
-  }, []);
 
   const handleSelectOption = useCallback(
     (text) => {
@@ -526,31 +503,8 @@ const NavBar = ({
             trigger={['click']}>
             <Help height={20} width={20} />
           </Dropdown>
-          <div className="profile-dropdown" data-testid="dropdown-profile">
-            <Dropdown
-              menu={{
-                items: profileDropdown,
-              }}
-              trigger={['click']}>
-              <Button
-                icon={
-                  isImgUrlValid ? (
-                    <img
-                      alt="user"
-                      className="profile-image circle"
-                      referrerPolicy="no-referrer"
-                      src={profilePicture || ''}
-                      width={24}
-                      onError={handleOnImageError}
-                    />
-                  ) : (
-                    <Avatar name={username} type="circle" width="24" />
-                  )
-                }
-                type="text"
-              />
-            </Dropdown>
-          </div>
+
+          <UserProfileIcon />
         </Space>
       </div>
       <WhatsNewModal

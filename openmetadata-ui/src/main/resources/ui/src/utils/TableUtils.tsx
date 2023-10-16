@@ -19,13 +19,14 @@ import { t } from 'i18next';
 import {
   isUndefined,
   lowerCase,
+  omit,
   reduce,
   toString,
   uniqBy,
   uniqueId,
   upperCase,
 } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import React from 'react';
 import { ReactComponent as IconTerm } from '../assets/svg/book.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
@@ -64,7 +65,7 @@ import {
   getMlModelPath,
   getPipelineDetailsPath,
   getServiceDetailsPath,
-  getStoredProcedureDetailsPath,
+  getStoredProcedureDetailPath,
   getTableDetailsPath,
   getTableTabPath,
   getTagsDetailsPath,
@@ -242,6 +243,10 @@ export const getEntityLink = (
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.MESSAGING_SERVICE:
     case EntityType.PIPELINE_SERVICE:
+    case EntityType.MLMODEL_SERVICE:
+    case EntityType.METADATA_SERVICE:
+    case EntityType.STORAGE_SERVICE:
+    case EntityType.SEARCH_SERVICE:
       return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
     case EntityType.WEBHOOK:
@@ -269,7 +274,7 @@ export const getEntityLink = (
 
     case SearchIndex.STORED_PROCEDURE:
     case EntityType.STORED_PROCEDURE:
-      return getStoredProcedureDetailsPath(getDecodedFqn(fullyQualifiedName));
+      return getStoredProcedureDetailPath(getDecodedFqn(fullyQualifiedName));
 
     case EntityType.TEST_CASE:
       return `${getTableTabPath(
@@ -316,22 +321,27 @@ export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
+    case SearchIndex.MESSAGING_SERVICE:
       return <TopicIcon />;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
+    case SearchIndex.DASHBOARD_SERVICE:
       return <DashboardIcon />;
 
     case SearchIndex.MLMODEL:
     case EntityType.MLMODEL:
+    case SearchIndex.ML_MODEL_SERVICE:
       return <MlModelIcon />;
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
+    case SearchIndex.PIPELINE_SERVICE:
       return <PipelineIcon />;
 
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
+    case SearchIndex.STORAGE_SERVICE:
       return <ContainerIcon />;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
@@ -342,8 +352,10 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.STORED_PROCEDURE:
       return <IconStoredProcedure />;
 
+    case SearchIndex.TAG:
     case EntityType.TAG:
       return <ClassificationIcon />;
+    case SearchIndex.GLOSSARY:
     case EntityType.GLOSSARY:
       return <GlossaryIcon />;
     case EntityType.GLOSSARY_TERM:
@@ -351,7 +363,20 @@ export const getEntityIcon = (indexType: string) => {
 
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
-      return <SearchOutlined className="text-sm" />;
+    case EntityType.SEARCH_SERVICE:
+    case SearchIndex.SEARCH_SERVICE:
+      return (
+        <SearchOutlined
+          className="text-sm text-inherit"
+          style={{ color: DE_ACTIVE_COLOR }}
+        />
+      );
+
+    case EntityType.DOMAIN:
+    case EntityType.DATA_PRODUCT:
+    case SearchIndex.DATA_PRODUCT:
+    case SearchIndex.DOMAIN:
+      return <DomainIcon />;
 
     case SearchIndex.TABLE:
     case EntityType.TABLE:
@@ -599,19 +624,18 @@ export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
 
   return reduce(
     newFieldTags,
-    (acc: Array<EntityTags>, cv: TagOption) => {
-      if (prevTagsFqn?.includes(cv.fqn)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.fqn);
+    (acc: Array<EntityTags>, cv: EntityTags) => {
+      if (prevTagsFqn?.includes(cv.tagFQN)) {
+        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
 
         return [...acc, prev];
       } else {
         return [
           ...acc,
           {
+            ...omit(cv, 'isRemovable'),
             labelType: LabelType.Manual,
             state: State.Confirmed,
-            source: cv.source,
-            tagFQN: cv.fqn,
           },
         ];
       }
@@ -640,7 +664,7 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 
 export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
   changedFieldFQN: string,
-  newFieldTags: Array<TagOption>,
+  newFieldTags: EntityTags[],
   searchIndexFields?: Array<T>
 ) => {
   searchIndexFields?.forEach((field) => {

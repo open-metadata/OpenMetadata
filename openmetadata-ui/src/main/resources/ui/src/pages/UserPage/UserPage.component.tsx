@@ -21,12 +21,14 @@ import {
   default as React,
   Dispatch,
   SetStateAction,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { useAuthContext } from '../../components/authentication/auth-provider/AuthProvider';
 import Loader from '../../components/Loader/Loader';
 import Users from '../../components/Users/Users.component';
 import { PAGE_SIZE } from '../../constants/constants';
@@ -50,6 +52,7 @@ const UserPage = () => {
   const [isError, setIsError] = useState(false);
   const [isUserEntitiesLoading, setIsUserEntitiesLoading] =
     useState<boolean>(false);
+  const { currentUser, updateCurrentUser } = useAuthContext();
 
   const [followingEntities, setFollowingEntities] =
     useState<UserAssetsDataType>({
@@ -73,7 +76,10 @@ const UserPage = () => {
 
   const fetchUserData = async () => {
     try {
-      const res = await getUserByName(username, 'profile,roles,teams');
+      const res = await getUserByName(
+        username,
+        'profile,roles,teams,personas,defaultPersona'
+      );
       setUserData(res);
     } catch (error) {
       showErrorToast(
@@ -176,21 +182,27 @@ const UserPage = () => {
     );
   };
 
-  const updateUserDetails = async (data: Partial<User>) => {
-    const updatedDetails = { ...userData, ...data };
-    const jsonPatch = compare(userData, updatedDetails);
+  const updateUserDetails = useCallback(
+    async (data: Partial<User>) => {
+      const updatedDetails = { ...userData, ...data };
+      const jsonPatch = compare(userData, updatedDetails);
 
-    try {
-      const response = await updateUserDetail(userData.id, jsonPatch);
-      if (response) {
-        setUserData((prevData) => ({ ...prevData, ...response }));
-      } else {
-        throw t('message.unexpected-error');
+      try {
+        const response = await updateUserDetail(userData.id, jsonPatch);
+        if (response) {
+          if (userData.id === currentUser?.id) {
+            updateCurrentUser(response);
+          }
+          setUserData(response);
+        } else {
+          throw t('message.unexpected-error');
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [userData, currentUser, updateCurrentUser]
+  );
 
   useEffect(() => {
     fetchUserData();

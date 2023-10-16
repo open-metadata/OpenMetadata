@@ -27,9 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
@@ -104,12 +101,11 @@ class DbtSource(DbtServiceSource):
     Class defines method to extract metadata from DBT
     """
 
-    def __init__(self, config: WorkflowSource, metadata_config: OpenMetadataConnection):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config = self.config.sourceConfig.config
-        self.metadata_config = metadata_config
-        self.metadata = OpenMetadata(metadata_config)
+        self.metadata = metadata
         self.tag_classification_name = (
             self.source_config.dbtClassificationName
             if self.source_config.dbtClassificationName
@@ -117,9 +113,9 @@ class DbtSource(DbtServiceSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata_config: OpenMetadataConnection):
+    def create(cls, config_dict, metadata: OpenMetadata):
         config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        return cls(config, metadata_config)
+        return cls(config, metadata)
 
     def test_connection(self) -> None:
         """
@@ -332,13 +328,13 @@ class DbtSource(DbtServiceSource):
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
-                **dbt_objects.dbt_manifest.nodes,
                 **dbt_objects.dbt_manifest.sources,
+                **dbt_objects.dbt_manifest.nodes,
             }
             if dbt_objects.dbt_catalog:
                 catalog_entities = {
-                    **dbt_objects.dbt_catalog.nodes,
                     **dbt_objects.dbt_catalog.sources,
+                    **dbt_objects.dbt_catalog.nodes,
                 }
             self.context.data_model_links = []
             self.context.dbt_tests = {}
@@ -434,6 +430,7 @@ class DbtSource(DbtServiceSource):
                             table_entity=table_entity,
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
+                                resourceType=manifest_node.resource_type.value,
                                 description=manifest_node.description
                                 if manifest_node.description
                                 else None,
@@ -693,15 +690,21 @@ class DbtSource(DbtServiceSource):
                 service_name, database_name, schema_name, table_name = fqn.split(
                     table_entity.fullyQualifiedName.__root__
                 )
-
                 data_model = data_model_link.datamodel
+                force_override = False
+                if (
+                    data_model.resourceType != DbtCommonEnum.SOURCE.value
+                    and self.source_config.dbtUpdateDescriptions
+                ):
+                    force_override = True
+
                 # Patch table descriptions from DBT
                 if data_model.description:
                     self.metadata.patch_description(
                         entity=Table,
                         source=table_entity,
                         description=data_model.description.__root__,
-                        force=self.source_config.dbtUpdateDescriptions,
+                        force=force_override,
                     )
 
                 # Patch column descriptions from DBT
@@ -719,7 +722,7 @@ class DbtSource(DbtServiceSource):
                                 column_name=column.name.__root__,
                             ),
                             description=column.description.__root__,
-                            force=self.source_config.dbtUpdateDescriptions,
+                            force=force_override,
                         )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
