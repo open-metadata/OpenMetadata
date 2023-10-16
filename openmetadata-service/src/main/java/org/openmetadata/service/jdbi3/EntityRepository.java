@@ -53,10 +53,12 @@ import static org.openmetadata.service.util.EntityUtil.getExtensionField;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
+import static org.openmetadata.service.util.EntityUtil.previousVersion;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -1251,8 +1253,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   /** Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN} */
+  @Transaction
   public void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
       if (tagLabel.getSource() == TagSource.CLASSIFICATION) {
@@ -1637,8 +1639,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  @Transaction
   /** Remove owner relationship for a given entity */
+  @Transaction
   private void removeOwner(T entity, EntityReference owner) {
     if (EntityUtil.getId(owner) != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getFullyQualifiedName(), entity.getId());
@@ -1790,6 +1792,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
+    private static final long SESSION_TIMEOUT_MILLIS = 10000;
+    private static boolean disableConsolidateChanges = false;
     protected final T original;
     protected final T updated;
     protected final Operation operation;
@@ -1800,7 +1804,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private boolean entityChanged = false;
 
     public EntityUpdater(T original, T updated, Operation operation) {
-      this.original = original;
+      boolean consolidateChanges = consolidateChanges(original, updated);
+      this.original = consolidateChanges ? getPreviousVersion(original) : original;
       this.updated = updated;
       this.operation = operation;
       this.updatingUser =
@@ -1809,8 +1814,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
               : getEntityByName(Entity.USER, updated.getUpdatedBy(), "", NON_DELETED);
     }
 
-    @Transaction
+    @VisibleForTesting
+    public static void disableConsolidateChanges(boolean disable) {
+      disableConsolidateChanges = disable;
+    }
+
+    private boolean consolidateChanges(T original, T updated) {
+      // If user is the same and the new update is with in the user session timeout
+      return !disableConsolidateChanges
+          && original.getVersion() > 0.1
+          && original.getUpdatedBy().equals(updated.getUpdatedBy())
+          && updated.getUpdatedAt() - original.getUpdatedAt() <= SESSION_TIMEOUT_MILLIS;
+    }
+
+    private T getPreviousVersion(T original) {
+      String extensionName = EntityUtil.getVersionExtension(entityType, previousVersion(original.getVersion()));
+      String json = daoCollection.entityExtensionDAO().getExtension(original.getId(), extensionName);
+      return JsonUtils.readValue(json, entityClass);
+    }
+
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    @Transaction
     public final void update() {
       if (operation.isDelete()) { // DELETE Operation
         updateDeleted();
