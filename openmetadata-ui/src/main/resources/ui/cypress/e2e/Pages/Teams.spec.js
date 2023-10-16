@@ -26,7 +26,7 @@ import {
 
 const updatedDescription = 'This is updated description';
 
-const teamName = 'team-group-test-430116' ?? `team-ct-test-${uuid()}`;
+const teamName = `team-ct-test-${uuid()}`;
 const TEAM_DETAILS = {
   name: teamName,
   updatedName: `${teamName}-updated`,

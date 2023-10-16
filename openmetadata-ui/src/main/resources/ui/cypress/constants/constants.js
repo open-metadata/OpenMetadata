@@ -24,7 +24,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
-  mlmodels: 'mlmodels',
+  mlmodels: 'ml models',
   service: 'service',
   user: 'user',
   teams: 'teams',
