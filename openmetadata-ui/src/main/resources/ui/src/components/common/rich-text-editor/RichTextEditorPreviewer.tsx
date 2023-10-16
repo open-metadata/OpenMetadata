@@ -86,6 +86,23 @@ const RichTextEditorPreviewer = ({
     }
   }, []);
 
+  const renderViewer = useMemo(
+    () => (
+      <div
+        className={classNames('markdown-parser', textVariant)}
+        data-testid="markdown-parser">
+        <Viewer
+          extendedAutolinks
+          customHTMLRenderer={customHTMLRenderer}
+          initialValue={viewerValue}
+          key={uniqueId()}
+          linkAttributes={{ target: '_blank' }}
+        />
+      </div>
+    ),
+    [textVariant, customHTMLRenderer, viewerValue]
+  );
+
   useEffect(() => {
     window.addEventListener('mousedown', handleMouseDownEvent);
 
@@ -96,11 +113,11 @@ const RichTextEditorPreviewer = ({
     <div
       className={classNames('rich-text-editor-container', className)}
       data-testid="viewer-container">
-      <Popover
-        arrowPointAtCenter
-        destroyTooltipOnHide
-        content={
-          tooltip && (
+      {tooltip ? (
+        <Popover
+          arrowPointAtCenter
+          destroyTooltipOnHide
+          content={
             <Viewer
               extendedAutolinks
               customHTMLRenderer={customHTMLRenderer}
@@ -108,22 +125,14 @@ const RichTextEditorPreviewer = ({
               key={uniqueId()}
               linkAttributes={{ target: '_blank' }}
             />
-          )
-        }
-        overlayClassName="rich-text-editor-card-popover"
-        placement={(tooltip as TooltipProperties)?.placement}>
-        <div
-          className={classNames('markdown-parser', textVariant)}
-          data-testid="markdown-parser">
-          <Viewer
-            extendedAutolinks
-            customHTMLRenderer={customHTMLRenderer}
-            initialValue={viewerValue}
-            key={uniqueId()}
-            linkAttributes={{ target: '_blank' }}
-          />
-        </div>
-      </Popover>
+          }
+          overlayClassName="rich-text-editor-card-popover"
+          placement={(tooltip as TooltipProperties)?.placement}>
+          {renderViewer}
+        </Popover>
+      ) : (
+        renderViewer
+      )}
 
       {hasReadMore && showReadMoreBtn && (
         <Button
