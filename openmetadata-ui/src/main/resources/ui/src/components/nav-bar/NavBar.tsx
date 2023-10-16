@@ -38,7 +38,6 @@ import AppState from '../../AppState';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/DropDown.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import Logo from '../../assets/svg/logo-monogram.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import SearchOptions from '../../components/AppBar/SearchOptions';
 import Suggestions from '../../components/AppBar/Suggestions';
@@ -52,6 +51,7 @@ import {
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
@@ -98,6 +98,7 @@ const NavBar = ({
 }: NavBarProps) => {
   const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
 
   const history = useHistory();
   const { domainOptions, activeDomain, updateActiveDomain } =
