@@ -19,6 +19,7 @@ import {
   MenuProps,
   Row,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
@@ -260,29 +261,44 @@ export const TaskTab = ({
   };
 
   const approvalWorkflowActions = useMemo(() => {
+    const hasApprovalAccess = isAssignee || Boolean(isPartOfAssigneeTeam);
+
     return (
       <Space
         className="m-t-sm items-end w-full"
         data-testid="task-cta-buttons"
         size="small">
-        {(isCreator || hasEditAccess) && (
-          <>
-            <Button data-testid="reject-task" onClick={onTaskReject}>
-              {t('label.reject')}
-            </Button>
-            {hasEditAccess && (
-              <Button
-                data-testid="approve-task"
-                type="primary"
-                onClick={onTaskResolve}>
-                {t('label.approve')}
-              </Button>
-            )}
-          </>
-        )}
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-reviewers-can-accept-or-reject')
+              : ''
+          }>
+          <Button
+            data-testid="reject-task"
+            disabled={!hasApprovalAccess}
+            onClick={onTaskReject}>
+            {t('label.reject')}
+          </Button>
+        </Tooltip>
+
+        <Tooltip
+          title={
+            !hasApprovalAccess
+              ? t('message.only-reviewers-can-accept-or-reject')
+              : ''
+          }>
+          <Button
+            data-testid="approve-task"
+            disabled={!hasApprovalAccess}
+            type="primary"
+            onClick={onTaskResolve}>
+            {t('label.approve')}
+          </Button>
+        </Tooltip>
       </Space>
     );
-  }, [taskDetails, onTaskResolve, hasEditAccess, isCreator]);
+  }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
 
   const actionButtons = useMemo(() => {
     if (isTaskClosed) {
