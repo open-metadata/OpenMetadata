@@ -44,10 +44,7 @@ import { EntityDetailsObjectInterface } from '../../../components/Explore/explor
 import AssetsTabs, {
   AssetsTabRef,
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import {
-  AssetsOfEntity,
-  AssetsViewType,
-} from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
@@ -418,7 +415,6 @@ const DataProductsDetailsPage = ({
                     permissions={dataProductPermission}
                     ref={assetTabRef}
                     type={AssetsOfEntity.DATA_PRODUCT}
-                    viewType={AssetsViewType.TABS}
                     onAddAsset={() => setAssetModelVisible(true)}
                     onAssetClick={handleAssetClick}
                   />
