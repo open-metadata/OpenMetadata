@@ -84,25 +84,21 @@ const EntitySummaryDetails = ({
     />
   );
 
-  const {
-    isEntityDetails,
-    userDetails,
-    isTier,
-    isOwner,
+  const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =
+    useMemo(() => {
+      const userDetails = getTeamsUser(data);
 
-    isTeamOwner,
-  } = useMemo(() => {
-    const userDetails = getTeamsUser(data);
-
-    return {
-      isEntityCard: data?.isEntityCard,
-      isEntityDetails: data?.isEntityDetails,
-      userDetails,
-      isTier: data.key === 'Tier',
-      isOwner: data.key === 'Owner',
-      isTeamOwner: isString(data.value) ? data.value.includes('teams/') : false,
-    };
-  }, [data]);
+      return {
+        isEntityCard: data?.isEntityCard,
+        isEntityDetails: data?.isEntityDetails,
+        userDetails,
+        isTier: data.key === 'Tier',
+        isOwner: data.key === 'Owner',
+        isTeamOwner: isString(data.value)
+          ? data.value.includes('teams/')
+          : false,
+      };
+    }, [data]);
 
   switch (data.key) {
     case 'Owner':

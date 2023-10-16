@@ -339,7 +339,7 @@ public class ElasticSearchClient implements SearchClient {
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
     if (request.getIndex().equalsIgnoreCase("domain_search_index")
-        || request.getIndex().equalsIgnoreCase("data_products_search_index")
+        || request.getIndex().equalsIgnoreCase("data_product_search_index")
         || request.getIndex().equalsIgnoreCase("query_search_index")
         || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
         || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
