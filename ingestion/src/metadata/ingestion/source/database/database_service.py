@@ -44,12 +44,14 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
@@ -160,6 +162,12 @@ class DatabaseServiceTopology(ServiceTopology):
                 processor="yield_table",
                 consumer=["database_service", "database", "database_schema"],
                 use_cache=True,
+            ),
+            NodeStage(
+                type_=User,
+                context="owner",
+                processor="process_owner",
+                consumer=["dashboard_service"],
             ),
             NodeStage(
                 type_=OMetaLifeCycleData,
@@ -447,6 +455,35 @@ class DatabaseServiceSource(
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
             yield schema_fqn if return_fqn else schema_name
+
+    def get_owner_details(  # pylint: disable=useless-return
+        self, schema_name: str, table_name: str  # pylint: disable=unused-argument
+    ) -> Optional[EntityReference]:
+        """Get database owner
+
+        Args
+        schema_name, table_nam
+        Returns:
+            Optional[EntityReference]
+        """
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
+        return None
+
+    def process_owner(  # pylint: disable=useless-return
+        self, table_name_and_type: Tuple[str, str]
+    ):
+        """Get database owner
+
+        Args
+        schema_name, table_nam
+        Returns:
+            Optional[EntityReference]
+        """
+        logger.debug(
+            f"Processing ownership is not supported for {self.service_connection.type.name}"
+        )
 
     def mark_tables_as_deleted(self):
         """
