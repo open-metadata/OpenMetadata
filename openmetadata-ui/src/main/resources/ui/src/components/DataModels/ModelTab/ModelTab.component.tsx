@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { cloneDeep, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
@@ -25,6 +25,7 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { updateDataModelColumnDescription } from '../../../utils/DataModelsUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { updateFieldTags } from '../../../utils/TableUtils';
+import Table from '../../common/Table/Table';
 import { ModelTabProps } from './ModelTab.interface';
 
 const ModelTab = ({
