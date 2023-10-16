@@ -193,13 +193,13 @@ const ExplorePageV1: FunctionComponent = () => {
       if (isNil(tabInfo)) {
         const activeKey = findActiveSearchIndex(searchHitCounts);
 
-        return activeKey ? activeKey : SearchIndex.TABLE;
+        return activeKey ? activeKey : SearchIndex.DATA_PRODUCT;
       }
 
       return tabInfo[0] as ExploreSearchIndex;
     }
 
-    return SearchIndex.TABLE;
+    return SearchIndex.DATA_PRODUCT;
   }, [tab, searchHitCounts]);
 
   const tabItems = useMemo(() => {
