@@ -71,6 +71,7 @@ public class DashboardDataModelIndex implements ColumnIndex {
         getFQNParts(
             dashboardDataModel.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
+    doc.put("tier", parseTags.getTierTag());
     if (dashboardDataModel.getOwner() != null) {
       doc.put("owner", getOwnerWithDisplayName(dashboardDataModel.getOwner()));
     }
