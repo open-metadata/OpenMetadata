@@ -67,7 +67,7 @@ const EntityHeaderTitle = ({
           data-testid="entity-header-display-name"
           ellipsis={{ tooltip: true }}
           style={{ color: color ?? TEXT_COLOR }}>
-          {stringToHTML(displayName ?? name)}
+          {stringToHTML(displayName || name)}
           {openEntityInNewPage && (
             <IconExternalLink
               className="anticon vertical-baseline m-l-xss"
