@@ -265,9 +265,11 @@ const GlossaryV1 = ({
           reviewers,
           owner,
           relatedTerms,
+          style,
         } = formData || {};
 
         newTermData.name = name;
+        newTermData.style = style;
         newTermData.displayName = displayName;
         newTermData.description = description;
         newTermData.synonyms = synonyms;
