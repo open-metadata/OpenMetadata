@@ -41,7 +41,9 @@ const MarketPlaceAppDetails = () => {
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
   const loadScreenshot = async (screenshotName: string) => {
-    const data = await import(`../../../assets/svg/${screenshotName}.svg`);
+    const data = await import(
+      `../../../assets/img/appScreenshots/${screenshotName}`
+    );
     const Icon = data.ReactComponent as React.ComponentType<
       JSX.IntrinsicElements['svg']
     >;
