@@ -125,7 +125,11 @@ const EntitySummaryDetails = ({
                   </>
                 )}
                 {isTeamOwner ? (
-                  <IconTeamsGrey height={18} width={18} />
+                  <IconTeamsGrey
+                    className="align-middle"
+                    height={18}
+                    width={18}
+                  />
                 ) : (
                   <ProfilePicture
                     displayName={displayVal}
