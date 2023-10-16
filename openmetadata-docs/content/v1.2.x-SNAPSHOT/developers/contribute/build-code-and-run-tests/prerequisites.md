@@ -9,7 +9,7 @@ This guide will help you set up all prerequisites to develop on OpenMetadata.
 OpenMetadata being a full stack project, we use the following for development:
 
 - [Docker 20 or higher](https://docs.docker.com/engine/install/)
-- [Java JDK 11](https://docs.oracle.com/en/java/javase/11/install/overview-jdk-installation.html)
+- [Java JDK 17](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html)
 - [Antlr 4.9.2](https://www.antlr.org/) - `sudo make install_antlr_cli`
 - [JQ](https://jqlang.github.io/jq/) - `brew install jq` (osx)  `apt-get install jq` (Ubuntu)
 - [Maven 3.5.x or higher](https://maven.apache.org/install.html) - (with Java JDK 11)
@@ -25,9 +25,9 @@ OpenMetadata being a full stack project, we use the following for development:
 Docker version 20.10.8, build 3967b7d
 
 > java -version
-openjdk version "11.0.11" 2021-04-20
-OpenJDK Runtime Environment AdoptOpenJDK-11.0.11+9 (build 11.0.11+9)
-OpenJDK 64-Bit Server VM AdoptOpenJDK-11.0.11+9 (build 11.0.11+9, mixed mode)
+openjdk version "17.0.8.1" 2023-08-24
+OpenJDK Runtime Environment AdoptOpenJDK-17.0.8.1+0 (build 17.0.8.1+0)
+OpenJDK 64-Bit Server VM AdoptOpenJDK-17.0.8.1+0 (build 17.0.8.1+0, mixed mode)
 
 > antlr4
 ANTLR Parser Generator  Version 4.9.2
