@@ -41,14 +41,16 @@ const MarketPlaceAppDetails = () => {
   const [appScreenshots, setAppScreenshots] = useState<JSX.Element[]>([]);
 
   const loadScreenshot = async (screenshotName: string) => {
-    const data = await import(
-      `../../../assets/img/appScreenshots/${screenshotName}`
-    );
-    const Icon = data.ReactComponent as React.ComponentType<
-      JSX.IntrinsicElements['svg']
-    >;
+    try {
+      const imageModule = await import(
+        `../../../assets/img/appScreenshots/${screenshotName}`
+      );
+      const imageSrc = imageModule.default;
 
-    return <Icon height={400} />;
+      return <img alt={screenshotName} src={imageSrc} />;
+    } catch (error) {
+      return <></>;
+    }
   };
 
   const fetchAppDetails = useCallback(async () => {

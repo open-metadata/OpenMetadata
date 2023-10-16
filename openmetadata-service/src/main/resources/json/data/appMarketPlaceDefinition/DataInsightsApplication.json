@@ -1,10 +1,11 @@
 {
   "name": "DataInsightsApplication",
   "fullyQualifiedName": "DataInsightsApplication",
-  "displayName": "Data Insights Application",
+  "displayName": "Data Insights",
   "description": "Open-metadata Data Insights Application runs a Data Insights Pipeline on the Ingestion Framework.",
   "features": "Run Ingestion Framework Data Insight Module.",
   "appType": "external",
+  "appScreenshots": ["DataInsightsPic1.png"],
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
@@ -16,4 +17,5 @@
     "enabled": "true"
   },
   "appConfiguration": null
+
 }
