@@ -40,7 +40,6 @@ const parser = new $RefParser(globalParserOptions);
 function removeObjectByKey(obj, keyToRemove) {
   
   for (const prop in obj) {
-    if (obj.hasOwnProperty(prop)) {
       if (prop === keyToRemove) {
         // If the property key matches the key to remove, delete it
         delete obj[prop];
@@ -48,7 +47,6 @@ function removeObjectByKey(obj, keyToRemove) {
         // Recursively call the function on the property's value
           obj[prop] = removeObjectByKey(obj[prop], keyToRemove);
         }
-      }
     }
   return obj
 }
