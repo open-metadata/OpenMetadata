@@ -42,6 +42,7 @@ const RightSidebar = ({
   updateParentLayout,
   resetLayout = false,
   handleResetLayout,
+  handleSaveCurrentPageLayout,
 }: RightSidebarProps) => {
   const [layout, setLayout] = useState<Array<WidgetConfig>>([
     ...(layoutConfigData?.page?.layout ?? []),
@@ -205,7 +206,7 @@ const RightSidebar = ({
   }, [layout]);
 
   useEffect(() => {
-    if (resetLayout && handleResetLayout) {
+    if (resetLayout && handleResetLayout && handleSaveCurrentPageLayout) {
       setLayout([
         ...customizePageClassBase.rightPanelDefaultLayout,
         ...(isEditView
@@ -222,6 +223,7 @@ const RightSidebar = ({
           : []),
       ]);
       handleResetLayout(false);
+      handleSaveCurrentPageLayout(true);
     }
   }, [resetLayout]);
 
