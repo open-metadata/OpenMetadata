@@ -51,7 +51,7 @@ export const getAddWidgetHandler =
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
       return [
-        ...currentLayout,
+        ...moveEmptyWidgetToTheEnd(currentLayout),
         {
           w: widgetWidth,
           h: widgetHeight,
@@ -94,6 +94,13 @@ const getEmptyWidgetHeight = (
     return maxHeight;
   }
 };
+
+export const moveEmptyWidgetToTheEnd = (layout: Array<WidgetConfig>) =>
+  layout.map((widget) =>
+    widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+      ? { ...widget, y: 100 }
+      : widget
+  );
 
 export const getRemoveWidgetHandler =
   (widgetKey: string, minHeight: number, maxHeight: number) =>
