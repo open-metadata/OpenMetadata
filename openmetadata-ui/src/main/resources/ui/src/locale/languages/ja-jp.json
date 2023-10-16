@@ -1419,6 +1419,7 @@
     "onboarding-claim-ownership-description": "Data works well when it is owned. Take a look at the data assets that you own and claim ownership.",
     "onboarding-explore-data-description": "あなたの組織で人気のデータアセットを見る。",
     "onboarding-stay-up-to-date-description": "よく使うデータセットをフォローして、情報が通知されるようにする",
+    "only-reviewers-can-accept-or-reject": "Only Reviewers can accept or reject",
     "optional-configuration-update-description-dbt": "Optional configuration to update the description from dbt or not",
     "page-is-not-available": "お探しのページはご利用いただけません",
     "page-sub-header-for-activity-feed": "Activity feed that enables you view a summary of data change events.",

@@ -1419,6 +1419,7 @@
     "onboarding-claim-ownership-description": "Dados funcionam bem quando possuem um dono. Dê uma olhada nos ativos de dados que você é responsável e reivindique a propriedade.",
     "onboarding-explore-data-description": "Olhe para os ativos de dados populares na sua organização.",
     "onboarding-stay-up-to-date-description": "Siga os conjuntos de dados que você usa com frequência para se manter informado sobre eles.",
+    "only-reviewers-can-accept-or-reject": "Only Reviewers can accept or reject",
     "optional-configuration-update-description-dbt": "Configuração opcional para atualizar ou não a descrição do dbt",
     "page-is-not-available": "A página que você está procurando não está disponível",
     "page-sub-header-for-activity-feed": "Activity feed that enables you view a summary of data change events.",
