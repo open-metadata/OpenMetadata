@@ -39,6 +39,7 @@ export enum SearchIndex {
   STORED_PROCEDURE = 'stored_procedure_search_index',
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_product_search_index',
+  CHART = 'chart_search_index',
 }
 
 export enum PublisherType {

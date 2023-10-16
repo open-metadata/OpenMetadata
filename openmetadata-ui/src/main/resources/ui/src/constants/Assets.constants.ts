@@ -66,6 +66,11 @@ export const AssetsFilterOptions: Array<{
     value: SearchIndex.DASHBOARD_DATA_MODEL,
   },
   {
+    label: i18n.t('label.chart'),
+    key: EntityType.CHART,
+    value: SearchIndex.CHART,
+  },
+  {
     label: i18n.t('label.database'),
     key: EntityType.DATABASE,
     value: SearchIndex.DATABASE,
@@ -226,6 +231,11 @@ export const ASSET_SUB_MENU_FILTER: Array<{
         value: EntityType.DASHBOARD,
       },
       {
+        key: SearchIndex.CHART,
+        label: i18n.t('label.chart'),
+        value: EntityType.CHART,
+      },
+      {
         key: SearchIndex.DASHBOARD_DATA_MODEL,
         label: i18n.t('label.dashboard-data-model-plural'),
         value: EntityType.DASHBOARD_DATA_MODEL,
@@ -343,6 +353,7 @@ export const ASSETS_INDEXES = [
   SearchIndex.SEARCH_SERVICE,
   SearchIndex.DOMAIN,
   SearchIndex.DATA_PRODUCT,
+  SearchIndex.CHART,
   SearchIndex.TAG,
 ];
 

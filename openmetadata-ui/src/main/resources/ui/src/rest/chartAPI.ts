@@ -28,6 +28,21 @@ export const getChartById = async (
   return response.data;
 };
 
+export const getChartByName = async (
+  fqn: string,
+  arrQueryFields: string | string[]
+) => {
+  const url = getURLWithQueryFields(
+    `/charts/name/${fqn}`,
+    arrQueryFields,
+    'include=all'
+  );
+
+  const response = await APIClient.get<ChartType>(url);
+
+  return response.data;
+};
+
 export const updateChart = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },

@@ -316,6 +316,7 @@ const AssetsTabs = forwardRef(
             searchServiceResponse,
             domainResponse,
             dataProductResponse,
+            chartResponse,
             tagResponse,
             glossaryResponse,
           ]) => {
@@ -351,6 +352,7 @@ const AssetsTabs = forwardRef(
               [EntityType.DOMAIN]: domainResponse.data.hits.total.value,
               [EntityType.DATA_PRODUCT]:
                 dataProductResponse.data.hits.total.value,
+              [EntityType.CHART]: chartResponse.data.hits.total.value,
               [EntityType.TAG]: tagResponse.data.hits.total.value,
               [EntityType.GLOSSARY_TERM]:
                 type !== AssetsOfEntity.GLOSSARY

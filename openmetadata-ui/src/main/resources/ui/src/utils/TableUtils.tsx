@@ -37,6 +37,7 @@ import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg'
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
+import { ReactComponent as ChartIcon } from '../assets/svg/ic-chart.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
@@ -330,6 +331,10 @@ export const getEntityIcon = (indexType: string) => {
     case EntityType.DASHBOARD_SERVICE:
     case SearchIndex.DASHBOARD_SERVICE:
       return <DashboardIcon />;
+
+    case EntityType.CHART:
+    case SearchIndex.CHART:
+      return <ChartIcon />;
 
     case SearchIndex.MLMODEL:
     case EntityType.MLMODEL:

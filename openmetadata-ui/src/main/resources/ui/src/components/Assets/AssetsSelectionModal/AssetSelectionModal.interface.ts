@@ -12,6 +12,7 @@
  */
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -59,7 +60,8 @@ export type AssetsUnion =
   | EntityType.MLMODEL_SERVICE
   | EntityType.STORAGE_SERVICE
   | EntityType.DATABASE_SERVICE
-  | EntityType.SEARCH_SERVICE;
+  | EntityType.SEARCH_SERVICE
+  | EntityType.CHART;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -81,4 +83,5 @@ export type MapPatchAPIResponse = {
   [EntityType.STORAGE_SERVICE]: StorageService;
   [EntityType.DATABASE_SERVICE]: DatabaseService;
   [EntityType.SEARCH_SERVICE]: SearchService;
+  [EntityType.CHART]: Chart;
 };

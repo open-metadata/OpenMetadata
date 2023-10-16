@@ -14,6 +14,7 @@
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -108,6 +109,8 @@ export interface DashboardDataModelSearchSource
   extends SearchSourceBase,
     DashboardDataModel {} // extends EntityInterface
 
+export interface ChartSearchSource extends SearchSourceBase, Chart {} // extends EntityInterface
+
 export interface TagClassSearchSource extends SearchSourceBase, Tag {
   id: string; // Tag is generated with the `id` field as optional, which is should not
 } // extends EntityInterface
@@ -199,6 +202,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
   [SearchIndex.DASHBOARD_DATA_MODEL]: DashboardDataModelSearchSource;
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
+  [SearchIndex.CHART]: ChartSearchSource;
 };
 
 export type SearchRequest<

@@ -19,6 +19,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -52,6 +53,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../PermissionProvider/PermissionProvider.interface';
+import ChartSummary from './ChartSummary/ChartSummary.component';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary.component';
@@ -153,6 +155,9 @@ export default function EntitySummaryPanel({
         return (
           <DataModelSummary entityDetails={entity as DashboardDataModel} />
         );
+
+      case EntityType.CHART:
+        return <ChartSummary entityDetails={entity as Chart} />;
 
       case EntityType.GLOSSARY_TERM:
         return <GlossaryTermSummary entityDetails={entity as GlossaryTerm} />;

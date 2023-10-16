@@ -68,6 +68,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -844,6 +845,32 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   return overview;
 };
 
+const getChartOverview = (chartDetails: Chart) => {
+  const { sourceUrl, service, displayName } = chartDetails;
+
+  return [
+    {
+      name: i18next.t('label.source-url'),
+      value: displayName ?? NO_DATA,
+      url: sourceUrl,
+      isLink: true,
+      isExternal: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: (service?.fullyQualifiedName as string) || NO_DATA,
+      url: getServiceDetailsPath(
+        service?.name as string,
+        ServiceCategory.DASHBOARD_SERVICES
+      ),
+      isExternal: false,
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+};
+
 const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const { owner, tags, serviceType } = serviceDetails;
 
@@ -909,6 +936,9 @@ export const getEntityOverview = (
 
     case ExplorePageTabs.DASHBOARD_DATA_MODEL: {
       return getDataModelOverview(entityDetail as DashboardDataModel);
+    }
+    case ExplorePageTabs.CHART: {
+      return getChartOverview(entityDetail as Chart);
     }
 
     case ExplorePageTabs.STORED_PROCEDURE: {

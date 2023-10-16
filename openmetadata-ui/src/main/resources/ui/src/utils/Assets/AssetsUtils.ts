@@ -18,6 +18,7 @@ import {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { getChartByName, updateChart } from '../../rest/chartAPI';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -89,6 +90,8 @@ export const getAPIfromSource = (
       return patchDatabaseSchemaDetails;
     case EntityType.DATABASE:
       return patchDatabaseDetails;
+    case EntityType.CHART:
+      return updateChart;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -135,6 +138,8 @@ export const getEntityAPIfromSource = (
       return getDatabaseDetailsByFQN;
     case EntityType.SEARCH_INDEX:
       return getSearchIndexDetailsByFQN;
+    case EntityType.CHART:
+      return getChartByName;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -168,6 +173,7 @@ export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
     [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
     [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
     [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
+    [EntityType.CHART]: SearchIndex.CHART,
   };
 
   if (

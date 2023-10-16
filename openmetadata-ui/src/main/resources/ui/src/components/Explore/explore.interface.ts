@@ -17,6 +17,7 @@ import { SearchedDataProps } from '../../components/searched-data/SearchedData.i
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import { Chart } from '../../generated/entity/data/chart';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -145,7 +146,8 @@ export type EntityUnion =
   | PipelineService
   | MlmodelService
   | StorageService
-  | SearchService;
+  | SearchService
+  | Chart;
 
 export type EntityWithServices =
   | Topic
