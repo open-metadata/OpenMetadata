@@ -44,14 +44,12 @@ function removeObjectByKey(obj, keyToRemove) {
       if (prop === keyToRemove) {
         // If the property key matches the key to remove, delete it
         delete obj[prop];
-      } else {
+      } else if (typeof(obj) == 'object'){
         // Recursively call the function on the property's value
-        if (typeof(obj) == 'object'){
           obj[prop] = removeObjectByKey(obj[prop], keyToRemove);
         }
       }
     }
-  }
   return obj
 }
 
