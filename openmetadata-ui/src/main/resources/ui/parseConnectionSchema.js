@@ -64,7 +64,7 @@ async function parseSchema(filePath, destPath) {
     const api = await parser.bundle(schema);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
 
-    const api_removed_id = removeObjectByKey(api, '$id');
+    const updatedAPIWithoutID = removeObjectByKey(api, '$id');
     if (!fs.existsSync(dirname)) {
       try {
         fs.mkdirSync(dirname, { recursive: true });
