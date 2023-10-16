@@ -89,7 +89,7 @@ export const CustomizablePage = () => {
   const handleSave = async () => {
     try {
       const finalPage = getFinalLandingPage(editedPage);
-      let response: Document = {} as Document;
+      let response: Document;
 
       if (page.id) {
         const jsonPatch = compare(page, finalPage);
