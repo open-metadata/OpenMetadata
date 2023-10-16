@@ -27,4 +27,5 @@ export interface RightSidebarProps {
   layoutConfigData?: WidgetConfig['data'];
   parentLayoutData?: Array<WidgetConfig>;
   updateParentLayout?: (newLayout: Array<WidgetConfig>) => void;
+  handleSaveCurrentPageLayout?: (value: boolean) => void;
 }

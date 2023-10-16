@@ -49,11 +49,10 @@ export const updateDocument = async (id: string, data: Operation[]) => {
   const configOptions = {
     headers: { 'Content-type': 'application/json-patch+json' },
   };
-  const response = await axiosClient.patch(
-    `${BASE_URL}/${id}`,
-    data,
-    configOptions
-  );
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<Document>
+  >(`${BASE_URL}/${id}`, data, configOptions);
 
   return response.data;
 };

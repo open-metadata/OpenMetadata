@@ -15,9 +15,11 @@ import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed.png';
 import AnnouncementImg from '../assets/img/announcement.png';
 import FollowingImg from '../assets/img/following.png';
+import KPISmallImg from '../assets/img/kpi-small.png';
 import KPIImg from '../assets/img/kpi.png';
 import MyDataImg from '../assets/img/my-data.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
+import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets.png';
 import KPIWidget from '../components/KPIWidget/KPIWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
@@ -198,14 +200,14 @@ class CustomizePageClassBase {
       }
       case LandingPageWidgetKeys.KPI: {
         if (size === WidgetWidths.small) {
-          return '';
+          return KPISmallImg;
         }
 
         return KPIImg;
       }
       case LandingPageWidgetKeys.TOTAL_DATA_ASSETS: {
         if (size === WidgetWidths.medium) {
-          return '';
+          return TotalAssetsMediumImg;
         }
 
         return TotalAssetsImg;

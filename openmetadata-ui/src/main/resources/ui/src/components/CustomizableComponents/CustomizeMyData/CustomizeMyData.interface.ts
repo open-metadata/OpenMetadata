@@ -17,4 +17,5 @@ export interface CustomizeMyDataProps {
   initialPageData: Document;
   onSaveLayout: () => Promise<void>;
   handlePageDataChange: (newPageData: Document) => void;
+  handleSaveCurrentPageLayout: (value: boolean) => void;
 }
