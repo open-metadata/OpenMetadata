@@ -121,7 +121,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       const target = e.target as HTMLElement;
       const dataType = target.getAttribute('data-type');
 
-      const hasPopup = !isEmpty(popup);
+      let hasPopup = !isEmpty(popup);
 
       if (['mention', 'hashtag'].includes(dataType ?? '')) {
         return;
@@ -158,6 +158,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           placement: 'top',
           hideOnClick: true,
         });
+        hasPopup = !isEmpty(popup);
       } else {
         if (hasPopup) {
           popup[0].hide();
