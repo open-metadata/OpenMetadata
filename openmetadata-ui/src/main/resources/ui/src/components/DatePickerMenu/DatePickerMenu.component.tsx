@@ -187,7 +187,7 @@ function DatePickerMenu({
         <Button>
           <Space align="center" size={8}>
             {selectedTimeRange}
-            <DropdownIcon height={14} width={14} />
+            <DropdownIcon className="align-middle" height={14} width={14} />
           </Space>
         </Button>
       </Dropdown>

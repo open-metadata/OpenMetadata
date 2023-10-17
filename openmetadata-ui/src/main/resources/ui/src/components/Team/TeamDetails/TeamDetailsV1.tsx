@@ -229,12 +229,15 @@ const TeamDetailsV1 = ({
    * @param id - user id
    * @param leave - if "Leave Team" action is in progress
    */
-  const deleteUserHandler = (id: string, leave = false) => {
-    const user = [...(currentTeam?.users as Array<UserTeams>)].find(
-      (u) => u.id === id
-    );
-    setDeletingUser({ user, state: true, leave });
-  };
+  const deleteUserHandler = useCallback(
+    (id: string, leave = false) => {
+      const user = [...(currentTeam?.users as Array<UserTeams>)].find(
+        (u) => u.id === id
+      );
+      setDeletingUser({ user, state: true, leave });
+    },
+    [currentTeam, setDeletingUser]
+  );
 
   const fetchErrorPlaceHolder = useCallback(
     ({
@@ -286,7 +289,7 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const joinTeam = () => {
+  const joinTeam = useCallback(() => {
     if (currentUser && currentTeam) {
       const newTeams = cloneDeep(currentUser.teams ?? []);
       newTeams.push({
@@ -304,7 +307,7 @@ const TeamDetailsV1 = ({
 
       handleJoinTeamClick(currentUser.id, options);
     }
-  };
+  }, [currentUser, currentTeam, handleJoinTeamClick]);
 
   const leaveTeam = (): Promise<void> => {
     if (currentUser && currentTeam) {
@@ -609,7 +612,8 @@ const TeamDetailsV1 = ({
   );
 
   const isAlreadyJoinedTeam = useMemo(
-    () => currentUser?.teams?.find((team) => team.id === currentTeam.id),
+    () =>
+      Boolean(currentUser?.teams?.find((team) => team.id === currentTeam.id)),
     [currentTeam.id, currentUser]
   );
 
@@ -762,33 +766,33 @@ const TeamDetailsV1 = ({
           ),
         })
       ) : (
-        <Space className="w-full roles-and-policy p-md" direction="vertical">
-          <Button
-            data-testid="add-role"
-            disabled={!entityPermissions.EditAll}
-            title={
-              entityPermissions.EditAll
-                ? addRole
-                : t('message.no-permission-for-action')
-            }
-            type="primary"
-            onClick={() =>
-              setAddAttribute({
-                type: EntityType.ROLE,
-                selectedData: currentTeam.defaultRoles ?? [],
-              })
-            }>
-            {addRole}
-          </Button>
-          <ListEntities
-            hasAccess={entityPermissions.EditAll}
-            list={currentTeam.defaultRoles ?? []}
-            type={EntityType.ROLE}
-            onDelete={(record) =>
-              setEntity({ record, attribute: 'defaultRoles' })
-            }
-          />
-        </Space>
+        <Row className="roles-and-policy p-md" gutter={[0, 10]}>
+          {entityPermissions.EditAll && (
+            <Col className="d-flex justify-end" span={24}>
+              <Button
+                data-testid="add-role"
+                type="primary"
+                onClick={() =>
+                  setAddAttribute({
+                    type: EntityType.ROLE,
+                    selectedData: currentTeam.defaultRoles ?? [],
+                  })
+                }>
+                {addRole}
+              </Button>
+            </Col>
+          )}
+          <Col span={24}>
+            <ListEntities
+              hasAccess={entityPermissions.EditAll}
+              list={currentTeam.defaultRoles ?? []}
+              type={EntityType.ROLE}
+              onDelete={(record) =>
+                setEntity({ record, attribute: 'defaultRoles' })
+              }
+            />
+          </Col>
+        </Row>
       ),
     [currentTeam, entityPermissions, addRole]
   );
@@ -870,7 +874,14 @@ const TeamDetailsV1 = ({
         )
       )),
 
-    [currentUser, isAlreadyJoinedTeam, isAuthDisabled, isAdminUser]
+    [
+      currentUser,
+      isAlreadyJoinedTeam,
+      isAuthDisabled,
+      isAdminUser,
+      joinTeam,
+      deleteUserHandler,
+    ]
   );
 
   const teamsCollapseHeader = useMemo(

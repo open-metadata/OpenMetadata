@@ -19,6 +19,7 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import {
   TAG_CONSTANT,
@@ -67,14 +68,26 @@ const TeamsSubscription = ({
   const subscriptionRenderElement = useMemo(() => {
     const webhook = Object.entries(subscription ?? {})?.[0];
 
-    return isEmpty(subscription) && hasEditPermission ? (
-      <div onClick={() => setEditSubscription(true)}>
-        <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-      </div>
-    ) : (
-      cellItem(webhook[0], webhook[1])
-    );
-  }, [subscription]);
+    if (isEmpty(subscription)) {
+      if (hasEditPermission) {
+        return (
+          <div onClick={() => setEditSubscription(true)}>
+            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
+          </div>
+        );
+      }
+
+      return (
+        <Typography.Text
+          className="font-medium"
+          data-testid="subscription-no-data">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      );
+    }
+
+    return cellItem(webhook[0], webhook[1]);
+  }, [subscription, hasEditPermission, setEditSubscription]);
 
   const handleSave = async (values: SubscriptionWebhook) => {
     setIsLoading(true);

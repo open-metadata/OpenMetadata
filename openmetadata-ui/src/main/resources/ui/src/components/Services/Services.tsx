@@ -228,7 +228,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     ) {
       return (
         <ErrorPlaceHolder
-          className="mt-24"
+          className="p-lg"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
