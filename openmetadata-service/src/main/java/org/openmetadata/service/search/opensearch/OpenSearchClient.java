@@ -291,7 +291,7 @@ public class OpenSearchClient implements SearchClient {
       case "domain_search_index":
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
-      case "search_entity_index":
+      case "search_entity_search_index":
         searchSourceBuilder = buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
