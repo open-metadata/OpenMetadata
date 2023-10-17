@@ -24,6 +24,7 @@ import {
   CUSTOM_PROPERTY_INVALID_NAMES,
   CUSTOM_PROPERTY_NAME_VALIDATION_ERROR,
   DELETE_TERM,
+  EXPLORE_PAGE_TABS,
   NAME_VALIDATION_ERROR,
   SEARCH_INDEX,
 } from '../constants/constants';
@@ -567,7 +568,7 @@ export const visitEntityDetailsPage = (
         cy.get('[data-testid="searchBox"]').type('{enter}');
         verifyResponseStatusCode('@explorePageSearch', 200);
 
-        const tabName = entity === 'searchIndexes' ? 'search indexes' : entity;
+        const tabName = EXPLORE_PAGE_TABS?.[entity] ?? entity;
 
         cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible').click();
         cy.get(`[data-testid="${tabName}-tab"]`).should('be.visible');

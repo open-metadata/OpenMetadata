@@ -24,7 +24,7 @@ export const MYDATA_SUMMARY_OPTIONS = {
   topics: 'topics',
   dashboards: 'dashboards',
   pipelines: 'pipelines',
-  mlmodels: 'ml models',
+  mlmodels: 'mlmodels',
   service: 'service',
   user: 'user',
   teams: 'teams',
@@ -34,6 +34,14 @@ export const MYDATA_SUMMARY_OPTIONS = {
   tags: 'tags',
   storedProcedures: 'storedProcedures',
   dataModel: 'dashboardDataModel',
+  searchIndexes: 'searchIndexes',
+};
+export const EXPLORE_PAGE_TABS = {
+  mlmodels: 'ml models',
+  storedProcedures: 'stored procedures',
+  dataProducts: 'data products',
+  dataModel: 'dashboard data model',
+  searchIndexes: 'search indexes',
 };
 
 export const SEARCH_INDEX = {
