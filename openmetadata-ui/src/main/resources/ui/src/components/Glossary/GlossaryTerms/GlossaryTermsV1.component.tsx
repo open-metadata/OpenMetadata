@@ -29,6 +29,7 @@ import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { AssetSelectionModal } from '../../Assets/AssetsSelectionModal/AssetSelectionModal';
@@ -333,6 +334,9 @@ const GlossaryTermsV1 = ({
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}
           open={assetModalVisible}
+          queryFilter={getQueryFilterToExcludeTerm(
+            glossaryTerm.fullyQualifiedName
+          )}
           type={AssetsOfEntity.GLOSSARY}
           onCancel={() => setAssetModelVisible(false)}
           onSave={handleAssetSave}

@@ -38,7 +38,6 @@ import {
   getAssetsSearchIndex,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import Searchbar from '../../common/searchbar/Searchbar';
 import TableDataCardV2 from '../../common/table-data-card-v2/TableDataCardV2';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -53,6 +52,7 @@ export const AssetSelectionModal = ({
   onSave,
   open,
   type = AssetsOfEntity.GLOSSARY,
+  queryFilter = {},
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -66,14 +66,6 @@ export const AssetSelectionModal = ({
   const [activeEntity, setActiveEntity] = useState<Domain | DataProduct>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-
-  const queryFilter = useMemo(() => {
-    if (type === AssetsOfEntity.GLOSSARY) {
-      return getQueryFilterToExcludeTerm(entityFqn);
-    } else {
-      return {};
-    }
-  }, [entityFqn, type]);
 
   const fetchEntities = useCallback(
     async ({ searchText = '', page = 1, index = activeFilter }) => {
@@ -106,7 +98,7 @@ export const AssetSelectionModal = ({
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
       const data = await getDataProductByName(
         encodeURIComponent(entityFqn),
-        ''
+        'domain'
       );
       setActiveEntity(data);
     }

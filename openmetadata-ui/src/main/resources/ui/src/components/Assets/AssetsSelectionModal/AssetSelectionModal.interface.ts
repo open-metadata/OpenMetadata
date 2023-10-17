@@ -38,6 +38,7 @@ export interface AssetSelectionModalProps {
   type?: AssetsOfEntity;
   onCancel: () => void;
   onSave?: () => void;
+  queryFilter?: Record<string, unknown>;
 }
 
 export type AssetsUnion =
