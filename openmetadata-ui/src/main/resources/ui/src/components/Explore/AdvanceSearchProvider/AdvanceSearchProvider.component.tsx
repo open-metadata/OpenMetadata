@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isNil, isString } from 'lodash';
+import { cloneDeep, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -22,9 +22,11 @@ import React, {
 } from 'react';
 import {
   Config,
+  FieldGroup,
   ImmutableTree,
   JsonTree,
   Utils as QbUtils,
+  ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import {
@@ -33,7 +35,9 @@ import {
 } from '../../../constants/AdvancedSearch.constants';
 import { tabsInfo } from '../../../constants/explore.constants';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
+import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
 import Loader from '../../Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { ExploreSearchIndex, UrlParams } from '../explore.interface';
@@ -165,15 +169,55 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
-  useEffect(() => {
-    if (jsonTree) {
-      const tree = QbUtils.checkTree(QbUtils.loadTree(jsonTree), config);
+  async function getCustomAttributesSubfields() {
+    const updatedConfig = cloneDeep(config);
+    try {
+      const entityType = getEntityTypeFromSearchIndex(searchIndex);
+      if (!entityType) {
+        return;
+      }
+      const res = await getTypeByFQN(entityType);
+      const customAttributes = res.customProperties;
+
+      const subfields: Record<
+        string,
+        { type: string; valueSources: ValueSource[] }
+      > = {};
+
+      if (customAttributes) {
+        customAttributes.forEach((attr) => {
+          subfields[attr.name] = {
+            type: 'text',
+            valueSources: ['value'],
+          };
+        });
+      }
+      (updatedConfig.fields.extension as FieldGroup).subfields = subfields;
+
+      return updatedConfig;
+    } catch (error) {
+      // Error
+      return updatedConfig;
+    }
+  }
+
+  const loadTree = useCallback(
+    async (treeObj: JsonTree) => {
+      const updatedConfig = (await getCustomAttributesSubfields()) ?? config;
+      const tree = QbUtils.checkTree(QbUtils.loadTree(treeObj), updatedConfig);
       setTreeInternal(tree);
       const qFilter = {
-        query: elasticSearchFormat(tree, config),
+        query: elasticSearchFormat(tree, updatedConfig),
       };
       setQueryFilter(qFilter);
-      setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
+      setSQLQuery(QbUtils.sqlFormat(tree, updatedConfig) ?? '');
+    },
+    [config]
+  );
+
+  useEffect(() => {
+    if (jsonTree) {
+      loadTree(jsonTree);
     } else {
       handleReset();
     }
