@@ -52,7 +52,7 @@ const ForgotPassword = () => {
         style={{ maxWidth: '430px' }}>
         <Row gutter={[16, 24]}>
           <Col className="text-center" span={24}>
-            <BrandImage className="m-auto" height="auto" width={152} />
+            <BrandImage className="m-auto" height="auto" width={200} />
           </Col>
           <Col className="flex-center text-center mt-8" span={24}>
             <Typography.Text className="text-xl font-medium text-grey-muted">
