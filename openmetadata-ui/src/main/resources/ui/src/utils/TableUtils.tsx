@@ -321,26 +321,31 @@ export const getEntityIcon = (indexType: string) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
     case EntityType.TOPIC:
+    case EntityType.MESSAGING_SERVICE:
     case SearchIndex.MESSAGING_SERVICE:
       return <TopicIcon />;
 
     case SearchIndex.DASHBOARD:
     case EntityType.DASHBOARD:
+    case EntityType.DASHBOARD_SERVICE:
     case SearchIndex.DASHBOARD_SERVICE:
       return <DashboardIcon />;
 
     case SearchIndex.MLMODEL:
     case EntityType.MLMODEL:
+    case EntityType.MLMODEL_SERVICE:
     case SearchIndex.ML_MODEL_SERVICE:
       return <MlModelIcon />;
 
     case SearchIndex.PIPELINE:
     case EntityType.PIPELINE:
+    case EntityType.PIPELINE_SERVICE:
     case SearchIndex.PIPELINE_SERVICE:
       return <PipelineIcon />;
 
     case SearchIndex.CONTAINER:
     case EntityType.CONTAINER:
+    case EntityType.STORAGE_SERVICE:
     case SearchIndex.STORAGE_SERVICE:
       return <ContainerIcon />;
 

@@ -106,12 +106,22 @@ const GlossaryTermTab = ({
           const name = getEntityName(record);
 
           return (
-            <Link
-              className="cursor-pointer help-text"
-              data-testid={name}
-              to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
-              {name}
-            </Link>
+            <Space align="center">
+              {record.style?.iconURL && (
+                <img
+                  data-testid="tag-icon"
+                  src={record.style.iconURL}
+                  width={16}
+                />
+              )}
+              <Link
+                className="cursor-pointer help-text"
+                data-testid={name}
+                style={{ color: record.style?.color }}
+                to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+                {name}
+              </Link>
+            </Space>
           );
         },
       },

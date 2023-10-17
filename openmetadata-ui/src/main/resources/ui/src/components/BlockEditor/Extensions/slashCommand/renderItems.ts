@@ -20,7 +20,7 @@ const renderItems = () => {
   let component: ReactRenderer;
   let popup: Instance<Props>[] = [];
   let suggestionProps: SuggestionProps;
-  const hasPopup = !isEmpty(popup);
+  let hasPopup = !isEmpty(popup);
 
   return {
     onStart: (props: SuggestionProps) => {
@@ -44,6 +44,7 @@ const renderItems = () => {
         trigger: 'manual',
         placement: 'bottom-start',
       });
+      hasPopup = !isEmpty(popup);
     },
     onUpdate: (props: SuggestionProps) => {
       suggestionProps = props;
