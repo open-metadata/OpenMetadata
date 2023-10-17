@@ -1328,41 +1328,52 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  void put_entityUpdatesInASession(TestInfo test) throws IOException {
+  void put_entityUpdatesInASession(TestInfo test) throws IOException, InterruptedException {
     EntityUpdater.disableConsolidateChanges(false);
-    K create = createRequest(getEntityName(test), "description", null, null);
-    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
-    Double previousVersion = entity.getVersion();
+    try {
+      K create = createRequest(getEntityName(test), "description", null, null);
+      T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+      Double previousVersion = entity.getVersion();
 
-    // Update description with a new description and the version changes
-    create = create.withDescription("description1");
-    ChangeDescription change = getChangeDescription(previousVersion);
-    fieldUpdated(change, "description", "description", "description1");
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Update description with a new description and the version changes
+      create = create.withDescription("description1");
+      ChangeDescription change = getChangeDescription(previousVersion);
+      fieldUpdated(change, "description", "description", "description1");
+      updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update description with a new description and the version changes
-    create = create.withDescription("description2");
-    change = getChangeDescription(previousVersion); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Update description with a new description and the version changes
+      create = create.withDescription("description2");
+      change = getChangeDescription(previousVersion); // New version remains the same
+      fieldUpdated(change, "description", "description", "description2");
+      updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update null displayName with a new displayName - version remains the same.
-    // ChangeDescription includes all the changes so far.
-    create = create.withDisplayName("displayName");
-    change = getChangeDescription(entity.getVersion()); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    fieldAdded(change, "displayName", "displayName");
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Update null displayName with a new displayName - version remains the same.
+      // ChangeDescription includes all the changes so far.
+      create = create.withDisplayName("displayName");
+      change = getChangeDescription(previousVersion); // New version remains the same
+      fieldUpdated(change, "description", "description", "description2");
+      fieldAdded(change, "displayName", "displayName");
+      updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Delete the displayName - version remains the same.
-    // ChangeDescription includes all the changes so far.
-    create = create.withDisplayName(null);
-    change = getChangeDescription(entity.getVersion()); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Delete the displayName - version remains the same.
+      // ChangeDescription includes all the changes so far.
+      create = create.withDisplayName(null);
+      change = getChangeDescription(previousVersion); // New version remains the same
+      fieldUpdated(change, "description", "description", "description2");
+      entity = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Finally, disable consolidate changes for tests to work
-    EntityUpdater.disableConsolidateChanges(true);
+      // Set the user session timeout to 1 seconds from 10 minutes. Updating display should result in new change
+      EntityUpdater.setSessionTimeout(1000);
+      java.lang.Thread.sleep(1001L);
+      create = create.withDisplayName("displayName");
+      change = getChangeDescription(entity.getVersion()); // New version remains the same
+      fieldAdded(change, "displayName", "displayName");
+      updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    } finally {
+      // Finally, disable consolidate changes for tests to work
+      EntityUpdater.setSessionTimeout(10 * 60 * 1000);
+      EntityUpdater.disableConsolidateChanges(true);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1512,43 +1523,45 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   void patch_entityUpdatesInASession(TestInfo test) throws IOException {
     EntityUpdater.disableConsolidateChanges(false);
-    K create = createRequest(getEntityName(test), "description", null, null);
-    T entity = createEntity(create, ADMIN_AUTH_HEADERS);
-    Double previousVersion = entity.getVersion();
+    try {
+      K create = createRequest(getEntityName(test), "description", null, null);
+      T entity = createEntity(create, ADMIN_AUTH_HEADERS);
+      Double previousVersion = entity.getVersion();
 
-    // Update description with a new description and the version changes
-    String json = JsonUtils.pojoToJson(entity);
-    entity.setDescription("description1");
-    ChangeDescription change = getChangeDescription(previousVersion);
-    fieldUpdated(change, "description", "description", "description1");
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Update description with a new description and the version changes
+      String json = JsonUtils.pojoToJson(entity);
+      entity.setDescription("description1");
+      ChangeDescription change = getChangeDescription(previousVersion);
+      fieldUpdated(change, "description", "description", "description1");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update description with a new description and the version changes
-    json = JsonUtils.pojoToJson(entity);
-    entity.setDescription("description2");
-    change = getChangeDescription(previousVersion); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Update description with a new description and the version changes
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDescription("description2");
+      change = getChangeDescription(previousVersion); // New version remains the same
+      fieldUpdated(change, "description", "description", "description2");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Update null displayName with a new displayName - version remains the same.
-    // ChangeDescription includes all the changes so far.
-    json = JsonUtils.pojoToJson(entity);
-    entity.setDisplayName("displayName");
-    change = getChangeDescription(previousVersion); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    fieldAdded(change, "displayName", "displayName");
-    entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+      // Update null displayName with a new displayName - version remains the same.
+      // ChangeDescription includes all the changes so far.
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDisplayName("displayName");
+      change = getChangeDescription(previousVersion); // New version remains the same
+      fieldUpdated(change, "description", "description", "description2");
+      fieldAdded(change, "displayName", "displayName");
+      entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Delete the displayName - version remains the same.
-    // ChangeDescription includes all the changes so far.
-    json = JsonUtils.pojoToJson(entity);
-    entity.setDisplayName(null);
-    change = getChangeDescription(previousVersion); // New version remains the same
-    fieldUpdated(change, "description", "description", "description2");
-    patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
-    // Finally, disable consolidate changes for tests to work
-    EntityUpdater.disableConsolidateChanges(true);
+      // Delete the displayName - version remains the same.
+      // ChangeDescription includes all the changes so far.
+      json = JsonUtils.pojoToJson(entity);
+      entity.setDisplayName(null);
+      change = getChangeDescription(previousVersion); // New version remains the same
+      fieldUpdated(change, "description", "description", "description2");
+      patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    } finally {
+      // Finally, disable consolidate changes for tests to work
+      EntityUpdater.disableConsolidateChanges(true);
+    }
   }
 
   @Test

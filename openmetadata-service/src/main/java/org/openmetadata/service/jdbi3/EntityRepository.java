@@ -1792,7 +1792,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
-    private static final long SESSION_TIMEOUT_MILLIS = 10000;
+    private static volatile long sessionTimeoutMillis = 10 * 60 * 1000; // 10 minutes
     private static boolean disableConsolidateChanges = false;
     protected final T original;
     protected final T updated;
@@ -1819,12 +1819,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       disableConsolidateChanges = disable;
     }
 
+    @VisibleForTesting
+    public static void setSessionTimeout(long timeout) {
+      sessionTimeoutMillis = timeout;
+    }
+
     private boolean consolidateChanges(T original, T updated) {
       // If user is the same and the new update is with in the user session timeout
       return !disableConsolidateChanges
           && original.getVersion() > 0.1
           && original.getUpdatedBy().equals(updated.getUpdatedBy())
-          && updated.getUpdatedAt() - original.getUpdatedAt() <= SESSION_TIMEOUT_MILLIS;
+          && updated.getUpdatedAt() - original.getUpdatedAt() <= sessionTimeoutMillis;
     }
 
     private T getPreviousVersion(T original) {
