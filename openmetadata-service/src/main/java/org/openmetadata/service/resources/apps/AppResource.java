@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -248,12 +249,29 @@ public class AppResource extends EntityResource<App, AppRepository> {
             description = "List of Installed Applications Runs",
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppRunRecord.class)))
       })
-  public AppRunRecord listLatestAppRun(
+  public Response listLatestAppRun(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
-    App installation = repository.getByName(uriInfo, name, repository.getFields("id"));
-    return repository.getLatestAppRuns(installation.getId());
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name,
+      @Parameter(description = "Returns log chunk after this cursor", schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return Response.status(Response.Status.OK).entity(repository.getLatestAppRuns(installation.getId())).build();
+    } else {
+      if (!installation.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = installation.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+        Map<String, String> lastIngestionLogs = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after);
+        return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
+      }
+    }
+    throw new BadRequestException("Failed to Get Logs for the Installation.");
   }
 
   @GET
@@ -557,17 +575,63 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
         ingestionPipeline.setOpenMetadataServerConnection(
             new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
-        decryptOrNullify(securityContext, ingestionPipeline, true);
+        decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
         ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
         PipelineServiceClientResponse response = pipelineServiceClient.runPipeline(ingestionPipeline, service);
         return Response.status(response.getCode()).entity(response).build();
       }
     }
-    throw new BadRequestException("App Type is External. Please use Ingestion Triggers.");
+    throw new BadRequestException("Failed to trigger application.");
+  }
+
+  @POST
+  @Path("/deploy/{name}")
+  @Operation(
+      operationId = "deployApplicationToQuartzOrIngestion",
+      summary = "Deploy App to Quartz or Ingestion",
+      description = "Deploy App to Quartz or Ingestion.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Application trigger status code",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Application for instance {id} is not found")
+      })
+  public Response deployApplicationFlow(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string")) @PathParam("name") String name) {
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
+    App app = repository.getByName(uriInfo, name, fields);
+    if (app.getAppType().equals(AppType.Internal)) {
+      ApplicationHandler.scheduleApplication(app, Entity.getCollectionDAO(), searchRepository);
+      return Response.status(Response.Status.OK).entity("Application Deployed").build();
+    } else {
+      if (!app.getPipelines().isEmpty()) {
+        EntityReference pipelineRef = app.getPipelines().get(0);
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+        IngestionPipeline ingestionPipeline =
+            ingestionPipelineRepository.get(
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+
+        ingestionPipeline.setOpenMetadataServerConnection(
+            new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, app.getBot().getName()).build());
+        decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
+        ServiceEntityInterface service = Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse status = pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+        if (status.getCode() == 200) {
+          ingestionPipelineRepository.createOrUpdate(uriInfo, ingestionPipeline);
+        }
+        return Response.status(status.getCode()).entity(status).build();
+      }
+    }
+    throw new BadRequestException("Failed to trigger application.");
   }
 
   private void decryptOrNullify(
-      SecurityContext securityContext, IngestionPipeline ingestionPipeline, boolean forceNotMask) {
+      SecurityContext securityContext, IngestionPipeline ingestionPipeline, String botname, boolean forceNotMask) {
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     try {
       authorizer.authorize(
@@ -579,7 +643,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botname).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {

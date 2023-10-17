@@ -153,7 +153,7 @@ public class AppRepository extends EntityRepository<App> {
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
-        : getToEntityRef(application.getId(), Relationship.HAS, Entity.BOT, false);
+        : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
   }
 
   @Override
