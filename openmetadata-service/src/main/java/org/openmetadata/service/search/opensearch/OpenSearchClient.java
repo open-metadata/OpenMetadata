@@ -291,7 +291,7 @@ public class OpenSearchClient implements SearchClient {
       case "domain_search_index":
         searchSourceBuilder = buildDomainsSearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
-      case "search_entity_index":
+      case "search_entity_search_index":
         searchSourceBuilder = buildSearchEntitySearch(request.getQuery(), request.getFrom(), request.getSize());
         break;
       case "raw_cost_analysis_report_data_index":
@@ -858,9 +858,12 @@ public class OpenSearchClient implements SearchClient {
     highlightDescription.highlighterType(UNIFIED);
     HighlightBuilder.Field highlightName = new HighlightBuilder.Field(FIELD_NAME);
     highlightName.highlighterType(UNIFIED);
+    HighlightBuilder.Field highlightDisplayName = new HighlightBuilder.Field(FIELD_NAME);
+    highlightDisplayName.highlighterType(UNIFIED);
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightName);
+    hb.field(highlightDisplayName);
 
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
